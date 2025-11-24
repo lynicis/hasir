@@ -25,12 +25,24 @@ message LoginRequest {
   ];
 }
 
-message LoginResponse {
+message TokenEnvelope {
   string access_token = 1;
   string refresh_token = 2;
 }
 
+message UpdateUserRequest {
+  string user_id = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message DeleteAccountRequest {
+  string user_id = 1;
+}
+
 service UserService {
   rpc Register(RegisterRequest) returns (google.protobuf.Empty);
-  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Login(LoginRequest) returns (TokenEnvelope);
+  rpc UpdateUser(UpdateUserRequest) returns (TokenEnvelope);
+  rpc DeleteAccount(DeleteAccountRequest) returns (google.protobuf.Empty);
 }
