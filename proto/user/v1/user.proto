@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package user.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/empty.proto";
+
+message RegisterRequest {
+  string email = 1 [(buf.validate.field).string.email = true];
+  string username = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 10
+  ];
+  string password = 3 [
+    (buf.validate.field).string.min_len = 8,
+    (buf.validate.field).string.max_len = 20
+  ];
+}
+
+message LoginRequest {
+  string email = 1 [(buf.validate.field).string.email = true];
+  string password = 2 [
+    (buf.validate.field).string.min_len = 8,
+    (buf.validate.field).string.max_len = 20
+  ];
+}
+
+message LoginResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+
+service UserService {
+  rpc Register(RegisterRequest) returns (google.protobuf.Empty);
+  rpc Login(LoginRequest) returns (LoginResponse);
+}
