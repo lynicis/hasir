@@ -81,7 +81,7 @@ export default function HomePage() {
           </motion.div>
 
           <motion.h1
-            className="text-5xl font-bold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl bg-gradient-to-r from-foreground via-foreground to-foreground/60 bg-clip-text text-transparent"
+            className="text-5xl font-bold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl bg-linear-to-r from-foreground via-foreground to-foreground/60 bg-clip-text text-transparent"
             variants={itemVariants}
           >
             Hasir
