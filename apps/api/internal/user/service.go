@@ -17,7 +17,7 @@ import (
 
 type Service interface {
 	Register(ctx context.Context, req *userv1.RegisterRequest) error
-	Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.LoginResponse, error)
+	Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.TokenEnvelope, error)
 }
 
 type service struct {
@@ -64,7 +64,7 @@ func (s *service) Register(ctx context.Context, req *userv1.RegisterRequest) err
 	return nil
 }
 
-func (s *service) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.LoginResponse, error) {
+func (s *service) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.TokenEnvelope, error) {
 	user, err := s.userRepository.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func (s *service) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.
 		return nil, err
 	}
 
-	return &userv1.LoginResponse{
+	return &userv1.TokenEnvelope{
 		AccessToken:  signedAccessToken,
 		RefreshToken: signedRefreshToken,
 	}, nil

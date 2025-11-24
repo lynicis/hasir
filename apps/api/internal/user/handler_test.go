@@ -202,7 +202,7 @@ func TestHandler_Login(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		mockUserService := NewMockService(mockController)
 
-		mockRespBody := &userv1.LoginResponse{
+		mockRespBody := &userv1.TokenEnvelope{
 			AccessToken:  "abcd.abcd.abcd",
 			RefreshToken: "abcd.abcd.abcd",
 		}

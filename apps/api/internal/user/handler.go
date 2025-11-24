@@ -52,7 +52,7 @@ func (h *handler) Register(
 func (h *handler) Login(
 	ctx context.Context,
 	req *connect.Request[userv1.LoginRequest],
-) (*connect.Response[userv1.LoginResponse], error) {
+) (*connect.Response[userv1.TokenEnvelope], error) {
 	tokens, err := h.userService.Login(ctx, req.Msg)
 	if err != nil {
 		return nil, err
