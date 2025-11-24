@@ -170,7 +170,7 @@ export function RegisterForm({
                   Create Account
                 </Button>
                 <FieldDescription className="text-center">
-                  Already have an account? <Link href="/sign-in">Sign in</Link>
+                  Already have an account? <Link href="/login">Login</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>
