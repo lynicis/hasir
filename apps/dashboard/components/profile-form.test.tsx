@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
 import { useUserStore } from "@/stores/user-store-provider";
+
 import { ProfileForm } from "./profile-form";
 
 vi.mock("@/stores/user-store-provider", () => ({

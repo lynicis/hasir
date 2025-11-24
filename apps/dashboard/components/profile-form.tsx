@@ -19,9 +19,9 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { useUserStore } from "@/stores/user-store-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useUserStore } from "@/stores/user-store-provider";
 
 const schema = z
   .object({
