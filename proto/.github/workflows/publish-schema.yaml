@@ -5,12 +5,17 @@ on:
     tags:
       - v*.*.*
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: bufbuild/buf-setup-action@v1.50.0
+      - uses: actions/checkout@v6
 
-      - uses: bufbuild/buf-push-action@v1.2.0
+      - uses: bufbuild/buf-action@v1.3
         with:
-          buf_token: ${{ secrets.BUF_TOKEN }}
+          input: proto/
+          token: ${{ secrets.BUF_TOKEN }}
