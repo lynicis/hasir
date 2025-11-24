@@ -4,6 +4,8 @@ import { UserService } from "@buf/hasir_hasir.bufbuild_es/user/v1/user_pb";
 import { ConnectError, Code } from "@connectrpc/connect";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import Link from "next/link";
 import { z } from "zod/v4";
 
@@ -14,6 +16,7 @@ import {
   Field,
 } from "@/components/ui/field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUserStore } from "@/stores/user-store-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useClient } from "@/lib/use-client";
@@ -33,7 +36,9 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const router = useRouter();
   const userApiClient = useClient(UserService);
+  const { setTokens } = useUserStore((state) => state);
   const {
     control,
     handleSubmit,
@@ -49,10 +54,14 @@ export function LoginForm({
 
   async function onSubmit({ email, password }: ISchema) {
     try {
-      await userApiClient.login({
+      const response = await userApiClient.login({
         email,
         password,
       });
+
+      setTokens(response);
+      toast.success("You have successfully logged in!");
+      setTimeout(() => router.push("/dashboard"), 600);
     } catch (error) {
       if (error instanceof ConnectError) {
         if (error.code === Code.NotFound) {

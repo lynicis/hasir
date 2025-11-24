@@ -1,7 +1,10 @@
+"use client";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { TransportProvider } from "@connectrpc/connect-query";
 
+import { UserStoreProvider } from "@/stores/user-store-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 const finalTransport = createConnectTransport({
@@ -15,7 +18,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <>
       <TransportProvider transport={finalTransport}>
         <QueryClientProvider client={queryClient}>
-          <main>{children}</main>
+          <UserStoreProvider>
+            <main>{children}</main>
+          </UserStoreProvider>
         </QueryClientProvider>
       </TransportProvider>
       <Toaster />

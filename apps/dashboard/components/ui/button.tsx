@@ -64,8 +64,16 @@ function Button({
       disabled={isLoading || props.disabled}
       {...props}
     >
-      {isLoading && <Spinner className="size-4 shrink-0" aria-hidden="true" />}
-      {children}
+      {asChild ? (
+        children
+      ) : (
+        <>
+          {isLoading && (
+            <Spinner className="size-4 shrink-0" aria-hidden="true" />
+          )}
+          {children}
+        </>
+      )}
     </Comp>
   );
 }

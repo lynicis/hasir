@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
+import { useUserStore } from "@/stores/user-store-provider";
 import { useClient } from "@/lib/use-client";
 
 import { LoginForm } from "./login-form";
@@ -10,19 +11,48 @@ vi.mock("@/lib/use-client", () => ({
   useClient: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
+vi.mock("@/stores/user-store-provider", () => ({
+  useUserStore: vi.fn(),
+}));
+
 const mockLogin = vi.fn();
+const mockPush = vi.fn();
 const mockedUseClient = vi.mocked(useClient);
+const mockedUseUserStore = vi.mocked(useUserStore);
 
 describe("LoginForm", () => {
   beforeEach(() => {
     mockedUseClient.mockReturnValue({
       login: mockLogin,
     } as never);
+    mockedUseUserStore.mockReturnValue({
+      setTokens: vi.fn(),
+    } as never);
     mockLogin.mockReset();
+    mockPush.mockReset();
   });
 
   it("submits credentials when the form is valid", async () => {
     const user = userEvent.setup();
+    const mockSetTokens = vi.fn();
+    mockedUseUserStore.mockReturnValue({
+      setTokens: mockSetTokens,
+    } as never);
+    mockLogin.mockResolvedValue({
+      accessToken: "token",
+      refreshToken: "refresh",
+    });
 
     render(<LoginForm />);
 
