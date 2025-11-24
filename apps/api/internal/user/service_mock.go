@@ -13,8 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	userv1 "github.com/protohasir/proto/gen/go/user/v1"
-
+	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 	gomock "go.uber.org/mock/gomock"
 )
 

@@ -19,8 +19,8 @@ import (
 
 	"apps/api/internal"
 
-	userv1 "github.com/protohasir/proto/gen/go/user/v1"
-	"github.com/protohasir/proto/gen/go/user/v1/userv1connect"
+	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
+	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 )
 
 func TestNewHandler(t *testing.T) {
