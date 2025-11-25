@@ -23,11 +23,11 @@ import { useClient } from "@/lib/use-client";
 import { cn } from "@/lib/utils";
 
 const schema = z.object({
-  email: z.email({ message: "Please enter a valid email address." }),
+  email: z.email({ error: "Please enter a valid email address." }),
   password: z
     .string()
-    .min(8, { message: "Password must be at least 8 characters." })
-    .max(20, { message: "Password must be at most 20 characters." }),
+    .min(8, { error: "Password must be at least 8 characters." })
+    .max(20, { error: "Password must be at most 20 characters." }),
 });
 
 type ISchema = z.infer<typeof schema>;
@@ -124,6 +124,7 @@ export function LoginForm({
                       type="password"
                       disabled={isLoading}
                       required
+                      placeholder="********"
                       aria-invalid={fieldState.invalid}
                     />
                   </Field>
@@ -142,11 +143,6 @@ export function LoginForm({
           </form>
         </CardContent>
       </Card>
-      <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our{" "}
-        <Link href="#">Terms of Service</Link> and{" "}
-        <Link href="#">Privacy Policy</Link>.
-      </FieldDescription>
     </div>
   );
 }

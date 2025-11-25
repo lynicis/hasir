@@ -29,18 +29,21 @@ import { cn } from "@/lib/utils";
 
 const schema = z
   .object({
-    email: z.email({ message: "Invalid email address" }),
+    username: z
+      .string({ error: "Invalid username" })
+      .max(20, { error: "Username too long" }),
+    email: z.email({ error: "Invalid email address" }),
     password: z
       .string()
-      .min(8, { message: "Password must be at least 8 characters" })
-      .max(20, { message: "Password must be at most 20 characters" }),
+      .min(8, { error: "Password must be at least 8 characters" })
+      .max(20, { error: "Password must be at most 20 characters" }),
     confirmPassword: z
       .string()
-      .min(8, { message: "Confirm password must be at least 8 characters" })
-      .max(20, { message: "Confirm password must be at most 20 characters" }),
+      .min(8, { error: "Confirm password must be at least 8 characters" })
+      .max(20, { error: "Confirm password must be at most 20 characters" }),
   })
   .refine(({ password, confirmPassword }) => password === confirmPassword, {
-    message: "Passwords do not match",
+    error: "Passwords do not match",
     path: ["confirmPassword"],
   });
 
@@ -60,6 +63,7 @@ export function RegisterForm({
   } = useForm<ISchema>({
     resolver: zodResolver(schema),
     defaultValues: {
+      username: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -105,6 +109,24 @@ export function RegisterForm({
           <form onSubmit={handleSubmit(onSubmit)}>
             <FieldGroup>
               <Controller
+                name="username"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Username</FieldLabel>
+                    <Input
+                      {...field}
+                      id={field.name}
+                      type="text"
+                      placeholder="JohnDoe"
+                      required
+                      aria-invalid={fieldState.invalid}
+                      disabled={isSubmitting}
+                    />
+                  </Field>
+                )}
+              />
+              <Controller
                 name="email"
                 control={control}
                 render={({ field, fieldState }) => (
@@ -135,6 +157,7 @@ export function RegisterForm({
                           id={field.name}
                           type="password"
                           required
+                          placeholder="********"
                           aria-invalid={fieldState.invalid}
                           disabled={isSubmitting}
                         />
@@ -154,6 +177,7 @@ export function RegisterForm({
                           id={field.name}
                           type="password"
                           required
+                          placeholder="********"
                           aria-invalid={fieldState.invalid}
                           disabled={isSubmitting}
                         />
@@ -177,11 +201,6 @@ export function RegisterForm({
           </form>
         </CardContent>
       </Card>
-      <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our{" "}
-        <Link href="#">Terms of Service</Link> and{" "}
-        <Link href="#">Privacy Policy</Link>.
-      </FieldDescription>
     </div>
   );
 }

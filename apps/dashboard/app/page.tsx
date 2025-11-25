@@ -7,7 +7,6 @@ import Link from "next/link";
 import { useUserStore } from "@/stores/user-store-provider";
 import { Button } from "@/components/ui/button";
 
-// Animation variants
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {

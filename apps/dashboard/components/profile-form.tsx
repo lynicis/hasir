@@ -26,8 +26,7 @@ import { Input } from "@/components/ui/input";
 const schema = z
   .object({
     email: z
-      .string()
-      .email({ message: "Please enter a valid email address." })
+      .email({ error: "Please enter a valid email address." })
       .optional()
       .or(z.literal("")),
     password: z
@@ -38,7 +37,7 @@ const schema = z
         (val) =>
           !val || val.trim() === "" || (val.length >= 8 && val.length <= 20),
         {
-          message: "Password must be between 8 and 20 characters.",
+          error: "Password must be between 8 and 20 characters.",
         }
       ),
     confirmPassword: z
@@ -49,19 +48,18 @@ const schema = z
         (val) =>
           !val || val.trim() === "" || (val.length >= 8 && val.length <= 20),
         {
-          message: "Confirm password must be between 8 and 20 characters.",
+          error: "Confirm password must be between 8 and 20 characters.",
         }
       ),
   })
   .refine(
     ({ password, confirmPassword }) => {
-      // Only validate if both passwords are provided
       if (!password && !confirmPassword) return true;
-      if (!password || !confirmPassword) return true;
+      if (!password || !confirmPassword) return false;
       return password === confirmPassword;
     },
     {
-      message: "Passwords do not match",
+      error: "Passwords do not match",
       path: ["confirmPassword"],
     }
   );
@@ -187,4 +185,3 @@ export function ProfileForm({ onSubmit }: ProfileFormProps) {
     </Card>
   );
 }
-
