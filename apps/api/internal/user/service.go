@@ -18,6 +18,7 @@ import (
 type Service interface {
 	Register(ctx context.Context, req *userv1.RegisterRequest) error
 	Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.TokenEnvelope, error)
+	UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.TokenEnvelope, error)
 }
 
 type service struct {
@@ -25,7 +26,7 @@ type service struct {
 	userRepository Repository
 }
 
-func NewService(config *config.Config, userRepository Repository) Service {
+func NewService(config *config.Config, userRepository Repository) *service {
 	return &service{
 		config:         config,
 		userRepository: userRepository,
@@ -70,13 +71,74 @@ func (s *service) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.
 		return nil, err
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
-	if err != nil {
+	if err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
 
-	now := time.Now().UTC()
+	tokens, err := s.generateTokens(user)
+	if err != nil {
+		return nil, err
+	}
 
+	expiresAt := time.Now().UTC().AddDate(0, 0, 14)
+	if err = s.userRepository.CreateRefreshToken(
+		ctx,
+		user.Id,
+		tokens.RefreshToken,
+		expiresAt,
+	); err != nil {
+		return nil, err
+	}
+
+	return tokens, nil
+}
+
+func (s *service) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.TokenEnvelope, error) {
+	user, err := s.userRepository.GetUserById(ctx, req.GetUserId())
+	if err != nil {
+		return nil, err
+	}
+
+	if err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
+	}
+
+	var hashedNewPassword []byte
+	hashedNewPassword, err = bcrypt.GenerateFromPassword([]byte(req.GetNewPassword()), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
+	}
+
+	updatedUser := &UserDTO{
+		Id:       user.Id,
+		Username: req.GetUsername(),
+		Email:    req.GetEmail(),
+		Password: string(hashedNewPassword),
+	}
+	if err = s.userRepository.UpdateUserById(ctx, updatedUser.Id, updatedUser); err != nil {
+		return nil, err
+	}
+
+	tokens, err := s.generateTokens(updatedUser)
+	if err != nil {
+		return nil, err
+	}
+
+	expiresAt := time.Now().UTC().AddDate(0, 0, 14)
+	if err = s.userRepository.CreateRefreshToken(
+		ctx,
+		updatedUser.Id,
+		tokens.RefreshToken,
+		expiresAt,
+	); err != nil {
+		return nil, err
+	}
+
+	return tokens, nil
+}
+
+func (s *service) generateTokens(user *UserDTO) (*userv1.TokenEnvelope, error) {
+	now := time.Now().UTC()
 	accessTokenExpiresAt := now.Add(2 * time.Hour).Unix()
 	accessTokenClaims := JwtClaims{
 		Claims: jwt.MapClaims{
@@ -92,8 +154,7 @@ func (s *service) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.
 
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokenClaims)
 
-	var signedAccessToken string
-	signedAccessToken, err = accessToken.SignedString(s.config.JwtSecret)
+	signedAccessToken, err := accessToken.SignedString(s.config.JwtSecret)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to create access token"))
 	}
@@ -117,16 +178,6 @@ func (s *service) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.
 	signedRefreshToken, err = refreshToken.SignedString(s.config.JwtSecret)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to create refresh token"))
-	}
-
-	expiresAt := time.Now().UTC().AddDate(0, 0, 14)
-	if err = s.userRepository.CreateRefreshToken(
-		ctx,
-		user.Id,
-		signedRefreshToken,
-		expiresAt,
-	); err != nil {
-		return nil, err
 	}
 
 	return &userv1.TokenEnvelope{

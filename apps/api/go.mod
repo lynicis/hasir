@@ -3,8 +3,8 @@ module apps/api
 go 1.25.4
 
 require (
-	buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251124134602-b21bd5233282.2
-	buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251124134602-b21bd5233282.1
+	buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251125171304-31053582bbb5.2
+	buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251125171304-31053582bbb5.1
 	connectrpc.com/connect v1.19.1
 	github.com/exaring/otelpgx v0.9.3
 	github.com/golang-jwt/jwt/v5 v5.3.0
@@ -104,6 +104,6 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.38.0 // indirect
 	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6 // indirect
 	golang.org/x/text v0.31.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20251111163417-95abcf5c77ba // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251111163417-95abcf5c77ba // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20251124214823-79d6a2a48846 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251124214823-79d6a2a48846 // indirect
 )

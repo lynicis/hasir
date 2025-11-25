@@ -42,7 +42,7 @@ func main() {
 		zap.L().Fatal("failed to create connect opentelementry interceptor", zap.Error(err))
 	}
 
-	userHandler := user.NewHandler(validateInterceptor, otelInterceptor, userService)
+	userHandler := user.NewHandler(validateInterceptor, otelInterceptor, userService, userPgRepository)
 	handlers := []internal.GlobalHandler{userHandler}
 
 	mux := http.NewServeMux()

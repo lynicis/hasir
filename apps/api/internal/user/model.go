@@ -12,20 +12,14 @@ type UserDTO struct {
 	Email     string     `json:"email" db:"email"`
 	Password  string     `json:"password" db:"password"`
 	CreatedAt time.Time  `json:"created_at" db:"created_at"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty" db:"deleted_at,omitempty"`
-}
-
-type UserUpdateHistoryDTO struct {
-	UserId    string    `json:"userId" db:"userId"`
-	Fields    []string  `json:"fields" db:"fields"`
-	UpdatedAt time.Time `json:"updatedAt" db:"updatedAt"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
 }
 
 type RefreshTokensDTO struct {
-	UserId    string
-	Token     string
-	ExpiresAt time.Time
-	CreatedAt time.Time
+	UserId    string    `json:"id" db:"id"`
+	Token     string    `json:"token" db:"token"`
+	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
 }
 
 type JwtClaims struct {

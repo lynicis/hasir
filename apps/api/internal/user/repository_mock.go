@@ -69,6 +69,20 @@ func (mr *MockRepositoryMockRecorder) CreateUser(ctx, user any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockRepository)(nil).CreateUser), ctx, user)
 }
 
+// DeleteUser mocks base method.
+func (m *MockRepository) DeleteUser(ctx context.Context, userId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteUser", ctx, userId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteUser indicates an expected call of DeleteUser.
+func (mr *MockRepositoryMockRecorder) DeleteUser(ctx, userId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockRepository)(nil).DeleteUser), ctx, userId)
+}
+
 // GetUserByEmail mocks base method.
 func (m *MockRepository) GetUserByEmail(ctx context.Context, email string) (*UserDTO, error) {
 	m.ctrl.T.Helper()
@@ -82,4 +96,33 @@ func (m *MockRepository) GetUserByEmail(ctx context.Context, email string) (*Use
 func (mr *MockRepositoryMockRecorder) GetUserByEmail(ctx, email any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByEmail", reflect.TypeOf((*MockRepository)(nil).GetUserByEmail), ctx, email)
+}
+
+// GetUserById mocks base method.
+func (m *MockRepository) GetUserById(ctx context.Context, id string) (*UserDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserById", ctx, id)
+	ret0, _ := ret[0].(*UserDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserById indicates an expected call of GetUserById.
+func (mr *MockRepositoryMockRecorder) GetUserById(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserById", reflect.TypeOf((*MockRepository)(nil).GetUserById), ctx, id)
+}
+
+// UpdateUserById mocks base method.
+func (m *MockRepository) UpdateUserById(ctx context.Context, id string, user *UserDTO) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUserById", ctx, id, user)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateUserById indicates an expected call of UpdateUserById.
+func (mr *MockRepositoryMockRecorder) UpdateUserById(ctx, id, user any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserById", reflect.TypeOf((*MockRepository)(nil).UpdateUserById), ctx, id, user)
 }

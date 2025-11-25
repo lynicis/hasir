@@ -218,3 +218,184 @@ func TestService_Login(t *testing.T) {
 		assert.Nil(t, tokens)
 	})
 }
+
+func TestService_UpdateUser(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+
+	cfg := &config.Config{
+		Server: config.ServerConfig{
+			PublicUrl: "http://api.test.com",
+		},
+		DashboardUrl: "http://test.com/dashboard",
+		JwtSecret:    []byte("jwt-secret"),
+	}
+
+	userId := uuid.NewString()
+	oldPassword := "Asdfg12345_"
+	newPassword := "NewPassword123_"
+	newUsername := "new-username"
+	newEmail := "new@mail.com"
+	hashedOldPwd, err := bcrypt.GenerateFromPassword([]byte(oldPassword), bcrypt.DefaultCost)
+	require.NoError(t, err)
+
+	t.Run("happy path", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+		mockUserRepository.
+			EXPECT().
+			GetUserById(gomock.Any(), userId).
+			Return(&UserDTO{
+				Id:        userId,
+				Username:  "old-username",
+				Email:     "old@mail.com",
+				Password:  string(hashedOldPwd),
+				CreatedAt: time.Now().UTC(),
+			}, nil).
+			Times(1)
+		mockUserRepository.
+			EXPECT().
+			UpdateUserById(gomock.Any(), userId, gomock.Any()).
+			Return(nil).
+			Times(1)
+		mockUserRepository.
+			EXPECT().
+			CreateRefreshToken(gomock.Any(), userId, gomock.Any(), gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		s := NewService(cfg, mockUserRepository)
+		tokens, err := s.UpdateUser(t.Context(), &userv1.UpdateUserRequest{
+			UserId:      userId,
+			Username:    &newUsername,
+			Email:       &newEmail,
+			Password:    oldPassword,
+			NewPassword: &newPassword,
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, tokens)
+		assert.NotEmpty(t, tokens.AccessToken)
+		assert.NotEmpty(t, tokens.RefreshToken)
+	})
+
+	t.Run("user not found", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+		mockUserRepository.
+			EXPECT().
+			GetUserById(gomock.Any(), userId).
+			Return(nil, ErrNoRows).
+			Times(1)
+
+		s := NewService(cfg, mockUserRepository)
+		tokens, err := s.UpdateUser(t.Context(), &userv1.UpdateUserRequest{
+			UserId:      userId,
+			Username:    &newUsername,
+			Email:       &newEmail,
+			Password:    oldPassword,
+			NewPassword: &newPassword,
+		})
+
+		assert.Error(t, err)
+		assert.Nil(t, tokens)
+	})
+
+	t.Run("wrong password", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+		mockUserRepository.
+			EXPECT().
+			GetUserById(gomock.Any(), userId).
+			Return(&UserDTO{
+				Id:        userId,
+				Username:  "old-username",
+				Email:     "old@mail.com",
+				Password:  string(hashedOldPwd),
+				CreatedAt: time.Now().UTC(),
+			}, nil).
+			Times(1)
+
+		s := NewService(cfg, mockUserRepository)
+		wrongPassword := "wrong-password"
+		tokens, err := s.UpdateUser(t.Context(), &userv1.UpdateUserRequest{
+			UserId:      userId,
+			Username:    &newUsername,
+			Email:       &newEmail,
+			Password:    wrongPassword,
+			NewPassword: &newPassword,
+		})
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid credentials")
+		assert.Nil(t, tokens)
+	})
+
+	t.Run("error occurred while updating user", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+		mockUserRepository.
+			EXPECT().
+			GetUserById(gomock.Any(), userId).
+			Return(&UserDTO{
+				Id:        userId,
+				Username:  "old-username",
+				Email:     "old@mail.com",
+				Password:  string(hashedOldPwd),
+				CreatedAt: time.Now().UTC(),
+			}, nil).
+			Times(1)
+		mockUserRepository.
+			EXPECT().
+			UpdateUserById(gomock.Any(), userId, gomock.Any()).
+			Return(errors.New("something went wrong")).
+			Times(1)
+
+		s := NewService(cfg, mockUserRepository)
+		tokens, err := s.UpdateUser(t.Context(), &userv1.UpdateUserRequest{
+			UserId:      userId,
+			Username:    &newUsername,
+			Email:       &newEmail,
+			Password:    oldPassword,
+			NewPassword: &newPassword,
+		})
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "something went wrong")
+		assert.Nil(t, tokens)
+	})
+
+	t.Run("error occurred while creating refresh token", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+		mockUserRepository.
+			EXPECT().
+			GetUserById(gomock.Any(), userId).
+			Return(&UserDTO{
+				Id:        userId,
+				Username:  "old-username",
+				Email:     "old@mail.com",
+				Password:  string(hashedOldPwd),
+				CreatedAt: time.Now().UTC(),
+			}, nil).
+			Times(1)
+		mockUserRepository.
+			EXPECT().
+			UpdateUserById(gomock.Any(), userId, gomock.Any()).
+			Return(nil).
+			Times(1)
+		mockUserRepository.
+			EXPECT().
+			CreateRefreshToken(gomock.Any(), userId, gomock.Any(), gomock.Any()).
+			Return(errors.New("something went wrong")).
+			Times(1)
+
+		s := NewService(cfg, mockUserRepository)
+		tokens, err := s.UpdateUser(t.Context(), &userv1.UpdateUserRequest{
+			UserId:      userId,
+			Username:    &newUsername,
+			Email:       &newEmail,
+			Password:    oldPassword,
+			NewPassword: &newPassword,
+		})
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "something went wrong")
+		assert.Nil(t, tokens)
+	})
+}

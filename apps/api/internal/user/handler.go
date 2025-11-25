@@ -12,21 +12,23 @@ import (
 )
 
 type handler struct {
-	userv1connect.UnimplementedUserServiceHandler
 	validateInterceptor connect.Interceptor
 	otelInterceptor     connect.Interceptor
 	userService         Service
+	userRepository      Repository
 }
 
 func NewHandler(
 	validateInterceptor connect.Interceptor,
 	otelInterceptor connect.Interceptor,
 	userService Service,
+	userRepository Repository,
 ) *handler {
 	return &handler{
 		validateInterceptor: validateInterceptor,
 		otelInterceptor:     otelInterceptor,
 		userService:         userService,
+		userRepository:      userRepository,
 	}
 }
 
@@ -59,4 +61,27 @@ func (h *handler) Login(
 	}
 
 	return connect.NewResponse(tokens), nil
+}
+
+func (h *handler) UpdateUser(
+	ctx context.Context,
+	req *connect.Request[userv1.UpdateUserRequest],
+) (*connect.Response[userv1.TokenEnvelope], error) {
+	tokens, err := h.userService.UpdateUser(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(tokens), nil
+}
+
+func (h *handler) DeleteAccount(
+	ctx context.Context,
+	req *connect.Request[userv1.DeleteAccountRequest],
+) (*connect.Response[emptypb.Empty], error) {
+	if err := h.userRepository.DeleteUser(ctx, req.Msg.UserId); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(new(emptypb.Empty)), nil
 }
