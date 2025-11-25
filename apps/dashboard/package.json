@@ -12,8 +12,8 @@
     "test:ci": "vitest run --coverage --watch='false'"
   },
   "dependencies": {
-    "@buf/hasir_hasir.bufbuild_es": "2.10.1-20251124134602-b21bd5233282.1",
-    "@buf/hasir_hasir.connectrpc_query-es": "2.2.0-20251124134602-b21bd5233282.1",
+    "@buf/hasir_hasir.bufbuild_es": "^2.10.1-20251124134602-b21bd5233282.1",
+    "@buf/hasir_hasir.connectrpc_query-es": "^2.2.0-20251124134602-b21bd5233282.1",
     "@bufbuild/protovalidate": "^1.0.0",
     "@connectrpc/connect-query": "^2.2.0",
     "@connectrpc/connect-web": "^2.1.1",
@@ -58,6 +58,9 @@
     "vitest": "^4.0.13"
   },
   "trustedDependencies": [
+    "esbuild",
+    "msw",
+    "sharp",
     "unrs-resolver"
   ]
 }

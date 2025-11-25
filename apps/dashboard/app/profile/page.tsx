@@ -59,10 +59,12 @@ export default function ProfilePage() {
 
     try {
       const updatePayload: {
+        password: string;
         userId: string;
         email?: string;
-        password?: string;
+        newPassword?: string;
       } = {
+        password: data.currentPassword,
         userId,
       };
 
@@ -71,7 +73,7 @@ export default function ProfilePage() {
       }
 
       if (hasPasswordUpdate) {
-        updatePayload.password = formData.password;
+        updatePayload.newPassword = formData.password;
       }
 
       const response = await userApiClient.updateUser(updatePayload);
@@ -86,14 +88,12 @@ export default function ProfilePage() {
           toast.error("Invalid current password. Please try again.");
           return;
         }
-        if (error.code === Code.InvalidArgument) {
-          toast.error("Invalid input. Please check your information.");
-          return;
-        }
+
         if (error.code === Code.AlreadyExists) {
           toast.error("An account with this email already exists.");
           return;
         }
+
         if (error.code === Code.PermissionDenied) {
           toast.error("You don't have permission to update this profile.");
           return;

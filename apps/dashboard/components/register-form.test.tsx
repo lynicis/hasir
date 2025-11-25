@@ -1,3 +1,5 @@
+import type { Mock } from "vitest";
+
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -7,34 +9,39 @@ import { useClient } from "@/lib/use-client";
 
 import { RegisterForm } from "./register-form";
 
-const { mockRouterPush } = vi.hoisted(() => ({
-  mockRouterPush: vi.fn(),
-}));
-
-const { toastSuccess, toastError } = vi.hoisted(() => ({
-  toastSuccess: vi.fn(),
-  toastError: vi.fn(),
-}));
+// eslint-disable-next-line no-var
+var mockRouterPush: ReturnType<typeof vi.fn>;
+// eslint-disable-next-line no-var
+var toastSuccess: ReturnType<typeof vi.fn>;
+// eslint-disable-next-line no-var
+var toastError: ReturnType<typeof vi.fn>;
 
 vi.mock("@/lib/use-client", () => ({
   useClient: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: mockRouterPush,
-  }),
-}));
+vi.mock("next/navigation", () => {
+  mockRouterPush = vi.fn();
+  return {
+    useRouter: () => ({
+      push: mockRouterPush,
+    }),
+  };
+});
 
-vi.mock("sonner", () => ({
-  toast: {
-    success: toastSuccess,
-    error: toastError,
-  },
-}));
+vi.mock("sonner", () => {
+  toastSuccess = vi.fn();
+  toastError = vi.fn();
+  return {
+    toast: {
+      success: toastSuccess,
+      error: toastError,
+    },
+  };
+});
 
 const mockRegister = vi.fn();
-const mockedUseClient = vi.mocked(useClient);
+const mockedUseClient = useClient as unknown as Mock;
 
 describe("RegisterForm", () => {
   beforeEach(() => {
@@ -54,6 +61,7 @@ describe("RegisterForm", () => {
 
     render(<RegisterForm />);
 
+    await user.type(screen.getByLabelText(/username/i), "johnny");
     await user.type(screen.getByLabelText(/email/i), "hello@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "password123");
     await user.type(screen.getByLabelText(/confirm password/i), "password123");
@@ -62,6 +70,7 @@ describe("RegisterForm", () => {
 
     await waitFor(() =>
       expect(mockRegister).toHaveBeenCalledWith({
+        username: "johnny",
         email: "hello@example.com",
         password: "password123",
       })
@@ -89,6 +98,7 @@ describe("RegisterForm", () => {
 
     render(<RegisterForm />);
 
+    await user.type(screen.getByLabelText(/username/i), "takenuser");
     await user.type(screen.getByLabelText(/email/i), "taken@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "password123");
     await user.type(screen.getByLabelText(/confirm password/i), "password123");
@@ -110,6 +120,7 @@ describe("RegisterForm", () => {
 
     render(<RegisterForm />);
 
+    await user.type(screen.getByLabelText(/username/i), "johnny");
     await user.type(screen.getByLabelText(/email/i), "hello@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "password123");
     const confirmInput = screen.getByLabelText(/confirm password/i);
@@ -130,6 +141,7 @@ describe("RegisterForm", () => {
 
     render(<RegisterForm />);
 
+    await user.type(screen.getByLabelText(/username/i), "oopsuser");
     await user.type(screen.getByLabelText(/email/i), "oops@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "password123");
     await user.type(screen.getByLabelText(/confirm password/i), "password123");

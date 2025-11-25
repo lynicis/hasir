@@ -70,9 +70,10 @@ export function RegisterForm({
     },
   });
 
-  async function onSubmit({ email, password }: ISchema) {
+  async function onSubmit({ username, email, password }: ISchema) {
     try {
       await userApiClient.register({
+        username,
         email,
         password,
       });
