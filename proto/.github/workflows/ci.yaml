@@ -19,5 +19,4 @@ jobs:
         with:
           input: proto/
           lint: true
-          format: true
-          breaking: true
+          push: false

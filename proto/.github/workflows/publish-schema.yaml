@@ -1,4 +1,4 @@
-name: Publish Schema to BSR
+name: CI
 
 on:
   push:
