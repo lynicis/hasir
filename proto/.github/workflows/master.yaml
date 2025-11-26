@@ -18,5 +18,8 @@ jobs:
       - uses: bufbuild/buf-action@v1.3
         with:
           input: proto/
+          token: ${{ secrets.BUF_TOKEN }}
           lint: true
-          push: false
+          format: true
+          breaking: true
+          push: true
