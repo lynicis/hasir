@@ -135,7 +135,7 @@ export function ProfileForm({ onSubmit }: ProfileFormProps) {
                     {...field}
                     id={field.name}
                     type="password"
-                    placeholder="Enter new password (optional)"
+                    placeholder="Enter new password"
                     disabled={isLoading || isSubmitting}
                     aria-invalid={fieldState.invalid}
                   />
@@ -160,7 +160,7 @@ export function ProfileForm({ onSubmit }: ProfileFormProps) {
                     {...field}
                     id={field.name}
                     type="password"
-                    placeholder="Confirm new password (optional)"
+                    placeholder="Confirm new password"
                     disabled={isLoading || isSubmitting}
                     aria-invalid={fieldState.invalid}
                   />

@@ -10,7 +10,6 @@ import { PasswordConfirmationDialog } from "@/components/password-confirmation-d
 import { useUserStore } from "@/stores/user-store-provider";
 import { ProfileForm } from "@/components/profile-form";
 import { DangerZone } from "@/components/danger-zone";
-import { BrandLink } from "@/components/brand-link";
 import { useClient } from "@/lib/use-client";
 
 type ProfileFormData = {
@@ -144,9 +143,6 @@ export default function ProfilePage() {
 
   return (
     <div className="container mx-auto max-w-2xl min-h-screen flex flex-col justify-center py-8 px-4">
-      <div className="flex justify-center mb-8">
-        <BrandLink />
-      </div>
       <ProfileForm onSubmit={handleProfileSubmit} />
       <PasswordConfirmationDialog
         open={isDialogOpen}
