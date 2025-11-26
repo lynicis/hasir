@@ -5,10 +5,19 @@ package repository.v1;
 import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
 
+enum Visibility {
+  VISIBILITY_UNSPECIFIED = 0;
+  VISIBILITY_PUBLIC = 1;
+  VISIBILITY_PRIVATE = 2;
+}
+
 message CreateRepositoryRequest {
   string name = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1
+  ];
+  Visibility visibility = 2 [
+    (buf.validate.field).enum = { not_in: [0] }
   ];
 }
 
