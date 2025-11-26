@@ -15,15 +15,13 @@ const queryClient = new QueryClient();
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <>
-      <TransportProvider transport={finalTransport}>
-        <QueryClientProvider client={queryClient}>
-          <UserStoreProvider>
-            <main>{children}</main>
-          </UserStoreProvider>
-        </QueryClientProvider>
-      </TransportProvider>
-      <Toaster />
-    </>
+    <TransportProvider transport={finalTransport}>
+      <QueryClientProvider client={queryClient}>
+        <UserStoreProvider>
+          <main>{children}</main>
+          <Toaster />
+        </UserStoreProvider>
+      </QueryClientProvider>
+    </TransportProvider>
   );
 }

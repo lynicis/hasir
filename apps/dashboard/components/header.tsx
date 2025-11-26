@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useSyncExternalStore } from "react";
 import { Box, Plus, Search } from "lucide-react";
 import Link from "next/link";
 
@@ -17,10 +17,19 @@ import { Kbd } from "@/components/ui/kbd";
 import { RepositoryDialogForm } from "./repository-dialog-form";
 import { InputGroupAddon } from "./ui/input-group";
 
+function useIsMac() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => /mac|iphone|ipad|ipod/i.test(navigator.userAgent),
+    () => true
+  );
+}
+
 export function Header() {
   const searchRef = useRef<HTMLInputElement | null>(null);
   const [isCreatePopoverOpen, setIsCreatePopoverOpen] = useState(false);
   const [isCreateRepoDialogOpen, setIsCreateRepoDialogOpen] = useState(false);
+  const isMac = useIsMac();
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -63,14 +72,14 @@ export function Header() {
               ref={searchRef}
               type="search"
               placeholder="Search..."
-              className="h-9 rounded-full border-0 bg-muted/60 pl-9 pr-16 text-sm shadow-none focus-visible:ring-1"
+              className="h-9 rounded-full border-0 bg-muted/60 pl-9 pr-16 text-sm shadow-none focus-visible:ring-1 [&::-webkit-search-cancel-button]:hidden"
               aria-label="Search"
             />
             <InputGroupAddon
               align="inline-end"
               className="absolute inset-y-0 right-3"
             >
-              <Kbd>Ctrl</Kbd>
+              <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
               <Kbd className="pointer-events-none select-none text-[10px]">
                 K
               </Kbd>

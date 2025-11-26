@@ -31,16 +31,16 @@ export function Dashboard() {
         });
 
   return (
-    <div className="min-h-screen bg-background px-6 py-6">
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-6xl flex-col gap-6">
+    <div className="h-[calc(100vh-4.5rem)] bg-background px-6 py-6 overflow-hidden">
+      <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-6">
         <main className="grid flex-1 grid-cols-[260px_minmax(0,1fr)] gap-6 pt-2">
-          <Card className="h-full rounded-2xl border border-border/60 shadow-sm">
-            <CardHeader className="flex items-center border-b px-6 py-4">
-              <CardTitle className="text-sm font-medium text-foreground">
+          <Card className="h-full gap-0 overflow-hidden rounded-2xl border border-border/60 py-0 shadow-sm">
+            <CardHeader className="flex items-center bg-primary px-6 py-4">
+              <CardTitle className="text-sm font-medium text-white">
                 Your organizations
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 pt-4">
+            <CardContent className="space-y-2 py-4">
               <button
                 type="button"
                 onClick={() => setActiveOrgId("all")}
@@ -71,14 +71,14 @@ export function Dashboard() {
               })}
             </CardContent>
           </Card>
-          <Card className="h-full rounded-2xl border border-border/60 shadow-sm">
-            <CardHeader className="flex items-center justify-between border-b px-6 py-4">
+          <Card className="h-full gap-0 overflow-hidden rounded-2xl border border-border/60 py-0 shadow-sm">
+            <CardHeader className="flex items-center justify-between bg-primary px-6 py-4">
               <div className="space-y-0.5">
-                <CardTitle className="text-sm font-medium text-foreground">
+                <CardTitle className="text-sm font-medium text-white">
                   Repositories
                 </CardTitle>
                 {activeOrgId !== "all" && (
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-white/70">
                     Showing repositories in{" "}
                     {
                       MOCK_ORGANIZATIONS.find(
@@ -88,11 +88,11 @@ export function Dashboard() {
                   </p>
                 )}
               </div>
-              <span className="text-muted-foreground text-xs">
+              <span className="text-xs text-white/70">
                 {filteredRepositories.length} repos
               </span>
             </CardHeader>
-            <CardContent className="space-y-2.5 pt-4">
+            <CardContent className="space-y-2.5 py-4">
               {filteredRepositories.map((repo) => (
                 <div
                   key={repo.id}
