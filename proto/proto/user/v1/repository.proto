@@ -6,9 +6,9 @@ import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
 
 message CreateRepositoryRequest {
-    string name = 1;
+  string name = 1;
 }
 
 service RepositoryService {
-    rpc CreateRepository(CreateRepositoryRequest) returns (google.protobuf.Empty);
+  rpc CreateRepository(CreateRepositoryRequest) returns (google.protobuf.Empty);
 }
