@@ -16,9 +16,9 @@ message CreateRepositoryRequest {
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1
   ];
-  Visibility visibility = 2 [
-    (buf.validate.field).enum = { not_in: [0] }
-  ];
+  Visibility visibility = 2 [(buf.validate.field).enum = {
+    not_in: [0]
+  }];
 }
 
 service RepositoryService {
