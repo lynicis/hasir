@@ -12,31 +12,27 @@ import (
 )
 
 type handler struct {
-	validateInterceptor connect.Interceptor
-	otelInterceptor     connect.Interceptor
-	userService         Service
-	userRepository      Repository
+	interceptors   []connect.Interceptor
+	userService    Service
+	userRepository Repository
 }
 
 func NewHandler(
-	validateInterceptor connect.Interceptor,
-	otelInterceptor connect.Interceptor,
+	interceptors []connect.Interceptor,
 	userService Service,
 	userRepository Repository,
 ) *handler {
 	return &handler{
-		validateInterceptor: validateInterceptor,
-		otelInterceptor:     otelInterceptor,
-		userService:         userService,
-		userRepository:      userRepository,
+		interceptors:   interceptors,
+		userService:    userService,
+		userRepository: userRepository,
 	}
 }
 
 func (h *handler) RegisterRoutes() (string, http.Handler) {
 	return userv1connect.NewUserServiceHandler(
 		h,
-		connect.WithInterceptors(h.validateInterceptor),
-		connect.WithInterceptors(h.otelInterceptor),
+		connect.WithInterceptors(h.interceptors...),
 	)
 }
 

@@ -1,17 +1,15 @@
 package user
 
 import (
+	"context"
 	"errors"
-	"fmt"
-	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
 	"connectrpc.com/validate"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -23,8 +21,16 @@ import (
 	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 )
 
+func setupTestServer(t *testing.T, h internal.GlobalHandler) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	path, handler := h.RegisterRoutes()
+	mux.Handle(path, handler)
+	return httptest.NewServer(mux)
+}
+
 func TestNewHandler(t *testing.T) {
-	h := NewHandler(nil, nil, nil, nil)
+	h := NewHandler(nil, nil, nil)
 	assert.Implements(t, (*internal.GlobalHandler)(nil), h)
 }
 
@@ -33,51 +39,39 @@ func TestHandler_RegisterRoutes(t *testing.T) {
 	otelInterceptor, err := otelconnect.NewInterceptor()
 	require.NoError(t, err)
 
-	h := NewHandler(validateInterceptor, otelInterceptor, nil, nil)
+	h := NewHandler([]connect.Interceptor{validateInterceptor, otelInterceptor}, nil, nil)
 	routes, handler := h.RegisterRoutes()
 	assert.NotNil(t, routes)
 	assert.NotNil(t, handler)
 }
 
 func TestHandler_Register(t *testing.T) {
-	mockController := gomock.NewController(t)
-	defer mockController.Finish()
-
 	validateInterceptor := validate.NewInterceptor()
 	otelInterceptor, err := otelconnect.NewInterceptor()
 	require.NoError(t, err)
+	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
 
 	t.Run("happy path", func(t *testing.T) {
-		mockUserService := NewMockService(mockController)
-		mockUserRepository := NewMockRepository(mockController)
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
 		mockUserService.
 			EXPECT().
 			Register(gomock.Any(), gomock.Any()).
 			Return(nil).
 			Times(1)
 
-		h := NewHandler(validateInterceptor, otelInterceptor, mockUserService, mockUserRepository)
+		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		server := setupTestServer(t, h)
+		defer server.Close()
 
-		port, err := freeport.GetFreePort()
-		require.NoError(t, err)
-
-		urn := fmt.Sprintf("127.0.0.1:%d", port)
-		go func() {
-			_ = setupServer(urn, h)
-		}()
-
-		err = waitForServer(urn, 5*time.Second)
-		require.NoError(t, err, "server should be ready")
-
-		url := fmt.Sprintf("http://127.0.0.1:%d", port)
-		client := userv1connect.NewUserServiceClient(http.DefaultClient, url)
-		resp, err := client.Register(t.Context(), &connect.Request[userv1.RegisterRequest]{
-			Msg: &userv1.RegisterRequest{
-				Email:    "test@mail.com",
-				Username: "test",
-				Password: "Asdfg123456_",
-			},
-		})
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.Register(context.Background(), connect.NewRequest(&userv1.RegisterRequest{
+			Email:    "test@mail.com",
+			Username: "test",
+			Password: "Asdfg123456_",
+		}))
 
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
@@ -87,69 +81,53 @@ func TestHandler_Register(t *testing.T) {
 	t.Run("validation errors", func(t *testing.T) {
 		tests := []struct {
 			name    string
-			reqBody connect.Request[userv1.RegisterRequest]
+			request *userv1.RegisterRequest
 		}{
 			{
 				name: "invalid email",
-				reqBody: connect.Request[userv1.RegisterRequest]{
-					Msg: &userv1.RegisterRequest{
-						Email:    "invalid@com",
-						Username: "TestUser",
-						Password: "Asdfg1235_",
-					},
+				request: &userv1.RegisterRequest{
+					Email:    "invalid@com",
+					Username: "TestUser",
+					Password: "Asdfg1235_",
 				},
 			},
 			{
 				name: "empty username",
-				reqBody: connect.Request[userv1.RegisterRequest]{
-					Msg: &userv1.RegisterRequest{
-						Email:    "test@mail.com",
-						Username: "",
-						Password: "Asdfg123456_",
-					},
+				request: &userv1.RegisterRequest{
+					Email:    "test@mail.com",
+					Username: "",
+					Password: "Asdfg123456_",
 				},
 			},
 			{
 				name: "too short password",
-				reqBody: connect.Request[userv1.RegisterRequest]{
-					Msg: &userv1.RegisterRequest{
-						Email:    "test@mail.com",
-						Username: "TestUser",
-						Password: "Asdf123",
-					},
+				request: &userv1.RegisterRequest{
+					Email:    "test@mail.com",
+					Username: "TestUser",
+					Password: "Asdf123",
 				},
 			},
 			{
 				name: "too long password",
-				reqBody: connect.Request[userv1.RegisterRequest]{
-					Msg: &userv1.RegisterRequest{
-						Email:    "test@mail.com",
-						Username: "TestUser",
-						Password: "Asdf123456789123456789123456789123456789123456789123456789123456_",
-					},
+				request: &userv1.RegisterRequest{
+					Email:    "test@mail.com",
+					Username: "TestUser",
+					Password: "Asdf123456789123456789123456789123456789123456789123456789123456_",
 				},
 			},
 		}
 
-		for _, test := range tests {
-			t.Run(test.name, func(t *testing.T) {
-				port, err := freeport.GetFreePort()
-				require.NoError(t, err)
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				mockUserRepository := NewMockRepository(ctrl)
 
-				mockUserRepository := NewMockRepository(mockController)
-				h := NewHandler(validateInterceptor, otelInterceptor, nil, mockUserRepository)
+				h := NewHandler(interceptors, nil, mockUserRepository)
+				server := setupTestServer(t, h)
+				defer server.Close()
 
-				urn := fmt.Sprintf("127.0.0.1:%d", port)
-				go func() {
-					_ = setupServer(urn, h)
-				}()
-
-				err = waitForServer(urn, 5*time.Second)
-				require.NoError(t, err, "server should be ready")
-
-				url := fmt.Sprintf("http://127.0.0.1:%d", port)
-				client := userv1connect.NewUserServiceClient(http.DefaultClient, url)
-				resp, err := client.Register(t.Context(), &test.reqBody)
+				client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+				resp, err := client.Register(context.Background(), connect.NewRequest(tc.request))
 
 				assert.Error(t, err)
 				assert.Nil(t, resp)
@@ -158,36 +136,26 @@ func TestHandler_Register(t *testing.T) {
 	})
 
 	t.Run("service error", func(t *testing.T) {
-		mockUserService := NewMockService(mockController)
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
 		mockUserService.
 			EXPECT().
 			Register(gomock.Any(), gomock.Any()).
 			Return(errors.New("something went wrong")).
 			Times(1)
 
-		mockUserRepository := NewMockRepository(mockController)
-		h := NewHandler(validateInterceptor, otelInterceptor, mockUserService, mockUserRepository)
+		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		server := setupTestServer(t, h)
+		defer server.Close()
 
-		port, err := freeport.GetFreePort()
-		require.NoError(t, err)
-
-		urn := fmt.Sprintf("127.0.0.1:%d", port)
-		go func() {
-			_ = setupServer(urn, h)
-		}()
-
-		err = waitForServer(urn, 5*time.Second)
-		require.NoError(t, err, "server should be ready")
-
-		url := fmt.Sprintf("http://127.0.0.1:%d", port)
-		client := userv1connect.NewUserServiceClient(http.DefaultClient, url)
-		resp, err := client.Register(t.Context(), &connect.Request[userv1.RegisterRequest]{
-			Msg: &userv1.RegisterRequest{
-				Email:    "test@mail.com",
-				Username: "test",
-				Password: "Asdfg123456_",
-			},
-		})
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.Register(context.Background(), connect.NewRequest(&userv1.RegisterRequest{
+			Email:    "test@mail.com",
+			Username: "test",
+			Password: "Asdfg123456_",
+		}))
 
 		assert.Error(t, err)
 		assert.Nil(t, resp)
@@ -195,15 +163,15 @@ func TestHandler_Register(t *testing.T) {
 }
 
 func TestHandler_Login(t *testing.T) {
-	mockController := gomock.NewController(t)
-	defer mockController.Finish()
-
 	validateInterceptor := validate.NewInterceptor()
 	otelInterceptor, err := otelconnect.NewInterceptor()
 	require.NoError(t, err)
+	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
 
 	t.Run("happy path", func(t *testing.T) {
-		mockUserService := NewMockService(mockController)
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
 
 		mockRespBody := &userv1.TokenEnvelope{
 			AccessToken:  "abcd.abcd.abcd",
@@ -216,28 +184,15 @@ func TestHandler_Login(t *testing.T) {
 			Return(mockRespBody, nil).
 			Times(1)
 
-		mockUserRepository := NewMockRepository(mockController)
-		h := NewHandler(validateInterceptor, otelInterceptor, mockUserService, mockUserRepository)
+		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		server := setupTestServer(t, h)
+		defer server.Close()
 
-		port, err := freeport.GetFreePort()
-		require.NoError(t, err)
-
-		urn := fmt.Sprintf("127.0.0.1:%d", port)
-		go func() {
-			_ = setupServer(urn, h)
-		}()
-
-		err = waitForServer(urn, 5*time.Second)
-		require.NoError(t, err, "server should be ready")
-
-		url := fmt.Sprintf("http://127.0.0.1:%d", port)
-		client := userv1connect.NewUserServiceClient(http.DefaultClient, url)
-		resp, err := client.Login(t.Context(), &connect.Request[userv1.LoginRequest]{
-			Msg: &userv1.LoginRequest{
-				Email:    "test@mail.com",
-				Password: "Asdfg123456_",
-			},
-		})
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.Login(context.Background(), connect.NewRequest(&userv1.LoginRequest{
+			Email:    "test@mail.com",
+			Password: "Asdfg123456_",
+		}))
 
 		assert.NoError(t, err)
 		require.NotNil(t, resp, "response should not be nil")
@@ -247,49 +202,37 @@ func TestHandler_Login(t *testing.T) {
 	})
 
 	t.Run("validation errors", func(t *testing.T) {
-		testTable := []struct {
+		tests := []struct {
 			name    string
-			reqBody connect.Request[userv1.LoginRequest]
+			request *userv1.LoginRequest
 		}{
 			{
 				name: "invalid email",
-				reqBody: connect.Request[userv1.LoginRequest]{
-					Msg: &userv1.LoginRequest{
-						Email:    "invalid@mail.com",
-						Password: "Asdfg123456_",
-					},
+				request: &userv1.LoginRequest{
+					Email:    "invalid@mail.com",
+					Password: "Asdfg123456_",
 				},
 			},
 			{
 				name: "too short password",
-				reqBody: connect.Request[userv1.LoginRequest]{
-					Msg: &userv1.LoginRequest{
-						Email:    "test@mail.com",
-						Password: "Asdfg12_",
-					},
+				request: &userv1.LoginRequest{
+					Email:    "test@mail.com",
+					Password: "Asdfg12_",
 				},
 			},
 		}
 
-		for _, test := range testTable {
-			t.Run(test.name, func(t *testing.T) {
-				mockUserRepository := NewMockRepository(mockController)
-				h := NewHandler(validateInterceptor, otelInterceptor, nil, mockUserRepository)
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				mockUserRepository := NewMockRepository(ctrl)
 
-				port, err := freeport.GetFreePort()
-				require.NoError(t, err)
+				h := NewHandler(interceptors, nil, mockUserRepository)
+				server := setupTestServer(t, h)
+				defer server.Close()
 
-				urn := fmt.Sprintf("127.0.0.1:%d", port)
-				go func() {
-					_ = setupServer(urn, h)
-				}()
-
-				err = waitForServer(urn, 5*time.Second)
-				require.NoError(t, err, "server should be ready")
-
-				url := fmt.Sprintf("http://127.0.0.1:%d", port)
-				client := userv1connect.NewUserServiceClient(http.DefaultClient, url)
-				resp, err := client.Login(t.Context(), &test.reqBody)
+				client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+				resp, err := client.Login(context.Background(), connect.NewRequest(tc.request))
 
 				assert.Error(t, err)
 				assert.Nil(t, resp)
@@ -298,35 +241,25 @@ func TestHandler_Login(t *testing.T) {
 	})
 
 	t.Run("service error", func(t *testing.T) {
-		mockUserService := NewMockService(mockController)
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
 		mockUserService.
 			EXPECT().
 			Login(gomock.Any(), gomock.Any()).
 			Return(nil, errors.New("something went wrong")).
 			Times(1)
 
-		mockUserRepository := NewMockRepository(mockController)
-		h := NewHandler(validateInterceptor, otelInterceptor, mockUserService, mockUserRepository)
+		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		server := setupTestServer(t, h)
+		defer server.Close()
 
-		port, err := freeport.GetFreePort()
-		require.NoError(t, err)
-
-		urn := fmt.Sprintf("127.0.0.1:%d", port)
-		go func() {
-			_ = setupServer(urn, h)
-		}()
-
-		err = waitForServer(urn, 5*time.Second)
-		require.NoError(t, err, "server should be ready")
-
-		url := fmt.Sprintf("http://127.0.0.1:%d", port)
-		client := userv1connect.NewUserServiceClient(http.DefaultClient, url)
-		resp, err := client.Login(t.Context(), &connect.Request[userv1.LoginRequest]{
-			Msg: &userv1.LoginRequest{
-				Email:    "test@mail.com",
-				Password: "Asdfg123456_",
-			},
-		})
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.Login(context.Background(), connect.NewRequest(&userv1.LoginRequest{
+			Email:    "test@mail.com",
+			Password: "Asdfg123456_",
+		}))
 
 		assert.Error(t, err)
 		assert.Nil(t, resp)
@@ -334,16 +267,15 @@ func TestHandler_Login(t *testing.T) {
 }
 
 func TestHandler_UpdateUser(t *testing.T) {
-	mockController := gomock.NewController(t)
-	defer mockController.Finish()
-
 	validateInterceptor := validate.NewInterceptor()
 	otelInterceptor, err := otelconnect.NewInterceptor()
 	require.NoError(t, err)
+	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
 
 	t.Run("happy path", func(t *testing.T) {
-		mockUserService := NewMockService(mockController)
-		mockUserRepository := NewMockRepository(mockController)
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
 
 		mockRespBody := &userv1.TokenEnvelope{
 			AccessToken:  "abcd.abcd.abcd",
@@ -356,32 +288,20 @@ func TestHandler_UpdateUser(t *testing.T) {
 			Return(mockRespBody, nil).
 			Times(1)
 
-		h := NewHandler(validateInterceptor, otelInterceptor, mockUserService, mockUserRepository)
+		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		server := setupTestServer(t, h)
+		defer server.Close()
 
-		port, err := freeport.GetFreePort()
-		require.NoError(t, err)
-
-		urn := fmt.Sprintf("127.0.0.1:%d", port)
-		go func() {
-			_ = setupServer(urn, h)
-		}()
-
-		err = waitForServer(urn, 5*time.Second)
-		require.NoError(t, err, "server should be ready")
-
-		url := fmt.Sprintf("http://127.0.0.1:%d", port)
-		client := userv1connect.NewUserServiceClient(http.DefaultClient, url)
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
 		email := "newemail@mail.com"
 		password := "OldPassword123_"
 		newPassword := "NewPassword123_"
-		resp, err := client.UpdateUser(t.Context(), &connect.Request[userv1.UpdateUserRequest]{
-			Msg: &userv1.UpdateUserRequest{
-				UserId:      "test-user-id",
-				Email:       &email,
-				Password:    password,
-				NewPassword: &newPassword,
-			},
-		})
+		resp, err := client.UpdateUser(context.Background(), connect.NewRequest(&userv1.UpdateUserRequest{
+			UserId:      "test-user-id",
+			Email:       &email,
+			Password:    password,
+			NewPassword: &newPassword,
+		}))
 
 		assert.NoError(t, err)
 		require.NotNil(t, resp, "response should not be nil")
@@ -391,49 +311,37 @@ func TestHandler_UpdateUser(t *testing.T) {
 	})
 
 	t.Run("validation errors", func(t *testing.T) {
-		testTable := []struct {
+		tests := []struct {
 			name    string
-			reqBody connect.Request[userv1.UpdateUserRequest]
+			request *userv1.UpdateUserRequest
 		}{
 			{
 				name: "invalid email",
-				reqBody: connect.Request[userv1.UpdateUserRequest]{
-					Msg: &userv1.UpdateUserRequest{
-						UserId: "test-user-id",
-						Email:  func() *string { s := "invalid@com"; return &s }(),
-					},
+				request: &userv1.UpdateUserRequest{
+					UserId: "test-user-id",
+					Email:  func() *string { s := "invalid@com"; return &s }(),
 				},
 			},
 			{
 				name: "empty username",
-				reqBody: connect.Request[userv1.UpdateUserRequest]{
-					Msg: &userv1.UpdateUserRequest{
-						UserId: "test-user-id",
-						Email:  func() *string { s := "newemail@mail.com"; return &s }(),
-					},
+				request: &userv1.UpdateUserRequest{
+					UserId: "test-user-id",
+					Email:  func() *string { s := "newemail@mail.com"; return &s }(),
 				},
 			},
 		}
 
-		for _, test := range testTable {
-			t.Run(test.name, func(t *testing.T) {
-				mockUserRepository := NewMockRepository(mockController)
-				h := NewHandler(validateInterceptor, otelInterceptor, nil, mockUserRepository)
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				mockUserRepository := NewMockRepository(ctrl)
 
-				port, err := freeport.GetFreePort()
-				require.NoError(t, err)
+				h := NewHandler(interceptors, nil, mockUserRepository)
+				server := setupTestServer(t, h)
+				defer server.Close()
 
-				urn := fmt.Sprintf("127.0.0.1:%d", port)
-				go func() {
-					_ = setupServer(urn, h)
-				}()
-
-				err = waitForServer(urn, 5*time.Second)
-				require.NoError(t, err, "server should be ready")
-
-				url := fmt.Sprintf("http://127.0.0.1:%d", port)
-				client := userv1connect.NewUserServiceClient(http.DefaultClient, url)
-				resp, err := client.UpdateUser(t.Context(), &test.reqBody)
+				client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+				resp, err := client.UpdateUser(context.Background(), connect.NewRequest(tc.request))
 
 				assert.Error(t, err)
 				assert.Nil(t, resp)
@@ -442,40 +350,30 @@ func TestHandler_UpdateUser(t *testing.T) {
 	})
 
 	t.Run("service error", func(t *testing.T) {
-		mockUserService := NewMockService(mockController)
-		mockUserRepository := NewMockRepository(mockController)
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
 		mockUserService.
 			EXPECT().
 			UpdateUser(gomock.Any(), gomock.Any()).
 			Return(nil, errors.New("something went wrong")).
 			Times(1)
 
-		h := NewHandler(validateInterceptor, otelInterceptor, mockUserService, mockUserRepository)
+		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		server := setupTestServer(t, h)
+		defer server.Close()
 
-		port, err := freeport.GetFreePort()
-		require.NoError(t, err)
-
-		urn := fmt.Sprintf("127.0.0.1:%d", port)
-		go func() {
-			_ = setupServer(urn, h)
-		}()
-
-		err = waitForServer(urn, 5*time.Second)
-		require.NoError(t, err, "server should be ready")
-
-		url := fmt.Sprintf("http://127.0.0.1:%d", port)
-		client := userv1connect.NewUserServiceClient(http.DefaultClient, url)
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
 		email := "newemail@mail.com"
 		password := "OldPassword123_"
 		newPassword := "NewPassword123_"
-		resp, err := client.UpdateUser(t.Context(), &connect.Request[userv1.UpdateUserRequest]{
-			Msg: &userv1.UpdateUserRequest{
-				UserId:      "test-user-id",
-				Email:       &email,
-				Password:    password,
-				NewPassword: &newPassword,
-			},
-		})
+		resp, err := client.UpdateUser(context.Background(), connect.NewRequest(&userv1.UpdateUserRequest{
+			UserId:      "test-user-id",
+			Email:       &email,
+			Password:    password,
+			NewPassword: &newPassword,
+		}))
 
 		assert.Error(t, err)
 		assert.Nil(t, resp)
@@ -483,16 +381,15 @@ func TestHandler_UpdateUser(t *testing.T) {
 }
 
 func TestHandler_DeleteAccount(t *testing.T) {
-	mockController := gomock.NewController(t)
-	defer mockController.Finish()
-
 	validateInterceptor := validate.NewInterceptor()
 	otelInterceptor, err := otelconnect.NewInterceptor()
 	require.NoError(t, err)
+	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
 
 	t.Run("happy path", func(t *testing.T) {
-		mockUserService := NewMockService(mockController)
-		mockUserRepository := NewMockRepository(mockController)
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
 
 		mockUserRepository.
 			EXPECT().
@@ -500,26 +397,14 @@ func TestHandler_DeleteAccount(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		h := NewHandler(validateInterceptor, otelInterceptor, mockUserService, mockUserRepository)
+		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		server := setupTestServer(t, h)
+		defer server.Close()
 
-		port, err := freeport.GetFreePort()
-		require.NoError(t, err)
-
-		urn := fmt.Sprintf("127.0.0.1:%d", port)
-		go func() {
-			_ = setupServer(urn, h)
-		}()
-
-		err = waitForServer(urn, 5*time.Second)
-		require.NoError(t, err, "server should be ready")
-
-		url := fmt.Sprintf("http://127.0.0.1:%d", port)
-		client := userv1connect.NewUserServiceClient(http.DefaultClient, url)
-		resp, err := client.DeleteAccount(t.Context(), &connect.Request[userv1.DeleteAccountRequest]{
-			Msg: &userv1.DeleteAccountRequest{
-				UserId: "test-user-id",
-			},
-		})
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.DeleteAccount(context.Background(), connect.NewRequest(&userv1.DeleteAccountRequest{
+			UserId: "test-user-id",
+		}))
 
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
@@ -527,40 +412,30 @@ func TestHandler_DeleteAccount(t *testing.T) {
 	})
 
 	t.Run("validation errors", func(t *testing.T) {
-		testTable := []struct {
+		tests := []struct {
 			name    string
-			reqBody connect.Request[userv1.DeleteAccountRequest]
+			request *userv1.DeleteAccountRequest
 		}{
 			{
 				name: "empty user id",
-				reqBody: connect.Request[userv1.DeleteAccountRequest]{
-					Msg: &userv1.DeleteAccountRequest{
-						UserId: "",
-					},
+				request: &userv1.DeleteAccountRequest{
+					UserId: "",
 				},
 			},
 		}
 
-		for _, test := range testTable {
-			t.Run(test.name, func(t *testing.T) {
-				mockUserService := NewMockService(mockController)
-				mockUserRepository := NewMockRepository(mockController)
-				h := NewHandler(validateInterceptor, otelInterceptor, mockUserService, mockUserRepository)
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				mockUserService := NewMockService(ctrl)
+				mockUserRepository := NewMockRepository(ctrl)
 
-				port, err := freeport.GetFreePort()
-				require.NoError(t, err)
+				h := NewHandler(interceptors, mockUserService, mockUserRepository)
+				server := setupTestServer(t, h)
+				defer server.Close()
 
-				urn := fmt.Sprintf("127.0.0.1:%d", port)
-				go func() {
-					_ = setupServer(urn, h)
-				}()
-
-				err = waitForServer(urn, 5*time.Second)
-				require.NoError(t, err, "server should be ready")
-
-				url := fmt.Sprintf("http://127.0.0.1:%d", port)
-				client := userv1connect.NewUserServiceClient(http.DefaultClient, url)
-				resp, err := client.DeleteAccount(t.Context(), &test.reqBody)
+				client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+				resp, err := client.DeleteAccount(context.Background(), connect.NewRequest(tc.request))
 
 				assert.Error(t, err)
 				assert.Nil(t, resp)
@@ -569,66 +444,26 @@ func TestHandler_DeleteAccount(t *testing.T) {
 	})
 
 	t.Run("repository error", func(t *testing.T) {
-		mockUserService := NewMockService(mockController)
-		mockUserRepository := NewMockRepository(mockController)
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
 		mockUserRepository.
 			EXPECT().
 			DeleteUser(gomock.Any(), "test-user-id").
 			Return(errors.New("something went wrong")).
 			Times(1)
 
-		h := NewHandler(validateInterceptor, otelInterceptor, mockUserService, mockUserRepository)
+		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		server := setupTestServer(t, h)
+		defer server.Close()
 
-		port, err := freeport.GetFreePort()
-		require.NoError(t, err)
-
-		urn := fmt.Sprintf("127.0.0.1:%d", port)
-		go func() {
-			_ = setupServer(urn, h)
-		}()
-
-		err = waitForServer(urn, 5*time.Second)
-		require.NoError(t, err, "server should be ready")
-
-		url := fmt.Sprintf("http://127.0.0.1:%d", port)
-		client := userv1connect.NewUserServiceClient(http.DefaultClient, url)
-		resp, err := client.DeleteAccount(t.Context(), &connect.Request[userv1.DeleteAccountRequest]{
-			Msg: &userv1.DeleteAccountRequest{
-				UserId: "test-user-id",
-			},
-		})
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.DeleteAccount(context.Background(), connect.NewRequest(&userv1.DeleteAccountRequest{
+			UserId: "test-user-id",
+		}))
 
 		assert.Error(t, err)
 		assert.Nil(t, resp)
 	})
-}
-
-func setupServer(urn string, h internal.GlobalHandler) error {
-	mux := http.NewServeMux()
-	path, handler := h.RegisterRoutes()
-	mux.Handle(path, handler)
-
-	protocols := new(http.Protocols)
-	protocols.SetHTTP1(true)
-	protocols.SetUnencryptedHTTP2(true)
-	server := &http.Server{
-		Addr:      urn,
-		Handler:   mux,
-		Protocols: protocols,
-	}
-
-	return server.ListenAndServe()
-}
-
-func waitForServer(addr string, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
-		if err == nil {
-			_ = conn.Close()
-			return nil
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	return fmt.Errorf("server at %s did not become ready within %v", addr, timeout)
 }

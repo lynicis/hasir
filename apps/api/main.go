@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
 	"connectrpc.com/validate"
 	"go.opentelemetry.io/otel"
@@ -19,6 +20,7 @@ import (
 	"go.uber.org/zap"
 
 	"apps/api/internal"
+	"apps/api/internal/repository"
 	"apps/api/internal/user"
 	"apps/api/pkg/config"
 	_ "apps/api/pkg/log"
@@ -31,8 +33,10 @@ func main() {
 	traceProvider := initTracer(cfg)
 
 	userPgRepository := user.NewPgRepository(cfg, traceProvider)
+	repositoryPgRepository := repository.NewPgRepository(cfg, traceProvider)
 
 	userService := user.NewService(cfg, userPgRepository)
+	gitRepositoryService := repository.NewService(repositoryPgRepository)
 
 	validateInterceptor := validate.NewInterceptor()
 	otelInterceptor, err := otelconnect.NewInterceptor(
@@ -42,8 +46,12 @@ func main() {
 		zap.L().Fatal("failed to create connect opentelementry interceptor", zap.Error(err))
 	}
 
-	userHandler := user.NewHandler(validateInterceptor, otelInterceptor, userService, userPgRepository)
-	handlers := []internal.GlobalHandler{userHandler}
+	userHandler := user.NewHandler([]connect.Interceptor{validateInterceptor, otelInterceptor}, userService, userPgRepository)
+	gitRepositoryHandler := repository.NewHandler(gitRepositoryService, validateInterceptor, otelInterceptor)
+	handlers := []internal.GlobalHandler{
+		userHandler,
+		gitRepositoryHandler,
+	}
 
 	mux := http.NewServeMux()
 	for _, handler := range handlers {

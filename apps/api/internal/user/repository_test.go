@@ -86,7 +86,9 @@ func TestPgRepository_CreateUser(t *testing.T) {
 
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
-		defer conn.Close(t.Context())
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
 
 		var dbId, dbUsername, dbEmail, dbPassword string
 		var dbCreatedAt time.Time
@@ -119,7 +121,9 @@ func TestPgRepository_CreateUser(t *testing.T) {
 		require.NoError(t, err)
 		_, err = conn.Exec(t.Context(), "CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(email)")
 		require.NoError(t, err)
-		conn.Close(t.Context())
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
 
 		traceProvider := sdktrace.NewTracerProvider()
 		pgRepository := NewPgRepository(&config.Config{
@@ -213,7 +217,9 @@ func TestPgRepository_CreateUser(t *testing.T) {
 
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
-		defer conn.Close(t.Context())
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
 
 		var dbId, dbUsername, dbEmail, dbPassword string
 		var dbCreatedAt time.Time
@@ -373,7 +379,9 @@ func TestPgRepository_GetUserByEmail(t *testing.T) {
 		require.NoError(t, err)
 		_, err = conn.Exec(t.Context(), "update users set deleted_at = $1 where id = $2", time.Now().UTC(), fakeId)
 		require.NoError(t, err)
-		conn.Close(t.Context())
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
 
 		traceProvider := sdktrace.NewTracerProvider()
 		pgRepository := NewPgRepository(&config.Config{
@@ -501,7 +509,9 @@ func TestPgRepository_GetUserById(t *testing.T) {
 		deletedAt := time.Now().UTC()
 		_, err = conn.Exec(t.Context(), "update users set deleted_at = $1 where id = $2", deletedAt, fakeId)
 		require.NoError(t, err)
-		conn.Close(t.Context())
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
 
 		traceProvider := sdktrace.NewTracerProvider()
 		pgRepository := NewPgRepository(&config.Config{
@@ -627,7 +637,9 @@ func TestPgRepository_UpdateUserById(t *testing.T) {
 
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
-		defer conn.Close(t.Context())
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
 
 		var username, email, password string
 		err = conn.QueryRow(t.Context(), "select username, email, password from users where id = $1", fakeId).
@@ -670,7 +682,9 @@ func TestPgRepository_UpdateUserById(t *testing.T) {
 
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
-		defer conn.Close(t.Context())
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
 
 		var username, email string
 		err = conn.QueryRow(t.Context(), "select username, email from users where id = $1", fakeId).
@@ -713,7 +727,9 @@ func TestPgRepository_UpdateUserById(t *testing.T) {
 		// Verify only email was updated
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
-		defer conn.Close(t.Context())
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
 
 		var username, email string
 		err = conn.QueryRow(t.Context(), "select username, email from users where id = $1", fakeId).
@@ -807,13 +823,17 @@ func TestPgRepository_UpdateUserById(t *testing.T) {
 			"insert into users (id, email, username, password, created_at) values ($1, $2, $3, $4, $5)",
 			anotherId, anotherEmail, "another-user", string(hashedPassword), time.Now().UTC())
 		require.NoError(t, err)
-		conn.Close(t.Context())
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
 
 		conn, err = pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		_, err = conn.Exec(t.Context(), "CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(email)")
 		require.NoError(t, err)
-		conn.Close(t.Context())
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
 
 		traceProvider := sdktrace.NewTracerProvider()
 		pgRepository := NewPgRepository(&config.Config{
@@ -861,7 +881,9 @@ func TestPgRepository_DeleteAccount(t *testing.T) {
 
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
-		defer conn.Close(t.Context())
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
 
 		var deletedAt *time.Time
 		err = conn.QueryRow(t.Context(), "select deleted_at from users where id = $1", fakeId).
@@ -925,14 +947,18 @@ func TestPgRepository_DeleteAccount(t *testing.T) {
 		err = conn.QueryRow(t.Context(), "select deleted_at from users where id = $1", fakeId).
 			Scan(&firstDeletedAt)
 		require.NoError(t, err)
-		conn.Close(t.Context())
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
 
 		err = pgRepository.DeleteUser(t.Context(), fakeId)
 		assert.NoError(t, err)
 
 		conn, err = pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
-		defer conn.Close(t.Context())
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
 
 		var secondDeletedAt time.Time
 		err = conn.QueryRow(t.Context(), "select deleted_at from users where id = $1", fakeId).
