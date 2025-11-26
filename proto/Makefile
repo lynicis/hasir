@@ -1,5 +1,5 @@
-fix-formating:
+fix-formatting:
 	buf format --write
 
 lint:
-	buf format
+	buf lint

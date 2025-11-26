@@ -17,9 +17,14 @@ jobs:
 
       - uses: bufbuild/buf-action@v1.3
         with:
-          input: proto/
           token: ${{ secrets.BUF_TOKEN }}
-          lint: true
-          format: true
-          breaking: true
-          push: true
+          setup_only: true
+
+      - name: Lint
+        run: buf lint
+
+      - name: Format
+        run: buf format
+
+      - name: Push
+        run: buf push --error-format github-actions --create --git-metadata
