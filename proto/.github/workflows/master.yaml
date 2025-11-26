@@ -27,4 +27,4 @@ jobs:
         run: buf format --error-format github-actions --exit-code
 
       - name: Push
-        run: buf push proto/ --error-format github-actions --git-metadata
+        run: buf push --error-format github-actions
