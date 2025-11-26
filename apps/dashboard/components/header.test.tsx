@@ -30,10 +30,12 @@ describe("Header", () => {
     render(<Header />);
 
     const searchInput = screen.getByRole("searchbox", { name: /search/i });
-    const shortcutHint = screen.getByText("⌘K");
+    const modifierKey = screen.getByText(/⌘|Ctrl/);
+    const keyHint = screen.getByText("K");
 
     expect(searchInput).toBeInTheDocument();
-    expect(shortcutHint).toBeInTheDocument();
+    expect(modifierKey).toBeInTheDocument();
+    expect(keyHint).toBeInTheDocument();
   });
 
   it("opens the create popover when the create button is clicked", async () => {
@@ -50,6 +52,29 @@ describe("Header", () => {
     expect(
       screen.getByRole("button", { name: /create repository/i })
     ).toBeInTheDocument();
+  });
+
+  it("opens the create repository dialog with name and visibility fields", async () => {
+    const user = userEvent.setup();
+
+    render(<Header />);
+
+    const createButton = screen.getByRole("button", { name: /create/i });
+    await user.click(createButton);
+
+    const createRepoItem = screen.getByRole("button", {
+      name: /create repository/i,
+    });
+    await user.click(createRepoItem);
+
+    expect(
+      screen.getByRole("heading", { name: /create repository/i })
+    ).toBeInTheDocument();
+
+    expect(screen.getByRole("textbox", { name: /name/i })).toBeInTheDocument();
+
+    expect(screen.getByRole("radio", { name: /public/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /private/i })).toBeInTheDocument();
   });
 
   it("renders profile button linking to the profile page", () => {
