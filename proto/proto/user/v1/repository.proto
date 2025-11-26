@@ -6,7 +6,10 @@ import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
 
 message CreateRepositoryRequest {
-  string name = 1;
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
 }
 
 service RepositoryService {
