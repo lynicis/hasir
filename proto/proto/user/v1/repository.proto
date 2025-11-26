@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package user.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/empty.proto";
+
+message CreateRepositoryRequest {
+    string name = 1;
+}
+
+service RepositoryService {
+    rpc CreateRepository(CreateRepositoryRequest) returns (google.protobuf.Empty);
+}
