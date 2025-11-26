@@ -1,8 +1,5 @@
-generate-unix:
-	sh ./scripts/generate.sh
+fix-formating:
+	buf format --write
 
-generate-win:
-	./scripts/generate.bat
-
-convert-to-bat:
-	bunx bash-converter scripts/generate.sh
+lint:
+	buf format
