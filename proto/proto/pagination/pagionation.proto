@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package pagination;
+
+import "buf/validate/validate.proto";
+
+message Pagination {
+  int32 page = 1 [(buf.validate.field).int32.gt = 1];
+  int32 page_limit = 2 [(buf.validate.field).int32.gte = 5];
+}
