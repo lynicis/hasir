@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 
-const protectedPrefixes = ["/dashboard", "/profile"];
+const protectedPrefixes = ["/dashboard", "/profile", "/invite"];
 const authRoutes = ["/login", "/register"];
 
 export default function proxy(request: NextRequest) {
@@ -35,5 +35,6 @@ export const config = {
     "/profile/:path*",
     "/login",
     "/register",
+    "/invite/:path*",
   ],
 };
