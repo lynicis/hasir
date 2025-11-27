@@ -1,4 +1,4 @@
-package repository
+package registry
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"buf.build/gen/go/hasir/hasir/connectrpc/go/repository/v1/repositoryv1connect"
-	repositoryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/repository/v1"
+	"buf.build/gen/go/hasir/hasir/connectrpc/go/registry/v1/registryv1connect"
+	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 )
 
 func TestNewHandler(t *testing.T) {
@@ -57,7 +57,7 @@ func TestHandler_RegisterRoutes(t *testing.T) {
 		h := NewHandler(mockService, mockRepository)
 		path, httpHandler := h.RegisterRoutes()
 
-		require.Equal(t, "/"+repositoryv1connect.RepositoryServiceName+"/", path)
+		require.Equal(t, "/"+registryv1connect.RegistryServiceName+"/", path)
 		require.NotNil(t, httpHandler)
 	})
 }
@@ -70,7 +70,7 @@ func TestHandler_CreateRepository(t *testing.T) {
 
 		mockService.EXPECT().
 			CreateRepository(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, req *repositoryv1.CreateRepositoryRequest) error {
+			DoAndReturn(func(_ context.Context, req *registryv1.CreateRepositoryRequest) error {
 				require.Equal(t, "test-repo", req.GetName())
 				return nil
 			})
@@ -83,12 +83,12 @@ func TestHandler_CreateRepository(t *testing.T) {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		client := repositoryv1connect.NewRepositoryServiceClient(
+		client := registryv1connect.NewRegistryServiceClient(
 			http.DefaultClient,
 			server.URL,
 		)
 
-		_, err := client.CreateRepository(context.Background(), connect.NewRequest(&repositoryv1.CreateRepositoryRequest{
+		_, err := client.CreateRepository(context.Background(), connect.NewRequest(&registryv1.CreateRepositoryRequest{
 			Name: "test-repo",
 		}))
 		require.NoError(t, err)
@@ -111,12 +111,12 @@ func TestHandler_CreateRepository(t *testing.T) {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		client := repositoryv1connect.NewRepositoryServiceClient(
+		client := registryv1connect.NewRegistryServiceClient(
 			http.DefaultClient,
 			server.URL,
 		)
 
-		_, err := client.CreateRepository(context.Background(), connect.NewRequest(&repositoryv1.CreateRepositoryRequest{
+		_, err := client.CreateRepository(context.Background(), connect.NewRequest(&registryv1.CreateRepositoryRequest{
 			Name: "existing-repo",
 		}))
 		require.Error(t, err)
@@ -150,12 +150,12 @@ func TestHandler_GetRepositories(t *testing.T) {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		client := repositoryv1connect.NewRepositoryServiceClient(
+		client := registryv1connect.NewRegistryServiceClient(
 			http.DefaultClient,
 			server.URL,
 		)
 
-		resp, err := client.GetRepositories(context.Background(), connect.NewRequest(&repositoryv1.GetRepositoriesRequest{}))
+		resp, err := client.GetRepositories(context.Background(), connect.NewRequest(&registryv1.GetRepositoriesRequest{}))
 		require.NoError(t, err)
 		require.Len(t, resp.Msg.GetRepositories(), 2)
 		require.Equal(t, "repo-1", resp.Msg.GetRepositories()[0].GetId())
@@ -183,12 +183,12 @@ func TestHandler_GetRepositories(t *testing.T) {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		client := repositoryv1connect.NewRepositoryServiceClient(
+		client := registryv1connect.NewRegistryServiceClient(
 			http.DefaultClient,
 			server.URL,
 		)
 
-		resp, err := client.GetRepositories(context.Background(), connect.NewRequest(&repositoryv1.GetRepositoriesRequest{}))
+		resp, err := client.GetRepositories(context.Background(), connect.NewRequest(&registryv1.GetRepositoriesRequest{}))
 		require.NoError(t, err)
 		require.Empty(t, resp.Msg.GetRepositories())
 	})
@@ -210,12 +210,12 @@ func TestHandler_GetRepositories(t *testing.T) {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		client := repositoryv1connect.NewRepositoryServiceClient(
+		client := registryv1connect.NewRegistryServiceClient(
 			http.DefaultClient,
 			server.URL,
 		)
 
-		_, err := client.GetRepositories(context.Background(), connect.NewRequest(&repositoryv1.GetRepositoriesRequest{}))
+		_, err := client.GetRepositories(context.Background(), connect.NewRequest(&registryv1.GetRepositoriesRequest{}))
 		require.Error(t, err)
 
 		var connectErr *connect.Error

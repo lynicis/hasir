@@ -1,4 +1,4 @@
-package repository
+package registry
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	repositoryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/repository/v1"
+	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 )
 
 func TestNewService(t *testing.T) {
@@ -51,7 +51,7 @@ func TestService_CreateRepository(t *testing.T) {
 				return nil
 			})
 
-		err := svc.CreateRepository(ctx, &repositoryv1.CreateRepositoryRequest{
+		err := svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
 			Name: repoName,
 		})
 		require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestService_CreateRepository(t *testing.T) {
 				Path: "/some/path",
 			}, nil)
 
-		err := svc.CreateRepository(ctx, &repositoryv1.CreateRepositoryRequest{
+		err := svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
 			Name: repoName,
 		})
 		require.EqualError(t, err, `repository "existing-repo" already exists`)
@@ -108,7 +108,7 @@ func TestService_CreateRepository(t *testing.T) {
 			CreateRepository(ctx, gomock.Any()).
 			Return(nil)
 
-		err := svc.CreateRepository(ctx, &repositoryv1.CreateRepositoryRequest{
+		err := svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
 			Name: repoName,
 		})
 		require.NoError(t, err)
@@ -121,7 +121,7 @@ func TestService_CreateRepository(t *testing.T) {
 				Path: filepath.Join(tmpDir, repoName),
 			}, nil)
 
-		err = svc.CreateRepository(ctx, &repositoryv1.CreateRepositoryRequest{
+		err = svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
 			Name: repoName,
 		})
 		require.EqualError(t, err, `repository "existing-repo" already exists`)
@@ -144,7 +144,7 @@ func TestService_CreateRepository(t *testing.T) {
 			GetRepositoryByName(ctx, repoName).
 			Return(nil, dbErr)
 
-		err := svc.CreateRepository(ctx, &repositoryv1.CreateRepositoryRequest{
+		err := svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
 			Name: repoName,
 		})
 		require.ErrorContains(t, err, "failed to check existing repository")
@@ -173,7 +173,7 @@ func TestService_CreateRepository(t *testing.T) {
 			CreateRepository(ctx, gomock.Any()).
 			Return(dbErr)
 
-		err := svc.CreateRepository(ctx, &repositoryv1.CreateRepositoryRequest{
+		err := svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
 			Name: repoName,
 		})
 		require.ErrorContains(t, err, "failed to save repository to database")

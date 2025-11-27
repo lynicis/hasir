@@ -1,4 +1,4 @@
-package repository
+package registry
 
 import (
 	"context"
@@ -14,13 +14,13 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	repositoryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/repository/v1"
+	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 )
 
 const defaultReposPath = "./repos"
 
 type Service interface {
-	CreateRepository(ctx context.Context, req *repositoryv1.CreateRepositoryRequest) error
+	CreateRepository(ctx context.Context, req *registryv1.CreateRepositoryRequest) error
 }
 
 type service struct {
@@ -37,7 +37,7 @@ func NewService(repository Repository) Service {
 
 func (s *service) CreateRepository(
 	ctx context.Context,
-	req *repositoryv1.CreateRepositoryRequest,
+	req *registryv1.CreateRepositoryRequest,
 ) error {
 	repoName := req.GetName()
 

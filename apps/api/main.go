@@ -20,7 +20,7 @@ import (
 	"go.uber.org/zap"
 
 	"apps/api/internal"
-	"apps/api/internal/repository"
+	"apps/api/internal/registry"
 	"apps/api/internal/user"
 	"apps/api/pkg/config"
 	_ "apps/api/pkg/log"
@@ -33,10 +33,10 @@ func main() {
 	traceProvider := initTracer(cfg)
 
 	userPgRepository := user.NewPgRepository(cfg, traceProvider)
-	repositoryPgRepository := repository.NewPgRepository(cfg, traceProvider)
+	repositoryPgRepository := registry.NewPgRepository(cfg, traceProvider)
 
 	userService := user.NewService(cfg, userPgRepository)
-	gitRepositoryService := repository.NewService(repositoryPgRepository)
+	gitRepositoryService := registry.NewService(repositoryPgRepository)
 
 	validateInterceptor := validate.NewInterceptor()
 	otelInterceptor, err := otelconnect.NewInterceptor(
@@ -48,10 +48,10 @@ func main() {
 
 	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
 	userHandler := user.NewHandler(interceptors, userService, userPgRepository)
-	gitRepositoryHandler := repository.NewHandler(gitRepositoryService, repositoryPgRepository, interceptors...)
+	registryHandler := registry.NewHandler(gitRepositoryService, repositoryPgRepository, interceptors...)
 	handlers := []internal.GlobalHandler{
 		userHandler,
-		gitRepositoryHandler,
+		registryHandler,
 	}
 
 	mux := http.NewServeMux()

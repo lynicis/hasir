@@ -1,11 +1,11 @@
-package repository
+package registry
 
 import (
 	"context"
 	"net/http"
 
-	"buf.build/gen/go/hasir/hasir/connectrpc/go/repository/v1/repositoryv1connect"
-	repositoryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/repository/v1"
+	"buf.build/gen/go/hasir/hasir/connectrpc/go/registry/v1/registryv1connect"
+	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -25,7 +25,7 @@ func NewHandler(service Service, repository Repository, interceptors ...connect.
 }
 
 func (h *handler) RegisterRoutes() (string, http.Handler) {
-	return repositoryv1connect.NewRepositoryServiceHandler(
+	return registryv1connect.NewRegistryServiceHandler(
 		h,
 		connect.WithInterceptors(h.interceptors...),
 	)
@@ -33,7 +33,7 @@ func (h *handler) RegisterRoutes() (string, http.Handler) {
 
 func (h *handler) CreateRepository(
 	ctx context.Context,
-	req *connect.Request[repositoryv1.CreateRepositoryRequest],
+	req *connect.Request[registryv1.CreateRepositoryRequest],
 ) (*connect.Response[emptypb.Empty], error) {
 	if err := h.service.CreateRepository(ctx, req.Msg); err != nil {
 		return nil, err
@@ -44,22 +44,22 @@ func (h *handler) CreateRepository(
 
 func (h *handler) GetRepositories(
 	ctx context.Context,
-	req *connect.Request[repositoryv1.GetRepositoriesRequest],
-) (*connect.Response[repositoryv1.GetRepositoriesResponse], error) {
+	req *connect.Request[registryv1.GetRepositoriesRequest],
+) (*connect.Response[registryv1.GetRepositoriesResponse], error) {
 	repositories, err := h.repository.GetRepositories(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var resp []*repositoryv1.Repository
+	var resp []*registryv1.Repository
 	for _, repository := range *repositories {
-		resp = append(resp, &repositoryv1.Repository{
+		resp = append(resp, &registryv1.Repository{
 			Id:   repository.Id,
 			Name: repository.Name,
 		})
 	}
 
-	return connect.NewResponse(&repositoryv1.GetRepositoriesResponse{
+	return connect.NewResponse(&registryv1.GetRepositoriesResponse{
 		Repositories: resp,
 	}), nil
 }
