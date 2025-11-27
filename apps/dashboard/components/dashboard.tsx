@@ -1,8 +1,16 @@
 "use client";
 
-import * as React from "react";
+import {
+  Repository,
+  RepositoryService,
+} from "@buf/hasir_hasir.bufbuild_es/repository/v1/repository_pb";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUserStore } from "@/stores/user-store-provider";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useClient } from "@/lib/use-client";
 
 const MOCK_ORGANIZATIONS = [
   { id: "org-1", name: "Acme Corp" },
@@ -10,17 +18,36 @@ const MOCK_ORGANIZATIONS = [
   { id: "org-3", name: "Proto Systems" },
 ];
 
-const MOCK_REPOSITORIES = [
-  { id: "repo-1", name: "payment-protos", organization: "Acme Corp" },
-  { id: "repo-2", name: "analytics-protos", organization: "Hasir Labs" },
-  { id: "repo-3", name: "core-registry", organization: "Proto Systems" },
-  { id: "repo-4", name: "internal-tools", organization: "Hasir Labs" },
-];
-
 export function Dashboard() {
-  const [activeOrgId, setActiveOrgId] = React.useState<string | "all">("all");
+  const { id: userId } = useUserStore((state) => state);
+  const repositoryApiClient = useClient(RepositoryService);
 
-  const filteredRepositories =
+  const [isLoading, setLoading] = useState<boolean>(true);
+  const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [activeOrgId, setActiveOrgId] = useState<string | "all">("all");
+
+  useEffect(() => {
+    const fetchRepositories = async () => {
+      try {
+        const { repositories } = await repositoryApiClient.getRepositories({
+          pagination: {
+            page: 1,
+            pageLimit: 5,
+          },
+          userId,
+        });
+
+        setRepositories(repositories);
+        setLoading(false);
+      } catch {
+        toast.error("Error occurred while fetching");
+      }
+    };
+
+    fetchRepositories();
+  }, [userId, repositoryApiClient]);
+
+  /*   const filteredRepositories =
     activeOrgId === "all"
       ? MOCK_REPOSITORIES
       : MOCK_REPOSITORIES.filter((repo) => {
@@ -28,7 +55,7 @@ export function Dashboard() {
             (organization) => organization.id === activeOrgId
           );
           return org ? repo.organization === org.name : true;
-        });
+        }); */
 
   return (
     <div className="h-[calc(100vh-4.5rem)] bg-background px-6 py-6 overflow-hidden">
@@ -88,24 +115,43 @@ export function Dashboard() {
                   </p>
                 )}
               </div>
-              <span className="text-xs text-secondary/70">
-                {filteredRepositories.length} repos
-              </span>
+              {isLoading ? (
+                <Skeleton className="h-4 w-12 bg-secondary/70" />
+              ) : (
+                <span className="text-xs text-secondary/70">
+                  {repositories.length} repos
+                </span>
+              )}
             </CardHeader>
             <CardContent className="space-y-2.5 py-4">
-              {filteredRepositories.map((repo) => (
-                <div
-                  key={repo.id}
-                  className="hover:bg-accent/60 flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 text-sm transition-colors"
-                >
-                  <div className="flex flex-col">
-                    <span className="font-medium">{repo.name}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {repo.organization}
-                    </span>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3"
+                  >
+                    <Skeleton className="h-5 w-32" />
                   </div>
+                ))
+              ) : repositories.length === 0 ? (
+                <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+                  No repositories found
                 </div>
-              ))}
+              ) : (
+                repositories.map((repo) => (
+                  <div
+                    key={repo.id}
+                    className="hover:bg-accent/60 flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 text-sm transition-colors"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium">{repo.name}</span>
+                      {/* <span className="text-muted-foreground text-xs">
+                        {repo.organization}
+                      </span> */}
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </main>
