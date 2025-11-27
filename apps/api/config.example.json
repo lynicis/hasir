@@ -4,7 +4,10 @@
     "ip": "0.0.0.0",
     "port": "8080"
   },
-  "otelTraceEndpoint": "http://localhost:4317",
+  "otel": {
+    "enabled": false,
+    "traceEndpoint": "localhost:4317"
+  },
   "postgresql": {
     "connectionString": "",
     "host": "localhost",

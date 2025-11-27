@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -98,7 +99,8 @@ func TestEnvConfig_Read(t *testing.T) {
 			"HASIR_SERVER_PUBLICURL":            "https://api.example.com",
 			"HASIR_SERVER_IP":                   "0.0.0.0",
 			"HASIR_SERVER_PORT":                 "3000",
-			"HASIR_OTELTRACEENDPOINT":           "http://otel:4317",
+			"HASIR_OTEL_ENABLED":                "true",
+			"HASIR_OTEL_TRACEENDPOINT":          "localhost:4317",
 			"HASIR_POSTGRESQL_CONNECTIONSTRING": "postgres://user:pass@localhost:5432/db",
 			"HASIR_POSTGRESQL_HOST":             "localhost",
 			"HASIR_POSTGRESQL_PORT":             "5432",
@@ -125,7 +127,8 @@ func TestEnvConfig_Read(t *testing.T) {
 		assert.Equal(t, "https://api.example.com", config.Server.PublicUrl)
 		assert.Equal(t, "0.0.0.0", config.Server.Ip)
 		assert.Equal(t, "3000", config.Server.Port)
-		assert.Equal(t, "http://otel:4317", config.OtelTraceEndpoint)
+		assert.True(t, config.Otel.Enabled)
+		assert.Equal(t, "localhost:4317", config.Otel.TraceEndpoint)
 		assert.Equal(t, "postgres://user:pass@localhost:5432/db", config.PostgresConfig.ConnectionString)
 		assert.Equal(t, "localhost", config.PostgresConfig.Host)
 		assert.Equal(t, "5432", config.PostgresConfig.Port)
@@ -155,8 +158,58 @@ func TestEnvConfig_Read(t *testing.T) {
 }
 
 func TestJsonConfig_Read(t *testing.T) {
+	t.Run("reads config from json file", func(t *testing.T) {
+		// Create a temporary config file
+		tmpDir := t.TempDir()
+		configContent := `{
+			"server": {
+				"publicUrl": "https://api.example.com",
+				"ip": "0.0.0.0",
+				"port": "3000"
+			},
+			"otel": {
+				"enabled": true,
+				"traceEndpoint": "localhost:4317"
+			},
+			"postgresql": {
+				"connectionString": "postgres://user:pass@localhost:5432/db",
+				"host": "localhost",
+				"port": "5432",
+				"username": "dbuser",
+				"password": "dbpass",
+				"database": "testdb"
+			},
+			"dashboardUrl": "https://dashboard.example.com",
+			"rootUser": {
+				"username": "admin",
+				"tempPassword": "temppass123"
+			}
+		}`
+		configPath := filepath.Join(tmpDir, "config.json")
+		err := os.WriteFile(configPath, []byte(configContent), 0644)
+		require.NoError(t, err)
+
+		reader := &JsonConfig{ConfigPath: configPath}
+		config := reader.Read()
+
+		assert.Equal(t, "https://api.example.com", config.Server.PublicUrl)
+		assert.Equal(t, "0.0.0.0", config.Server.Ip)
+		assert.Equal(t, "3000", config.Server.Port)
+		assert.True(t, config.Otel.Enabled)
+		assert.Equal(t, "localhost:4317", config.Otel.TraceEndpoint)
+		assert.Equal(t, "postgres://user:pass@localhost:5432/db", config.PostgresConfig.ConnectionString)
+		assert.Equal(t, "localhost", config.PostgresConfig.Host)
+		assert.Equal(t, "5432", config.PostgresConfig.Port)
+		assert.Equal(t, "dbuser", config.PostgresConfig.Username)
+		assert.Equal(t, "dbpass", config.PostgresConfig.Password)
+		assert.Equal(t, "testdb", config.PostgresConfig.Database)
+		assert.Equal(t, "https://dashboard.example.com", config.DashboardUrl)
+		assert.Equal(t, "admin", config.RootUser.Username)
+		assert.Equal(t, "temppass123", config.RootUser.TempPassword)
+	})
+
 	t.Run("panics when config file does not exist", func(t *testing.T) {
-		reader := &JsonConfig{}
+		reader := &JsonConfig{ConfigPath: "/nonexistent/path/config.json"}
 
 		assert.Panics(t, func() {
 			reader.Read()

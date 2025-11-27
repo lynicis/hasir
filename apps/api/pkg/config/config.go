@@ -56,13 +56,18 @@ type RootUserConfig struct {
 	TempPassword string `koanf:"tempPassword"`
 }
 
+type OtelConfig struct {
+	Enabled       bool   `koanf:"enabled"`
+	TraceEndpoint string `koanf:"traceEndpoint"`
+}
+
 type Config struct {
-	Server            ServerConfig   `koanf:"server"`
-	OtelTraceEndpoint string         `koanf:"otelTraceEndpoint"`
-	PostgresConfig    PostgresConfig `koanf:"postgresql"`
-	JwtSecret         []byte         `koanf:"jwtSecret"`
-	DashboardUrl      string         `koanf:"dashboardUrl"`
-	RootUser          RootUserConfig `koanf:"rootUser"`
+	Server         ServerConfig   `koanf:"server"`
+	Otel           OtelConfig     `koanf:"otel"`
+	PostgresConfig PostgresConfig `koanf:"postgresql"`
+	JwtSecret      []byte         `koanf:"jwtSecret"`
+	DashboardUrl   string         `koanf:"dashboardUrl"`
+	RootUser       RootUserConfig `koanf:"rootUser"`
 }
 
 type ConfigReader interface {
@@ -82,12 +87,20 @@ func getCwd() string {
 	return filepath.Join(filepath.Dir(currentFile), "../..")
 }
 
-type JsonConfig struct{}
+type JsonConfig struct {
+	ConfigPath string
+}
 
 func (c *JsonConfig) Read() *Config {
 	koanfInstance := koanf.New(".")
-	rootDir := getCwd()
-	configPath := file.Provider(filepath.Join(rootDir, "config.json"))
+
+	configFilePath := c.ConfigPath
+	if configFilePath == "" {
+		rootDir := getCwd()
+		configFilePath = filepath.Join(rootDir, "config.json")
+	}
+
+	configPath := file.Provider(configFilePath)
 	if err := koanfInstance.Load(configPath, json.Parser()); err != nil {
 		panic(fmt.Sprintf("error occurred while reading config: %s", err))
 	}

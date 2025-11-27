@@ -30,7 +30,10 @@ func main() {
 	cfgReader := config.NewConfigReader()
 	cfg := cfgReader.Read()
 
-	traceProvider := initTracer(cfg)
+	var traceProvider *sdktrace.TracerProvider
+	if cfg.Otel.Enabled {
+		traceProvider = initTracer(cfg)
+	}
 
 	userPgRepository := user.NewPgRepository(cfg, traceProvider)
 	repositoryPgRepository := registry.NewPgRepository(cfg, traceProvider)
@@ -38,15 +41,17 @@ func main() {
 	userService := user.NewService(cfg, userPgRepository)
 	gitRepositoryService := registry.NewService(repositoryPgRepository)
 
-	validateInterceptor := validate.NewInterceptor()
-	otelInterceptor, err := otelconnect.NewInterceptor(
-		otelconnect.WithTracerProvider(traceProvider),
-	)
-	if err != nil {
-		zap.L().Fatal("failed to create connect opentelementry interceptor", zap.Error(err))
+	interceptors := []connect.Interceptor{validate.NewInterceptor()}
+	if cfg.Otel.Enabled {
+		otelInterceptor, err := otelconnect.NewInterceptor(
+			otelconnect.WithTracerProvider(traceProvider),
+		)
+		if err != nil {
+			zap.L().Fatal("failed to create connect opentelemetry interceptor", zap.Error(err))
+		}
+		interceptors = append(interceptors, otelInterceptor)
 	}
 
-	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
 	userHandler := user.NewHandler(interceptors, userService, userPgRepository)
 	registryHandler := registry.NewHandler(gitRepositoryService, repositoryPgRepository, interceptors...)
 	handlers := []internal.GlobalHandler{
@@ -70,7 +75,7 @@ func main() {
 	}
 
 	go func() {
-		if err = server.ListenAndServe(); err != nil {
+		if err := server.ListenAndServe(); err != nil {
 			zap.L().Fatal("HTTP server error: %v", zap.Error(err))
 		}
 	}()
@@ -104,7 +109,7 @@ func initTracer(cfg *config.Config) *sdktrace.TracerProvider {
 	}
 
 	traceExporter, err := otlptracegrpc.New(ctx,
-		otlptracegrpc.WithEndpoint(cfg.OtelTraceEndpoint),
+		otlptracegrpc.WithEndpoint(cfg.Otel.TraceEndpoint),
 		otlptracegrpc.WithInsecure(),
 	)
 	if err != nil {
@@ -124,5 +129,6 @@ func initTracer(cfg *config.Config) *sdktrace.TracerProvider {
 		),
 	)
 
+	zap.L().Info("OpenTelemetry tracing enabled", zap.String("endpoint", cfg.Otel.TraceEndpoint))
 	return tracerProvider
 }
