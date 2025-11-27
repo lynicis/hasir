@@ -16,6 +16,14 @@
     "password": "postgres",
     "database": "hasir"
   },
+  "smtp": {
+    "host": "smtp.example.com",
+    "port": 587,
+    "username": "",
+    "password": "",
+    "from": "noreply@example.com",
+    "useTLS": true
+  },
   "jwtSecret": "your-secret-key-here",
   "dashboardUrl": "http://localhost:3000",
   "rootUser": {

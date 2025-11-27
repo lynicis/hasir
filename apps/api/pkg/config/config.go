@@ -61,10 +61,20 @@ type OtelConfig struct {
 	TraceEndpoint string `koanf:"traceEndpoint"`
 }
 
+type SmtpConfig struct {
+	Host     string `koanf:"host"`
+	Port     int    `koanf:"port"`
+	Username string `koanf:"username"`
+	Password string `koanf:"password"`
+	From     string `koanf:"from"`
+	UseTLS   bool   `koanf:"useTLS"`
+}
+
 type Config struct {
 	Server         ServerConfig   `koanf:"server"`
 	Otel           OtelConfig     `koanf:"otel"`
 	PostgresConfig PostgresConfig `koanf:"postgresql"`
+	Smtp           SmtpConfig     `koanf:"smtp"`
 	JwtSecret      []byte         `koanf:"jwtSecret"`
 	DashboardUrl   string         `koanf:"dashboardUrl"`
 	RootUser       RootUserConfig `koanf:"rootUser"`

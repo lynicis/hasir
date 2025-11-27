@@ -12,6 +12,7 @@ package organization
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	gomock "go.uber.org/mock/gomock"
 )
@@ -40,6 +41,34 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
+// AddMember mocks base method.
+func (m *MockRepository) AddMember(ctx context.Context, member *OrganizationMemberDTO) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddMember", ctx, member)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddMember indicates an expected call of AddMember.
+func (mr *MockRepositoryMockRecorder) AddMember(ctx, member any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMember", reflect.TypeOf((*MockRepository)(nil).AddMember), ctx, member)
+}
+
+// CreateInvite mocks base method.
+func (m *MockRepository) CreateInvite(ctx context.Context, invite *OrganizationInviteDTO) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateInvite", ctx, invite)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateInvite indicates an expected call of CreateInvite.
+func (mr *MockRepositoryMockRecorder) CreateInvite(ctx, invite any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInvite", reflect.TypeOf((*MockRepository)(nil).CreateInvite), ctx, invite)
+}
+
 // CreateOrganization mocks base method.
 func (m *MockRepository) CreateOrganization(ctx context.Context, org *OrganizationDTO) error {
 	m.ctrl.T.Helper()
@@ -52,6 +81,36 @@ func (m *MockRepository) CreateOrganization(ctx context.Context, org *Organizati
 func (mr *MockRepositoryMockRecorder) CreateOrganization(ctx, org any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrganization", reflect.TypeOf((*MockRepository)(nil).CreateOrganization), ctx, org)
+}
+
+// GetInviteByToken mocks base method.
+func (m *MockRepository) GetInviteByToken(ctx context.Context, token string) (*OrganizationInviteDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetInviteByToken", ctx, token)
+	ret0, _ := ret[0].(*OrganizationInviteDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetInviteByToken indicates an expected call of GetInviteByToken.
+func (mr *MockRepositoryMockRecorder) GetInviteByToken(ctx, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInviteByToken", reflect.TypeOf((*MockRepository)(nil).GetInviteByToken), ctx, token)
+}
+
+// GetOrganizationById mocks base method.
+func (m *MockRepository) GetOrganizationById(ctx context.Context, id string) (*OrganizationDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOrganizationById", ctx, id)
+	ret0, _ := ret[0].(*OrganizationDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOrganizationById indicates an expected call of GetOrganizationById.
+func (mr *MockRepositoryMockRecorder) GetOrganizationById(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrganizationById", reflect.TypeOf((*MockRepository)(nil).GetOrganizationById), ctx, id)
 }
 
 // GetOrganizationByName mocks base method.
@@ -82,4 +141,18 @@ func (m *MockRepository) GetOrganizations(ctx context.Context) (*[]OrganizationD
 func (mr *MockRepositoryMockRecorder) GetOrganizations(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrganizations", reflect.TypeOf((*MockRepository)(nil).GetOrganizations), ctx)
+}
+
+// UpdateInviteStatus mocks base method.
+func (m *MockRepository) UpdateInviteStatus(ctx context.Context, id string, status InviteStatus, acceptedAt *time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateInviteStatus", ctx, id, status, acceptedAt)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateInviteStatus indicates an expected call of UpdateInviteStatus.
+func (mr *MockRepositoryMockRecorder) UpdateInviteStatus(ctx, id, status, acceptedAt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateInviteStatus", reflect.TypeOf((*MockRepository)(nil).UpdateInviteStatus), ctx, id, status, acceptedAt)
 }

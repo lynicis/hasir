@@ -110,6 +110,12 @@ func TestEnvConfig_Read(t *testing.T) {
 			"HASIR_DASHBOARDURL":                "https://dashboard.example.com",
 			"HASIR_ROOTUSER_USERNAME":           "admin",
 			"HASIR_ROOTUSER_TEMPPASSWORD":       "temppass123",
+			"HASIR_SMTP_HOST":                   "smtp.example.com",
+			"HASIR_SMTP_PORT":                   "587",
+			"HASIR_SMTP_USERNAME":               "smtpuser",
+			"HASIR_SMTP_PASSWORD":               "smtppass",
+			"HASIR_SMTP_FROM":                   "no-reply@example.com",
+			"HASIR_SMTP_USETLS":                 "true",
 		}
 
 		for k, v := range envVars {
@@ -138,6 +144,12 @@ func TestEnvConfig_Read(t *testing.T) {
 		assert.Equal(t, "https://dashboard.example.com", config.DashboardUrl)
 		assert.Equal(t, "admin", config.RootUser.Username)
 		assert.Equal(t, "temppass123", config.RootUser.TempPassword)
+		assert.Equal(t, "smtp.example.com", config.Smtp.Host)
+		assert.Equal(t, 587, config.Smtp.Port)
+		assert.Equal(t, "smtpuser", config.Smtp.Username)
+		assert.Equal(t, "smtppass", config.Smtp.Password)
+		assert.Equal(t, "no-reply@example.com", config.Smtp.From)
+		assert.True(t, config.Smtp.UseTLS)
 	})
 
 	t.Run("returns empty config when no env vars set", func(t *testing.T) {
@@ -179,6 +191,14 @@ func TestJsonConfig_Read(t *testing.T) {
 				"password": "dbpass",
 				"database": "testdb"
 			},
+			"smtp": {
+				"host": "smtp.example.com",
+				"port": 587,
+				"username": "smtpuser",
+				"password": "smtppass",
+				"from": "no-reply@example.com",
+				"useTLS": true
+			},
 			"dashboardUrl": "https://dashboard.example.com",
 			"rootUser": {
 				"username": "admin",
@@ -206,6 +226,12 @@ func TestJsonConfig_Read(t *testing.T) {
 		assert.Equal(t, "https://dashboard.example.com", config.DashboardUrl)
 		assert.Equal(t, "admin", config.RootUser.Username)
 		assert.Equal(t, "temppass123", config.RootUser.TempPassword)
+		assert.Equal(t, "smtp.example.com", config.Smtp.Host)
+		assert.Equal(t, 587, config.Smtp.Port)
+		assert.Equal(t, "smtpuser", config.Smtp.Username)
+		assert.Equal(t, "smtppass", config.Smtp.Password)
+		assert.Equal(t, "no-reply@example.com", config.Smtp.From)
+		assert.True(t, config.Smtp.UseTLS)
 	})
 
 	t.Run("panics when config file does not exist", func(t *testing.T) {

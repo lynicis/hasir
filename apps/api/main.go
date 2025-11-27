@@ -23,7 +23,9 @@ import (
 	"apps/api/internal/organization"
 	"apps/api/internal/registry"
 	"apps/api/internal/user"
+	"apps/api/pkg/auth"
 	"apps/api/pkg/config"
+	"apps/api/pkg/email"
 	_ "apps/api/pkg/log"
 )
 
@@ -40,11 +42,15 @@ func main() {
 	repositoryPgRepository := registry.NewPgRepository(cfg, traceProvider)
 	organizationPgRepository := organization.NewPgRepository(cfg, traceProvider)
 
+	emailService := email.NewService(cfg)
+
 	userService := user.NewService(cfg, userPgRepository)
 	gitRepositoryService := registry.NewService(repositoryPgRepository)
-	organizationService := organization.NewService(organizationPgRepository)
+	organizationService := organization.NewService(organizationPgRepository, emailService)
 
-	interceptors := []connect.Interceptor{validate.NewInterceptor()}
+	authInterceptor := auth.NewAuthInterceptor(cfg.JwtSecret)
+
+	interceptors := []connect.Interceptor{validate.NewInterceptor(), authInterceptor}
 	if cfg.Otel.Enabled {
 		otelInterceptor, err := otelconnect.NewInterceptor(
 			otelconnect.WithTracerProvider(traceProvider),

@@ -8,6 +8,8 @@ import (
 	organizationv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/organization/v1"
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	"apps/api/pkg/auth"
 )
 
 type handler struct {
@@ -35,7 +37,11 @@ func (h *handler) CreateOrganization(
 	ctx context.Context,
 	req *connect.Request[organizationv1.CreateOrganizationRequest],
 ) (*connect.Response[emptypb.Empty], error) {
-	createdBy := ""
+	createdBy, err := auth.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := h.service.CreateOrganization(ctx, req.Msg, createdBy); err != nil {
 		return nil, err
 	}
@@ -63,4 +69,25 @@ func (h *handler) GetOrganizations(
 	return connect.NewResponse(&organizationv1.GetRepositoriesResponse{
 		Organizations: resp,
 	}), nil
+}
+
+func (h *handler) RespondToInvitation(
+	ctx context.Context,
+	req *connect.Request[organizationv1.RespondToInvitationRequest],
+) (*connect.Response[emptypb.Empty], error) {
+	userId, err := auth.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := h.service.RespondToInvitation(
+		ctx,
+		req.Msg.GetInvitationId(),
+		userId,
+		req.Msg.GetAccept(),
+	); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(new(emptypb.Empty)), nil
 }

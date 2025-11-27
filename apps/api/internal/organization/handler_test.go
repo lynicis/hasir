@@ -14,7 +14,18 @@ import (
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/organization/v1/organizationv1connect"
 	organizationv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/organization/v1"
 	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
+
+	"apps/api/pkg/auth"
 )
+
+func testAuthInterceptor(userID string) connect.UnaryInterceptorFunc {
+	return func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			ctx = context.WithValue(ctx, auth.UserIDKey, userID)
+			return next(ctx, req)
+		}
+	}
+}
 
 func TestNewHandler(t *testing.T) {
 	t.Run("creates handler with service and repository", func(t *testing.T) {
@@ -69,15 +80,18 @@ func TestHandler_CreateOrganization(t *testing.T) {
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
 
+		testUserID := "test-user-123"
+
 		mockService.EXPECT().
-			CreateOrganization(gomock.Any(), gomock.Any(), gomock.Any()).
+			CreateOrganization(gomock.Any(), gomock.Any(), testUserID).
 			DoAndReturn(func(_ context.Context, req *organizationv1.CreateOrganizationRequest, createdBy string) error {
 				require.Equal(t, "test-org", req.GetName())
 				require.Equal(t, shared.Visibility_VISIBILITY_PRIVATE, req.GetVisibility())
+				require.Equal(t, testUserID, createdBy)
 				return nil
 			})
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -102,15 +116,17 @@ func TestHandler_CreateOrganization(t *testing.T) {
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
 
+		testUserID := "test-user-456"
+
 		mockService.EXPECT().
-			CreateOrganization(gomock.Any(), gomock.Any(), gomock.Any()).
+			CreateOrganization(gomock.Any(), gomock.Any(), testUserID).
 			DoAndReturn(func(_ context.Context, req *organizationv1.CreateOrganizationRequest, createdBy string) error {
 				require.Equal(t, "public-org", req.GetName())
 				require.Equal(t, shared.Visibility_VISIBILITY_PUBLIC, req.GetVisibility())
 				return nil
 			})
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -135,11 +151,13 @@ func TestHandler_CreateOrganization(t *testing.T) {
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
 
+		testUserID := "test-user-789"
+
 		mockService.EXPECT().
-			CreateOrganization(gomock.Any(), gomock.Any(), gomock.Any()).
+			CreateOrganization(gomock.Any(), gomock.Any(), testUserID).
 			Return(connect.NewError(connect.CodeAlreadyExists, errors.New("organization already exists")))
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -161,6 +179,36 @@ func TestHandler_CreateOrganization(t *testing.T) {
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
 		require.Equal(t, connect.CodeAlreadyExists, connectErr.Code())
+	})
+
+	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		// No auth interceptor - should fail with unauthenticated
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.CreateOrganization(context.Background(), connect.NewRequest(&organizationv1.CreateOrganizationRequest{
+			Name:       "test-org",
+			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
 
