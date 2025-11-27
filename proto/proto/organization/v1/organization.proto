@@ -27,7 +27,18 @@ message GetRepositoriesResponse {
   repeated Organization organizations = 1;
 }
 
+message IsInvitationValidRequest {
+  string token = 1 [(buf.validate.field).required = true];
+}
+
+message RespondToInvitationRequest {
+  string invitation_id = 1 [(buf.validate.field).required = true];
+  bool accept = 2 [(buf.validate.field).required = true];
+}
+
 service OrganizationService {
   rpc CreateOrganization(CreateOrganizationRequest) returns (google.protobuf.Empty);
   rpc GetOrganizations(GetOrganizationsRequest) returns (GetRepositoriesResponse);
+  rpc IsInvitationValid(IsInvitationValidRequest) returns (google.protobuf.Empty);
+  rpc RespondToInvitation(RespondToInvitationRequest) returns (google.protobuf.Empty);
 }
