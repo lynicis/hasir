@@ -20,6 +20,7 @@ import (
 	"go.uber.org/zap"
 
 	"apps/api/internal"
+	"apps/api/internal/organization"
 	"apps/api/internal/registry"
 	"apps/api/internal/user"
 	"apps/api/pkg/config"
@@ -37,9 +38,11 @@ func main() {
 
 	userPgRepository := user.NewPgRepository(cfg, traceProvider)
 	repositoryPgRepository := registry.NewPgRepository(cfg, traceProvider)
+	organizationPgRepository := organization.NewPgRepository(cfg, traceProvider)
 
 	userService := user.NewService(cfg, userPgRepository)
 	gitRepositoryService := registry.NewService(repositoryPgRepository)
+	organizationService := organization.NewService(organizationPgRepository)
 
 	interceptors := []connect.Interceptor{validate.NewInterceptor()}
 	if cfg.Otel.Enabled {
@@ -54,9 +57,11 @@ func main() {
 
 	userHandler := user.NewHandler(interceptors, userService, userPgRepository)
 	registryHandler := registry.NewHandler(gitRepositoryService, repositoryPgRepository, interceptors...)
+	organizationHandler := organization.NewHandler(organizationService, organizationPgRepository, interceptors...)
 	handlers := []internal.GlobalHandler{
 		userHandler,
 		registryHandler,
+		organizationHandler,
 	}
 
 	mux := http.NewServeMux()
