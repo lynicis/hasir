@@ -16,6 +16,7 @@ import { Kbd } from "@/components/ui/kbd";
 
 import { RepositoryDialogForm } from "./repository-dialog-form";
 import { InputGroupAddon } from "./ui/input-group";
+import { ModeToggle } from "./theme-toggle";
 
 function useIsMac() {
   return useSyncExternalStore(
@@ -119,6 +120,7 @@ export function Header() {
               </div>
             </PopoverContent>
           </Popover>
+          <ModeToggle />
           <Button
             variant="outline"
             size="icon"

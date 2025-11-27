@@ -36,7 +36,7 @@ export function Dashboard() {
         <main className="grid flex-1 grid-cols-[260px_minmax(0,1fr)] gap-6 pt-2">
           <Card className="h-full gap-0 overflow-hidden rounded-2xl border border-border/60 py-0 shadow-sm">
             <CardHeader className="flex items-center bg-primary px-6 py-4">
-              <CardTitle className="text-sm font-medium text-white">
+              <CardTitle className="text-sm font-medium text-secondary">
                 Your organizations
               </CardTitle>
             </CardHeader>
@@ -74,11 +74,11 @@ export function Dashboard() {
           <Card className="h-full gap-0 overflow-hidden rounded-2xl border border-border/60 py-0 shadow-sm">
             <CardHeader className="flex items-center justify-between bg-primary px-6 py-4">
               <div className="space-y-0.5">
-                <CardTitle className="text-sm font-medium text-white">
+                <CardTitle className="text-sm font-medium text-secondary">
                   Repositories
                 </CardTitle>
                 {activeOrgId !== "all" && (
-                  <p className="text-xs text-white/70">
+                  <p className="text-xs text-secondary/70">
                     Showing repositories in{" "}
                     {
                       MOCK_ORGANIZATIONS.find(
@@ -88,7 +88,7 @@ export function Dashboard() {
                   </p>
                 )}
               </div>
-              <span className="text-xs text-white/70">
+              <span className="text-xs text-secondary/70">
                 {filteredRepositories.length} repos
               </span>
             </CardHeader>

@@ -5,6 +5,7 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { TransportProvider } from "@connectrpc/connect-query";
 
 import { UserStoreProvider } from "@/stores/user-store-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 const finalTransport = createConnectTransport({
@@ -18,8 +19,15 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <TransportProvider transport={finalTransport}>
       <QueryClientProvider client={queryClient}>
         <UserStoreProvider>
-          <main>{children}</main>
-          <Toaster />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <main>{children}</main>
+            <Toaster />
+          </ThemeProvider>
         </UserStoreProvider>
       </QueryClientProvider>
     </TransportProvider>
