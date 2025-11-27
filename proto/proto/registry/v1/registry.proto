@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package repository.v1;
+package registry.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
@@ -34,7 +34,7 @@ message GetRepositoriesResponse {
   int32 next_page = 2;
 }
 
-service RepositoryService {
+service RegistryService {
   rpc CreateRepository(CreateRepositoryRequest) returns (google.protobuf.Empty);
   rpc GetRepositories(GetRepositoriesRequest) returns (GetRepositoriesResponse);
 }
