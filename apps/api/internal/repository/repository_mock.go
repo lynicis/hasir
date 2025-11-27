@@ -54,6 +54,21 @@ func (mr *MockRepositoryMockRecorder) CreateRepository(ctx, repo any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRepository", reflect.TypeOf((*MockRepository)(nil).CreateRepository), ctx, repo)
 }
 
+// GetRepositories mocks base method.
+func (m *MockRepository) GetRepositories(ctx context.Context) (*[]RepositoryDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRepositories", ctx)
+	ret0, _ := ret[0].(*[]RepositoryDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRepositories indicates an expected call of GetRepositories.
+func (mr *MockRepositoryMockRecorder) GetRepositories(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositories", reflect.TypeOf((*MockRepository)(nil).GetRepositories), ctx)
+}
+
 // GetRepositoryByName mocks base method.
 func (m *MockRepository) GetRepositoryByName(ctx context.Context, name string) (*RepositoryDTO, error) {
 	m.ctrl.T.Helper()

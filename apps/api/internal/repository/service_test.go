@@ -25,22 +25,6 @@ func TestNewService(t *testing.T) {
 }
 
 func TestService_CreateRepository(t *testing.T) {
-	t.Run("empty name returns error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		mockRepo := NewMockRepository(ctrl)
-
-		svc := &service{
-			rootPath:   t.TempDir(),
-			repository: mockRepo,
-		}
-
-		err := svc.CreateRepository(context.Background(), &repositoryv1.CreateRepositoryRequest{
-			Name: "",
-		})
-
-		require.EqualError(t, err, "repository name is required")
-	})
-
 	t.Run("success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)

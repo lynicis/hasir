@@ -22,6 +22,7 @@ import (
 type Repository interface {
 	CreateRepository(ctx context.Context, repo *RepositoryDTO) error
 	GetRepositoryByName(ctx context.Context, name string) (*RepositoryDTO, error)
+	GetRepositories(ctx context.Context) (*[]RepositoryDTO, error)
 }
 
 var (
@@ -159,4 +160,34 @@ func (r *PgRepository) GetRepositoryByName(ctx context.Context, name string) (*R
 	}
 
 	return &repo, nil
+}
+
+func (r *PgRepository) GetRepositories(ctx context.Context) (*[]RepositoryDTO, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetRepositories")
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := "SELECT * FROM repositories WHERE deleted_at IS NULL ORDER BY created_at DESC"
+
+	var rows pgx.Rows
+	rows, err = connection.Query(ctx, sql)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to query repositories"))
+	}
+	defer rows.Close()
+
+	repos, err := pgx.CollectRows[RepositoryDTO](rows, pgx.RowToStructByName)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect rows"))
+	}
+
+	return &repos, nil
 }

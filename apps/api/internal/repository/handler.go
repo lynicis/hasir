@@ -13,12 +13,14 @@ import (
 type handler struct {
 	interceptors []connect.Interceptor
 	service      Service
+	repository   Repository
 }
 
-func NewHandler(service Service, interceptors ...connect.Interceptor) *handler {
+func NewHandler(service Service, repository Repository, interceptors ...connect.Interceptor) *handler {
 	return &handler{
 		interceptors: interceptors,
 		service:      service,
+		repository:   repository,
 	}
 }
 
@@ -38,4 +40,26 @@ func (h *handler) CreateRepository(
 	}
 
 	return connect.NewResponse(new(emptypb.Empty)), nil
+}
+
+func (h *handler) GetRepositories(
+	ctx context.Context,
+	req *connect.Request[repositoryv1.GetRepositoriesRequest],
+) (*connect.Response[repositoryv1.GetRepositoriesResponse], error) {
+	repositories, err := h.repository.GetRepositories(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp []*repositoryv1.Repository
+	for _, repository := range *repositories {
+		resp = append(resp, &repositoryv1.Repository{
+			Id:   repository.Id,
+			Name: repository.Name,
+		})
+	}
+
+	return connect.NewResponse(&repositoryv1.GetRepositoriesResponse{
+		Repositories: resp,
+	}), nil
 }

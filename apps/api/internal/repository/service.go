@@ -40,9 +40,6 @@ func (s *service) CreateRepository(
 	req *repositoryv1.CreateRepositoryRequest,
 ) error {
 	repoName := req.GetName()
-	if repoName == "" {
-		return fmt.Errorf("repository name is required")
-	}
 
 	existingRepo, err := s.repository.GetRepositoryByName(ctx, repoName)
 	if err != nil && !errors.Is(err, ErrRepositoryNotFound) {
@@ -77,7 +74,7 @@ func (s *service) CreateRepository(
 		Name:      repoName,
 		Path:      repoPath,
 		CreatedAt: now,
-		UpdatedAt: now,
+		UpdatedAt: &now,
 	}
 
 	if err := s.repository.CreateRepository(ctx, repoDTO); err != nil {

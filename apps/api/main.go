@@ -46,8 +46,9 @@ func main() {
 		zap.L().Fatal("failed to create connect opentelementry interceptor", zap.Error(err))
 	}
 
-	userHandler := user.NewHandler([]connect.Interceptor{validateInterceptor, otelInterceptor}, userService, userPgRepository)
-	gitRepositoryHandler := repository.NewHandler(gitRepositoryService, validateInterceptor, otelInterceptor)
+	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
+	userHandler := user.NewHandler(interceptors, userService, userPgRepository)
+	gitRepositoryHandler := repository.NewHandler(gitRepositoryService, repositoryPgRepository, interceptors...)
 	handlers := []internal.GlobalHandler{
 		userHandler,
 		gitRepositoryHandler,
