@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package pagination;
+package shared;
 
 import "buf/validate/validate.proto";
 

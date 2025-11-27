@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package organization.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/empty.proto";
+import "shared/filter.proto";
+import "shared/visibility.proto";
+
+message Organization {
+  string id = 1;
+  string name = 2;
+}
+
+message CreateOrganizationRequest {
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+  shared.Visibility visibility = 2 [(buf.validate.field).required = true];
+  repeated string invite_emails = 3 [(buf.validate.field).repeated.items.string.email = true];
+}
+
+message GetOrganizationsRequest {
+  shared.Pagination pagination = 2 [(buf.validate.field).required = true];
+  string user_id = 1 [(buf.validate.field).required = true];
+}
+
+message GetRepositoriesResponse {
+  repeated Organization organizations = 1;
+}
+
+service OrganizationService {
+  rpc CreateOrganization(CreateOrganizationRequest) returns (google.protobuf.Empty);
+  rpc GetOrganizations(GetOrganizationsRequest) returns (GetRepositoriesResponse);
+}

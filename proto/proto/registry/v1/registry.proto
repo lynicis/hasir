@@ -4,13 +4,8 @@ package registry.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
-import "pagination/pagionation.proto";
-
-enum Visibility {
-  VISIBILITY_UNSPECIFIED = 0;
-  VISIBILITY_PUBLIC = 1;
-  VISIBILITY_PRIVATE = 2;
-}
+import "shared/filter.proto";
+import "shared/visibility.proto";
 
 message Repository {
   string id = 1;
@@ -19,14 +14,22 @@ message Repository {
 
 message CreateRepositoryRequest {
   string name = 1 [(buf.validate.field).string.min_len = 1];
-  Visibility visibility = 2 [(buf.validate.field).enum = {
+  shared.Visibility visibility = 2 [(buf.validate.field).enum = {
     not_in: [0]
   }];
 }
 
 message GetRepositoriesRequest {
-  pagination.Pagination pagination = 1 [(buf.validate.field).required = true];
-  string user_id = 2 [(buf.validate.field).required = true];
+  message ByOrganizationId {
+    string organization_id = 1;
+    string user_id = 2;
+  }
+
+  shared.Pagination pagination = 1 [(buf.validate.field).required = true];
+  oneof filter {
+    string by_user_id = 2;
+    ByOrganizationId organization_id = 3;
+  }
 }
 
 message GetRepositoriesResponse {
