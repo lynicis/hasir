@@ -1,0 +1,4 @@
+hasir
+config.json
+!config.example.json
+*.html

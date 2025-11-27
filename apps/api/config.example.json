@@ -1,0 +1,23 @@
+{
+  "server": {
+    "publicUrl": "http://localhost:8080",
+    "ip": "0.0.0.0",
+    "port": "8080"
+  },
+  "otelTraceEndpoint": "http://localhost:4317",
+  "postgresql": {
+    "connectionString": "",
+    "host": "localhost",
+    "port": "5432",
+    "username": "postgres",
+    "password": "postgres",
+    "database": "hasir"
+  },
+  "jwtSecret": "your-secret-key-here",
+  "dashboardUrl": "http://localhost:3000",
+  "rootUser": {
+    "username": "admin",
+    "tempPassword": "changeme123"
+  }
+}
+

@@ -2,10 +2,13 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/knadh/koanf/parsers/json"
+	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 )
@@ -66,13 +69,12 @@ type ConfigReader interface {
 	Read() *Config
 }
 
-var FileStrategies = map[string]ConfigReader{
-	"json": &JsonConfig{},
-}
-
-// TODO: Only support json for now
 func NewConfigReader() ConfigReader {
-	return FileStrategies["json"]
+	mode := os.Getenv("MODE")
+	if mode == "development" {
+		return &JsonConfig{}
+	}
+	return &EnvConfig{}
 }
 
 func getCwd() string {
@@ -85,9 +87,33 @@ type JsonConfig struct{}
 func (c *JsonConfig) Read() *Config {
 	koanfInstance := koanf.New(".")
 	rootDir := getCwd()
-	configPath := file.Provider(filepath.Join(rootDir, "config/config.json"))
+	configPath := file.Provider(filepath.Join(rootDir, "config.json"))
 	if err := koanfInstance.Load(configPath, json.Parser()); err != nil {
 		panic(fmt.Sprintf("error occurred while reading config: %s", err))
+	}
+
+	var config Config
+	if err := koanfInstance.Unmarshal("", &config); err != nil {
+		panic(fmt.Sprintf("error occurred while unmarshalling config: %s", err))
+	}
+
+	return &config
+}
+
+type EnvConfig struct{}
+
+func (c *EnvConfig) Read() *Config {
+	koanfInstance := koanf.New(".")
+
+	err := koanfInstance.Load(env.Provider("HASIR_", ".", func(s string) string {
+		return strings.ReplaceAll(
+			strings.ToLower(strings.TrimPrefix(s, "HASIR_")),
+			"_",
+			".",
+		)
+	}), nil)
+	if err != nil {
+		panic(fmt.Sprintf("error occurred while reading env config: %s", err))
 	}
 
 	var config Config
