@@ -36,5 +36,5 @@ message GetRepositoriesResponse {
 
 service RepositoryService {
   rpc CreateRepository(CreateRepositoryRequest) returns (google.protobuf.Empty);
-  rpc GetRepositoriesByUserId(GetRepositoriesRequest) returns (GetRepositoriesResponse);
+  rpc GetRepositories(GetRepositoriesRequest) returns (GetRepositoriesResponse);
 }
