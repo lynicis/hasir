@@ -1,61 +1,77 @@
 "use client";
 
-import {
-  Repository,
-  RepositoryService,
-} from "@buf/hasir_hasir.bufbuild_es/repository/v1/repository_pb";
-import { useState, useEffect } from "react";
+import { getOrganizations } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
+import { getRepositories } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
+import { useQuery } from "@connectrpc/connect-query";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUserStore } from "@/stores/user-store-provider";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useClient } from "@/lib/use-client";
-
-const MOCK_ORGANIZATIONS = [
-  { id: "org-1", name: "Acme Corp" },
-  { id: "org-2", name: "Hasir Labs" },
-  { id: "org-3", name: "Proto Systems" },
-];
 
 export function Dashboard() {
   const { id: userId } = useUserStore((state) => state);
-  const repositoryApiClient = useClient(RepositoryService);
-
-  const [isLoading, setLoading] = useState<boolean>(true);
-  const [repositories, setRepositories] = useState<Repository[]>([]);
   const [activeOrgId, setActiveOrgId] = useState<string | "all">("all");
 
-  useEffect(() => {
-    const fetchRepositories = async () => {
-      try {
-        const { repositories } = await repositoryApiClient.getRepositories({
+  const {
+    data: organizationsData,
+    isLoading: isLoadingOrganizations,
+    error: organizationsError,
+  } = useQuery(getOrganizations, {
+    pagination: {
+      page: 1,
+      pageLimit: 5,
+    },
+    userId,
+  });
+
+  const {
+    data: repositoriesData,
+    isLoading: isLoadingRepositories,
+    error: repositoriesError,
+  } = useQuery(
+    getRepositories,
+    activeOrgId === "all"
+      ? {
           pagination: {
             page: 1,
             pageLimit: 5,
           },
-          userId,
-        });
+          filter: {
+            case: "byUserId",
+            value: userId,
+          },
+        }
+      : {
+          pagination: {
+            page: 1,
+            pageLimit: 5,
+          },
+          filter: {
+            case: "organizationId",
+            value: {
+              userId,
+              organizationId: activeOrgId,
+            },
+          },
+        }
+  );
 
-        setRepositories(repositories);
-        setLoading(false);
-      } catch {
-        toast.error("Error occurred while fetching");
-      }
-    };
+  const organizations = organizationsData?.organizations ?? [];
+  const repositories = repositoriesData?.repositories ?? [];
 
-    fetchRepositories();
-  }, [userId, repositoryApiClient]);
+  useEffect(() => {
+    if (organizationsError) {
+      toast.error("Error occurred while fetching organizations");
+    }
+  }, [organizationsError]);
 
-  /*   const filteredRepositories =
-    activeOrgId === "all"
-      ? MOCK_REPOSITORIES
-      : MOCK_REPOSITORIES.filter((repo) => {
-          const org = MOCK_ORGANIZATIONS.find(
-            (organization) => organization.id === activeOrgId
-          );
-          return org ? repo.organization === org.name : true;
-        }); */
+  useEffect(() => {
+    if (repositoriesError) {
+      toast.error("Error occurred while fetching repositories");
+    }
+  }, [repositoriesError]);
 
   return (
     <div className="h-[calc(100vh-4.5rem)] bg-background px-6 py-6 overflow-hidden">
@@ -79,23 +95,32 @@ export function Dashboard() {
               >
                 <span>All organizations</span>
               </button>
-              {MOCK_ORGANIZATIONS.map((org) => {
-                const isActive = activeOrgId === org.id;
-                return (
-                  <button
-                    key={org.id}
-                    type="button"
-                    onClick={() => setActiveOrgId(org.id)}
-                    className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-colors ${
-                      isActive
-                        ? "bg-accent text-accent-foreground"
-                        : "hover:bg-accent hover:text-accent-foreground"
-                    }`}
-                  >
-                    <span>{org.name}</span>
-                  </button>
-                );
-              })}
+              {isLoadingOrganizations
+                ? Array.from({ length: 3 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="flex w-full items-center rounded-md px-3 py-2.5"
+                    >
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  ))
+                : organizations.map((org) => {
+                    const isActive = activeOrgId === org.id;
+                    return (
+                      <button
+                        key={org.id}
+                        type="button"
+                        onClick={() => setActiveOrgId(org.id)}
+                        className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-colors ${
+                          isActive
+                            ? "bg-accent text-accent-foreground"
+                            : "hover:bg-accent hover:text-accent-foreground"
+                        }`}
+                      >
+                        <span>{org.name}</span>
+                      </button>
+                    );
+                  })}
             </CardContent>
           </Card>
           <Card className="h-full gap-0 overflow-hidden rounded-2xl border border-border/60 py-0 shadow-sm">
@@ -108,14 +133,14 @@ export function Dashboard() {
                   <p className="text-xs text-secondary/70">
                     Showing repositories in{" "}
                     {
-                      MOCK_ORGANIZATIONS.find(
+                      organizations.find(
                         (organization) => organization.id === activeOrgId
                       )?.name
                     }
                   </p>
                 )}
               </div>
-              {isLoading ? (
+              {isLoadingRepositories ? (
                 <Skeleton className="h-4 w-12 bg-secondary/70" />
               ) : (
                 <span className="text-xs text-secondary/70">
@@ -124,7 +149,7 @@ export function Dashboard() {
               )}
             </CardHeader>
             <CardContent className="space-y-2.5 py-4">
-              {isLoading ? (
+              {isLoadingRepositories ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <div
                     key={i}
@@ -145,9 +170,6 @@ export function Dashboard() {
                   >
                     <div className="flex flex-col">
                       <span className="font-medium">{repo.name}</span>
-                      {/* <span className="text-muted-foreground text-xs">
-                        {repo.organization}
-                      </span> */}
                     </div>
                   </div>
                 ))

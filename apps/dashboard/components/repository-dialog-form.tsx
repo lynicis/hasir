@@ -1,9 +1,7 @@
 "use client";
 
-import {
-  RepositoryService,
-  Visibility,
-} from "@buf/hasir_hasir.bufbuild_es/repository/v1/repository_pb";
+import { RegistryService } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -24,6 +22,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { visibilityMapper } from "@/lib/visibility-mapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useClient } from "@/lib/use-client";
@@ -51,7 +50,7 @@ export function RepositoryDialogForm({
   onOpenChange,
   onCancel,
 }: RepositoryDialogFormProps) {
-  const repositoryClient = useClient(RepositoryService);
+  const registryApiClient = useClient(RegistryService);
   const {
     control,
     handleSubmit,
@@ -67,12 +66,10 @@ export function RepositoryDialogForm({
 
   async function handleFormSubmit(values: RepositoryFormValues) {
     try {
-      await repositoryClient.createRepository({
+      await registryApiClient.createRepository({
         name: values.name,
         visibility:
-          values.visibility === "public"
-            ? Visibility.PUBLIC
-            : Visibility.PRIVATE,
+          visibilityMapper.get(values.visibility) ?? Visibility.PRIVATE,
       });
 
       toast.success("Repository created successfully.");

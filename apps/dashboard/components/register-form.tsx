@@ -79,7 +79,7 @@ export function RegisterForm({
       });
 
       toast.success("Account successfully created. You may now log in.");
-      setTimeout(() => router.push("/login"), 1000);
+      setTimeout(() => router.push("/login"), 600);
     } catch (error) {
       if (error instanceof ConnectError && error.code === Code.AlreadyExists) {
         setError("root", {

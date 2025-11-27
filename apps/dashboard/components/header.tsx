@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 
+import { OrganizationDialogForm } from "./organization-dialog-form";
 import { RepositoryDialogForm } from "./repository-dialog-form";
 import { InputGroupAddon } from "./ui/input-group";
 import { ModeToggle } from "./theme-toggle";
@@ -30,6 +31,7 @@ export function Header() {
   const searchRef = useRef<HTMLInputElement | null>(null);
   const [isCreatePopoverOpen, setIsCreatePopoverOpen] = useState(false);
   const [isCreateRepoDialogOpen, setIsCreateRepoDialogOpen] = useState(false);
+  const [isCreateOrgDialogOpen, setIsCreateOrgDialogOpen] = useState(false);
   const isMac = useIsMac();
 
   useEffect(() => {
@@ -104,6 +106,10 @@ export function Header() {
                 <button
                   type="button"
                   className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-left"
+                  onClick={() => {
+                    setIsCreatePopoverOpen(false);
+                    setIsCreateOrgDialogOpen(true);
+                  }}
                 >
                   <span>Create organization</span>
                 </button>
@@ -141,6 +147,12 @@ export function Header() {
         open={isCreateRepoDialogOpen}
         onOpenChange={setIsCreateRepoDialogOpen}
         onCancel={() => setIsCreateRepoDialogOpen(false)}
+      />
+
+      <OrganizationDialogForm
+        open={isCreateOrgDialogOpen}
+        onOpenChange={setIsCreateOrgDialogOpen}
+        onCancel={() => setIsCreateOrgDialogOpen(false)}
       />
     </>
   );

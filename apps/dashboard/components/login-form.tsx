@@ -61,7 +61,7 @@ export function LoginForm({
 
       setTokens(response);
       toast.success("You have successfully logged in!");
-      setTimeout(() => router.push("/dashboard"), 1000);
+      setTimeout(() => router.push("/dashboard"), 600);
     } catch (error) {
       if (error instanceof ConnectError) {
         if (error.code === Code.NotFound) {

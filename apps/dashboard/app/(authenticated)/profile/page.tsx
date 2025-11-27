@@ -123,7 +123,7 @@ export default function ProfilePage() {
       toast.success("Account deleted successfully.");
       setTimeout(() => {
         router.push("/login");
-      }, 1000);
+      }, 600);
     } catch (error) {
       setIsDeleting(false);
       if (error instanceof ConnectError) {

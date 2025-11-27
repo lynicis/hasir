@@ -1,6 +1,6 @@
 import type { Mock } from "vitest";
 
-import { Visibility } from "@buf/hasir_hasir.bufbuild_es/repository/v1/repository_pb";
+import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, beforeEach, expect, it, vi } from "vitest";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -126,7 +126,7 @@ describe("RepositoryDialogForm", () => {
     await user.click(screen.getByRole("button", { name: /create/i }));
 
     await waitFor(() =>
-      expect(toastError).toHaveBeenCalledWith("[invalid_argument] invalid name")
+      expect(toastError).toHaveBeenCalledWith("Failed to create repository.")
     );
   });
 
@@ -155,8 +155,6 @@ describe("RepositoryDialogForm", () => {
     await user.click(screen.getByRole("button", { name: /cancel/i }));
 
     expect(onCancel).toHaveBeenCalled();
-    // After cancel, the form should be reset back to default values
     expect(nameInput.value).toBe("");
   });
 });
-
