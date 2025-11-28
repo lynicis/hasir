@@ -14,6 +14,7 @@ export type UserState = {
 
 export type UserActions = {
   setTokens(tokens: TokenEnvelope): void;
+  clearTokens(): void;
 }
 
 export type UserStore = UserState & UserActions
@@ -34,6 +35,10 @@ function decodeJWT(token: string): { id: string | null; email: string | null } {
 function setCookie(name: string, value: string, days: number = 7) {
   const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
   document.cookie = `${name}=${value}; expires=${expires}; path=/; SameSite=Lax`;
+}
+
+function clearCookie(name: string) {
+  document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax`;
 }
 
 export const defaultInitState: UserState = {
@@ -60,6 +65,14 @@ export const createUserStore = (
         id: decoded.id || "",
         email: decoded.email || "",
         tokens,
+      });
+    },
+    clearTokens: () => {
+      clearCookie("accessToken");
+      clearCookie("refreshToken");
+
+      set({
+        ...defaultInitState,
       });
     },
   }))

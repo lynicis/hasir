@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState, useSyncExternalStore } from "react";
 import { Box, Plus, Search } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import {
   Popover,
@@ -18,6 +19,7 @@ import { OrganizationDialogForm } from "./organization-dialog-form";
 import { RepositoryDialogForm } from "./repository-dialog-form";
 import { InputGroupAddon } from "./ui/input-group";
 import { ModeToggle } from "./theme-toggle";
+import { useUserStore } from "@/stores/user-store-provider";
 
 function useIsMac() {
   return useSyncExternalStore(
@@ -28,10 +30,12 @@ function useIsMac() {
 }
 
 export function Header() {
+  const router = useRouter();
   const searchRef = useRef<HTMLInputElement | null>(null);
   const [isCreatePopoverOpen, setIsCreatePopoverOpen] = useState(false);
   const [isCreateRepoDialogOpen, setIsCreateRepoDialogOpen] = useState(false);
   const [isCreateOrgDialogOpen, setIsCreateOrgDialogOpen] = useState(false);
+  const { clearTokens } = useUserStore((state) => state);
   const isMac = useIsMac();
 
   useEffect(() => {
@@ -127,19 +131,42 @@ export function Header() {
             </PopoverContent>
           </Popover>
           <ModeToggle />
-          <Button
-            variant="outline"
-            size="icon"
-            asChild
-            className="rounded-full p-0"
-          >
-            <Link href="/profile" aria-label="Profile">
-              <Avatar className="h-7 w-7">
-                <AvatarImage src="" alt="User profile" />
-                <AvatarFallback>HS</AvatarFallback>
-              </Avatar>
-            </Link>
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full p-0"
+                aria-label="Open user menu"
+              >
+                <Avatar className="h-7 w-7">
+                  <AvatarImage src="" alt="User profile" />
+                  <AvatarFallback>HS</AvatarFallback>
+                </Avatar>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-40">
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-left"
+                  onClick={() => router.push("/profile")}
+                >
+                  <span>Profile</span>
+                </button>
+                <button
+                  type="button"
+                  className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-left text-destructive"
+                  onClick={() => {
+                    clearTokens();
+                    router.push("/login");
+                  }}
+                >
+                  <span>Log out</span>
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </header>
 
