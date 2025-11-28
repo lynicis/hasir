@@ -24,17 +24,26 @@ var (
 )
 
 type AuthInterceptor struct {
-	jwtSecret []byte
+	jwtSecret     []byte
+	publicMethods map[string]bool
 }
 
 func NewAuthInterceptor(jwtSecret []byte) *AuthInterceptor {
 	return &AuthInterceptor{
 		jwtSecret: jwtSecret,
+		publicMethods: map[string]bool{
+			"/user.v1.UserService/Register": true,
+			"/user.v1.UserService/Login":    true,
+		},
 	}
 }
 
 func (a *AuthInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		if a.publicMethods[req.Spec().Procedure] {
+			return next(ctx, req)
+		}
+
 		authHeader := req.Header().Get("Authorization")
 		if authHeader == "" {
 			return nil, ErrMissingToken
@@ -89,6 +98,10 @@ func (a *AuthInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) 
 
 func (a *AuthInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
+		if a.publicMethods[conn.Spec().Procedure] {
+			return next(ctx, conn)
+		}
+
 		authHeader := conn.RequestHeader().Get("Authorization")
 		if authHeader == "" {
 			return ErrMissingToken

@@ -30,7 +30,7 @@ func setupTestServer(t *testing.T, h internal.GlobalHandler) *httptest.Server {
 }
 
 func TestNewHandler(t *testing.T) {
-	h := NewHandler(nil, nil, nil)
+	h := NewHandler(nil, nil)
 	assert.Implements(t, (*internal.GlobalHandler)(nil), h)
 }
 
@@ -39,7 +39,7 @@ func TestHandler_RegisterRoutes(t *testing.T) {
 	otelInterceptor, err := otelconnect.NewInterceptor()
 	require.NoError(t, err)
 
-	h := NewHandler([]connect.Interceptor{validateInterceptor, otelInterceptor}, nil, nil)
+	h := NewHandler(nil, nil, validateInterceptor, otelInterceptor)
 	routes, handler := h.RegisterRoutes()
 	assert.NotNil(t, routes)
 	assert.NotNil(t, handler)
@@ -62,7 +62,7 @@ func TestHandler_Register(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
 		server := setupTestServer(t, h)
 		defer server.Close()
 
@@ -122,7 +122,7 @@ func TestHandler_Register(t *testing.T) {
 				ctrl := gomock.NewController(t)
 				mockUserRepository := NewMockRepository(ctrl)
 
-				h := NewHandler(interceptors, nil, mockUserRepository)
+				h := NewHandler(nil, mockUserRepository, interceptors...)
 				server := setupTestServer(t, h)
 				defer server.Close()
 
@@ -146,7 +146,7 @@ func TestHandler_Register(t *testing.T) {
 			Return(errors.New("something went wrong")).
 			Times(1)
 
-		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
 		server := setupTestServer(t, h)
 		defer server.Close()
 
@@ -184,7 +184,7 @@ func TestHandler_Login(t *testing.T) {
 			Return(mockRespBody, nil).
 			Times(1)
 
-		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
 		server := setupTestServer(t, h)
 		defer server.Close()
 
@@ -227,7 +227,7 @@ func TestHandler_Login(t *testing.T) {
 				ctrl := gomock.NewController(t)
 				mockUserRepository := NewMockRepository(ctrl)
 
-				h := NewHandler(interceptors, nil, mockUserRepository)
+				h := NewHandler(nil, mockUserRepository, interceptors...)
 				server := setupTestServer(t, h)
 				defer server.Close()
 
@@ -251,7 +251,7 @@ func TestHandler_Login(t *testing.T) {
 			Return(nil, errors.New("something went wrong")).
 			Times(1)
 
-		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
 		server := setupTestServer(t, h)
 		defer server.Close()
 
@@ -288,7 +288,7 @@ func TestHandler_UpdateUser(t *testing.T) {
 			Return(mockRespBody, nil).
 			Times(1)
 
-		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
 		server := setupTestServer(t, h)
 		defer server.Close()
 
@@ -336,7 +336,7 @@ func TestHandler_UpdateUser(t *testing.T) {
 				ctrl := gomock.NewController(t)
 				mockUserRepository := NewMockRepository(ctrl)
 
-				h := NewHandler(interceptors, nil, mockUserRepository)
+				h := NewHandler(nil, mockUserRepository, interceptors...)
 				server := setupTestServer(t, h)
 				defer server.Close()
 
@@ -360,7 +360,7 @@ func TestHandler_UpdateUser(t *testing.T) {
 			Return(nil, errors.New("something went wrong")).
 			Times(1)
 
-		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
 		server := setupTestServer(t, h)
 		defer server.Close()
 
@@ -397,7 +397,7 @@ func TestHandler_DeleteAccount(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
 		server := setupTestServer(t, h)
 		defer server.Close()
 
@@ -430,7 +430,7 @@ func TestHandler_DeleteAccount(t *testing.T) {
 				mockUserService := NewMockService(ctrl)
 				mockUserRepository := NewMockRepository(ctrl)
 
-				h := NewHandler(interceptors, mockUserService, mockUserRepository)
+				h := NewHandler(mockUserService, mockUserRepository, interceptors...)
 				server := setupTestServer(t, h)
 				defer server.Close()
 
@@ -454,7 +454,7 @@ func TestHandler_DeleteAccount(t *testing.T) {
 			Return(errors.New("something went wrong")).
 			Times(1)
 
-		h := NewHandler(interceptors, mockUserService, mockUserRepository)
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
 		server := setupTestServer(t, h)
 		defer server.Close()
 

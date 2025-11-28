@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 
 	"apps/api/pkg/config"
@@ -33,10 +34,10 @@ var (
 	ErrFailedAcquireConnection = connect.NewError(connect.CodeInternal, errors.New("failed to acquire connection"))
 	ErrIdentifierAlreadyExists = connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
 	ErrNoRows                  = connect.NewError(connect.CodeNotFound, errors.New("not found"))
+	ErrInternalServer          = connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
 	ErrUniqueViolationCode     = "23505"
 )
 
-// PostgreSQL implementation of User Repository
 type PgRepository struct {
 	connectionPool *pgxpool.Pool
 	tracer         trace.Tracer
@@ -52,10 +53,12 @@ func NewPgRepository(
 		zap.L().Fatal("failed to parse database config", zap.Error(err))
 	}
 
-	pgConfig.ConnConfig.Tracer = otelpgx.NewTracer(
-		otelpgx.WithTracerProvider(traceProvider),
-		otelpgx.WithDisableConnectionDetailsInAttributes(),
-	)
+	if traceProvider != nil {
+		pgConfig.ConnConfig.Tracer = otelpgx.NewTracer(
+			otelpgx.WithTracerProvider(traceProvider),
+			otelpgx.WithDisableConnectionDetailsInAttributes(),
+		)
+	}
 
 	var pgConnectionPool *pgxpool.Pool
 	pgConnectionPool, err = pgxpool.NewWithConfig(context.Background(), pgConfig)
@@ -63,8 +66,10 @@ func NewPgRepository(
 		zap.L().Fatal("failed to connect database", zap.Error(err))
 	}
 
-	if err := otelpgx.RecordStats(pgConnectionPool); err != nil {
-		zap.L().Fatal("unable to record database stats", zap.Error(err))
+	if traceProvider != nil {
+		if err := otelpgx.RecordStats(pgConnectionPool); err != nil {
+			zap.L().Fatal("unable to record database stats", zap.Error(err))
+		}
 	}
 
 	var connection *pgxpool.Conn
@@ -79,7 +84,12 @@ func NewPgRepository(
 		zap.L().Fatal("failed to ping database", zap.Error(err))
 	}
 
-	tracer := traceProvider.Tracer("UserPostgreSQLRepository")
+	var tracer trace.Tracer
+	if traceProvider != nil {
+		tracer = traceProvider.Tracer("UserPostgreSQLRepository")
+	} else {
+		tracer = noop.NewTracerProvider().Tracer("UserPostgreSQLRepository")
+	}
 
 	return &PgRepository{
 		connectionPool: pgConnectionPool,
@@ -149,7 +159,11 @@ func (r *PgRepository) GetUserByEmail(ctx context.Context, email string) (*UserD
 	var rows pgx.Rows
 	rows, err = connection.Query(ctx, sql, email)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNoRows
+		}
+
+		return nil, ErrInternalServer
 	}
 	defer rows.Close()
 
@@ -187,7 +201,7 @@ func (r *PgRepository) GetUserById(ctx context.Context, id string) (*UserDTO, er
 	var rows pgx.Rows
 	rows, err = connection.Query(ctx, sql, id)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
+		return nil, ErrInternalServer
 	}
 	defer rows.Close()
 
@@ -233,7 +247,7 @@ func (r *PgRepository) CreateRefreshToken(ctx context.Context, id, token string,
 	}
 
 	if _, err = connection.Exec(ctx, sql, sqlArgs); err != nil {
-		return connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
+		return ErrInternalServer
 	}
 
 	return nil
@@ -337,7 +351,7 @@ func (r *PgRepository) DeleteUser(ctx context.Context, userId string) error {
 	}
 
 	if _, err = connection.Exec(ctx, sql, sqlArgs); err != nil {
-		return connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
+		return ErrInternalServer
 	}
 
 	return nil

@@ -51,11 +51,6 @@ func (srvc *ServerConfig) GetServerAddress() string {
 	return fmt.Sprintf(":%s", srvc.Port)
 }
 
-type RootUserConfig struct {
-	Username     string `koanf:"username"`
-	TempPassword string `koanf:"tempPassword"`
-}
-
 type OtelConfig struct {
 	Enabled       bool   `koanf:"enabled"`
 	TraceEndpoint string `koanf:"traceEndpoint"`
@@ -77,7 +72,6 @@ type Config struct {
 	Smtp           SmtpConfig     `koanf:"smtp"`
 	JwtSecret      []byte         `koanf:"jwtSecret"`
 	DashboardUrl   string         `koanf:"dashboardUrl"`
-	RootUser       RootUserConfig `koanf:"rootUser"`
 }
 
 type ConfigReader interface {

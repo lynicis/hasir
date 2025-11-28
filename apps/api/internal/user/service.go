@@ -46,7 +46,7 @@ func (s *service) Register(ctx context.Context, req *userv1.RegisterRequest) err
 	var hashedPassword []byte
 	hashedPassword, err = bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
+		return ErrInternalServer
 	}
 
 	user := &UserDTO{
@@ -106,7 +106,7 @@ func (s *service) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest)
 	var hashedNewPassword []byte
 	hashedNewPassword, err = bcrypt.GenerateFromPassword([]byte(req.GetNewPassword()), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
+		return nil, ErrInternalServer
 	}
 
 	updatedUser := &UserDTO{

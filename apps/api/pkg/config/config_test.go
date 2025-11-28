@@ -108,8 +108,6 @@ func TestEnvConfig_Read(t *testing.T) {
 			"HASIR_POSTGRESQL_PASSWORD":         "dbpass",
 			"HASIR_POSTGRESQL_DATABASE":         "testdb",
 			"HASIR_DASHBOARDURL":                "https://dashboard.example.com",
-			"HASIR_ROOTUSER_USERNAME":           "admin",
-			"HASIR_ROOTUSER_TEMPPASSWORD":       "temppass123",
 			"HASIR_SMTP_HOST":                   "smtp.example.com",
 			"HASIR_SMTP_PORT":                   "587",
 			"HASIR_SMTP_USERNAME":               "smtpuser",
@@ -142,8 +140,6 @@ func TestEnvConfig_Read(t *testing.T) {
 		assert.Equal(t, "dbpass", config.PostgresConfig.Password)
 		assert.Equal(t, "testdb", config.PostgresConfig.Database)
 		assert.Equal(t, "https://dashboard.example.com", config.DashboardUrl)
-		assert.Equal(t, "admin", config.RootUser.Username)
-		assert.Equal(t, "temppass123", config.RootUser.TempPassword)
 		assert.Equal(t, "smtp.example.com", config.Smtp.Host)
 		assert.Equal(t, 587, config.Smtp.Port)
 		assert.Equal(t, "smtpuser", config.Smtp.Username)
@@ -199,11 +195,7 @@ func TestJsonConfig_Read(t *testing.T) {
 				"from": "no-reply@example.com",
 				"useTLS": true
 			},
-			"dashboardUrl": "https://dashboard.example.com",
-			"rootUser": {
-				"username": "admin",
-				"tempPassword": "temppass123"
-			}
+			"dashboardUrl": "https://dashboard.example.com"
 		}`
 		configPath := filepath.Join(tmpDir, "config.json")
 		err := os.WriteFile(configPath, []byte(configContent), 0644)
@@ -224,8 +216,6 @@ func TestJsonConfig_Read(t *testing.T) {
 		assert.Equal(t, "dbpass", config.PostgresConfig.Password)
 		assert.Equal(t, "testdb", config.PostgresConfig.Database)
 		assert.Equal(t, "https://dashboard.example.com", config.DashboardUrl)
-		assert.Equal(t, "admin", config.RootUser.Username)
-		assert.Equal(t, "temppass123", config.RootUser.TempPassword)
 		assert.Equal(t, "smtp.example.com", config.Smtp.Host)
 		assert.Equal(t, 587, config.Smtp.Port)
 		assert.Equal(t, "smtpuser", config.Smtp.Username)

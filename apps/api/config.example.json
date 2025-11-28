@@ -25,10 +25,6 @@
     "useTLS": true
   },
   "jwtSecret": "your-secret-key-here",
-  "dashboardUrl": "http://localhost:3000",
-  "rootUser": {
-    "username": "admin",
-    "tempPassword": "changeme123"
-  }
+  "dashboardUrl": "http://localhost:3000"
 }
 

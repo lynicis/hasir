@@ -18,14 +18,14 @@ type handler struct {
 }
 
 func NewHandler(
-	interceptors []connect.Interceptor,
 	userService Service,
 	userRepository Repository,
+	interceptors ...connect.Interceptor,
 ) *handler {
 	return &handler{
-		interceptors:   interceptors,
 		userService:    userService,
 		userRepository: userRepository,
+		interceptors:   interceptors,
 	}
 }
 

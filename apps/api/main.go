@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
 	"connectrpc.com/validate"
+	"github.com/rs/cors"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -32,6 +34,8 @@ import (
 func main() {
 	cfgReader := config.NewConfigReader()
 	cfg := cfgReader.Read()
+
+	zap.L().Info("Server starting...")
 
 	var traceProvider *sdktrace.TracerProvider
 	if cfg.Otel.Enabled {
@@ -61,7 +65,7 @@ func main() {
 		interceptors = append(interceptors, otelInterceptor)
 	}
 
-	userHandler := user.NewHandler(interceptors, userService, userPgRepository)
+	userHandler := user.NewHandler(userService, userPgRepository, interceptors...)
 	registryHandler := registry.NewHandler(gitRepositoryService, repositoryPgRepository, interceptors...)
 	organizationHandler := organization.NewHandler(organizationService, organizationPgRepository, interceptors...)
 	handlers := []internal.GlobalHandler{
@@ -76,35 +80,47 @@ func main() {
 		mux.Handle(path, h)
 	}
 
+	handlerWithCors := cors.AllowAll().Handler(mux)
 	protocols := new(http.Protocols)
 	protocols.SetHTTP1(true)
 	protocols.SetUnencryptedHTTP2(true)
 	server := &http.Server{
 		Addr:      cfg.Server.GetServerAddress(),
-		Handler:   mux,
+		Handler:   handlerWithCors,
 		Protocols: protocols,
 	}
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil {
-			zap.L().Fatal("HTTP server error: %v", zap.Error(err))
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			zap.L().Fatal("HTTP server error", zap.Error(err))
 		}
 	}()
+	zap.L().Info("Server started on port", zap.String("port", cfg.Server.Port))
 
-	gracefulShutdown(server)
+	gracefulShutdown(server, traceProvider)
 }
 
-func gracefulShutdown(server *http.Server) {
+func gracefulShutdown(server *http.Server, traceProvider *sdktrace.TracerProvider) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	<-sigChan
+	zap.L().Info("Shutting down server...")
+
 	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownRelease()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		zap.L().Fatal("HTTP shutdown error: %v", zap.Error(err))
+		zap.L().Error("HTTP shutdown error", zap.Error(err))
 	}
+
+	if traceProvider != nil {
+		if err := traceProvider.Shutdown(shutdownCtx); err != nil {
+			zap.L().Error("TracerProvider shutdown error", zap.Error(err))
+		}
+	}
+
+	zap.L().Info("Server gracefully stopped")
 }
 
 func initTracer(cfg *config.Config) *sdktrace.TracerProvider {

@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 
 	"apps/api/pkg/config"
@@ -54,10 +55,12 @@ func NewPgRepository(
 		zap.L().Fatal("failed to parse database config", zap.Error(err))
 	}
 
-	pgConfig.ConnConfig.Tracer = otelpgx.NewTracer(
-		otelpgx.WithTracerProvider(traceProvider),
-		otelpgx.WithDisableConnectionDetailsInAttributes(),
-	)
+	if traceProvider != nil {
+		pgConfig.ConnConfig.Tracer = otelpgx.NewTracer(
+			otelpgx.WithTracerProvider(traceProvider),
+			otelpgx.WithDisableConnectionDetailsInAttributes(),
+		)
+	}
 
 	var pgConnectionPool *pgxpool.Pool
 	pgConnectionPool, err = pgxpool.NewWithConfig(context.Background(), pgConfig)
@@ -65,8 +68,10 @@ func NewPgRepository(
 		zap.L().Fatal("failed to connect database", zap.Error(err))
 	}
 
-	if err := otelpgx.RecordStats(pgConnectionPool); err != nil {
-		zap.L().Fatal("unable to record database stats", zap.Error(err))
+	if traceProvider != nil {
+		if err := otelpgx.RecordStats(pgConnectionPool); err != nil {
+			zap.L().Fatal("unable to record database stats", zap.Error(err))
+		}
 	}
 
 	var connection *pgxpool.Conn
@@ -81,7 +86,12 @@ func NewPgRepository(
 		zap.L().Fatal("failed to ping database", zap.Error(err))
 	}
 
-	tracer := traceProvider.Tracer("OrganizationPostgreSQLRepository")
+	var tracer trace.Tracer
+	if traceProvider != nil {
+		tracer = traceProvider.Tracer("OrganizationPostgreSQLRepository")
+	} else {
+		tracer = noop.NewTracerProvider().Tracer("OrganizationPostgreSQLRepository")
+	}
 
 	return &PgRepository{
 		connectionPool: pgConnectionPool,
