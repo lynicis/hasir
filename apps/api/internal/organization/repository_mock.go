@@ -129,18 +129,33 @@ func (mr *MockRepositoryMockRecorder) GetOrganizationByName(ctx, name any) *gomo
 }
 
 // GetOrganizations mocks base method.
-func (m *MockRepository) GetOrganizations(ctx context.Context) (*[]OrganizationDTO, error) {
+func (m *MockRepository) GetOrganizations(ctx context.Context, page, pageSize int) (*[]OrganizationDTO, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetOrganizations", ctx)
+	ret := m.ctrl.Call(m, "GetOrganizations", ctx, page, pageSize)
 	ret0, _ := ret[0].(*[]OrganizationDTO)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetOrganizations indicates an expected call of GetOrganizations.
-func (mr *MockRepositoryMockRecorder) GetOrganizations(ctx any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) GetOrganizations(ctx, page, pageSize any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrganizations", reflect.TypeOf((*MockRepository)(nil).GetOrganizations), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrganizations", reflect.TypeOf((*MockRepository)(nil).GetOrganizations), ctx, page, pageSize)
+}
+
+// GetOrganizationsCount mocks base method.
+func (m *MockRepository) GetOrganizationsCount(ctx context.Context) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOrganizationsCount", ctx)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOrganizationsCount indicates an expected call of GetOrganizationsCount.
+func (mr *MockRepositoryMockRecorder) GetOrganizationsCount(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrganizationsCount", reflect.TypeOf((*MockRepository)(nil).GetOrganizationsCount), ctx)
 }
 
 // UpdateInviteStatus mocks base method.

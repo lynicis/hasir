@@ -224,7 +224,10 @@ func TestHandler_GetOrganizations(t *testing.T) {
 		}
 
 		mockRepository.EXPECT().
-			GetOrganizations(gomock.Any()).
+			GetOrganizationsCount(gomock.Any()).
+			Return(2, nil)
+		mockRepository.EXPECT().
+			GetOrganizations(gomock.Any(), 1, 10).
 			Return(orgs, nil)
 
 		h := NewHandler(mockService, mockRepository)
@@ -257,7 +260,10 @@ func TestHandler_GetOrganizations(t *testing.T) {
 		orgs := &[]OrganizationDTO{}
 
 		mockRepository.EXPECT().
-			GetOrganizations(gomock.Any()).
+			GetOrganizationsCount(gomock.Any()).
+			Return(0, nil)
+		mockRepository.EXPECT().
+			GetOrganizations(gomock.Any(), 1, 10).
 			Return(orgs, nil)
 
 		h := NewHandler(mockService, mockRepository)
@@ -284,8 +290,8 @@ func TestHandler_GetOrganizations(t *testing.T) {
 		mockRepository := NewMockRepository(ctrl)
 
 		mockRepository.EXPECT().
-			GetOrganizations(gomock.Any()).
-			Return(nil, connect.NewError(connect.CodeInternal, errors.New("database error")))
+			GetOrganizationsCount(gomock.Any()).
+			Return(0, connect.NewError(connect.CodeInternal, errors.New("database error")))
 
 		h := NewHandler(mockService, mockRepository)
 		mux := http.NewServeMux()

@@ -23,7 +23,8 @@ import (
 type Repository interface {
 	CreateRepository(ctx context.Context, repo *RepositoryDTO) error
 	GetRepositoryByName(ctx context.Context, name string) (*RepositoryDTO, error)
-	GetRepositories(ctx context.Context) (*[]RepositoryDTO, error)
+	GetRepositories(ctx context.Context, page, pageSize int) (*[]RepositoryDTO, error)
+	GetRepositoriesCount(ctx context.Context) (int, error)
 }
 
 var (
@@ -172,9 +173,18 @@ func (r *PgRepository) GetRepositoryByName(ctx context.Context, name string) (*R
 	return &repo, nil
 }
 
-func (r *PgRepository) GetRepositories(ctx context.Context) (*[]RepositoryDTO, error) {
+func (r *PgRepository) GetRepositories(ctx context.Context, page, pageSize int) (*[]RepositoryDTO, error) {
 	var span trace.Span
-	ctx, span = r.tracer.Start(ctx, "GetRepositories")
+	ctx, span = r.tracer.Start(ctx, "GetRepositories", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "page",
+			Value: attribute.IntValue(page),
+		},
+		attribute.KeyValue{
+			Key:   "pageSize",
+			Value: attribute.IntValue(pageSize),
+		},
+	))
 	defer span.End()
 
 	connection, err := r.connectionPool.Acquire(ctx)
@@ -183,10 +193,11 @@ func (r *PgRepository) GetRepositories(ctx context.Context) (*[]RepositoryDTO, e
 	}
 	defer connection.Release()
 
-	sql := "SELECT * FROM repositories WHERE deleted_at IS NULL ORDER BY created_at DESC"
+	offset := (page - 1) * pageSize
+	sql := "SELECT * FROM repositories WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2"
 
 	var rows pgx.Rows
-	rows, err = connection.Query(ctx, sql)
+	rows, err = connection.Query(ctx, sql, pageSize, offset)
 	if err != nil {
 		span.RecordError(err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to query repositories"))
@@ -200,4 +211,27 @@ func (r *PgRepository) GetRepositories(ctx context.Context) (*[]RepositoryDTO, e
 	}
 
 	return &repos, nil
+}
+
+func (r *PgRepository) GetRepositoriesCount(ctx context.Context) (int, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetRepositoriesCount")
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return 0, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := "SELECT COUNT(*) FROM repositories WHERE deleted_at IS NULL"
+
+	var count int
+	err = connection.QueryRow(ctx, sql).Scan(&count)
+	if err != nil {
+		span.RecordError(err)
+		return 0, connect.NewError(connect.CodeInternal, errors.New("failed to count repositories"))
+	}
+
+	return count, nil
 }

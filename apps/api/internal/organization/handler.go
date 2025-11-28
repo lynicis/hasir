@@ -52,8 +52,33 @@ func (h *handler) CreateOrganization(
 func (h *handler) GetOrganizations(
 	ctx context.Context,
 	req *connect.Request[organizationv1.GetOrganizationsRequest],
-) (*connect.Response[organizationv1.GetRepositoriesResponse], error) {
-	organizations, err := h.repository.GetOrganizations(ctx)
+) (*connect.Response[organizationv1.GetOrganizationsResponse], error) {
+	page := 1
+	pageSize := 10
+
+	if req.Msg.Pagination.GetPage() > 0 {
+		page = int(req.Msg.Pagination.GetPage())
+	}
+	if req.Msg.Pagination.GetPageLimit() > 0 {
+		pageSize = int(req.Msg.Pagination.GetPageLimit())
+	}
+
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	if page < 1 {
+		page = 1
+	}
+
+	totalCount, err := h.repository.GetOrganizationsCount(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	organizations, err := h.repository.GetOrganizations(ctx, page, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -66,8 +91,19 @@ func (h *handler) GetOrganizations(
 		})
 	}
 
-	return connect.NewResponse(&organizationv1.GetRepositoriesResponse{
+	totalPages := (totalCount + pageSize - 1) / pageSize
+	if totalPages == 0 {
+		totalPages = 1
+	}
+	nextPage := int32(page + 1)
+	if page >= totalPages {
+		nextPage = 0
+	}
+
+	return connect.NewResponse(&organizationv1.GetOrganizationsResponse{
 		Organizations: resp,
+		NextPage:      nextPage,
+		TotalPage:     int32(totalPages),
 	}), nil
 }
 

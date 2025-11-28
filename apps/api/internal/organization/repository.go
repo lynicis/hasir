@@ -22,7 +22,8 @@ import (
 
 type Repository interface {
 	CreateOrganization(ctx context.Context, org *OrganizationDTO) error
-	GetOrganizations(ctx context.Context) (*[]OrganizationDTO, error)
+	GetOrganizations(ctx context.Context, page, pageSize int) (*[]OrganizationDTO, error)
+	GetOrganizationsCount(ctx context.Context) (int, error)
 	GetOrganizationByName(ctx context.Context, name string) (*OrganizationDTO, error)
 	GetOrganizationById(ctx context.Context, id string) (*OrganizationDTO, error)
 	CreateInvite(ctx context.Context, invite *OrganizationInviteDTO) error
@@ -140,9 +141,18 @@ func (r *PgRepository) CreateOrganization(ctx context.Context, org *Organization
 	return nil
 }
 
-func (r *PgRepository) GetOrganizations(ctx context.Context) (*[]OrganizationDTO, error) {
+func (r *PgRepository) GetOrganizations(ctx context.Context, page, pageSize int) (*[]OrganizationDTO, error) {
 	var span trace.Span
-	ctx, span = r.tracer.Start(ctx, "GetOrganizations")
+	ctx, span = r.tracer.Start(ctx, "GetOrganizations", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "page",
+			Value: attribute.IntValue(page),
+		},
+		attribute.KeyValue{
+			Key:   "pageSize",
+			Value: attribute.IntValue(pageSize),
+		},
+	))
 	defer span.End()
 
 	connection, err := r.connectionPool.Acquire(ctx)
@@ -151,10 +161,11 @@ func (r *PgRepository) GetOrganizations(ctx context.Context) (*[]OrganizationDTO
 	}
 	defer connection.Release()
 
-	sql := "SELECT * FROM organizations WHERE deleted_at IS NULL ORDER BY created_at DESC"
+	offset := (page - 1) * pageSize
+	sql := "SELECT * FROM organizations WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2"
 
 	var rows pgx.Rows
-	rows, err = connection.Query(ctx, sql)
+	rows, err = connection.Query(ctx, sql, pageSize, offset)
 	if err != nil {
 		span.RecordError(err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to query organizations"))
@@ -168,6 +179,29 @@ func (r *PgRepository) GetOrganizations(ctx context.Context) (*[]OrganizationDTO
 	}
 
 	return &orgs, nil
+}
+
+func (r *PgRepository) GetOrganizationsCount(ctx context.Context) (int, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetOrganizationsCount")
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return 0, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := "SELECT COUNT(*) FROM organizations WHERE deleted_at IS NULL"
+
+	var count int
+	err = connection.QueryRow(ctx, sql).Scan(&count)
+	if err != nil {
+		span.RecordError(err)
+		return 0, connect.NewError(connect.CodeInternal, errors.New("failed to count organizations"))
+	}
+
+	return count, nil
 }
 
 func (r *PgRepository) GetOrganizationByName(ctx context.Context, name string) (*OrganizationDTO, error) {

@@ -139,7 +139,10 @@ func TestHandler_GetRepositories(t *testing.T) {
 		}
 
 		mockRepository.EXPECT().
-			GetRepositories(gomock.Any()).
+			GetRepositoriesCount(gomock.Any()).
+			Return(2, nil)
+		mockRepository.EXPECT().
+			GetRepositories(gomock.Any(), 1, 10).
 			Return(repos, nil)
 
 		h := NewHandler(mockService, mockRepository)
@@ -172,7 +175,10 @@ func TestHandler_GetRepositories(t *testing.T) {
 		repos := &[]RepositoryDTO{}
 
 		mockRepository.EXPECT().
-			GetRepositories(gomock.Any()).
+			GetRepositoriesCount(gomock.Any()).
+			Return(2, nil)
+		mockRepository.EXPECT().
+			GetRepositories(gomock.Any(), 1, 10).
 			Return(repos, nil)
 
 		h := NewHandler(mockService, mockRepository)
@@ -199,8 +205,8 @@ func TestHandler_GetRepositories(t *testing.T) {
 		mockRepository := NewMockRepository(ctrl)
 
 		mockRepository.EXPECT().
-			GetRepositories(gomock.Any()).
-			Return(nil, connect.NewError(connect.CodeInternal, errors.New("database error")))
+			GetRepositoriesCount(gomock.Any()).
+			Return(0, connect.NewError(connect.CodeInternal, errors.New("database error")))
 
 		h := NewHandler(mockService, mockRepository)
 		mux := http.NewServeMux()

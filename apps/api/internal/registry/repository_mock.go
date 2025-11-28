@@ -55,18 +55,33 @@ func (mr *MockRepositoryMockRecorder) CreateRepository(ctx, repo any) *gomock.Ca
 }
 
 // GetRepositories mocks base method.
-func (m *MockRepository) GetRepositories(ctx context.Context) (*[]RepositoryDTO, error) {
+func (m *MockRepository) GetRepositories(ctx context.Context, page, pageSize int) (*[]RepositoryDTO, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRepositories", ctx)
+	ret := m.ctrl.Call(m, "GetRepositories", ctx, page, pageSize)
 	ret0, _ := ret[0].(*[]RepositoryDTO)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRepositories indicates an expected call of GetRepositories.
-func (mr *MockRepositoryMockRecorder) GetRepositories(ctx any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) GetRepositories(ctx, page, pageSize any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositories", reflect.TypeOf((*MockRepository)(nil).GetRepositories), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositories", reflect.TypeOf((*MockRepository)(nil).GetRepositories), ctx, page, pageSize)
+}
+
+// GetRepositoriesCount mocks base method.
+func (m *MockRepository) GetRepositoriesCount(ctx context.Context) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRepositoriesCount", ctx)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRepositoriesCount indicates an expected call of GetRepositoriesCount.
+func (mr *MockRepositoryMockRecorder) GetRepositoriesCount(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositoriesCount", reflect.TypeOf((*MockRepository)(nil).GetRepositoriesCount), ctx)
 }
 
 // GetRepositoryByName mocks base method.

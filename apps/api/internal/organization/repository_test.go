@@ -374,7 +374,7 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 		err = repo.CreateOrganization(t.Context(), testOrg2)
 		require.NoError(t, err)
 
-		orgs, err := repo.GetOrganizations(t.Context())
+		orgs, err := repo.GetOrganizations(t.Context(), 1, 10)
 		require.NoError(t, err)
 		require.NotNil(t, orgs)
 		require.Len(t, *orgs, 2)
@@ -412,7 +412,7 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		orgs, err := repo.GetOrganizations(t.Context())
+		orgs, err := repo.GetOrganizations(t.Context(), 1, 10)
 		require.NoError(t, err)
 		require.NotNil(t, orgs)
 		require.Empty(t, *orgs)
@@ -451,7 +451,7 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 			_ = conn.Close(t.Context())
 		}()
 
-		orgs, err := repo.GetOrganizations(t.Context())
+		orgs, err := repo.GetOrganizations(t.Context(), 1, 10)
 		require.NoError(t, err)
 		require.NotNil(t, orgs)
 		require.Len(t, *orgs, 1)
@@ -485,7 +485,7 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 		err = repo.CreateOrganization(t.Context(), newerOrg)
 		require.NoError(t, err)
 
-		orgs, err := repo.GetOrganizations(t.Context())
+		orgs, err := repo.GetOrganizations(t.Context(), 1, 10)
 		require.NoError(t, err)
 		require.NotNil(t, orgs)
 		require.Len(t, *orgs, 2)
@@ -515,7 +515,7 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 		err = repo.CreateOrganization(t.Context(), testOrg)
 		require.NoError(t, err)
 
-		orgs, err := repo.GetOrganizations(t.Context())
+		orgs, err := repo.GetOrganizations(t.Context(), 1, 10)
 		require.NoError(t, err)
 		require.NotNil(t, orgs)
 		require.Len(t, *orgs, 1)

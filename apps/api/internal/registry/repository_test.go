@@ -332,7 +332,7 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 		err = repo.CreateRepository(t.Context(), testRepo2)
 		require.NoError(t, err)
 
-		repos, err := repo.GetRepositories(t.Context())
+		repos, err := repo.GetRepositories(t.Context(), 1, 10)
 		require.NoError(t, err)
 		require.NotNil(t, repos)
 		require.Len(t, *repos, 2)
@@ -368,7 +368,7 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		repos, err := repo.GetRepositories(t.Context())
+		repos, err := repo.GetRepositories(t.Context(), 1, 10)
 		require.NoError(t, err)
 		require.NotNil(t, repos)
 		require.Empty(t, *repos)
@@ -407,7 +407,7 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 			_ = conn.Close(t.Context())
 		}()
 
-		repos, err := repo.GetRepositories(t.Context())
+		repos, err := repo.GetRepositories(t.Context(), 1, 10)
 		require.NoError(t, err)
 		require.NotNil(t, repos)
 		require.Len(t, *repos, 1)
@@ -441,7 +441,7 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 		err = repo.CreateRepository(t.Context(), newerRepo)
 		require.NoError(t, err)
 
-		repos, err := repo.GetRepositories(t.Context())
+		repos, err := repo.GetRepositories(t.Context(), 1, 10)
 		require.NoError(t, err)
 		require.NotNil(t, repos)
 		require.Len(t, *repos, 2)
@@ -471,7 +471,7 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 		err = repo.CreateRepository(t.Context(), testRepo)
 		require.NoError(t, err)
 
-		repos, err := repo.GetRepositories(t.Context())
+		repos, err := repo.GetRepositories(t.Context(), 1, 10)
 		require.NoError(t, err)
 		require.NotNil(t, repos)
 		require.Len(t, *repos, 1)

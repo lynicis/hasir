@@ -12,6 +12,8 @@ import (
 
 	"hasir-api/pkg/config"
 
+	"hasir-api/pkg/auth"
+
 	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 )
 
@@ -94,7 +96,12 @@ func (s *service) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.
 }
 
 func (s *service) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.TokenEnvelope, error) {
-	user, err := s.userRepository.GetUserById(ctx, req.GetUserId())
+	userID, err := auth.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := s.userRepository.GetUserById(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

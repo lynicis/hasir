@@ -7,6 +7,8 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"hasir-api/pkg/auth"
+
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
 	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 )
@@ -73,9 +75,14 @@ func (h *handler) UpdateUser(
 
 func (h *handler) DeleteAccount(
 	ctx context.Context,
-	req *connect.Request[userv1.DeleteAccountRequest],
+	req *connect.Request[emptypb.Empty],
 ) (*connect.Response[emptypb.Empty], error) {
-	if err := h.userRepository.DeleteUser(ctx, req.Msg.UserId); err != nil {
+	userID, err := auth.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := h.userRepository.DeleteUser(ctx, userID); err != nil {
 		return nil, err
 	}
 

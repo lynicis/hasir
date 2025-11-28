@@ -55,7 +55,7 @@ func main() {
 	if err != nil {
 		zap.L().Fatal("failed to create migration client", zap.Error(err))
 	}
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	if err = m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		zap.L().Fatal("failed to apply migrations", zap.Error(err))
 	}
 
@@ -97,18 +97,18 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+	handler := cors.AllowAll().Handler(mux)
 	for _, handler := range handlers {
 		path, h := handler.RegisterRoutes()
 		mux.Handle(path, h)
 	}
 
-	handlerWithCors := cors.AllowAll().Handler(mux)
 	protocols := new(http.Protocols)
 	protocols.SetHTTP1(true)
 	protocols.SetUnencryptedHTTP2(true)
 	server := &http.Server{
 		Addr:      cfg.Server.GetServerAddress(),
-		Handler:   handlerWithCors,
+		Handler:   handler,
 		Protocols: protocols,
 	}
 

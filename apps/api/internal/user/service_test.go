@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"go.uber.org/mock/gomock"
 	"golang.org/x/crypto/bcrypt"
 
+	"hasir-api/pkg/auth"
 	"hasir-api/pkg/config"
 
 	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
@@ -264,8 +266,8 @@ func TestService_UpdateUser(t *testing.T) {
 			Times(1)
 
 		s := NewService(cfg, mockUserRepository)
-		tokens, err := s.UpdateUser(t.Context(), &userv1.UpdateUserRequest{
-			UserId:      userId,
+		ctx := context.WithValue(t.Context(), auth.UserIDKey, userId)
+		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
 			Email:       &newEmail,
 			Password:    oldPassword,
@@ -287,8 +289,8 @@ func TestService_UpdateUser(t *testing.T) {
 			Times(1)
 
 		s := NewService(cfg, mockUserRepository)
-		tokens, err := s.UpdateUser(t.Context(), &userv1.UpdateUserRequest{
-			UserId:      userId,
+		ctx := context.WithValue(t.Context(), auth.UserIDKey, userId)
+		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
 			Email:       &newEmail,
 			Password:    oldPassword,
@@ -315,8 +317,8 @@ func TestService_UpdateUser(t *testing.T) {
 
 		s := NewService(cfg, mockUserRepository)
 		wrongPassword := "wrong-password"
-		tokens, err := s.UpdateUser(t.Context(), &userv1.UpdateUserRequest{
-			UserId:      userId,
+		ctx := context.WithValue(t.Context(), auth.UserIDKey, userId)
+		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
 			Email:       &newEmail,
 			Password:    wrongPassword,
@@ -348,8 +350,8 @@ func TestService_UpdateUser(t *testing.T) {
 			Times(1)
 
 		s := NewService(cfg, mockUserRepository)
-		tokens, err := s.UpdateUser(t.Context(), &userv1.UpdateUserRequest{
-			UserId:      userId,
+		ctx := context.WithValue(t.Context(), auth.UserIDKey, userId)
+		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
 			Email:       &newEmail,
 			Password:    oldPassword,
@@ -386,8 +388,8 @@ func TestService_UpdateUser(t *testing.T) {
 			Times(1)
 
 		s := NewService(cfg, mockUserRepository)
-		tokens, err := s.UpdateUser(t.Context(), &userv1.UpdateUserRequest{
-			UserId:      userId,
+		ctx := context.WithValue(t.Context(), auth.UserIDKey, userId)
+		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
 			Email:       &newEmail,
 			Password:    oldPassword,

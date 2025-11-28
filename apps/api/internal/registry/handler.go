@@ -46,7 +46,29 @@ func (h *handler) GetRepositories(
 	ctx context.Context,
 	req *connect.Request[registryv1.GetRepositoriesRequest],
 ) (*connect.Response[registryv1.GetRepositoriesResponse], error) {
-	repositories, err := h.repository.GetRepositories(ctx)
+	page := 1
+	pageSize := 10
+
+	if req.Msg.Pagination.GetPage() > 0 {
+		page = int(req.Msg.Pagination.GetPage())
+	}
+	if req.Msg.Pagination.GetPageLimit() > 0 {
+		pageSize = int(req.Msg.Pagination.GetPageLimit())
+	}
+
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	totalCount, err := h.repository.GetRepositoriesCount(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	repositories, err := h.repository.GetRepositories(ctx, page, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +81,18 @@ func (h *handler) GetRepositories(
 		})
 	}
 
+	totalPages := (totalCount + pageSize - 1) / pageSize
+	if totalPages == 0 {
+		totalPages = 1
+	}
+	nextPage := int32(page + 1)
+	if page >= totalPages {
+		nextPage = 0
+	}
+
 	return connect.NewResponse(&registryv1.GetRepositoriesResponse{
 		Repositories: resp,
+		NextPage:     nextPage,
+		TotalPage:    int32(totalPages),
 	}), nil
 }

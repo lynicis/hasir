@@ -16,10 +16,20 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"hasir-api/internal"
+	"hasir-api/pkg/auth"
 
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
 	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 )
+
+func testAuthInterceptor(userID string) connect.UnaryInterceptorFunc {
+	return func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			ctx = context.WithValue(ctx, auth.UserIDKey, userID)
+			return next(ctx, req)
+		}
+	}
+}
 
 func setupTestServer(t *testing.T, h internal.GlobalHandler) *httptest.Server {
 	t.Helper()
@@ -120,9 +130,17 @@ func TestHandler_Register(t *testing.T) {
 		for _, tc := range tests {
 			t.Run(tc.name, func(t *testing.T) {
 				ctrl := gomock.NewController(t)
+				mockUserService := NewMockService(ctrl)
 				mockUserRepository := NewMockRepository(ctrl)
 
-				h := NewHandler(nil, mockUserRepository, interceptors...)
+				// Service might be called if validation doesn't catch the error
+				mockUserService.
+					EXPECT().
+					Register(gomock.Any(), gomock.Any()).
+					Return(connect.NewError(connect.CodeInvalidArgument, errors.New("validation error"))).
+					AnyTimes()
+
+				h := NewHandler(mockUserService, mockUserRepository, interceptors...)
 				server := setupTestServer(t, h)
 				defer server.Close()
 
@@ -225,9 +243,17 @@ func TestHandler_Login(t *testing.T) {
 		for _, tc := range tests {
 			t.Run(tc.name, func(t *testing.T) {
 				ctrl := gomock.NewController(t)
+				mockUserService := NewMockService(ctrl)
 				mockUserRepository := NewMockRepository(ctrl)
 
-				h := NewHandler(nil, mockUserRepository, interceptors...)
+				// Service might be called if validation doesn't catch the error
+				mockUserService.
+					EXPECT().
+					Login(gomock.Any(), gomock.Any()).
+					Return(nil, connect.NewError(connect.CodeInvalidArgument, errors.New("validation error"))).
+					AnyTimes()
+
+				h := NewHandler(mockUserService, mockUserRepository, interceptors...)
 				server := setupTestServer(t, h)
 				defer server.Close()
 
@@ -297,7 +323,6 @@ func TestHandler_UpdateUser(t *testing.T) {
 		password := "OldPassword123_"
 		newPassword := "NewPassword123_"
 		resp, err := client.UpdateUser(context.Background(), connect.NewRequest(&userv1.UpdateUserRequest{
-			UserId:      "test-user-id",
 			Email:       &email,
 			Password:    password,
 			NewPassword: &newPassword,
@@ -318,15 +343,13 @@ func TestHandler_UpdateUser(t *testing.T) {
 			{
 				name: "invalid email",
 				request: &userv1.UpdateUserRequest{
-					UserId: "test-user-id",
-					Email:  func() *string { s := "invalid@com"; return &s }(),
+					Email: func() *string { s := "invalid@com"; return &s }(),
 				},
 			},
 			{
 				name: "empty username",
 				request: &userv1.UpdateUserRequest{
-					UserId: "test-user-id",
-					Email:  func() *string { s := "newemail@mail.com"; return &s }(),
+					Email: func() *string { s := "newemail@mail.com"; return &s }(),
 				},
 			},
 		}
@@ -334,9 +357,17 @@ func TestHandler_UpdateUser(t *testing.T) {
 		for _, tc := range tests {
 			t.Run(tc.name, func(t *testing.T) {
 				ctrl := gomock.NewController(t)
+				mockUserService := NewMockService(ctrl)
 				mockUserRepository := NewMockRepository(ctrl)
 
-				h := NewHandler(nil, mockUserRepository, interceptors...)
+				// Service might be called if validation doesn't catch the error
+				mockUserService.
+					EXPECT().
+					UpdateUser(gomock.Any(), gomock.Any()).
+					Return(nil, connect.NewError(connect.CodeInvalidArgument, errors.New("validation error"))).
+					AnyTimes()
+
+				h := NewHandler(mockUserService, mockUserRepository, interceptors...)
 				server := setupTestServer(t, h)
 				defer server.Close()
 
@@ -369,7 +400,6 @@ func TestHandler_UpdateUser(t *testing.T) {
 		password := "OldPassword123_"
 		newPassword := "NewPassword123_"
 		resp, err := client.UpdateUser(context.Background(), connect.NewRequest(&userv1.UpdateUserRequest{
-			UserId:      "test-user-id",
 			Email:       &email,
 			Password:    password,
 			NewPassword: &newPassword,
@@ -391,20 +421,21 @@ func TestHandler_DeleteAccount(t *testing.T) {
 		mockUserService := NewMockService(ctrl)
 		mockUserRepository := NewMockRepository(ctrl)
 
+		testUserID := "test-user-id"
+
 		mockUserRepository.
 			EXPECT().
-			DeleteUser(gomock.Any(), "test-user-id").
+			DeleteUser(gomock.Any(), testUserID).
 			Return(nil).
 			Times(1)
 
-		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
 		server := setupTestServer(t, h)
 		defer server.Close()
 
 		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
-		resp, err := client.DeleteAccount(context.Background(), connect.NewRequest(&userv1.DeleteAccountRequest{
-			UserId: "test-user-id",
-		}))
+		resp, err := client.DeleteAccount(context.Background(), connect.NewRequest(new(emptypb.Empty)))
 
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
@@ -414,13 +445,11 @@ func TestHandler_DeleteAccount(t *testing.T) {
 	t.Run("validation errors", func(t *testing.T) {
 		tests := []struct {
 			name    string
-			request *userv1.DeleteAccountRequest
+			request *emptypb.Empty
 		}{
 			{
-				name: "empty user id",
-				request: &userv1.DeleteAccountRequest{
-					UserId: "",
-				},
+				name:    "empty request",
+				request: new(emptypb.Empty),
 			},
 		}
 
@@ -448,20 +477,21 @@ func TestHandler_DeleteAccount(t *testing.T) {
 		mockUserService := NewMockService(ctrl)
 		mockUserRepository := NewMockRepository(ctrl)
 
+		testUserID := "test-user-id"
+
 		mockUserRepository.
 			EXPECT().
-			DeleteUser(gomock.Any(), "test-user-id").
+			DeleteUser(gomock.Any(), testUserID).
 			Return(errors.New("something went wrong")).
 			Times(1)
 
-		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
 		server := setupTestServer(t, h)
 		defer server.Close()
 
 		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
-		resp, err := client.DeleteAccount(context.Background(), connect.NewRequest(&userv1.DeleteAccountRequest{
-			UserId: "test-user-id",
-		}))
+		resp, err := client.DeleteAccount(context.Background(), connect.NewRequest(new(emptypb.Empty)))
 
 		assert.Error(t, err)
 		assert.Nil(t, resp)
