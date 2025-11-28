@@ -94,7 +94,7 @@ export function RegisterForm({
   }
 
   if (errors.root) {
-    return toast.error(errors.root.message);
+    toast.error(errors.root.message);
   }
 
   return (

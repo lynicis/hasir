@@ -31,6 +31,11 @@ function decodeJWT(token: string): { id: string | null; email: string | null } {
   }
 }
 
+function setCookie(name: string, value: string, days: number = 7) {
+  const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `${name}=${value}; expires=${expires}; path=/; SameSite=Lax`;
+}
+
 export const defaultInitState: UserState = {
   id: "",
   email: "",
@@ -47,6 +52,10 @@ export const createUserStore = (
     ...initState,
     setTokens: (tokens) => {
       const decoded = decodeJWT(tokens.accessToken);
+      
+      setCookie('accessToken', tokens.accessToken);
+      setCookie('refreshToken', tokens.refreshToken);
+      
       set({
         id: decoded.id || "",
         email: decoded.email || "",
