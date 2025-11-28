@@ -18,7 +18,7 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 
-	"apps/api/pkg/config"
+	"hasir-api/pkg/config"
 )
 
 type Repository interface {
@@ -33,7 +33,7 @@ type Repository interface {
 var (
 	ErrFailedAcquireConnection = connect.NewError(connect.CodeInternal, errors.New("failed to acquire connection"))
 	ErrIdentifierAlreadyExists = connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
-	ErrNoRows                  = connect.NewError(connect.CodeNotFound, errors.New("not found"))
+	ErrNoRows                  = connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 	ErrInternalServer          = connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
 	ErrUniqueViolationCode     = "23505"
 )
@@ -171,7 +171,7 @@ func (r *PgRepository) GetUserByEmail(ctx context.Context, email string) (*UserD
 	user, err = pgx.CollectOneRow[UserDTO](rows, pgx.RowToStructByName)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+			return nil, ErrNoRows
 		}
 
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect row"))
@@ -238,7 +238,7 @@ func (r *PgRepository) CreateRefreshToken(ctx context.Context, id, token string,
 	}
 	defer connection.Release()
 
-	sql := "insert into refreshTokens (userId, token, created_, expires_at) values (@UserId, @Token, @CreatedAt, @ExpiresAt)"
+	sql := "insert into refresh_tokens (user_id, token, created_at, expires_at) values (@UserId, @Token, @CreatedAt, @ExpiresAt)"
 	sqlArgs := pgx.NamedArgs{
 		"UserId":    id,
 		"Token":     token,

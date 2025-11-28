@@ -8,7 +8,7 @@ import (
 	"html/template"
 	"net/smtp"
 
-	"apps/api/pkg/config"
+	"hasir-api/pkg/config"
 )
 
 //go:embed templates/*.html

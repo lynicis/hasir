@@ -11,7 +11,7 @@ import (
 	"connectrpc.com/connect"
 	"go.uber.org/mock/gomock"
 
-	"apps/api/pkg/email"
+	"hasir-api/pkg/email"
 )
 
 func TestCreateOrganization_Success(t *testing.T) {

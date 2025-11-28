@@ -12,7 +12,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"golang.org/x/crypto/bcrypt"
 
-	"apps/api/pkg/config"
+	"hasir-api/pkg/config"
 )
 
 const (

@@ -13,7 +13,7 @@ import (
 
 	organizationv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/organization/v1"
 
-	"apps/api/pkg/email"
+	"hasir-api/pkg/email"
 )
 
 type Service interface {

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,6 +13,9 @@ import (
 	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
 	"connectrpc.com/validate"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/rs/cors"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -21,14 +25,14 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.uber.org/zap"
 
-	"apps/api/internal"
-	"apps/api/internal/organization"
-	"apps/api/internal/registry"
-	"apps/api/internal/user"
-	"apps/api/pkg/auth"
-	"apps/api/pkg/config"
-	"apps/api/pkg/email"
-	_ "apps/api/pkg/log"
+	"hasir-api/internal"
+	"hasir-api/internal/organization"
+	"hasir-api/internal/registry"
+	"hasir-api/internal/user"
+	"hasir-api/pkg/auth"
+	"hasir-api/pkg/config"
+	"hasir-api/pkg/email"
+	_ "hasir-api/pkg/log"
 )
 
 func main() {
@@ -36,6 +40,24 @@ func main() {
 	cfg := cfgReader.Read()
 
 	zap.L().Info("Server starting...")
+
+	m, err := migrate.New(
+		"file://migrations",
+		fmt.Sprintf(
+			"postgres://%s:%s@%s:%s/%s?sslmode=disable",
+			cfg.PostgresConfig.Username,
+			cfg.PostgresConfig.Password,
+			cfg.PostgresConfig.Host,
+			cfg.PostgresConfig.Port,
+			cfg.PostgresConfig.Database,
+		),
+	)
+	if err != nil {
+		zap.L().Fatal("failed to create migration client", zap.Error(err))
+	}
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		zap.L().Fatal("failed to apply migrations", zap.Error(err))
+	}
 
 	var traceProvider *sdktrace.TracerProvider
 	if cfg.Otel.Enabled {

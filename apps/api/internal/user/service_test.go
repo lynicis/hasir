@@ -11,7 +11,7 @@ import (
 	"go.uber.org/mock/gomock"
 	"golang.org/x/crypto/bcrypt"
 
-	"apps/api/pkg/config"
+	"hasir-api/pkg/config"
 
 	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 )

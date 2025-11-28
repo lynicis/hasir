@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"apps/api/pkg/auth"
+	"hasir-api/pkg/auth"
 )
 
 type handler struct {
@@ -85,6 +85,20 @@ func (h *handler) RespondToInvitation(
 		req.Msg.GetInvitationId(),
 		userId,
 		req.Msg.GetAccept(),
+	); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(new(emptypb.Empty)), nil
+}
+
+func (h *handler) IsInvitationValid(
+	ctx context.Context,
+	req *connect.Request[organizationv1.IsInvitationValidRequest],
+) (*connect.Response[emptypb.Empty], error) {
+	if _, err := h.repository.GetInviteByToken(
+		ctx,
+		req.Msg.GetToken(),
 	); err != nil {
 		return nil, err
 	}

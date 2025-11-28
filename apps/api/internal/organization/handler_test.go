@@ -15,7 +15,7 @@ import (
 	organizationv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/organization/v1"
 	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
 
-	"apps/api/pkg/auth"
+	"hasir-api/pkg/auth"
 )
 
 func testAuthInterceptor(userID string) connect.UnaryInterceptorFunc {

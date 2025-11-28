@@ -15,7 +15,7 @@ import (
 	"go.uber.org/mock/gomock"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"apps/api/internal"
+	"hasir-api/internal"
 
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
 	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"

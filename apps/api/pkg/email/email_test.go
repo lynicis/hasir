@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"apps/api/pkg/config"
+	"hasir-api/pkg/config"
 )
 
 func TestNewService(t *testing.T) {

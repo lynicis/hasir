@@ -17,7 +17,7 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 
-	"apps/api/pkg/config"
+	"hasir-api/pkg/config"
 )
 
 type Repository interface {
