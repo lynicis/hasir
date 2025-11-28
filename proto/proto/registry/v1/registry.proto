@@ -20,16 +20,8 @@ message CreateRepositoryRequest {
 }
 
 message GetRepositoriesRequest {
-  message ByOrganizationId {
-    string organization_id = 1;
-    string user_id = 2;
-  }
-
   shared.Pagination pagination = 1 [(buf.validate.field).required = true];
-  oneof filter {
-    string by_user_id = 2;
-    ByOrganizationId organization_id = 3;
-  }
+  optional string organization_id = 2;
 }
 
 message GetRepositoriesResponse {

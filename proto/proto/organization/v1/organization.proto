@@ -20,7 +20,6 @@ message CreateOrganizationRequest {
 
 message GetOrganizationsRequest {
   shared.Pagination pagination = 2 [(buf.validate.field).required = true];
-  string user_id = 1 [(buf.validate.field).required = true];
 }
 
 message GetOrganizationsResponse {
