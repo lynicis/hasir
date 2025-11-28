@@ -9,6 +9,15 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUserStore } from "@/stores/user-store-provider";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isNotFoundError } from "@/lib/utils";
+
+const customRetry = (failureCount: number, error: Error) => {
+  if (isNotFoundError(error) || failureCount > 3) {
+    return false;
+  }
+
+  return true;
+};
 
 export function Dashboard() {
   const { id: userId } = useUserStore((state) => state);
@@ -18,13 +27,17 @@ export function Dashboard() {
     data: organizationsData,
     isLoading: isLoadingOrganizations,
     error: organizationsError,
-  } = useQuery(getOrganizations, {
-    pagination: {
-      page: 1,
-      pageLimit: 5,
+  } = useQuery(
+    getOrganizations,
+    {
+      pagination: {
+        page: 1,
+        pageLimit: 5,
+      },
+      userId,
     },
-    userId,
-  });
+    { retry: customRetry }
+  );
 
   const {
     data: repositoriesData,
@@ -55,20 +68,21 @@ export function Dashboard() {
               organizationId: activeOrgId,
             },
           },
-        }
+        },
+    { retry: customRetry }
   );
 
   const organizations = organizationsData?.organizations ?? [];
   const repositories = repositoriesData?.repositories ?? [];
 
   useEffect(() => {
-    if (organizationsError) {
+    if (organizationsError && !isNotFoundError(organizationsError)) {
       toast.error("Error occurred while fetching organizations");
     }
   }, [organizationsError]);
 
   useEffect(() => {
-    if (repositoriesError) {
+    if (repositoriesError && !isNotFoundError(repositoriesError)) {
       toast.error("Error occurred while fetching repositories");
     }
   }, [repositoriesError]);
@@ -95,32 +109,46 @@ export function Dashboard() {
               >
                 <span>All organizations</span>
               </button>
-              {isLoadingOrganizations
-                ? Array.from({ length: 3 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="flex w-full items-center rounded-md px-3 py-2.5"
+              {isLoadingOrganizations ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex w-full items-center rounded-md px-3 py-2.5"
+                  >
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                ))
+              ) : organizationsError && !isNotFoundError(organizationsError) ? (
+                <div className="flex flex-col items-center justify-center py-6 space-y-3">
+                  <div className="text-xs text-muted-foreground">
+                    Failed to load organizations
+                  </div>
+                </div>
+              ) : organizations.length === 0 &&
+                organizationsError &&
+                isNotFoundError(organizationsError) ? (
+                <div className="flex items-center justify-center py-6 text-xs text-muted-foreground">
+                  No organizations found
+                </div>
+              ) : (
+                organizations.map((org) => {
+                  const isActive = activeOrgId === org.id;
+                  return (
+                    <button
+                      key={org.id}
+                      type="button"
+                      onClick={() => setActiveOrgId(org.id)}
+                      className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-colors ${
+                        isActive
+                          ? "bg-accent text-accent-foreground"
+                          : "hover:bg-accent hover:text-accent-foreground"
+                      }`}
                     >
-                      <Skeleton className="h-4 w-24" />
-                    </div>
-                  ))
-                : organizations.map((org) => {
-                    const isActive = activeOrgId === org.id;
-                    return (
-                      <button
-                        key={org.id}
-                        type="button"
-                        onClick={() => setActiveOrgId(org.id)}
-                        className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-colors ${
-                          isActive
-                            ? "bg-accent text-accent-foreground"
-                            : "hover:bg-accent hover:text-accent-foreground"
-                        }`}
-                      >
-                        <span>{org.name}</span>
-                      </button>
-                    );
-                  })}
+                      <span>{org.name}</span>
+                    </button>
+                  );
+                })
+              )}
             </CardContent>
           </Card>
           <Card className="h-full gap-0 overflow-hidden rounded-2xl border border-border/60 py-0 shadow-sm">
