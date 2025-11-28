@@ -35,6 +35,7 @@ message GetRepositoriesRequest {
 message GetRepositoriesResponse {
   repeated Repository repositories = 1;
   int32 next_page = 2;
+  int32 total_page = 3;
 }
 
 service RegistryService {
