@@ -7,34 +7,26 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useUserStore } from "@/stores/user-store-provider";
 import { Skeleton } from "@/components/ui/skeleton";
+import { customRetry } from "@/lib/query-retry";
 import { isNotFoundError } from "@/lib/utils";
 
-const customRetry = (failureCount: number, error: Error) => {
-  if (isNotFoundError(error) || failureCount > 3) {
-    return false;
-  }
-
-  return true;
+const DEFAULT_PAGINATION = {
+  page: 1,
+  pageLimit: 5,
 };
 
 export function Dashboard() {
-  const { id: userId } = useUserStore((state) => state);
   const [activeOrgId, setActiveOrgId] = useState<string | "all">("all");
 
   const {
-    data: organizationsData,
+    data: organizations,
     isLoading: isLoadingOrganizations,
     error: organizationsError,
   } = useQuery(
     getOrganizations,
     {
-      pagination: {
-        page: 1,
-        pageLimit: 5,
-      },
-      userId,
+      pagination: DEFAULT_PAGINATION,
     },
     { retry: customRetry }
   );
@@ -47,33 +39,17 @@ export function Dashboard() {
     getRepositories,
     activeOrgId === "all"
       ? {
-          pagination: {
-            page: 1,
-            pageLimit: 5,
-          },
-          filter: {
-            case: "byUserId",
-            value: userId,
-          },
+          pagination: DEFAULT_PAGINATION,
         }
       : {
-          pagination: {
-            page: 1,
-            pageLimit: 5,
-          },
-          filter: {
-            case: "organizationId",
-            value: {
-              userId,
-              organizationId: activeOrgId,
-            },
-          },
+          pagination: DEFAULT_PAGINATION,
+          organizationId: activeOrgId,
         },
     { retry: customRetry }
   );
 
-  const organizations = organizationsData?.organizations ?? [];
-  const repositories = repositoriesData?.repositories ?? [];
+  const organizationsList = organizations?.organizations ?? [];
+  const repositoriesList = repositoriesData?.repositories ?? [];
 
   useEffect(() => {
     if (organizationsError && !isNotFoundError(organizationsError)) {
@@ -124,14 +100,14 @@ export function Dashboard() {
                     Failed to load organizations
                   </div>
                 </div>
-              ) : organizations.length === 0 &&
+              ) : organizationsList.length === 0 &&
                 organizationsError &&
                 isNotFoundError(organizationsError) ? (
                 <div className="flex items-center justify-center py-6 text-xs text-muted-foreground">
                   No organizations found
                 </div>
               ) : (
-                organizations.map((org) => {
+                organizationsList.map((org) => {
                   const isActive = activeOrgId === org.id;
                   return (
                     <button
@@ -161,7 +137,7 @@ export function Dashboard() {
                   <p className="text-xs text-secondary/70">
                     Showing repositories in{" "}
                     {
-                      organizations.find(
+                      organizationsList.find(
                         (organization) => organization.id === activeOrgId
                       )?.name
                     }
@@ -172,7 +148,7 @@ export function Dashboard() {
                 <Skeleton className="h-4 w-12 bg-secondary/70" />
               ) : (
                 <span className="text-xs text-secondary/70">
-                  {repositories.length} repos
+                  {repositoriesList.length} repos
                 </span>
               )}
             </CardHeader>
@@ -186,12 +162,12 @@ export function Dashboard() {
                     <Skeleton className="h-5 w-32" />
                   </div>
                 ))
-              ) : repositories.length === 0 ? (
+              ) : repositoriesList.length === 0 ? (
                 <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
                   No repositories found
                 </div>
               ) : (
-                repositories.map((repo) => (
+                repositoriesList.map((repo) => (
                   <div
                     key={repo.id}
                     className="hover:bg-accent/60 flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 text-sm transition-colors"

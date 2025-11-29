@@ -12,8 +12,8 @@
     "test:ci": "vitest run --coverage --watch='false'"
   },
   "dependencies": {
-    "@buf/hasir_hasir.bufbuild_es": "2.10.1-20251127175921-3f6c0b3da583.1",
-    "@buf/hasir_hasir.connectrpc_query-es": "2.2.0-20251127175921-3f6c0b3da583.1",
+    "@buf/hasir_hasir.bufbuild_es": "2.10.1-20251128182122-bfb960330512.1",
+    "@buf/hasir_hasir.connectrpc_query-es": "2.2.0-20251128182122-bfb960330512.1",
     "@bufbuild/protovalidate": "^1.0.0",
     "@connectrpc/connect-query": "^2.2.0",
     "@connectrpc/connect-web": "^2.1.1",
@@ -30,6 +30,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.24",
+    "iron-session": "^8.0.4",
     "jose": "^6.1.2",
     "lucide-react": "^0.555.0",
     "next": "16.0.5",

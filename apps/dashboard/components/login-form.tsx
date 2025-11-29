@@ -1,7 +1,5 @@
 "use client";
 
-import { UserService } from "@buf/hasir_hasir.bufbuild_es/user/v1/user_pb";
-import { ConnectError, Code } from "@connectrpc/connect";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -16,10 +14,8 @@ import {
   Field,
 } from "@/components/ui/field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useUserStore } from "@/stores/user-store-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useClient } from "@/lib/use-client";
 import { cn } from "@/lib/utils";
 
 const schema = z.object({
@@ -37,8 +33,6 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter();
-  const userApiClient = useClient(UserService);
-  const { setTokens } = useUserStore((state) => state);
   const {
     control,
     handleSubmit,
@@ -54,26 +48,41 @@ export function LoginForm({
 
   async function onSubmit({ email, password }: ISchema) {
     try {
-      const response = await userApiClient.login({
-        email,
-        password,
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
       });
 
-      setTokens(response);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
       toast.success("You have successfully logged in!");
-      setTimeout(() => router.push("/dashboard"), 600);
+      setTimeout(() => {
+        router.push("/dashboard");
+        router.refresh();
+      }, 600);
     } catch (error) {
-      if (error instanceof ConnectError) {
-        if (error.code === Code.NotFound) {
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid')) {
           setError("root", {
             message: "Invalid email or password.",
           });
+        } else {
+          setError("root", {
+            message: error.message || "Error occurred while logging into your account.",
+          });
         }
+      } else {
+        setError("root", {
+          message: "Error occurred while logging into your account.",
+        });
       }
-
-      setError("root", {
-        message: "Error occurred while logging into your account.",
-      });
     }
   }
 

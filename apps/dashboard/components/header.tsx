@@ -2,8 +2,8 @@
 
 import { useRef, useEffect, useState, useSyncExternalStore } from "react";
 import { Box, Plus, Search } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import {
   Popover,
@@ -19,7 +19,6 @@ import { OrganizationDialogForm } from "./organization-dialog-form";
 import { RepositoryDialogForm } from "./repository-dialog-form";
 import { InputGroupAddon } from "./ui/input-group";
 import { ModeToggle } from "./theme-toggle";
-import { useUserStore } from "@/stores/user-store-provider";
 
 function useIsMac() {
   return useSyncExternalStore(
@@ -35,7 +34,7 @@ export function Header() {
   const [isCreatePopoverOpen, setIsCreatePopoverOpen] = useState(false);
   const [isCreateRepoDialogOpen, setIsCreateRepoDialogOpen] = useState(false);
   const [isCreateOrgDialogOpen, setIsCreateOrgDialogOpen] = useState(false);
-  const { clearTokens } = useUserStore((state) => state);
+  //const { clearTokens } = useUserStore((state) => state);
   const isMac = useIsMac();
 
   useEffect(() => {
@@ -157,9 +156,10 @@ export function Header() {
                 <button
                   type="button"
                   className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-left text-destructive"
-                  onClick={() => {
-                    clearTokens();
+                  onClick={async () => {
+                    await fetch("/api/auth/logout", { method: "POST" });
                     router.push("/login");
+                    router.refresh();
                   }}
                 >
                   <span>Log out</span>

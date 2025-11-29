@@ -16,6 +16,25 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("@/lib/session-provider", () => ({
+  useSession: () => ({
+    session: {
+      user: { id: "user-123", email: "test@example.com" },
+    },
+    loading: false,
+    refreshSession: vi.fn(),
+  }),
+  SessionProvider: ({ children }: { children: ReactNode }) => children,
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    refresh: vi.fn(),
+  }),
+  usePathname: () => "/",
+}));
+
 describe("Header", () => {
   it("renders brand link with correct label and href", () => {
     render(<Header />);
@@ -77,13 +96,23 @@ describe("Header", () => {
     expect(screen.getByRole("radio", { name: /private/i })).toBeInTheDocument();
   });
 
-  it("renders profile button linking to the profile page", () => {
+  it("renders profile button with user menu", async () => {
+    const user = userEvent.setup();
     render(<Header />);
 
-    const profileLink = screen.getByRole("link", { name: /profile/i });
+    // Find the avatar button that opens the user menu
+    const avatarButton = screen.getByRole("button", {
+      name: /open user menu/i,
+    });
+    expect(avatarButton).toBeInTheDocument();
 
-    expect(profileLink).toBeInTheDocument();
-    expect(profileLink).toHaveAttribute("href", "/profile");
+    // Click to open the popover
+    await user.click(avatarButton);
+
+    // Check that the profile button is in the popover
+    expect(
+      screen.getByRole("button", { name: /profile/i })
+    ).toBeInTheDocument();
   });
 
   it("focuses the search input when ⌘K is pressed", () => {

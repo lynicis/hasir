@@ -4,7 +4,7 @@ import { Database, LayoutDashboard, LogIn, User, UserPlus } from "lucide-react";
 import { motion, Variants } from "framer-motion";
 import Link from "next/link";
 
-import { useUserStore } from "@/stores/user-store-provider";
+import { useSession } from "@/lib/session-provider";
 import { Button } from "@/components/ui/button";
 
 const containerVariants: Variants = {
@@ -31,9 +31,9 @@ const itemVariants: Variants = {
 };
 
 export default function HomePage() {
-  const { id, email } = useUserStore((state) => state);
-
-  const isLoggedIn = Boolean(id && email);
+  const { session } = useSession();
+  const isLoggedIn = Boolean(session?.user?.id);
+  const email = session?.user?.email;
 
   return (
     <div className="min-h-screen bg-background">

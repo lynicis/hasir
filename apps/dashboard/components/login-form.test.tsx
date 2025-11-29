@@ -2,14 +2,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
-import { useUserStore } from "@/stores/user-store-provider";
-import { useClient } from "@/lib/use-client";
-
 import { LoginForm } from "./login-form";
 
-vi.mock("@/lib/use-client", () => ({
-  useClient: vi.fn(),
-}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -22,36 +16,27 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-vi.mock("@/stores/user-store-provider", () => ({
-  useUserStore: vi.fn(),
-}));
 
-const mockLogin = vi.fn();
 const mockPush = vi.fn();
-const mockedUseClient = vi.mocked(useClient);
-const mockedUseUserStore = vi.mocked(useUserStore);
+const mockFetch = vi.fn();
+
+// Mock fetch
+global.fetch = mockFetch;
 
 describe("LoginForm", () => {
   beforeEach(() => {
-    mockedUseClient.mockReturnValue({
-      login: mockLogin,
-    } as never);
-    mockedUseUserStore.mockReturnValue({
-      setTokens: vi.fn(),
-    } as never);
-    mockLogin.mockReset();
+    mockFetch.mockReset();
     mockPush.mockReset();
   });
 
   it("submits credentials when the form is valid", async () => {
     const user = userEvent.setup();
-    const mockSetTokens = vi.fn();
-    mockedUseUserStore.mockReturnValue({
-      setTokens: mockSetTokens,
-    } as never);
-    mockLogin.mockResolvedValue({
-      accessToken: "token",
-      refreshToken: "refresh",
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        user: { id: "123", email: "hello@example.com" },
+        accessToken: "token",
+      }),
     });
 
     render(<LoginForm />);
@@ -61,9 +46,15 @@ describe("LoginForm", () => {
     await user.click(screen.getByRole("button", { name: /login/i }));
 
     await waitFor(() =>
-      expect(mockLogin).toHaveBeenCalledWith({
-        email: "hello@example.com",
-        password: "password123",
+      expect(mockFetch).toHaveBeenCalledWith('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: "hello@example.com",
+          password: "password123",
+        }),
       })
     );
   });
@@ -78,7 +69,7 @@ describe("LoginForm", () => {
     await user.type(screen.getByLabelText(/password/i), "password123");
     await user.click(screen.getByRole("button", { name: /login/i }));
 
-    await waitFor(() => expect(mockLogin).not.toHaveBeenCalled());
+    await waitFor(() => expect(mockFetch).not.toHaveBeenCalled());
     expect(emailInput.checkValidity()).toBe(false);
   });
 
@@ -97,7 +88,7 @@ describe("LoginForm", () => {
     await waitFor(() =>
       expect(passwordInput).toHaveAttribute("aria-invalid", "true")
     );
-    expect(mockLogin).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it("prevents submission when the password exceeds the max length", async () => {
@@ -115,7 +106,7 @@ describe("LoginForm", () => {
     await waitFor(() =>
       expect(passwordInput).toHaveAttribute("aria-invalid", "true")
     );
-    expect(mockLogin).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it("prevents submission when the password is missing", async () => {
@@ -129,7 +120,7 @@ describe("LoginForm", () => {
     await user.type(screen.getByLabelText(/email/i), "hello@example.com");
     await user.click(screen.getByRole("button", { name: /login/i }));
 
-    await waitFor(() => expect(mockLogin).not.toHaveBeenCalled());
+    await waitFor(() => expect(mockFetch).not.toHaveBeenCalled());
     expect(passwordInput.validity.valueMissing).toBe(true);
   });
 
@@ -142,7 +133,7 @@ describe("LoginForm", () => {
     await user.type(screen.getByLabelText(/password/i), "password123");
     await user.click(screen.getByRole("button", { name: /login/i }));
 
-    await waitFor(() => expect(mockLogin).not.toHaveBeenCalled());
+    await waitFor(() => expect(mockFetch).not.toHaveBeenCalled());
     expect(emailInput.validity.valueMissing).toBe(true);
   });
 });

@@ -7,9 +7,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { PasswordConfirmationDialog } from "@/components/password-confirmation-dialog";
-import { useUserStore } from "@/stores/user-store-provider";
 import { ProfileForm } from "@/components/profile-form";
 import { DangerZone } from "@/components/danger-zone";
+import { useSession } from "@/lib/session-provider";
 import { useClient } from "@/lib/use-client";
 
 type ProfileFormData = {
@@ -21,7 +21,8 @@ type ProfileFormData = {
 export default function ProfilePage() {
   const router = useRouter();
   const userApiClient = useClient(UserService);
-  const { setTokens, id: userId } = useUserStore((state) => state);
+  const { session, refreshSession } = useSession();
+  const userId = session?.user?.id;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<ProfileFormData | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -75,9 +76,9 @@ export default function ProfilePage() {
         updatePayload.newPassword = formData.password;
       }
 
-      const response = await userApiClient.updateUser(updatePayload);
+      await userApiClient.updateUser(updatePayload);
 
-      setTokens(response);
+      await refreshSession();
       setIsDialogOpen(false);
       toast.success("Profile updated successfully!");
       setFormData(null);
@@ -116,9 +117,7 @@ export default function ProfilePage() {
 
     setIsDeleting(true);
     try {
-      await userApiClient.deleteAccount({
-        userId,
-      });
+      await userApiClient.deleteAccount({});
 
       toast.success("Account deleted successfully.");
       setTimeout(() => {

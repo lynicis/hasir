@@ -1,28 +1,25 @@
-import { NextResponse } from "next/server";
-import { NextRequest } from "next/server";
+import type { NextRequest } from 'next/server';
 
-const protectedPrefixes = ["/dashboard", "/profile", "/invite"];
-const authRoutes = ["/login", "/register"];
+import { NextResponse } from 'next/server';
 
-export default function proxy(request: NextRequest) {
+const publicPaths = ['/login', '/register', '/api/auth/login', '/api/auth/register'];
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const accessToken = request.cookies.get("accessToken")?.value;
-  const refreshToken = request.cookies.get("refreshToken")?.value;
-  const isAuthenticated = Boolean(accessToken && refreshToken);
 
-  if (pathname === "/" && isAuthenticated) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  if (
+    publicPaths.some((path) => pathname.startsWith(path)) ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api/auth') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next();
   }
 
-  if (authRoutes.includes(pathname) && isAuthenticated) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
+  const sessionCookie = request.cookies.get('hasir-session');
 
-  const isProtectedRoute = protectedPrefixes.some((prefix) =>
-    pathname.startsWith(prefix)
-  );
-  if (isProtectedRoute && !isAuthenticated) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  if (!sessionCookie) {
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   return NextResponse.next();
@@ -30,11 +27,6 @@ export default function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/",
-    "/dashboard/:path*",
-    "/profile/:path*",
-    "/login",
-    "/register",
-    "/invite/:path*",
+    '/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 };

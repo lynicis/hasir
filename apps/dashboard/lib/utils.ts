@@ -6,6 +6,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function isNotFoundError(error: Error): error is ConnectError {
+export function isNotFoundError(error: unknown): error is ConnectError {
   return error instanceof ConnectError && error.code === Code.NotFound;
+}
+
+export function isUnauthenticatedError(error: unknown): error is ConnectError {
+  return error instanceof ConnectError && error.code === Code.Unauthenticated
 }

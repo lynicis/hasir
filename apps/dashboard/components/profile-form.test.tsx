@@ -2,22 +2,26 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
-import { useUserStore } from "@/stores/user-store-provider";
+import { useSession } from "@/lib/session-provider";
 
 import { ProfileForm } from "./profile-form";
 
-vi.mock("@/stores/user-store-provider", () => ({
-  useUserStore: vi.fn(),
+vi.mock("@/lib/session-provider", () => ({
+  useSession: vi.fn(),
 }));
 
-const mockedUseUserStore = vi.mocked(useUserStore);
+const mockedUseSession = vi.mocked(useSession);
 
 describe("ProfileForm", () => {
   const mockOnSubmit = vi.fn();
 
   beforeEach(() => {
-    mockedUseUserStore.mockReturnValue({
-      email: "test@example.com",
+    mockedUseSession.mockReturnValue({
+      session: {
+        user: { email: "test@example.com" },
+      },
+      loading: false,
+      refreshSession: vi.fn(),
     } as never);
     mockOnSubmit.mockReset();
   });
@@ -33,7 +37,7 @@ describe("ProfileForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("displays user email from store", () => {
+  it("displays user email from session", () => {
     render(<ProfileForm onSubmit={mockOnSubmit} />);
 
     const emailInput = screen.getByLabelText("Email") as HTMLInputElement;
@@ -212,11 +216,15 @@ describe("ProfileForm", () => {
     );
   });
 
-  it("updates email field when user store email changes", () => {
+  it("updates email field when session email changes", () => {
     const { rerender } = render(<ProfileForm onSubmit={mockOnSubmit} />);
 
-    mockedUseUserStore.mockReturnValue({
-      email: "newemail@example.com",
+    mockedUseSession.mockReturnValue({
+      session: {
+        user: { email: "newemail@example.com" },
+      },
+      loading: false,
+      refreshSession: vi.fn(),
     } as never);
 
     rerender(<ProfileForm onSubmit={mockOnSubmit} />);

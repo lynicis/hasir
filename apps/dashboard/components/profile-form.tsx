@@ -19,7 +19,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { useUserStore } from "@/stores/user-store-provider";
+import { useSession } from "@/lib/session-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -71,7 +71,7 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ onSubmit }: ProfileFormProps) {
-  const userStore = useUserStore((state) => state);
+  const { session } = useSession();
   const {
     control,
     handleSubmit,
@@ -80,7 +80,7 @@ export function ProfileForm({ onSubmit }: ProfileFormProps) {
   } = useForm<ISchema>({
     resolver: zodResolver(schema),
     defaultValues: {
-      email: userStore.email,
+      email: session?.user?.email || "",
       password: "",
       confirmPassword: "",
     },
@@ -88,11 +88,11 @@ export function ProfileForm({ onSubmit }: ProfileFormProps) {
 
   useEffect(() => {
     reset({
-      email: userStore.email,
+      email: session?.user?.email || "",
       password: "",
       confirmPassword: "",
     });
-  }, [userStore.email, reset]);
+  }, [session?.user?.email, reset]);
 
   return (
     <Card>

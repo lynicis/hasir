@@ -2,15 +2,15 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { describe, beforeEach, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
-import { useUserStore } from "@/stores/user-store-provider";
+import { useSession } from "@/lib/session-provider";
 
 import { Dashboard } from "./dashboard";
 
 // eslint-disable-next-line no-var
 var toastError: ReturnType<typeof vi.fn>;
 
-vi.mock("@/stores/user-store-provider", () => ({
-  useUserStore: vi.fn(),
+vi.mock("@/lib/session-provider", () => ({
+  useSession: vi.fn(),
 }));
 
 vi.mock("sonner", () => {
@@ -42,7 +42,7 @@ vi.mock(
   })
 );
 
-const mockedUseUserStore = vi.mocked(useUserStore);
+const mockedUseSession = vi.mocked(useSession);
 
 const mockOrganizations = [
   { id: "org-1", name: "Acme Corp" },
@@ -59,7 +59,11 @@ const mockRepositories = [
 
 describe("Dashboard", () => {
   beforeEach(() => {
-    mockedUseUserStore.mockReturnValue({ id: "user-123" } as never);
+    mockedUseSession.mockReturnValue({
+      session: { user: { id: "user-123" } },
+      loading: false,
+      refreshSession: vi.fn(),
+    } as never);
     mockUseQuery.mockReset();
     toastError.mockReset();
 
@@ -153,10 +157,6 @@ describe("Dashboard", () => {
         page: 1,
         pageLimit: 5,
       },
-      filter: {
-        case: "byUserId",
-        value: "user-123",
-      },
     });
   });
 
@@ -174,7 +174,6 @@ describe("Dashboard", () => {
         page: 1,
         pageLimit: 5,
       },
-      userId: "user-123",
     });
   });
 
@@ -202,13 +201,7 @@ describe("Dashboard", () => {
         page: 1,
         pageLimit: 5,
       },
-      filter: {
-        case: "organizationId",
-        value: {
-          userId: "user-123",
-          organizationId: "org-2",
-        },
-      },
+      organizationId: "org-2",
     });
   });
 
@@ -347,10 +340,6 @@ describe("Dashboard", () => {
       pagination: {
         page: 1,
         pageLimit: 5,
-      },
-      filter: {
-        case: "byUserId",
-        value: "user-123",
       },
     });
 
