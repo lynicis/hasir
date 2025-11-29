@@ -37,9 +37,16 @@ message RespondToInvitationRequest {
   bool accept = 2 [(buf.validate.field).required = true];
 }
 
+message UpdateOrganizationRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  string name = 2 [(buf.validate.field).string.max_len = 1];
+  shared.Visibility visibility = 3 [(buf.validate.field).required = true];
+}
+
 service OrganizationService {
   rpc CreateOrganization(CreateOrganizationRequest) returns (google.protobuf.Empty);
   rpc GetOrganizations(GetOrganizationsRequest) returns (GetOrganizationsResponse);
   rpc IsInvitationValid(IsInvitationValidRequest) returns (google.protobuf.Empty);
   rpc RespondToInvitation(RespondToInvitationRequest) returns (google.protobuf.Empty);
+  rpc UpdateOrganization(UpdateOrganizationRequest) returns (google.protobuf.Empty);
 }
