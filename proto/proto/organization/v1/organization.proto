@@ -10,6 +10,7 @@ import "shared/visibility.proto";
 message Organization {
   string id = 1;
   string name = 2;
+  shared.Visibility visibility = 3;
 }
 
 message CreateOrganizationRequest {
@@ -43,9 +44,18 @@ message UpdateOrganizationRequest {
   shared.Visibility visibility = 3 [(buf.validate.field).required = true];
 }
 
+message GetOrganizationRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+
+message GetOrganizationResponse {
+  Organization organization = 1;
+}
+
 service OrganizationService {
   rpc CreateOrganization(CreateOrganizationRequest) returns (google.protobuf.Empty);
   rpc GetOrganizations(GetOrganizationsRequest) returns (GetOrganizationsResponse);
+  rpc GetOrganization(GetOrganizationRequest) returns (GetOrganizationResponse);
   rpc IsInvitationValid(IsInvitationValidRequest) returns (google.protobuf.Empty);
   rpc RespondToInvitation(RespondToInvitationRequest) returns (google.protobuf.Empty);
   rpc UpdateOrganization(UpdateOrganizationRequest) returns (google.protobuf.Empty);
