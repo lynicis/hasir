@@ -1,10 +1,6 @@
 package user
 
-import (
-	"time"
-
-	"github.com/golang-jwt/jwt/v5"
-)
+import "time"
 
 type UserDTO struct {
 	Id        string     `json:"id" db:"id"`
@@ -20,10 +16,4 @@ type RefreshTokensDTO struct {
 	Token     string    `json:"token" db:"token"`
 	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
-}
-
-type JwtClaims struct {
-	jwt.Claims
-	email    string
-	username string
 }

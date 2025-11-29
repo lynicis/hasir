@@ -54,10 +54,11 @@ func (a *AuthInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 			return nil, ErrInvalidToken
 		}
 
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(tokenString, &JwtClaims{}, func(token *jwt.Token) (any, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, errors.New("unexpected signing method")
 			}
+
 			return a.jwtSecret, nil
 		})
 
@@ -72,21 +73,20 @@ func (a *AuthInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 			return nil, ErrInvalidToken
 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
+		claims, ok := token.Claims.(*JwtClaims)
 		if !ok {
 			return nil, ErrInvalidClaims
 		}
 
-		userID, ok := claims["sub"].(string)
-		if !ok || userID == "" {
+		userID, err := claims.GetSubject()
+		if err != nil {
 			return nil, ErrInvalidClaims
 		}
 
 		ctx = context.WithValue(ctx, UserIDKey, userID)
 
-		if email, ok := claims["email"].(string); ok {
-			ctx = context.WithValue(ctx, UserEmailKey, email)
-		}
+		email := claims.Email
+		ctx = context.WithValue(ctx, UserEmailKey, email)
 
 		return next(ctx, req)
 	}

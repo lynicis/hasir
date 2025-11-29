@@ -146,17 +146,17 @@ func (s *service) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest)
 
 func (s *service) generateTokens(user *UserDTO) (*userv1.TokenEnvelope, error) {
 	now := time.Now().UTC()
-	accessTokenExpiresAt := now.Add(2 * time.Hour).Unix()
-	accessTokenClaims := JwtClaims{
-		Claims: jwt.MapClaims{
-			"iss": s.config.Server.PublicUrl,
-			"sub": user.Id,
-			"exp": accessTokenExpiresAt,
-			"iat": now.Unix(),
-			"aud": s.config.DashboardUrl,
+	accessTokenExpiresAt := now.Add(2 * time.Hour)
+	accessTokenClaims := auth.JwtClaims{
+		Email:    user.Email,
+		Username: user.Username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    s.config.Server.PublicUrl,
+			Subject:   user.Id,
+			ExpiresAt: jwt.NewNumericDate(accessTokenExpiresAt),
+			IssuedAt:  jwt.NewNumericDate(now),
+			Audience:  jwt.ClaimStrings{s.config.DashboardUrl},
 		},
-		email:    user.Email,
-		username: user.Username,
 	}
 
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokenClaims)
@@ -166,17 +166,17 @@ func (s *service) generateTokens(user *UserDTO) (*userv1.TokenEnvelope, error) {
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to create access token"))
 	}
 
-	refreshTokenExpiresAt := now.AddDate(0, 0, 7).Unix()
-	refreshTokenClaims := JwtClaims{
-		Claims: jwt.MapClaims{
-			"iss": s.config.Server.PublicUrl,
-			"sub": user.Id,
-			"exp": refreshTokenExpiresAt,
-			"iat": now.Unix(),
-			"aud": s.config.DashboardUrl,
+	refreshTokenExpiresAt := now.AddDate(0, 0, 7)
+	refreshTokenClaims := auth.JwtClaims{
+		Email:    user.Email,
+		Username: user.Username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    s.config.Server.PublicUrl,
+			Subject:   user.Id,
+			ExpiresAt: jwt.NewNumericDate(refreshTokenExpiresAt),
+			IssuedAt:  jwt.NewNumericDate(now),
+			Audience:  jwt.ClaimStrings{s.config.DashboardUrl},
 		},
-		email:    user.Email,
-		username: user.Username,
 	}
 
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims)
