@@ -52,6 +52,10 @@ message GetOrganizationResponse {
   Organization organization = 1;
 }
 
+message DeleteOrganizationRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+
 service OrganizationService {
   rpc CreateOrganization(CreateOrganizationRequest) returns (google.protobuf.Empty);
   rpc GetOrganizations(GetOrganizationsRequest) returns (GetOrganizationsResponse);
@@ -59,4 +63,5 @@ service OrganizationService {
   rpc IsInvitationValid(IsInvitationValidRequest) returns (google.protobuf.Empty);
   rpc RespondToInvitation(RespondToInvitationRequest) returns (google.protobuf.Empty);
   rpc UpdateOrganization(UpdateOrganizationRequest) returns (google.protobuf.Empty);
+  rpc DeleteOrganization(DeleteOrganizationRequest) returns (google.protobuf.Empty);
 }
