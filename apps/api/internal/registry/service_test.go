@@ -58,7 +58,7 @@ func TestService_CreateRepository(t *testing.T) {
 
 		repoPath := filepath.Join(tmpDir, repoName)
 		require.DirExists(t, repoPath)
-		require.FileExists(t, filepath.Join(repoPath, ".git"))
+		require.FileExists(t, filepath.Join(repoPath, "HEAD"))
 	})
 
 	t.Run("already exists in database", func(t *testing.T) {

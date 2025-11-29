@@ -11,6 +11,7 @@ package organization
 
 import (
 	context "context"
+	email "hasir-api/pkg/email"
 	reflect "reflect"
 	time "time"
 
@@ -81,6 +82,20 @@ func (m *MockRepository) CreateOrganization(ctx context.Context, org *Organizati
 func (mr *MockRepositoryMockRecorder) CreateOrganization(ctx, org any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrganization", reflect.TypeOf((*MockRepository)(nil).CreateOrganization), ctx, org)
+}
+
+// EnqueueEmailJobs mocks base method.
+func (m *MockRepository) EnqueueEmailJobs(ctx context.Context, jobs []*EmailJobDTO) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnqueueEmailJobs", ctx, jobs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EnqueueEmailJobs indicates an expected call of EnqueueEmailJobs.
+func (mr *MockRepositoryMockRecorder) EnqueueEmailJobs(ctx, jobs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueEmailJobs", reflect.TypeOf((*MockRepository)(nil).EnqueueEmailJobs), ctx, jobs)
 }
 
 // GetInviteByToken mocks base method.
@@ -156,6 +171,59 @@ func (m *MockRepository) GetOrganizationsCount(ctx context.Context) (int, error)
 func (mr *MockRepositoryMockRecorder) GetOrganizationsCount(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrganizationsCount", reflect.TypeOf((*MockRepository)(nil).GetOrganizationsCount), ctx)
+}
+
+// GetPendingEmailJobs mocks base method.
+func (m *MockRepository) GetPendingEmailJobs(ctx context.Context, limit int) ([]*EmailJobDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPendingEmailJobs", ctx, limit)
+	ret0, _ := ret[0].([]*EmailJobDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPendingEmailJobs indicates an expected call of GetPendingEmailJobs.
+func (mr *MockRepositoryMockRecorder) GetPendingEmailJobs(ctx, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingEmailJobs", reflect.TypeOf((*MockRepository)(nil).GetPendingEmailJobs), ctx, limit)
+}
+
+// StartEmailJobProcessor mocks base method.
+func (m *MockRepository) StartEmailJobProcessor(ctx context.Context, emailService email.Service, batchSize int, pollInterval time.Duration) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "StartEmailJobProcessor", ctx, emailService, batchSize, pollInterval)
+}
+
+// StartEmailJobProcessor indicates an expected call of StartEmailJobProcessor.
+func (mr *MockRepositoryMockRecorder) StartEmailJobProcessor(ctx, emailService, batchSize, pollInterval any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartEmailJobProcessor", reflect.TypeOf((*MockRepository)(nil).StartEmailJobProcessor), ctx, emailService, batchSize, pollInterval)
+}
+
+// StopEmailJobProcessor mocks base method.
+func (m *MockRepository) StopEmailJobProcessor() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "StopEmailJobProcessor")
+}
+
+// StopEmailJobProcessor indicates an expected call of StopEmailJobProcessor.
+func (mr *MockRepositoryMockRecorder) StopEmailJobProcessor() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopEmailJobProcessor", reflect.TypeOf((*MockRepository)(nil).StopEmailJobProcessor))
+}
+
+// UpdateEmailJobStatus mocks base method.
+func (m *MockRepository) UpdateEmailJobStatus(ctx context.Context, jobId string, status EmailJobStatus, errorMsg *string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateEmailJobStatus", ctx, jobId, status, errorMsg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateEmailJobStatus indicates an expected call of UpdateEmailJobStatus.
+func (mr *MockRepositoryMockRecorder) UpdateEmailJobStatus(ctx, jobId, status, errorMsg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEmailJobStatus", reflect.TypeOf((*MockRepository)(nil).UpdateEmailJobStatus), ctx, jobId, status, errorMsg)
 }
 
 // UpdateInviteStatus mocks base method.

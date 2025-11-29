@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -18,6 +19,7 @@ import (
 	"go.uber.org/zap"
 
 	"hasir-api/pkg/config"
+	"hasir-api/pkg/email"
 )
 
 type Repository interface {
@@ -30,6 +32,11 @@ type Repository interface {
 	GetInviteByToken(ctx context.Context, token string) (*OrganizationInviteDTO, error)
 	UpdateInviteStatus(ctx context.Context, id string, status InviteStatus, acceptedAt *time.Time) error
 	AddMember(ctx context.Context, member *OrganizationMemberDTO) error
+	EnqueueEmailJobs(ctx context.Context, jobs []*EmailJobDTO) error
+	GetPendingEmailJobs(ctx context.Context, limit int) ([]*EmailJobDTO, error)
+	UpdateEmailJobStatus(ctx context.Context, jobId string, status EmailJobStatus, errorMsg *string) error
+	StartEmailJobProcessor(ctx context.Context, emailService email.Service, batchSize int, pollInterval time.Duration)
+	StopEmailJobProcessor()
 }
 
 var (
@@ -44,6 +51,9 @@ var (
 type PgRepository struct {
 	connectionPool *pgxpool.Pool
 	tracer         trace.Tracer
+	stopChan       chan struct{}
+	processorWg    sync.WaitGroup
+	stopOnce       sync.Once
 }
 
 func NewPgRepository(
@@ -97,6 +107,7 @@ func NewPgRepository(
 	return &PgRepository{
 		connectionPool: pgConnectionPool,
 		tracer:         tracer,
+		stopChan:       make(chan struct{}),
 	}
 }
 
@@ -443,4 +454,287 @@ func (r *PgRepository) AddMember(ctx context.Context, member *OrganizationMember
 	}
 
 	return nil
+}
+
+func (r *PgRepository) EnqueueEmailJobs(ctx context.Context, jobs []*EmailJobDTO) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "EnqueueEmailJobs", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "jobCount",
+			Value: attribute.IntValue(len(jobs)),
+		},
+	))
+	defer span.End()
+
+	if len(jobs) == 0 {
+		return nil
+	}
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	// Use batch insert for efficiency
+	batch := &pgx.Batch{}
+	for _, job := range jobs {
+		sql := `INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at) 
+				VALUES (@Id, @InviteId, @OrganizationId, @Email, @OrganizationName, @InviteToken, @Status, @Attempts, @MaxAttempts, @CreatedAt)`
+		sqlArgs := pgx.NamedArgs{
+			"Id":               job.Id,
+			"InviteId":         job.InviteId,
+			"OrganizationId":   job.OrganizationId,
+			"Email":            job.Email,
+			"OrganizationName": job.OrganizationName,
+			"InviteToken":      job.InviteToken,
+			"Status":           job.Status,
+			"Attempts":         job.Attempts,
+			"MaxAttempts":      job.MaxAttempts,
+			"CreatedAt":        job.CreatedAt,
+		}
+		batch.Queue(sql, sqlArgs)
+	}
+
+	results := connection.SendBatch(ctx, batch)
+	defer func() {
+		_ = results.Close()
+	}()
+
+	for i := 0; i < len(jobs); i++ {
+		_, err := results.Exec()
+		if err != nil {
+			span.RecordError(err)
+			_ = results.Close()
+			return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to enqueue email job %d: %w", i, err))
+		}
+	}
+
+	zap.L().Info("enqueued email jobs", zap.Int("count", len(jobs)))
+	return nil
+}
+
+func (r *PgRepository) GetPendingEmailJobs(ctx context.Context, limit int) ([]*EmailJobDTO, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetPendingEmailJobs", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "limit",
+			Value: attribute.IntValue(limit),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	tx, err := connection.Begin(ctx)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to begin transaction"))
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	sql := `UPDATE email_jobs 
+			SET status = 'processing', processed_at = NOW(), attempts = attempts + 1
+			WHERE id IN (
+				SELECT id FROM email_jobs 
+				WHERE status = 'pending' 
+				ORDER BY created_at ASC 
+				LIMIT $1 
+				FOR UPDATE SKIP LOCKED
+			)
+			RETURNING id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at, processed_at, completed_at, error_message`
+
+	rows, err := tx.Query(ctx, sql, limit)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to query and update pending email jobs"))
+	}
+	defer rows.Close()
+
+	jobs, err := pgx.CollectRows(rows, pgx.RowToStructByName[EmailJobDTO])
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect email job rows"))
+	}
+
+	// Commit transaction to release locks
+	if err := tx.Commit(ctx); err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to commit transaction"))
+	}
+
+	result := make([]*EmailJobDTO, len(jobs))
+	for i := range jobs {
+		result[i] = &jobs[i]
+	}
+
+	return result, nil
+}
+
+func (r *PgRepository) UpdateEmailJobStatus(ctx context.Context, jobId string, status EmailJobStatus, errorMsg *string) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "UpdateEmailJobStatus", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "jobId",
+			Value: attribute.StringValue(jobId),
+		},
+		attribute.KeyValue{
+			Key:   "status",
+			Value: attribute.StringValue(string(status)),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	now := time.Now().UTC()
+	var sql string
+	var sqlArgs pgx.NamedArgs
+
+	switch status {
+	case EmailJobStatusProcessing:
+		// This should not be called directly since GetPendingEmailJobs already sets status to processing
+		// But keeping for backward compatibility and edge cases
+		sql = `UPDATE email_jobs SET status = @Status, processed_at = @ProcessedAt, attempts = attempts + 1 WHERE id = @Id AND status = 'pending'`
+		sqlArgs = pgx.NamedArgs{
+			"Id":          jobId,
+			"Status":      status,
+			"ProcessedAt": now,
+		}
+	case EmailJobStatusCompleted:
+		sql = `UPDATE email_jobs SET status = @Status, completed_at = @CompletedAt WHERE id = @Id AND status = 'processing'`
+		sqlArgs = pgx.NamedArgs{
+			"Id":          jobId,
+			"Status":      status,
+			"CompletedAt": now,
+		}
+	case EmailJobStatusFailed:
+		sql = `UPDATE email_jobs SET status = @Status, error_message = @ErrorMessage WHERE id = @Id AND status = 'processing'`
+		sqlArgs = pgx.NamedArgs{
+			"Id":           jobId,
+			"Status":       status,
+			"ErrorMessage": errorMsg,
+		}
+	case EmailJobStatusPending:
+		// For retry: only allow resetting from 'processing' to 'pending'
+		sql = `UPDATE email_jobs SET status = @Status WHERE id = @Id AND status = 'processing'`
+		sqlArgs = pgx.NamedArgs{
+			"Id":     jobId,
+			"Status": status,
+		}
+	default:
+		sql = `UPDATE email_jobs SET status = @Status WHERE id = @Id`
+		sqlArgs = pgx.NamedArgs{
+			"Id":     jobId,
+			"Status": status,
+		}
+	}
+
+	result, err := connection.Exec(ctx, sql, sqlArgs)
+	if err != nil {
+		span.RecordError(err)
+		return connect.NewError(connect.CodeInternal, errors.New("failed to update email job status"))
+	}
+
+	if result.RowsAffected() == 0 {
+		return connect.NewError(connect.CodeNotFound, errors.New("email job not found or status mismatch"))
+	}
+
+	return nil
+}
+
+func (r *PgRepository) StartEmailJobProcessor(ctx context.Context, emailService email.Service, batchSize int, pollInterval time.Duration) {
+	r.processorWg.Add(1)
+	go func() {
+		defer r.processorWg.Done()
+		ticker := time.NewTicker(pollInterval)
+		defer ticker.Stop()
+
+		zap.L().Info("email job processor started",
+			zap.Int("batchSize", batchSize),
+			zap.Duration("pollInterval", pollInterval))
+
+		for {
+			select {
+			case <-r.stopChan:
+				zap.L().Info("email job processor stopping")
+				return
+			case <-ticker.C:
+				r.processEmailJobs(ctx, emailService, batchSize)
+			}
+		}
+	}()
+}
+
+func (r *PgRepository) StopEmailJobProcessor() {
+	r.stopOnce.Do(func() {
+		close(r.stopChan)
+		r.processorWg.Wait()
+		zap.L().Info("email job processor stopped")
+	})
+}
+
+func (r *PgRepository) processEmailJobs(ctx context.Context, emailService email.Service, batchSize int) {
+	jobs, err := r.GetPendingEmailJobs(ctx, batchSize)
+	if err != nil {
+		zap.L().Error("failed to get pending email jobs", zap.Error(err))
+		return
+	}
+
+	if len(jobs) == 0 {
+		return
+	}
+
+	zap.L().Info("processing email jobs", zap.Int("count", len(jobs)))
+
+	for _, job := range jobs {
+		// Job status is already set to 'processing' by GetPendingEmailJobs in the same transaction
+		// No need to call UpdateEmailJobStatus here
+
+		// Send email
+		err := emailService.SendInvite(job.Email, job.OrganizationName, job.InviteToken)
+		if err != nil {
+			zap.L().Error("failed to send invite email",
+				zap.Error(err),
+				zap.String("jobId", job.Id),
+				zap.String("email", job.Email))
+
+			// Check if we should retry
+			if job.Attempts+1 < job.MaxAttempts {
+				// Reset to pending for retry
+				if updateErr := r.UpdateEmailJobStatus(ctx, job.Id, EmailJobStatusPending, nil); updateErr != nil {
+					zap.L().Error("failed to reset job to pending", zap.Error(updateErr))
+				}
+			} else {
+				// Max attempts reached, mark as failed
+				errorMsg := err.Error()
+				if updateErr := r.UpdateEmailJobStatus(ctx, job.Id, EmailJobStatusFailed, &errorMsg); updateErr != nil {
+					zap.L().Error("failed to mark job as failed", zap.Error(updateErr))
+				}
+			}
+			continue
+		}
+
+		// Mark as completed
+		if err := r.UpdateEmailJobStatus(ctx, job.Id, EmailJobStatusCompleted, nil); err != nil {
+			zap.L().Error("failed to update job status to completed",
+				zap.Error(err),
+				zap.String("jobId", job.Id))
+			continue
+		}
+
+		zap.L().Info("email job completed successfully",
+			zap.String("jobId", job.Id),
+			zap.String("email", job.Email))
+	}
 }

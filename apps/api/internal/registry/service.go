@@ -8,9 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/storage/filesystem"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
@@ -55,10 +53,7 @@ func (s *service) CreateRepository(
 		return fmt.Errorf("failed to create repository directory: %w", err)
 	}
 
-	fs := osfs.New(repoPath)
-	storage := filesystem.NewStorage(fs, nil)
-
-	_, err = git.Init(storage, fs)
+	_, err = git.PlainInit(repoPath, true)
 	if err != nil {
 		if errors.Is(err, git.ErrRepositoryAlreadyExists) {
 			zap.L().Warn("repository already exists on filesystem", zap.String("path", repoPath))

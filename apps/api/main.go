@@ -70,6 +70,10 @@ func main() {
 
 	emailService := email.NewService(cfg)
 
+	// Start email job processor for batch invitation sending
+	ctx := context.Background()
+	organizationPgRepository.StartEmailJobProcessor(ctx, emailService, 10, 5*time.Second)
+
 	userService := user.NewService(cfg, userPgRepository)
 	gitRepositoryService := registry.NewService(repositoryPgRepository)
 	organizationService := organization.NewService(organizationPgRepository, emailService)
@@ -119,10 +123,10 @@ func main() {
 	}()
 	zap.L().Info("Server started on port", zap.String("port", cfg.Server.Port))
 
-	gracefulShutdown(server, traceProvider)
+	gracefulShutdown(server, traceProvider, organizationPgRepository)
 }
 
-func gracefulShutdown(server *http.Server, traceProvider *sdktrace.TracerProvider) {
+func gracefulShutdown(server *http.Server, traceProvider *sdktrace.TracerProvider, organizationRepo *organization.PgRepository) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
@@ -131,6 +135,11 @@ func gracefulShutdown(server *http.Server, traceProvider *sdktrace.TracerProvide
 
 	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownRelease()
+
+	// Stop email job processor
+	if organizationRepo != nil {
+		organizationRepo.StopEmailJobProcessor()
+	}
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		zap.L().Error("HTTP shutdown error", zap.Error(err))

@@ -93,9 +93,26 @@ func TestCreateOrganization_WithInvites(t *testing.T) {
 			return nil
 		}).Times(2)
 
-	mockEmail.EXPECT().
-		SendInvite(gomock.Any(), "test-org", gomock.Any()).
-		Return(nil).Times(2)
+	// Expect email jobs to be enqueued for each invite
+	mockRepo.EXPECT().
+		EnqueueEmailJobs(ctx, gomock.Any()).
+		DoAndReturn(func(_ context.Context, jobs []*EmailJobDTO) error {
+			if len(jobs) != 2 {
+				t.Errorf("expected 2 email jobs, got %d", len(jobs))
+			}
+			for _, job := range jobs {
+				if job.Email != "friend1@example.com" && job.Email != "friend2@example.com" {
+					t.Errorf("unexpected email in job: %s", job.Email)
+				}
+				if job.OrganizationName != "test-org" {
+					t.Errorf("expected organization name 'test-org', got %s", job.OrganizationName)
+				}
+				if job.Status != EmailJobStatusPending {
+					t.Errorf("expected job status 'pending', got %s", job.Status)
+				}
+			}
+			return nil
+		})
 
 	err := svc.CreateOrganization(ctx, req, createdBy)
 	if err != nil {
@@ -274,10 +291,10 @@ func TestCreateOrganization_EmailSendError(t *testing.T) {
 		CreateInvite(ctx, gomock.Any()).
 		Return(nil)
 
-	// Email send fails - should continue without error (logged)
-	mockEmail.EXPECT().
-		SendInvite("friend@example.com", "test-org", gomock.Any()).
-		Return(errors.New("SMTP error"))
+	// Email job enqueue fails - should continue without error (logged)
+	mockRepo.EXPECT().
+		EnqueueEmailJobs(ctx, gomock.Any()).
+		Return(errors.New("queue error"))
 
 	// Organization creation should still succeed
 	err := svc.CreateOrganization(ctx, req, createdBy)

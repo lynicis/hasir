@@ -80,6 +80,9 @@ func (s *service) CreateOrganization(
 }
 
 func (s *service) sendInvites(ctx context.Context, orgId, orgName, invitedBy string, emails []string) error {
+	var emailJobs []*EmailJobDTO
+	now := time.Now().UTC()
+
 	for _, emailAddr := range emails {
 		token, err := generateInviteToken()
 		if err != nil {
@@ -87,7 +90,6 @@ func (s *service) sendInvites(ctx context.Context, orgId, orgName, invitedBy str
 			continue
 		}
 
-		now := time.Now().UTC()
 		invite := &OrganizationInviteDTO{
 			Id:             uuid.NewString(),
 			OrganizationId: orgId,
@@ -104,12 +106,31 @@ func (s *service) sendInvites(ctx context.Context, orgId, orgName, invitedBy str
 			continue
 		}
 
-		if err := s.emailService.SendInvite(emailAddr, orgName, token); err != nil {
-			zap.L().Error("failed to send invite email", zap.Error(err), zap.String("email", emailAddr))
-			continue
+		// Create email job for queue processing
+		emailJob := &EmailJobDTO{
+			Id:               uuid.NewString(),
+			InviteId:         invite.Id,
+			OrganizationId:   orgId,
+			Email:            emailAddr,
+			OrganizationName: orgName,
+			InviteToken:      token,
+			Status:           EmailJobStatusPending,
+			Attempts:         0,
+			MaxAttempts:      3,
+			CreatedAt:        now,
 		}
+		emailJobs = append(emailJobs, emailJob)
+	}
 
-		zap.L().Info("invite sent successfully", zap.String("email", emailAddr), zap.String("organizationId", orgId))
+	// Enqueue all email jobs in batch
+	if len(emailJobs) > 0 {
+		if err := s.repository.EnqueueEmailJobs(ctx, emailJobs); err != nil {
+			zap.L().Error("failed to enqueue email jobs", zap.Error(err), zap.String("organizationId", orgId))
+			return err
+		}
+		zap.L().Info("enqueued email jobs for batch processing",
+			zap.Int("count", len(emailJobs)),
+			zap.String("organizationId", orgId))
 	}
 
 	return nil

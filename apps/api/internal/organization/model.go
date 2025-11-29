@@ -63,3 +63,28 @@ type OrganizationMemberDTO struct {
 	Role           MemberRole `json:"role" db:"role"`
 	JoinedAt       time.Time  `json:"joined_at" db:"joined_at"`
 }
+
+type EmailJobStatus string
+
+const (
+	EmailJobStatusPending    EmailJobStatus = "pending"
+	EmailJobStatusProcessing EmailJobStatus = "processing"
+	EmailJobStatusCompleted  EmailJobStatus = "completed"
+	EmailJobStatusFailed     EmailJobStatus = "failed"
+)
+
+type EmailJobDTO struct {
+	Id               string         `json:"id" db:"id"`
+	InviteId         string         `json:"invite_id" db:"invite_id"`
+	OrganizationId   string         `json:"organization_id" db:"organization_id"`
+	Email            string         `json:"email" db:"email"`
+	OrganizationName string         `json:"organization_name" db:"organization_name"`
+	InviteToken      string         `json:"invite_token" db:"invite_token"`
+	Status           EmailJobStatus `json:"status" db:"status"`
+	Attempts         int            `json:"attempts" db:"attempts"`
+	MaxAttempts      int            `json:"max_attempts" db:"max_attempts"`
+	CreatedAt        time.Time      `json:"created_at" db:"created_at"`
+	ProcessedAt      *time.Time     `json:"processed_at,omitempty" db:"processed_at"`
+	CompletedAt      *time.Time     `json:"completed_at,omitempty" db:"completed_at"`
+	ErrorMessage     *string        `json:"error_message,omitempty" db:"error_message"`
+}
