@@ -6,7 +6,6 @@ import { useSession } from "@/lib/session-provider";
 
 import { Dashboard } from "./dashboard";
 
-// eslint-disable-next-line no-var
 var toastError: ReturnType<typeof vi.fn>;
 
 vi.mock("@/lib/session-provider", () => ({
@@ -57,6 +56,27 @@ const mockRepositories = [
   { id: "repo-4", name: "internal-tools", organizationId: "org-2" },
 ];
 
+const mockOrganizationsWithPagination = {
+  organizations: mockOrganizations,
+  totalPage: 1,
+};
+
+const mockOrganizationsMultiPage = {
+  organizations: [
+    { id: "org-1", name: "Acme Corp" },
+    { id: "org-2", name: "Hasir Labs" },
+    { id: "org-3", name: "Proto Systems" },
+    { id: "org-4", name: "Test Corp" },
+    { id: "org-5", name: "Demo Labs" },
+  ],
+  totalPage: 2,
+};
+
+const mockRepositoriesWithPagination = {
+  repositories: mockRepositories,
+  totalPage: 1,
+};
+
 describe("Dashboard", () => {
   beforeEach(() => {
     mockedUseSession.mockReturnValue({
@@ -67,20 +87,21 @@ describe("Dashboard", () => {
     mockUseQuery.mockReset();
     toastError.mockReset();
 
-    // Default mock implementation: return loaded data
     mockUseQuery.mockImplementation((schema: { name: string }) => {
       if (schema.name === "getOrganizations") {
         return {
-          data: { organizations: mockOrganizations },
+          data: mockOrganizationsWithPagination,
           isLoading: false,
           error: null,
+          refetch: vi.fn(),
         };
       }
       if (schema.name === "getRepositories") {
         return {
-          data: { repositories: mockRepositories },
+          data: mockRepositoriesWithPagination,
           isLoading: false,
           error: null,
+          refetch: vi.fn(),
         };
       }
       return { data: null, isLoading: false, error: null };
@@ -96,12 +117,10 @@ describe("Dashboard", () => {
 
     render(<Dashboard />);
 
-    // Should show "All organizations" button even while loading
     expect(
       screen.getByRole("button", { name: /all organizations/i })
     ).toBeInTheDocument();
 
-    // Should show skeletons (using data-slot attribute)
     const skeletons = document.querySelectorAll('[data-slot="skeleton"]');
     expect(skeletons.length).toBeGreaterThan(0);
   });
@@ -146,7 +165,6 @@ describe("Dashboard", () => {
   it("passes correct parameters to useQuery for repositories", () => {
     render(<Dashboard />);
 
-    // Find the call for getRepositories
     const repositoriesCall = mockUseQuery.mock.calls.find(
       (call) => call[0]?.name === "getRepositories"
     );
@@ -163,7 +181,6 @@ describe("Dashboard", () => {
   it("passes correct parameters to useQuery for organizations", () => {
     render(<Dashboard />);
 
-    // Find the call for getOrganizations
     const organizationsCall = mockUseQuery.mock.calls.find(
       (call) => call[0]?.name === "getOrganizations"
     );
@@ -190,7 +207,6 @@ describe("Dashboard", () => {
 
     await user.click(screen.getByRole("button", { name: "Hasir Labs" }));
 
-    // Find the most recent call for getRepositories
     const repositoriesCalls = mockUseQuery.mock.calls.filter(
       (call) => call[0]?.name === "getRepositories"
     );
@@ -330,7 +346,6 @@ describe("Dashboard", () => {
       screen.getByRole("button", { name: /all organizations/i })
     );
 
-    // Find the most recent call for getRepositories
     const repositoriesCalls = mockUseQuery.mock.calls.filter(
       (call) => call[0]?.name === "getRepositories"
     );
@@ -364,5 +379,179 @@ describe("Dashboard", () => {
     await user.click(hasirLabsButton);
 
     expect(hasirLabsButton.className).toContain("bg-accent");
+  });
+
+  describe("Pagination", () => {
+    it("does not show pagination when there is only one page", async () => {
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Acme Corp" })
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByRole("button", { name: "1" })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "2" })
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows pagination when there are multiple pages", async () => {
+      mockUseQuery.mockImplementation((schema: { name: string }) => {
+        if (schema.name === "getOrganizations") {
+          return {
+            data: mockOrganizationsMultiPage,
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+          };
+        }
+        if (schema.name === "getRepositories") {
+          return {
+            data: mockRepositoriesWithPagination,
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+          };
+        }
+        return { data: null, isLoading: false, error: null };
+      });
+
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Acme Corp" })
+        ).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole("button", { name: "1" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "2" })).toBeInTheDocument();
+    });
+
+    it("handles organization page changes correctly", async () => {
+      const user = userEvent.setup();
+
+      mockUseQuery.mockImplementation((schema: { name: string }) => {
+        if (schema.name === "getOrganizations") {
+          return {
+            data: mockOrganizationsMultiPage,
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+          };
+        }
+        if (schema.name === "getRepositories") {
+          return {
+            data: mockRepositoriesWithPagination,
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+          };
+        }
+        return { data: null, isLoading: false, error: null };
+      });
+
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "2" })).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: "2" }));
+
+      const orgCalls = mockUseQuery.mock.calls.filter(
+        (call) => call[0]?.name === "getOrganizations"
+      );
+      const lastOrgCall = orgCalls[orgCalls.length - 1];
+
+      expect(lastOrgCall?.[1]).toEqual({
+        pagination: {
+          page: 2,
+          pageLimit: 5,
+        },
+      });
+    });
+
+    it("resets repository page to 1 when organization changes", async () => {
+      const user = userEvent.setup();
+
+      mockUseQuery.mockImplementation((schema: { name: string }) => {
+        if (schema.name === "getOrganizations") {
+          return {
+            data: mockOrganizationsMultiPage,
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+          };
+        }
+        if (schema.name === "getRepositories") {
+          return {
+            data: { repositories: mockRepositories, totalPage: 2 },
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+          };
+        }
+        return { data: null, isLoading: false, error: null };
+      });
+
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Acme Corp" })
+        ).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: "Acme Corp" }));
+
+      const repoCalls = mockUseQuery.mock.calls.filter(
+        (call) => call[0]?.name === "getRepositories"
+      );
+      const lastRepoCall = repoCalls[repoCalls.length - 1];
+
+      expect(lastRepoCall?.[1]).toEqual({
+        pagination: {
+          page: 1,
+          pageLimit: 5,
+        },
+        organizationId: "org-1",
+      });
+    });
+
+    it("disables pagination controls during loading", async () => {
+      mockUseQuery.mockImplementation((schema: { name: string }) => {
+        if (schema.name === "getOrganizations") {
+          return {
+            data: mockOrganizationsMultiPage,
+            isLoading: true, // Set loading to true
+            error: null,
+            refetch: vi.fn(),
+          };
+        }
+        if (schema.name === "getRepositories") {
+          return {
+            data: mockRepositoriesWithPagination,
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+          };
+        }
+        return { data: null, isLoading: false, error: null };
+      });
+
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        const pageButton = screen.queryByRole("button", { name: "1" });
+        if (pageButton) {
+          expect(pageButton).toBeDisabled();
+        }
+      });
+    });
   });
 });

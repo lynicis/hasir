@@ -119,11 +119,11 @@ describe("ProfileForm", () => {
     render(<ProfileForm onSubmit={mockOnSubmit} />);
 
     const emailInput = screen.getByLabelText("Email");
-    // Select all and replace with invalid email
+
     await user.click(emailInput);
     await user.keyboard("{Control>}a{/Control}");
     await user.type(emailInput, "invalid-email");
-    // Trigger blur to validate
+
     await user.tab();
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 
@@ -133,7 +133,7 @@ describe("ProfileForm", () => {
       },
       { timeout: 3000 }
     );
-    // Wait a bit to ensure onSubmit is not called
+
     await new Promise((resolve) => setTimeout(resolve, 200));
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
@@ -199,7 +199,6 @@ describe("ProfileForm", () => {
 
     render(<ProfileForm onSubmit={mockOnSubmit} />);
 
-    // Form already has email from store, so we can submit with empty password fields
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 
     await waitFor(

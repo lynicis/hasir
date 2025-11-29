@@ -1,5 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -35,9 +36,23 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
 
+function renderWithQueryClient(component: ReactNode) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>{component}</QueryClientProvider>
+  );
+}
+
 describe("Header", () => {
   it("renders brand link with correct label and href", () => {
-    render(<Header />);
+    renderWithQueryClient(<Header />);
 
     const brandLink = screen.getByRole("link", { name: "Hasir" });
 
@@ -46,7 +61,7 @@ describe("Header", () => {
   });
 
   it("renders search input with shortcut hint", () => {
-    render(<Header />);
+    renderWithQueryClient(<Header />);
 
     const searchInput = screen.getByRole("searchbox", { name: /search/i });
     const modifierKey = screen.getByText(/⌘|Ctrl/);
@@ -60,7 +75,7 @@ describe("Header", () => {
   it("opens the create popover when the create button is clicked", async () => {
     const user = userEvent.setup();
 
-    render(<Header />);
+    renderWithQueryClient(<Header />);
 
     const createButton = screen.getByRole("button", { name: /create/i });
     await user.click(createButton);
@@ -76,7 +91,7 @@ describe("Header", () => {
   it("opens the create repository dialog with name and visibility fields", async () => {
     const user = userEvent.setup();
 
-    render(<Header />);
+    renderWithQueryClient(<Header />);
 
     const createButton = screen.getByRole("button", { name: /create/i });
     await user.click(createButton);
@@ -98,25 +113,22 @@ describe("Header", () => {
 
   it("renders profile button with user menu", async () => {
     const user = userEvent.setup();
-    render(<Header />);
+    renderWithQueryClient(<Header />);
 
-    // Find the avatar button that opens the user menu
     const avatarButton = screen.getByRole("button", {
       name: /open user menu/i,
     });
     expect(avatarButton).toBeInTheDocument();
 
-    // Click to open the popover
     await user.click(avatarButton);
 
-    // Check that the profile button is in the popover
     expect(
       screen.getByRole("button", { name: /profile/i })
     ).toBeInTheDocument();
   });
 
   it("focuses the search input when ⌘K is pressed", () => {
-    render(<Header />);
+    renderWithQueryClient(<Header />);
 
     const searchInput = screen.getByRole("searchbox", { name: /search/i });
     expect(searchInput).not.toHaveFocus();
@@ -127,7 +139,7 @@ describe("Header", () => {
   });
 
   it("focuses the search input when Ctrl+K is pressed", () => {
-    render(<Header />);
+    renderWithQueryClient(<Header />);
 
     const searchInput = screen.getByRole("searchbox", { name: /search/i });
     expect(searchInput).not.toHaveFocus();

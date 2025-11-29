@@ -34,7 +34,6 @@ export function Header() {
   const [isCreatePopoverOpen, setIsCreatePopoverOpen] = useState(false);
   const [isCreateRepoDialogOpen, setIsCreateRepoDialogOpen] = useState(false);
   const [isCreateOrgDialogOpen, setIsCreateOrgDialogOpen] = useState(false);
-  //const { clearTokens } = useUserStore((state) => state);
   const isMac = useIsMac();
 
   useEffect(() => {

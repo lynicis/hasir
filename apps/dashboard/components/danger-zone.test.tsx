@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
@@ -82,8 +82,6 @@ describe("DangerZone", () => {
       expect(screen.getByText(/are you absolutely sure/i)).toBeInTheDocument();
     });
 
-    // Find the confirm button in the dialog - it should be a button with destructive variant
-    // We can find it by looking for buttons within the dialog content
     await waitFor(() => {
       const allButtons = screen.getAllByRole("button");
       const dialogButtons = allButtons.filter(
@@ -125,7 +123,6 @@ describe("DangerZone", () => {
       expect(screen.getByText(/are you absolutely sure/i)).toBeInTheDocument();
     });
 
-    // Find the confirm button in the dialog
     await waitFor(() => {
       const allButtons = screen.getAllByRole("button");
       const dialogButtons = allButtons.filter(
@@ -195,7 +192,6 @@ describe("DangerZone", () => {
       expect(screen.getByText(/are you absolutely sure/i)).toBeInTheDocument();
     });
 
-    // Find the confirm button in the dialog
     await waitFor(() => {
       const allButtons = screen.getAllByRole("button");
       const dialogButtons = allButtons.filter(
@@ -221,7 +217,9 @@ describe("DangerZone", () => {
 
     await waitFor(() => expect(mockOnDelete).toHaveBeenCalled());
 
-    resolvePromise!();
-    await promise;
+    await act(async () => {
+      resolvePromise!();
+      await promise;
+    });
   });
 });

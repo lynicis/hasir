@@ -30,8 +30,27 @@ vi.mock("sonner", () => {
   };
 });
 
+const mockUseQuery = vi.fn();
+
+vi.mock("@connectrpc/connect-query", () => ({
+  useQuery: (...args: unknown[]) => mockUseQuery(...args),
+}));
+
+vi.mock(
+  "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery",
+  () => ({
+    getOrganizations: { name: "getOrganizations" },
+  })
+);
+
 const mockCreateRepository = vi.fn();
 const mockedUseClient = useClient as unknown as Mock;
+
+const mockOrganizations = [
+  { id: "org-1", name: "Acme Corp" },
+  { id: "org-2", name: "Hasir Labs" },
+  { id: "org-3", name: "Proto Systems" },
+];
 
 describe("RepositoryDialogForm", () => {
   beforeEach(() => {
@@ -41,6 +60,19 @@ describe("RepositoryDialogForm", () => {
     mockCreateRepository.mockReset();
     toastSuccess.mockReset();
     toastError.mockReset();
+    mockUseQuery.mockReset();
+
+    // Default mock implementation: return loaded organizations
+    mockUseQuery.mockImplementation((schema: { name: string }) => {
+      if (schema.name === "getOrganizations") {
+        return {
+          data: { organizations: mockOrganizations },
+          isLoading: false,
+          error: null,
+        };
+      }
+      return { data: null, isLoading: false, error: null };
+    });
   });
 
   function setup(open = true) {
@@ -58,13 +90,14 @@ describe("RepositoryDialogForm", () => {
     return { onOpenChange, onCancel };
   }
 
-  it("renders dialog with name and visibility fields when open", () => {
+  it("renders dialog with organization, name and visibility fields when open", () => {
     setup(true);
 
     expect(
       screen.getByRole("heading", { name: /create repository/i })
     ).toBeInTheDocument();
 
+    expect(screen.getByLabelText(/organization/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /public/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /private/i })).toBeInTheDocument();
@@ -73,6 +106,24 @@ describe("RepositoryDialogForm", () => {
   it("creates a public repository when submitted with valid data", async () => {
     const user = userEvent.setup();
     const { onOpenChange } = setup(true);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: /create repository/i })
+      ).toBeInTheDocument()
+    );
+
+    const organizationSelect = screen.getByRole("combobox", {
+      name: /organization/i,
+    });
+    await user.click(organizationSelect);
+
+    await waitFor(() => {
+      const options = screen.getAllByText("Acme Corp");
+      return options.length > 0;
+    });
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Enter}");
 
     await user.type(
       screen.getByLabelText(/name/i),
@@ -84,6 +135,7 @@ describe("RepositoryDialogForm", () => {
     await waitFor(() =>
       expect(mockCreateRepository).toHaveBeenCalledWith({
         name: "awesome-repository-example",
+        organizationId: "org-2",
         visibility: Visibility.PUBLIC,
       })
     );
@@ -101,6 +153,28 @@ describe("RepositoryDialogForm", () => {
 
     setup(true);
 
+    // Wait for the dialog to be fully rendered
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: /create repository/i })
+      ).toBeInTheDocument()
+    );
+
+    // Select an organization first - use keyboard navigation
+    const organizationSelect = screen.getByRole("combobox", {
+      name: /organization/i,
+    });
+    await user.click(organizationSelect);
+
+    // Wait for the select content to open
+    await waitFor(() => {
+      const options = screen.getAllByText("Acme Corp");
+      return options.length > 0;
+    });
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Enter}");
+
     await user.type(screen.getByLabelText(/name/i), "secret-repository");
     await user.click(screen.getByRole("radio", { name: /private/i }));
     await user.click(screen.getByRole("button", { name: /create/i }));
@@ -108,6 +182,7 @@ describe("RepositoryDialogForm", () => {
     await waitFor(() =>
       expect(mockCreateRepository).toHaveBeenCalledWith({
         name: "secret-repository",
+        organizationId: "org-3",
         visibility: Visibility.PRIVATE,
       })
     );
@@ -121,6 +196,14 @@ describe("RepositoryDialogForm", () => {
     );
 
     setup(true);
+
+    // Select an organization first - use keyboard navigation
+    const organizationSelect = screen.getByRole("combobox", {
+      name: /organization/i,
+    });
+    await user.click(organizationSelect);
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Enter}");
 
     await user.type(screen.getByLabelText(/name/i), "bad name");
     await user.click(screen.getByRole("button", { name: /create/i }));
@@ -137,6 +220,16 @@ describe("RepositoryDialogForm", () => {
 
     setup(true);
 
+    // Select an organization first - use keyboard navigation
+    const organizationSelect = screen.getByRole("combobox", {
+      name: /organization/i,
+    });
+    await user.click(organizationSelect);
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Enter}");
+
     await user.type(screen.getByLabelText(/name/i), "any-name");
     await user.click(screen.getByRole("button", { name: /create/i }));
 
@@ -149,6 +242,14 @@ describe("RepositoryDialogForm", () => {
     const user = userEvent.setup();
     const { onCancel } = setup(true);
 
+    // Select an organization first - use keyboard navigation
+    const organizationSelect = screen.getByRole("combobox", {
+      name: /organization/i,
+    });
+    await user.click(organizationSelect);
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Enter}");
+
     const nameInput = screen.getByLabelText(/name/i) as HTMLInputElement;
     await user.type(nameInput, "temp-name");
 
@@ -156,5 +257,41 @@ describe("RepositoryDialogForm", () => {
 
     expect(onCancel).toHaveBeenCalled();
     expect(nameInput.value).toBe("");
+  });
+
+  it("shows validation error when organization is not selected", async () => {
+    const user = userEvent.setup();
+    setup(true);
+
+    await user.type(screen.getByLabelText(/name/i), "test-repository");
+    await user.click(screen.getByRole("button", { name: /create/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/please select an organization/i)
+      ).toBeInTheDocument();
+    });
+
+    expect(mockCreateRepository).not.toHaveBeenCalled();
+  });
+
+  it("shows loading state when organizations are being fetched", () => {
+    mockUseQuery.mockImplementation((schema: { name: string }) => {
+      if (schema.name === "getOrganizations") {
+        return {
+          data: undefined,
+          isLoading: true,
+          error: null,
+        };
+      }
+      return { data: null, isLoading: false, error: null };
+    });
+
+    setup(true);
+
+    const organizationSelect = screen.getByRole("combobox", {
+      name: /organization/i,
+    });
+    expect(organizationSelect).toBeDisabled();
   });
 });

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
@@ -27,7 +27,9 @@ describe("PasswordConfirmationDialog", () => {
 
     expect(screen.getByText(/confirm your password/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/current password/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /confirm/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /confirm/i })
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
   });
 
@@ -41,7 +43,9 @@ describe("PasswordConfirmationDialog", () => {
       />
     );
 
-    expect(screen.queryByText(/confirm your password/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/confirm your password/i)
+    ).not.toBeInTheDocument();
   });
 
   it("calls onConfirm with password when form is submitted", async () => {
@@ -56,7 +60,10 @@ describe("PasswordConfirmationDialog", () => {
       />
     );
 
-    await user.type(screen.getByLabelText(/current password/i), "currentpass123");
+    await user.type(
+      screen.getByLabelText(/current password/i),
+      "currentpass123"
+    );
     await user.click(screen.getByRole("button", { name: /confirm/i }));
 
     await waitFor(() =>
@@ -118,7 +125,9 @@ describe("PasswordConfirmationDialog", () => {
       />
     );
 
-    const passwordInput = screen.getByLabelText(/current password/i) as HTMLInputElement;
+    const passwordInput = screen.getByLabelText(
+      /current password/i
+    ) as HTMLInputElement;
     await user.type(passwordInput, "currentpass123");
     await user.click(screen.getByRole("button", { name: /confirm/i }));
 
@@ -138,7 +147,9 @@ describe("PasswordConfirmationDialog", () => {
       />
     );
 
-    const passwordInput = screen.getByLabelText(/current password/i) as HTMLInputElement;
+    const passwordInput = screen.getByLabelText(
+      /current password/i
+    ) as HTMLInputElement;
     await user.type(passwordInput, "somepassword");
     await user.click(screen.getByRole("button", { name: /cancel/i }));
 
@@ -162,16 +173,20 @@ describe("PasswordConfirmationDialog", () => {
       />
     );
 
-    await user.type(screen.getByLabelText(/current password/i), "currentpass123");
+    await user.type(
+      screen.getByLabelText(/current password/i),
+      "currentpass123"
+    );
     await user.click(screen.getByRole("button", { name: /confirm/i }));
 
     await waitFor(() => expect(mockOnConfirm).toHaveBeenCalled());
-    
+
     const confirmButton = screen.getByRole("button", { name: /confirm/i });
     expect(confirmButton).toBeDisabled();
 
-    resolvePromise!();
-    await promise;
+    await act(async () => {
+      resolvePromise!();
+      await promise;
+    });
   });
 });
-

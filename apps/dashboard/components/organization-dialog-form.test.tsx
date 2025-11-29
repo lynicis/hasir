@@ -9,9 +9,8 @@ import { useClient } from "@/lib/use-client";
 
 import { OrganizationDialogForm } from "./organization-dialog-form";
 
-// eslint-disable-next-line no-var
 var toastSuccess: ReturnType<typeof vi.fn>;
-// eslint-disable-next-line no-var
+
 var toastError: ReturnType<typeof vi.fn>;
 
 vi.mock("@/lib/use-client", () => ({
@@ -100,7 +99,6 @@ describe("OrganizationDialogForm", () => {
     const user = userEvent.setup();
     setup(true);
 
-    // Go to step 2
     await user.type(screen.getByLabelText(/name/i), "My Organization");
     await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -108,7 +106,6 @@ describe("OrganizationDialogForm", () => {
       expect(screen.getByText(/no invites yet/i)).toBeInTheDocument()
     );
 
-    // Add an invite
     await user.click(screen.getByRole("button", { name: /add email/i }));
 
     await waitFor(() =>
@@ -117,13 +114,11 @@ describe("OrganizationDialogForm", () => {
       ).toBeInTheDocument()
     );
 
-    // Type email
     await user.type(
       screen.getByPlaceholderText(/friend@example.com/i),
       "test@example.com"
     );
 
-    // Remove the invite
     const removeButtons = screen.getAllByRole("button");
     const removeButton = removeButtons.find((btn) =>
       btn.querySelector("svg.lucide-x")
@@ -142,7 +137,6 @@ describe("OrganizationDialogForm", () => {
     const user = userEvent.setup();
     setup(true);
 
-    // Go to step 2
     await user.type(screen.getByLabelText(/name/i), "My Organization");
     await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -152,7 +146,6 @@ describe("OrganizationDialogForm", () => {
       ).toBeInTheDocument()
     );
 
-    // Click back button (now has aria-label "Go back")
     const backButton = screen.getByRole("button", { name: /go back/i });
     await user.click(backButton);
 
@@ -167,12 +160,10 @@ describe("OrganizationDialogForm", () => {
     const user = userEvent.setup();
     const { onOpenChange } = setup(true);
 
-    // Step 1
     await user.type(screen.getByLabelText(/name/i), "Test Org");
     await user.click(screen.getByRole("radio", { name: /private/i }));
     await user.click(screen.getByRole("button", { name: /next/i }));
 
-    // Step 2
     await waitFor(() =>
       expect(
         screen.getByRole("heading", { name: /invite your friends/i })
@@ -207,18 +198,15 @@ describe("OrganizationDialogForm", () => {
     const user = userEvent.setup();
     const { onOpenChange } = setup(true);
 
-    // Step 1
     await user.type(screen.getByLabelText(/name/i), "Solo Org");
     await user.click(screen.getByRole("button", { name: /next/i }));
 
-    // Step 2 - skip adding invites
     await waitFor(() =>
       expect(
         screen.getByRole("heading", { name: /invite your friends/i })
       ).toBeInTheDocument()
     );
 
-    // Button should say "Create" not "Create & Invite"
     expect(
       screen.getByRole("button", { name: /^create$/i })
     ).toBeInTheDocument();
@@ -253,7 +241,6 @@ describe("OrganizationDialogForm", () => {
     const user = userEvent.setup();
     setup(true);
 
-    // Go to step 2
     await user.type(screen.getByLabelText(/name/i), "My Organization");
     await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -263,13 +250,10 @@ describe("OrganizationDialogForm", () => {
       ).toBeInTheDocument()
     );
 
-    // Add an invite but leave it empty
     await user.click(screen.getByRole("button", { name: /add email/i }));
 
-    // Try to submit with empty email
     await user.click(screen.getByRole("button", { name: /create & invite/i }));
 
-    // Form should not submit (API should not be called)
     await waitFor(() => {
       expect(mockCreateOrganization).not.toHaveBeenCalled();
     });

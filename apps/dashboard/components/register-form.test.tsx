@@ -9,11 +9,10 @@ import { useClient } from "@/lib/use-client";
 
 import { RegisterForm } from "./register-form";
 
-// eslint-disable-next-line no-var
 var mockRouterPush: ReturnType<typeof vi.fn>;
-// eslint-disable-next-line no-var
+
 var toastSuccess: ReturnType<typeof vi.fn>;
-// eslint-disable-next-line no-var
+
 var toastError: ReturnType<typeof vi.fn>;
 
 vi.mock("@/lib/use-client", () => ({

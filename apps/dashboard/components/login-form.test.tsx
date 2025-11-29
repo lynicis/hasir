@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 
 import { LoginForm } from "./login-form";
 
-
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -16,11 +15,9 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-
 const mockPush = vi.fn();
 const mockFetch = vi.fn();
 
-// Mock fetch
 global.fetch = mockFetch;
 
 describe("LoginForm", () => {
@@ -33,10 +30,11 @@ describe("LoginForm", () => {
     const user = userEvent.setup();
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({
-        user: { id: "123", email: "hello@example.com" },
-        accessToken: "token",
-      }),
+      json: () =>
+        Promise.resolve({
+          user: { id: "123", email: "hello@example.com" },
+          accessToken: "token",
+        }),
     });
 
     render(<LoginForm />);
@@ -46,10 +44,10 @@ describe("LoginForm", () => {
     await user.click(screen.getByRole("button", { name: /login/i }));
 
     await waitFor(() =>
-      expect(mockFetch).toHaveBeenCalledWith('/api/auth/login', {
-        method: 'POST',
+      expect(mockFetch).toHaveBeenCalledWith("/api/auth/login", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email: "hello@example.com",

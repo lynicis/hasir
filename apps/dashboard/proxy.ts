@@ -18,6 +18,10 @@ export async function proxy(request: NextRequest) {
 
   const sessionCookie = request.cookies.get('hasir-session');
 
+  if (pathname === '/' && sessionCookie) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
   if (!sessionCookie) {
     return NextResponse.redirect(new URL('/login', request.url));
   }

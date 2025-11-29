@@ -3,10 +3,15 @@
 import { getOrganizations } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
 import { getRepositories } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
 import { useQuery } from "@connectrpc/connect-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Settings } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OrganizationDialogForm } from "@/components/organization-dialog-form";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { useRefreshStore } from "@/stores/refresh-store";
+import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { customRetry } from "@/lib/query-retry";
 import { isNotFoundError } from "@/lib/utils";
@@ -18,31 +23,55 @@ const DEFAULT_PAGINATION = {
 
 export function Dashboard() {
   const [activeOrgId, setActiveOrgId] = useState<string | "all">("all");
+  const [isCreateOrgDialogOpen, setIsCreateOrgDialogOpen] = useState(false);
+  const [orgPage, setOrgPage] = useState(1);
+  const [repoPage, setRepoPage] = useState(1);
+
+  const organizationsRefreshKey = useRefreshStore(
+    (state) => state.organizationsRefreshKey
+  );
+  const repositoriesRefreshKey = useRefreshStore(
+    (state) => state.repositoriesRefreshKey
+  );
+
+  const organizationsQueryParams = useMemo(
+    () => ({
+      pagination: {
+        page: orgPage,
+        pageLimit: DEFAULT_PAGINATION.pageLimit,
+      },
+    }),
+    [orgPage]
+  );
 
   const {
     data: organizations,
     isLoading: isLoadingOrganizations,
     error: organizationsError,
-  } = useQuery(
-    getOrganizations,
-    {
-      pagination: DEFAULT_PAGINATION,
-    },
-    { retry: customRetry }
-  );
+    refetch: refetchOrganizations,
+  } = useQuery(getOrganizations, organizationsQueryParams, {
+    retry: customRetry,
+  });
 
   const {
     data: repositoriesData,
     isLoading: isLoadingRepositories,
     error: repositoriesError,
+    refetch: refetchRepositories,
   } = useQuery(
     getRepositories,
     activeOrgId === "all"
       ? {
-          pagination: DEFAULT_PAGINATION,
+          pagination: {
+            page: repoPage,
+            pageLimit: DEFAULT_PAGINATION.pageLimit,
+          },
         }
       : {
-          pagination: DEFAULT_PAGINATION,
+          pagination: {
+            page: repoPage,
+            pageLimit: DEFAULT_PAGINATION.pageLimit,
+          },
           organizationId: activeOrgId,
         },
     { retry: customRetry }
@@ -50,6 +79,16 @@ export function Dashboard() {
 
   const organizationsList = organizations?.organizations ?? [];
   const repositoriesList = repositoriesData?.repositories ?? [];
+
+  const orgTotalPages =
+    (organizations as { totalPage?: number })?.totalPage ?? 1;
+  const repoTotalPages =
+    (repositoriesData as { totalPage?: number })?.totalPage ?? 1;
+
+  const handleOrgChange = (orgId: string | "all") => {
+    setActiveOrgId(orgId);
+    setRepoPage(1);
+  };
 
   useEffect(() => {
     if (organizationsError && !isNotFoundError(organizationsError)) {
@@ -63,72 +102,102 @@ export function Dashboard() {
     }
   }, [repositoriesError]);
 
+  useEffect(() => {
+    if (organizationsRefreshKey > 0) {
+      refetchOrganizations();
+    }
+  }, [organizationsRefreshKey, refetchOrganizations]);
+
+  useEffect(() => {
+    if (repositoriesRefreshKey > 0) {
+      refetchRepositories();
+    }
+  }, [repositoriesRefreshKey, refetchRepositories]);
+
   return (
-    <div className="h-[calc(100vh-4.5rem)] bg-background px-6 py-6 overflow-hidden">
+    <div className="h-[calc(100vh-4.5rem)] bg-background px-6 py-6">
       <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-6">
-        <main className="grid flex-1 grid-cols-[260px_minmax(0,1fr)] gap-6 pt-2">
-          <Card className="h-full gap-0 overflow-hidden rounded-2xl border border-border/60 py-0 shadow-sm">
-            <CardHeader className="flex items-center bg-primary px-6 py-4">
+        <main className="grid flex-1 grid-cols-[260px_minmax(0,1fr)] gap-6 pt-2 min-h-0">
+          <Card className="h-full overflow-hidden rounded-2xl border border-border/60 shadow-sm flex flex-col gap-0 py-0">
+            <CardHeader className="flex items-center bg-primary px-6 py-4 shrink-0 border-b border-border/60">
               <CardTitle className="text-sm font-medium text-secondary">
                 Your organizations
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 py-4">
-              <button
-                type="button"
-                onClick={() => setActiveOrgId("all")}
-                className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-colors ${
-                  activeOrgId === "all"
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent hover:text-accent-foreground"
-                }`}
-              >
-                <span>All organizations</span>
-              </button>
-              {isLoadingOrganizations ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex w-full items-center rounded-md px-3 py-2.5"
-                  >
-                    <Skeleton className="h-4 w-24" />
-                  </div>
-                ))
-              ) : organizationsError && !isNotFoundError(organizationsError) ? (
-                <div className="flex flex-col items-center justify-center py-6 space-y-3">
-                  <div className="text-xs text-muted-foreground">
-                    Failed to load organizations
-                  </div>
-                </div>
-              ) : organizationsList.length === 0 &&
-                organizationsError &&
-                isNotFoundError(organizationsError) ? (
-                <div className="flex items-center justify-center py-6 text-xs text-muted-foreground">
-                  No organizations found
-                </div>
-              ) : (
-                organizationsList.map((org) => {
-                  const isActive = activeOrgId === org.id;
-                  return (
-                    <button
-                      key={org.id}
-                      type="button"
-                      onClick={() => setActiveOrgId(org.id)}
-                      className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-colors ${
-                        isActive
-                          ? "bg-accent text-accent-foreground"
-                          : "hover:bg-accent hover:text-accent-foreground"
-                      }`}
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => handleOrgChange("all")}
+                  className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-colors ${
+                    activeOrgId === "all"
+                      ? "bg-accent text-accent-foreground"
+                      : "hover:bg-accent hover:text-accent-foreground"
+                  }`}
+                >
+                  <span>All organizations</span>
+                </button>
+                {isLoadingOrganizations ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="flex w-full items-center rounded-md px-3 py-2.5"
                     >
-                      <span>{org.name}</span>
-                    </button>
-                  );
-                })
-              )}
-            </CardContent>
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  ))
+                ) : organizationsError &&
+                  !isNotFoundError(organizationsError) ? (
+                  <div className="flex flex-col items-center justify-center py-6 space-y-3">
+                    <div className="text-xs text-muted-foreground">
+                      Failed to load organizations
+                    </div>
+                  </div>
+                ) : organizationsList.length === 0 &&
+                  organizationsError &&
+                  isNotFoundError(organizationsError) ? (
+                  <div className="flex items-center justify-center py-6 text-xs text-muted-foreground">
+                    No organizations found
+                  </div>
+                ) : (
+                  organizationsList.map((org) => {
+                    const isActive = activeOrgId === org.id;
+                    return (
+                      <div key={org.id} className="space-y-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOrgChange(org.id)}
+                          className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-colors ${
+                            isActive
+                              ? "bg-accent text-accent-foreground"
+                              : "hover:bg-accent hover:text-accent-foreground"
+                          }`}
+                        >
+                          <span>{org.name}</span>
+                        </button>
+                        <Link
+                          href={`/organization/${org.id}`}
+                          className="flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          <Settings className="size-3.5" />
+                          <span>Settings</span>
+                        </Link>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+            <Pagination
+              currentPage={orgPage}
+              totalPages={orgTotalPages}
+              onPageChange={setOrgPage}
+              disabled={isLoadingOrganizations}
+              className="px-6 pb-4 shrink-0"
+            />
           </Card>
-          <Card className="h-full gap-0 overflow-hidden rounded-2xl border border-border/60 py-0 shadow-sm">
-            <CardHeader className="flex items-center justify-between bg-primary px-6 py-4">
+          <Card className="h-full overflow-hidden rounded-2xl border border-border/60 shadow-sm flex flex-col gap-0 py-0">
+            <CardHeader className="flex items-center justify-between bg-primary px-6 py-4 shrink-0 border-b border-border/60">
               <div className="space-y-0.5">
                 <CardTitle className="text-sm font-medium text-secondary">
                   Repositories
@@ -152,36 +221,51 @@ export function Dashboard() {
                 </span>
               )}
             </CardHeader>
-            <CardContent className="space-y-2.5 py-4">
-              {isLoadingRepositories ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3"
-                  >
-                    <Skeleton className="h-5 w-32" />
-                  </div>
-                ))
-              ) : repositoriesList.length === 0 ? (
-                <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                  No repositories found
-                </div>
-              ) : (
-                repositoriesList.map((repo) => (
-                  <div
-                    key={repo.id}
-                    className="hover:bg-accent/60 flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 text-sm transition-colors"
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-medium">{repo.name}</span>
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+              <div className="space-y-2.5">
+                {isLoadingRepositories ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3"
+                    >
+                      <Skeleton className="h-5 w-32" />
                     </div>
+                  ))
+                ) : repositoriesList.length === 0 ? (
+                  <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+                    No repositories found
                   </div>
-                ))
-              )}
-            </CardContent>
+                ) : (
+                  repositoriesList.map((repo) => (
+                    <div
+                      key={repo.id}
+                      className="hover:bg-accent/60 flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 text-sm transition-colors"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium">{repo.name}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            <Pagination
+              currentPage={repoPage}
+              totalPages={repoTotalPages}
+              onPageChange={setRepoPage}
+              disabled={isLoadingRepositories}
+              className="px-6 pb-4 shrink-0"
+            />
           </Card>
         </main>
       </div>
+
+      <OrganizationDialogForm
+        open={isCreateOrgDialogOpen}
+        onOpenChange={setIsCreateOrgDialogOpen}
+        onCancel={() => setIsCreateOrgDialogOpen(false)}
+      />
     </div>
   );
 }
