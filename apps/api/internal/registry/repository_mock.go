@@ -54,6 +54,20 @@ func (mr *MockRepositoryMockRecorder) CreateRepository(ctx, repo any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRepository", reflect.TypeOf((*MockRepository)(nil).CreateRepository), ctx, repo)
 }
 
+// DeleteRepository mocks base method.
+func (m *MockRepository) DeleteRepository(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRepository", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRepository indicates an expected call of DeleteRepository.
+func (mr *MockRepositoryMockRecorder) DeleteRepository(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRepository", reflect.TypeOf((*MockRepository)(nil).DeleteRepository), ctx, id)
+}
+
 // GetRepositories mocks base method.
 func (m *MockRepository) GetRepositories(ctx context.Context, page, pageSize int) (*[]RepositoryDTO, error) {
 	m.ctrl.T.Helper()
@@ -84,6 +98,21 @@ func (mr *MockRepositoryMockRecorder) GetRepositoriesCount(ctx any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositoriesCount", reflect.TypeOf((*MockRepository)(nil).GetRepositoriesCount), ctx)
 }
 
+// GetRepositoryById mocks base method.
+func (m *MockRepository) GetRepositoryById(ctx context.Context, id string) (*RepositoryDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRepositoryById", ctx, id)
+	ret0, _ := ret[0].(*RepositoryDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRepositoryById indicates an expected call of GetRepositoryById.
+func (mr *MockRepositoryMockRecorder) GetRepositoryById(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositoryById", reflect.TypeOf((*MockRepository)(nil).GetRepositoryById), ctx, id)
+}
+
 // GetRepositoryByName mocks base method.
 func (m *MockRepository) GetRepositoryByName(ctx context.Context, name string) (*RepositoryDTO, error) {
 	m.ctrl.T.Helper()
@@ -97,4 +126,18 @@ func (m *MockRepository) GetRepositoryByName(ctx context.Context, name string) (
 func (mr *MockRepositoryMockRecorder) GetRepositoryByName(ctx, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositoryByName", reflect.TypeOf((*MockRepository)(nil).GetRepositoryByName), ctx, name)
+}
+
+// UpdateRepository mocks base method.
+func (m *MockRepository) UpdateRepository(ctx context.Context, repo *RepositoryDTO) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateRepository", ctx, repo)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateRepository indicates an expected call of UpdateRepository.
+func (mr *MockRepositoryMockRecorder) UpdateRepository(ctx, repo any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRepository", reflect.TypeOf((*MockRepository)(nil).UpdateRepository), ctx, repo)
 }

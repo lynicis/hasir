@@ -80,7 +80,6 @@ func TestCreateOrganization_WithInvites(t *testing.T) {
 		CreateOrganization(ctx, gomock.Any()).
 		Return(nil)
 
-	// Expect invites to be created for each email
 	mockRepo.EXPECT().
 		CreateInvite(ctx, gomock.Any()).
 		DoAndReturn(func(_ context.Context, invite *OrganizationInviteDTO) error {
@@ -93,7 +92,6 @@ func TestCreateOrganization_WithInvites(t *testing.T) {
 			return nil
 		}).Times(2)
 
-	// Expect email jobs to be enqueued for each invite
 	mockRepo.EXPECT().
 		EnqueueEmailJobs(ctx, gomock.Any()).
 		DoAndReturn(func(_ context.Context, jobs []*EmailJobDTO) error {
@@ -250,12 +248,10 @@ func TestCreateOrganization_InviteCreateError(t *testing.T) {
 		CreateOrganization(ctx, gomock.Any()).
 		Return(nil)
 
-	// Invite creation fails - should continue without error (logged)
 	mockRepo.EXPECT().
 		CreateInvite(ctx, gomock.Any()).
 		Return(connect.NewError(connect.CodeInternal, errors.New("invite creation failed")))
 
-	// Organization creation should still succeed
 	err := svc.CreateOrganization(ctx, req, createdBy)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -291,12 +287,10 @@ func TestCreateOrganization_EmailSendError(t *testing.T) {
 		CreateInvite(ctx, gomock.Any()).
 		Return(nil)
 
-	// Email job enqueue fails - should continue without error (logged)
 	mockRepo.EXPECT().
 		EnqueueEmailJobs(ctx, gomock.Any()).
 		Return(errors.New("queue error"))
 
-	// Organization creation should still succeed
 	err := svc.CreateOrganization(ctx, req, createdBy)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -625,7 +619,6 @@ func TestRespondToInvitation_MemberAlreadyExists(t *testing.T) {
 		AddMember(ctx, gomock.Any()).
 		Return(ErrMemberAlreadyExists)
 
-	// Should succeed even if member already exists
 	err := svc.RespondToInvitation(ctx, token, userId, true)
 	if err != nil {
 		t.Fatalf("expected no error when member already exists, got %v", err)
@@ -770,5 +763,151 @@ func TestRespondToInvitation_InviteCancelled(t *testing.T) {
 
 	if connectErr.Code() != connect.CodeFailedPrecondition {
 		t.Errorf("expected CodeFailedPrecondition, got %v", connectErr.Code())
+	}
+}
+
+func TestDeleteOrganization_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := NewMockRepository(ctrl)
+	mockEmail := email.NewMockService(ctrl)
+
+	svc := NewService(mockRepo, mockEmail)
+
+	ctx := context.Background()
+	orgID := "org-123"
+	userID := "user-123"
+
+	org := &OrganizationDTO{
+		Id:        orgID,
+		Name:      "test-org",
+		CreatedBy: userID,
+	}
+
+	mockRepo.EXPECT().
+		GetOrganizationById(ctx, orgID).
+		Return(org, nil)
+
+	mockRepo.EXPECT().
+		DeleteOrganization(ctx, orgID).
+		Return(nil)
+
+	err := svc.DeleteOrganization(ctx, orgID, userID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+}
+
+func TestDeleteOrganization_OrganizationNotFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := NewMockRepository(ctrl)
+	mockEmail := email.NewMockService(ctrl)
+
+	svc := NewService(mockRepo, mockEmail)
+
+	ctx := context.Background()
+	orgID := "non-existent-org"
+	userID := "user-123"
+
+	mockRepo.EXPECT().
+		GetOrganizationById(ctx, orgID).
+		Return(nil, ErrOrganizationNotFound)
+
+	err := svc.DeleteOrganization(ctx, orgID, userID)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("expected connect.Error, got %T", err)
+	}
+
+	if connectErr.Code() != connect.CodeNotFound {
+		t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
+	}
+}
+
+func TestDeleteOrganization_PermissionDenied(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := NewMockRepository(ctrl)
+	mockEmail := email.NewMockService(ctrl)
+
+	svc := NewService(mockRepo, mockEmail)
+
+	ctx := context.Background()
+	orgID := "org-123"
+	userID := "user-123"
+	otherUserID := "user-456"
+
+	org := &OrganizationDTO{
+		Id:        orgID,
+		Name:      "test-org",
+		CreatedBy: otherUserID, // Different user created it
+	}
+
+	mockRepo.EXPECT().
+		GetOrganizationById(ctx, orgID).
+		Return(org, nil)
+
+	err := svc.DeleteOrganization(ctx, orgID, userID)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("expected connect.Error, got %T", err)
+	}
+
+	if connectErr.Code() != connect.CodePermissionDenied {
+		t.Errorf("expected CodePermissionDenied, got %v", connectErr.Code())
+	}
+}
+
+func TestDeleteOrganization_RepositoryError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := NewMockRepository(ctrl)
+	mockEmail := email.NewMockService(ctrl)
+
+	svc := NewService(mockRepo, mockEmail)
+
+	ctx := context.Background()
+	orgID := "org-123"
+	userID := "user-123"
+
+	org := &OrganizationDTO{
+		Id:        orgID,
+		Name:      "test-org",
+		CreatedBy: userID,
+	}
+
+	mockRepo.EXPECT().
+		GetOrganizationById(ctx, orgID).
+		Return(org, nil)
+
+	mockRepo.EXPECT().
+		DeleteOrganization(ctx, orgID).
+		Return(connect.NewError(connect.CodeInternal, errors.New("database error")))
+
+	err := svc.DeleteOrganization(ctx, orgID, userID)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("expected connect.Error, got %T", err)
+	}
+
+	if connectErr.Code() != connect.CodeInternal {
+		t.Errorf("expected CodeInternal, got %v", connectErr.Code())
 	}
 }

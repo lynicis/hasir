@@ -61,8 +61,9 @@ func createRepositoriesTable(t *testing.T, connString string) {
 
 	sql := `CREATE TABLE repositories (
 		id VARCHAR PRIMARY KEY,
-		name VARCHAR NOT NULL UNIQUE,
+		name VARCHAR NOT NULL,
 		owner_id VARCHAR NOT NULL,
+		organization_id VARCHAR,
 		path VARCHAR NOT NULL,
 		created_at TIMESTAMP NOT NULL,
 		updated_at TIMESTAMP NOT NULL,
@@ -107,7 +108,6 @@ func TestPgRepository_CreateRepository(t *testing.T) {
 		err = repo.CreateRepository(t.Context(), testRepo)
 		require.NoError(t, err)
 
-		// Verify the repository was created
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		defer func() {
@@ -123,32 +123,6 @@ func TestPgRepository_CreateRepository(t *testing.T) {
 		assert.Equal(t, testRepo.Id, dbId)
 		assert.Equal(t, testRepo.Name, dbName)
 		assert.Equal(t, testRepo.Path, dbPath)
-	})
-
-	t.Run("duplicate name returns already exists error", func(t *testing.T) {
-		container := setupPgContainer(t)
-		defer func() {
-			err := container.Terminate(t.Context())
-			require.NoError(t, err)
-		}()
-
-		connString, err := container.ConnectionString(t.Context())
-		require.NoError(t, err)
-
-		createRepositoriesTable(t, connString)
-
-		repo, pool := setupTestRepository(t, connString)
-		defer pool.Close()
-
-		repoName := "duplicate-repo-" + uuid.NewString()
-		testRepo1 := createTestRepository(t, repoName)
-		testRepo2 := createTestRepository(t, repoName)
-
-		err = repo.CreateRepository(t.Context(), testRepo1)
-		require.NoError(t, err)
-
-		err = repo.CreateRepository(t.Context(), testRepo2)
-		require.ErrorIs(t, err, ErrRepositoryAlreadyExists)
 	})
 
 	t.Run("verify all fields are stored correctly", func(t *testing.T) {
@@ -261,7 +235,6 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 		err = repo.CreateRepository(t.Context(), testRepo)
 		require.NoError(t, err)
 
-		// Soft delete the repository
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		_, err = conn.Exec(t.Context(), "UPDATE repositories SET deleted_at = NOW() WHERE id = $1", testRepo.Id)
@@ -398,7 +371,6 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 		err = repo.CreateRepository(t.Context(), deletedRepo)
 		require.NoError(t, err)
 
-		// Soft delete one repository
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		_, err = conn.Exec(t.Context(), "UPDATE repositories SET deleted_at = NOW() WHERE id = $1", deletedRepo.Id)
@@ -435,7 +407,6 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 		err = repo.CreateRepository(t.Context(), olderRepo)
 		require.NoError(t, err)
 
-		// Small delay to ensure different created_at timestamps
 		time.Sleep(50 * time.Millisecond)
 
 		err = repo.CreateRepository(t.Context(), newerRepo)
@@ -446,7 +417,6 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 		require.NotNil(t, repos)
 		require.Len(t, *repos, 2)
 
-		// Newer repo should be first (DESC order)
 		assert.Equal(t, newerRepo.Id, (*repos)[0].Id)
 		assert.Equal(t, olderRepo.Id, (*repos)[1].Id)
 	})

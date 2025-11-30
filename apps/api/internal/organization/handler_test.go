@@ -186,7 +186,6 @@ func TestHandler_CreateOrganization(t *testing.T) {
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
 
-		// No auth interceptor - should fail with unauthenticated
 		h := NewHandler(mockService, mockRepository)
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
@@ -312,5 +311,136 @@ func TestHandler_GetOrganizations(t *testing.T) {
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
 		require.Equal(t, connect.CodeInternal, connectErr.Code())
+	})
+}
+
+func TestHandler_DeleteOrganization(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-123"
+		orgID := "org-123"
+
+		mockService.EXPECT().
+			DeleteOrganization(gomock.Any(), orgID, testUserID).
+			Return(nil)
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.DeleteOrganization(context.Background(), connect.NewRequest(&organizationv1.DeleteOrganizationRequest{
+			Id: orgID,
+		}))
+		require.NoError(t, err)
+	})
+
+	t.Run("service error - organization not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-456"
+		orgID := "non-existent-org"
+
+		mockService.EXPECT().
+			DeleteOrganization(gomock.Any(), orgID, testUserID).
+			Return(ErrOrganizationNotFound)
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.DeleteOrganization(context.Background(), connect.NewRequest(&organizationv1.DeleteOrganizationRequest{
+			Id: orgID,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+
+	t.Run("service error - permission denied", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-789"
+		orgID := "org-456"
+
+		mockService.EXPECT().
+			DeleteOrganization(gomock.Any(), orgID, testUserID).
+			Return(connect.NewError(connect.CodePermissionDenied, errors.New("only the organization creator can delete it")))
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.DeleteOrganization(context.Background(), connect.NewRequest(&organizationv1.DeleteOrganizationRequest{
+			Id: orgID,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+	})
+
+	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.DeleteOrganization(context.Background(), connect.NewRequest(&organizationv1.DeleteOrganizationRequest{
+			Id: "org-123",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }

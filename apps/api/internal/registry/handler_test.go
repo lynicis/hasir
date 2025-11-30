@@ -133,17 +133,16 @@ func TestHandler_GetRepositories(t *testing.T) {
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
 
-		repos := &[]RepositoryDTO{
-			{Id: "repo-1", Name: "first-repo"},
-			{Id: "repo-2", Name: "second-repo"},
-		}
-
-		mockRepository.EXPECT().
-			GetRepositoriesCount(gomock.Any()).
-			Return(2, nil)
-		mockRepository.EXPECT().
+		mockService.EXPECT().
 			GetRepositories(gomock.Any(), 1, 10).
-			Return(repos, nil)
+			Return(&registryv1.GetRepositoriesResponse{
+				Repositories: []*registryv1.Repository{
+					{Id: "repo-1", Name: "first-repo"},
+					{Id: "repo-2", Name: "second-repo"},
+				},
+				NextPage:  0,
+				TotalPage: 1,
+			}, nil)
 
 		h := NewHandler(mockService, mockRepository)
 		mux := http.NewServeMux()
@@ -172,14 +171,13 @@ func TestHandler_GetRepositories(t *testing.T) {
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
 
-		repos := &[]RepositoryDTO{}
-
-		mockRepository.EXPECT().
-			GetRepositoriesCount(gomock.Any()).
-			Return(2, nil)
-		mockRepository.EXPECT().
+		mockService.EXPECT().
 			GetRepositories(gomock.Any(), 1, 10).
-			Return(repos, nil)
+			Return(&registryv1.GetRepositoriesResponse{
+				Repositories: []*registryv1.Repository{},
+				NextPage:     0,
+				TotalPage:    1,
+			}, nil)
 
 		h := NewHandler(mockService, mockRepository)
 		mux := http.NewServeMux()
@@ -204,9 +202,9 @@ func TestHandler_GetRepositories(t *testing.T) {
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
 
-		mockRepository.EXPECT().
-			GetRepositoriesCount(gomock.Any()).
-			Return(0, connect.NewError(connect.CodeInternal, errors.New("database error")))
+		mockService.EXPECT().
+			GetRepositories(gomock.Any(), 1, 10).
+			Return(nil, connect.NewError(connect.CodeInternal, errors.New("database error")))
 
 		h := NewHandler(mockService, mockRepository)
 		mux := http.NewServeMux()
@@ -222,6 +220,103 @@ func TestHandler_GetRepositories(t *testing.T) {
 		)
 
 		_, err := client.GetRepositories(context.Background(), connect.NewRequest(&registryv1.GetRepositoriesRequest{}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeInternal, connectErr.Code())
+	})
+}
+
+func TestHandler_DeleteRepository(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			DeleteRepository(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, req *registryv1.DeleteRepositoryRequest) error {
+				require.Equal(t, "test-repo-id", req.GetRepositoryId())
+				return nil
+			})
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.DeleteRepository(context.Background(), connect.NewRequest(&registryv1.DeleteRepositoryRequest{
+			RepositoryId: "test-repo-id",
+		}))
+		require.NoError(t, err)
+	})
+
+	t.Run("service error - repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			DeleteRepository(gomock.Any(), gomock.Any()).
+			Return(ErrRepositoryNotFound)
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.DeleteRepository(context.Background(), connect.NewRequest(&registryv1.DeleteRepositoryRequest{
+			RepositoryId: "nonexistent-repo-id",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+
+	t.Run("service error - internal error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			DeleteRepository(gomock.Any(), gomock.Any()).
+			Return(connect.NewError(connect.CodeInternal, errors.New("database error")))
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.DeleteRepository(context.Background(), connect.NewRequest(&registryv1.DeleteRepositoryRequest{
+			RepositoryId: "test-repo-id",
+		}))
 		require.Error(t, err)
 
 		var connectErr *connect.Error

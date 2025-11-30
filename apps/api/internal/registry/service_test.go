@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -39,14 +40,10 @@ func TestService_CreateRepository(t *testing.T) {
 		ctx := context.Background()
 
 		mockRepo.EXPECT().
-			GetRepositoryByName(ctx, repoName).
-			Return(nil, ErrRepositoryNotFound)
-
-		mockRepo.EXPECT().
 			CreateRepository(ctx, gomock.Any()).
 			DoAndReturn(func(_ context.Context, repo *RepositoryDTO) error {
 				require.Equal(t, repoName, repo.Name)
-				require.Equal(t, filepath.Join(tmpDir, repoName), repo.Path)
+				require.Equal(t, filepath.Join(tmpDir, repo.Id), repo.Path)
 				require.NotEmpty(t, repo.Id)
 				return nil
 			})
@@ -56,99 +53,15 @@ func TestService_CreateRepository(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		repoPath := filepath.Join(tmpDir, repoName)
-		require.DirExists(t, repoPath)
-		require.FileExists(t, filepath.Join(repoPath, "HEAD"))
-	})
-
-	t.Run("already exists in database", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		mockRepo := NewMockRepository(ctrl)
-
-		svc := &service{
-			rootPath:   t.TempDir(),
-			repository: mockRepo,
-		}
-
-		const repoName = "existing-repo"
-		ctx := context.Background()
-
-		mockRepo.EXPECT().
-			GetRepositoryByName(ctx, repoName).
-			Return(&RepositoryDTO{
-				Id:   "existing-id",
-				Name: repoName,
-				Path: "/some/path",
-			}, nil)
-
-		err := svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
-			Name: repoName,
-		})
-		require.EqualError(t, err, `repository "existing-repo" already exists`)
-	})
-
-	t.Run("already exists on filesystem", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		mockRepo := NewMockRepository(ctrl)
-		tmpDir := t.TempDir()
-
-		svc := &service{
-			rootPath:   tmpDir,
-			repository: mockRepo,
-		}
-
-		const repoName = "existing-repo"
-		ctx := context.Background()
-
-		mockRepo.EXPECT().
-			GetRepositoryByName(ctx, repoName).
-			Return(nil, ErrRepositoryNotFound)
-
-		mockRepo.EXPECT().
-			CreateRepository(ctx, gomock.Any()).
-			Return(nil)
-
-		err := svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
-			Name: repoName,
-		})
 		require.NoError(t, err)
 
-		mockRepo.EXPECT().
-			GetRepositoryByName(ctx, repoName).
-			Return(&RepositoryDTO{
-				Id:   "some-id",
-				Name: repoName,
-				Path: filepath.Join(tmpDir, repoName),
-			}, nil)
+		dirs, err := os.ReadDir(tmpDir)
+		require.NoError(t, err)
+		require.Len(t, dirs, 1)
 
-		err = svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
-			Name: repoName,
-		})
-		require.EqualError(t, err, `repository "existing-repo" already exists`)
-	})
-
-	t.Run("database lookup error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		mockRepo := NewMockRepository(ctrl)
-
-		svc := &service{
-			rootPath:   t.TempDir(),
-			repository: mockRepo,
-		}
-
-		const repoName = "my-repo"
-		ctx := context.Background()
-		dbErr := errors.New("database connection failed")
-
-		mockRepo.EXPECT().
-			GetRepositoryByName(ctx, repoName).
-			Return(nil, dbErr)
-
-		err := svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
-			Name: repoName,
-		})
-		require.ErrorContains(t, err, "failed to check existing repository")
-		require.ErrorIs(t, err, dbErr)
+		repoPath := filepath.Join(tmpDir, dirs[0].Name())
+		require.DirExists(t, repoPath)
+		require.FileExists(t, filepath.Join(repoPath, "HEAD"))
 	})
 
 	t.Run("database save error rolls back git directory", func(t *testing.T) {
@@ -166,10 +79,6 @@ func TestService_CreateRepository(t *testing.T) {
 		dbErr := errors.New("database insert failed")
 
 		mockRepo.EXPECT().
-			GetRepositoryByName(ctx, repoName).
-			Return(nil, ErrRepositoryNotFound)
-
-		mockRepo.EXPECT().
 			CreateRepository(ctx, gomock.Any()).
 			Return(dbErr)
 
@@ -179,8 +88,154 @@ func TestService_CreateRepository(t *testing.T) {
 		require.ErrorContains(t, err, "failed to save repository to database")
 		require.ErrorIs(t, err, dbErr)
 
-		// Verify git directory was rolled back
 		repoPath := filepath.Join(tmpDir, repoName)
 		require.NoDirExists(t, repoPath)
+	})
+}
+
+func TestService_DeleteRepository(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		tmpDir := t.TempDir()
+
+		svc := &service{
+			rootPath:   tmpDir,
+			repository: mockRepo,
+		}
+
+		repoId := "test-repo-id"
+		repoPath := filepath.Join(tmpDir, repoId)
+		repoName := "test-repo"
+		ctx := context.Background()
+
+		require.NoError(t, os.MkdirAll(repoPath, 0o755))
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoId).
+			Return(&RepositoryDTO{
+				Id:   repoId,
+				Name: repoName,
+				Path: repoPath,
+			}, nil)
+
+		mockRepo.EXPECT().
+			DeleteRepository(ctx, repoId).
+			Return(nil)
+
+		err := svc.DeleteRepository(ctx, &registryv1.DeleteRepositoryRequest{
+			RepositoryId: repoId,
+		})
+		require.NoError(t, err)
+
+		require.NoDirExists(t, repoPath)
+	})
+
+	t.Run("repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+
+		svc := &service{
+			rootPath:   t.TempDir(),
+			repository: mockRepo,
+		}
+
+		repoId := "nonexistent-repo-id"
+		ctx := context.Background()
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoId).
+			Return(nil, ErrRepositoryNotFound)
+
+		err := svc.DeleteRepository(ctx, &registryv1.DeleteRepositoryRequest{
+			RepositoryId: repoId,
+		})
+		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to get repository")
+	})
+
+	t.Run("database delete error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		tmpDir := t.TempDir()
+
+		svc := &service{
+			rootPath:   tmpDir,
+			repository: mockRepo,
+		}
+
+		repoId := "test-repo-id"
+		repoPath := filepath.Join(tmpDir, repoId)
+		repoName := "test-repo"
+		ctx := context.Background()
+
+		require.NoError(t, os.MkdirAll(repoPath, 0o755))
+
+		dbErr := errors.New("database delete failed")
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoId).
+			Return(&RepositoryDTO{
+				Id:   repoId,
+				Name: repoName,
+				Path: repoPath,
+			}, nil)
+
+		mockRepo.EXPECT().
+			DeleteRepository(ctx, repoId).
+			Return(dbErr)
+
+		err := svc.DeleteRepository(ctx, &registryv1.DeleteRepositoryRequest{
+			RepositoryId: repoId,
+		})
+		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to delete repository from database")
+		require.ErrorIs(t, err, dbErr)
+
+		require.DirExists(t, repoPath)
+	})
+
+	t.Run("filesystem removal failure is logged but doesn't fail operation", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		tmpDir := t.TempDir()
+
+		svc := &service{
+			rootPath:   tmpDir,
+			repository: mockRepo,
+		}
+
+		repoId := "test-repo-id"
+		repoPath := filepath.Join(tmpDir, repoId)
+		repoName := "test-repo"
+		ctx := context.Background()
+
+		require.NoError(t, os.MkdirAll(repoPath, 0o755))
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoId).
+			Return(&RepositoryDTO{
+				Id:   repoId,
+				Name: repoName,
+				Path: repoPath,
+			}, nil)
+
+		mockRepo.EXPECT().
+			DeleteRepository(ctx, repoId).
+			Return(nil)
+
+		testFile := filepath.Join(repoPath, "test-file")
+		require.NoError(t, os.WriteFile(testFile, []byte("test"), 0o644))
+		require.NoError(t, os.Chmod(repoPath, 0o444))
+
+		err := svc.DeleteRepository(ctx, &registryv1.DeleteRepositoryRequest{
+			RepositoryId: repoId,
+		})
+
+		require.NoError(t, err)
+
+		if _, err := os.Stat(repoPath); err == nil {
+			require.NoError(t, os.Chmod(repoPath, 0o755))
+		}
 	})
 }

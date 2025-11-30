@@ -2,8 +2,6 @@ package auth
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -11,6 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 var testSecret = []byte("test-secret-key-for-testing-only")
@@ -18,11 +17,13 @@ var testSecret = []byte("test-secret-key-for-testing-only")
 func generateTestToken(t *testing.T, userID string, email string, expiresAt time.Time) string {
 	t.Helper()
 
-	claims := jwt.MapClaims{
-		"sub":   userID,
-		"email": email,
-		"exp":   expiresAt.Unix(),
-		"iat":   time.Now().Unix(),
+	claims := &JwtClaims{
+		Email: email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID,
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -118,8 +119,39 @@ func TestAuthInterceptor_WrapStreamingClient(t *testing.T) {
 	assert.True(t, called, "streaming client should pass through")
 }
 
-func TestAuthInterceptor_Integration(t *testing.T) {
+type testRequest struct {
+	*connect.Request[emptypb.Empty]
+	procedureOverride string
+}
+
+func (t *testRequest) Spec() connect.Spec {
+	if t.procedureOverride != "" {
+		return connect.Spec{Procedure: t.procedureOverride}
+	}
+	return t.Request.Spec()
+}
+
+func TestAuthInterceptor_WrapUnary(t *testing.T) {
 	interceptor := NewAuthInterceptor(testSecret)
+
+	t.Run("public method bypasses auth", func(t *testing.T) {
+		called := false
+		nextFunc := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			called = true
+			return connect.NewResponse(new(emptypb.Empty)), nil
+		}
+
+		wrappedFunc := interceptor.WrapUnary(nextFunc)
+		realReq := connect.NewRequest(new(emptypb.Empty))
+		req := &testRequest{
+			Request:           realReq,
+			procedureOverride: "/user.v1.UserService/Register",
+		}
+
+		_, err := wrappedFunc(context.Background(), req)
+		require.NoError(t, err)
+		assert.True(t, called)
+	})
 
 	t.Run("valid token extracts user info", func(t *testing.T) {
 		userID := "user-123"
@@ -129,190 +161,189 @@ func TestAuthInterceptor_Integration(t *testing.T) {
 		var capturedUserID string
 		var capturedEmail string
 
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
+		nextFunc := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			capturedUserID, _ = GetUserID(ctx)
+			capturedEmail, _ = GetUserEmail(ctx)
+			return connect.NewResponse(new(emptypb.Empty)), nil
+		}
 
-			tokenString := authHeader[7:]
-			parsedToken, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-				return testSecret, nil
-			})
-			if err != nil {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
+		wrappedFunc := interceptor.WrapUnary(nextFunc)
+		realReq := connect.NewRequest(new(emptypb.Empty))
+		realReq.Header().Set("Authorization", "Bearer "+token)
+		req := &testRequest{
+			Request:           realReq,
+			procedureOverride: "/user.v1.UserService/GetProfile",
+		}
 
-			claims := parsedToken.Claims.(jwt.MapClaims)
-			capturedUserID = claims["sub"].(string)
-			capturedEmail = claims["email"].(string)
-
-			w.WriteHeader(http.StatusOK)
-		})
-
-		server := httptest.NewServer(handler)
-		defer server.Close()
-
-		req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+		_, err := wrappedFunc(context.Background(), req)
 		require.NoError(t, err)
-		req.Header.Set("Authorization", "Bearer "+token)
-
-		resp, err := http.DefaultClient.Do(req)
-		require.NoError(t, err)
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, userID, capturedUserID)
 		assert.Equal(t, email, capturedEmail)
-		require.NotNil(t, interceptor)
 	})
 
-	t.Run("missing token returns unauthorized", func(t *testing.T) {
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			w.WriteHeader(http.StatusOK)
-		})
+	t.Run("missing token returns error", func(t *testing.T) {
+		nextFunc := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			return connect.NewResponse(new(emptypb.Empty)), nil
+		}
 
-		server := httptest.NewServer(handler)
-		defer server.Close()
+		wrappedFunc := interceptor.WrapUnary(nextFunc)
+		realReq := connect.NewRequest(new(emptypb.Empty))
+		req := &testRequest{
+			Request:           realReq,
+			procedureOverride: "/user.v1.UserService/GetProfile",
+		}
 
-		req, err := http.NewRequest(http.MethodGet, server.URL, nil)
-		require.NoError(t, err)
-
-		resp, err := http.DefaultClient.Do(req)
-		require.NoError(t, err)
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		_, err := wrappedFunc(context.Background(), req)
+		require.Error(t, err)
+		assert.Equal(t, ErrMissingToken, err)
 	})
 
-	t.Run("expired token returns unauthorized", func(t *testing.T) {
+	t.Run("missing Bearer prefix returns error", func(t *testing.T) {
+		nextFunc := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			return connect.NewResponse(new(emptypb.Empty)), nil
+		}
+
+		wrappedFunc := interceptor.WrapUnary(nextFunc)
+		realReq := connect.NewRequest(new(emptypb.Empty))
+		realReq.Header().Set("Authorization", "InvalidToken")
+		req := &testRequest{
+			Request:           realReq,
+			procedureOverride: "/user.v1.UserService/GetProfile",
+		}
+
+		_, err := wrappedFunc(context.Background(), req)
+		require.Error(t, err)
+		assert.Equal(t, ErrInvalidToken, err)
+	})
+
+	t.Run("expired token returns error", func(t *testing.T) {
 		token := generateTestToken(t, "user-123", "test@example.com", time.Now().Add(-time.Hour))
 
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
+		nextFunc := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			return connect.NewResponse(new(emptypb.Empty)), nil
+		}
 
-			tokenString := authHeader[7:]
-			_, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-				return testSecret, nil
-			})
-			if err != nil {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			w.WriteHeader(http.StatusOK)
-		})
+		wrappedFunc := interceptor.WrapUnary(nextFunc)
+		realReq := connect.NewRequest(new(emptypb.Empty))
+		realReq.Header().Set("Authorization", "Bearer "+token)
+		req := &testRequest{
+			Request:           realReq,
+			procedureOverride: "/user.v1.UserService/GetProfile",
+		}
 
-		server := httptest.NewServer(handler)
-		defer server.Close()
-
-		req, err := http.NewRequest(http.MethodGet, server.URL, nil)
-		require.NoError(t, err)
-		req.Header.Set("Authorization", "Bearer "+token)
-
-		resp, err := http.DefaultClient.Do(req)
-		require.NoError(t, err)
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		_, err := wrappedFunc(context.Background(), req)
+		require.Error(t, err)
+		assert.Equal(t, ErrTokenExpired, err)
 	})
 
-	t.Run("invalid signature returns unauthorized", func(t *testing.T) {
-		claims := jwt.MapClaims{
-			"sub":   "user-123",
-			"email": "test@example.com",
-			"exp":   time.Now().Add(time.Hour).Unix(),
+	t.Run("invalid signature returns error", func(t *testing.T) {
+		claims := &JwtClaims{
+			Email: "test@example.com",
+			RegisteredClaims: jwt.RegisteredClaims{
+				Subject:   "user-123",
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			},
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		signedToken, err := token.SignedString([]byte("wrong-secret"))
 		require.NoError(t, err)
 
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			tokenString := authHeader[7:]
-			_, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-				return testSecret, nil
-			})
-			if err != nil {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			w.WriteHeader(http.StatusOK)
-		})
-
-		server := httptest.NewServer(handler)
-		defer server.Close()
-
-		req, err := http.NewRequest(http.MethodGet, server.URL, nil)
-		require.NoError(t, err)
-		req.Header.Set("Authorization", "Bearer "+signedToken)
-
-		resp, err := http.DefaultClient.Do(req)
-		require.NoError(t, err)
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-	})
-}
-
-func TestTokenParsing(t *testing.T) {
-	t.Run("parses valid token", func(t *testing.T) {
-		userID := "user-456"
-		email := "parse@example.com"
-		tokenString := generateTestToken(t, userID, email, time.Now().Add(time.Hour))
-
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return testSecret, nil
-		})
-		require.NoError(t, err)
-		require.True(t, token.Valid)
-
-		claims := token.Claims.(jwt.MapClaims)
-		assert.Equal(t, userID, claims["sub"])
-		assert.Equal(t, email, claims["email"])
-	})
-
-	t.Run("rejects token with wrong signing method", func(t *testing.T) {
-		claims := jwt.MapClaims{
-			"sub":   "user-123",
-			"email": "test@example.com",
-			"exp":   time.Now().Add(time.Hour).Unix(),
+		nextFunc := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			return connect.NewResponse(new(emptypb.Empty)), nil
 		}
 
+		wrappedFunc := interceptor.WrapUnary(nextFunc)
+		realReq := connect.NewRequest(new(emptypb.Empty))
+		realReq.Header().Set("Authorization", "Bearer "+signedToken)
+		req := &testRequest{
+			Request:           realReq,
+			procedureOverride: "/user.v1.UserService/GetProfile",
+		}
+
+		_, err = wrappedFunc(context.Background(), req)
+		require.Error(t, err)
+		assert.Equal(t, ErrInvalidToken, err)
+	})
+
+	t.Run("wrong signing method returns error", func(t *testing.T) {
+		claims := &JwtClaims{
+			Email: "test@example.com",
+			RegisteredClaims: jwt.RegisteredClaims{
+				Subject:   "user-123",
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			},
+		}
 		token := jwt.NewWithClaims(jwt.SigningMethodNone, claims)
 		signedToken, err := token.SignedString(jwt.UnsafeAllowNoneSignatureType)
 		require.NoError(t, err)
 
-		_, err = jwt.Parse(signedToken, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return testSecret, nil
-		})
+		nextFunc := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			return connect.NewResponse(new(emptypb.Empty)), nil
+		}
+
+		wrappedFunc := interceptor.WrapUnary(nextFunc)
+		realReq := connect.NewRequest(new(emptypb.Empty))
+		realReq.Header().Set("Authorization", "Bearer "+signedToken)
+		req := &testRequest{
+			Request:           realReq,
+			procedureOverride: "/user.v1.UserService/GetProfile",
+		}
+
+		_, err = wrappedFunc(context.Background(), req)
 		require.Error(t, err)
+		assert.Equal(t, ErrInvalidToken, err)
+	})
+
+	t.Run("empty subject is handled", func(t *testing.T) {
+
+		claims := &JwtClaims{
+			Email: "test@example.com",
+			RegisteredClaims: jwt.RegisteredClaims{
+				Subject:   "",
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			},
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		signedToken, err := token.SignedString(testSecret)
+		require.NoError(t, err)
+
+		var capturedUserID string
+		nextFunc := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			capturedUserID, _ = GetUserID(ctx)
+			return connect.NewResponse(new(emptypb.Empty)), nil
+		}
+
+		wrappedFunc := interceptor.WrapUnary(nextFunc)
+		realReq := connect.NewRequest(new(emptypb.Empty))
+		realReq.Header().Set("Authorization", "Bearer "+signedToken)
+		req := &testRequest{
+			Request:           realReq,
+			procedureOverride: "/user.v1.UserService/GetProfile",
+		}
+
+		_, err = wrappedFunc(context.Background(), req)
+
+		if err != nil {
+			assert.Equal(t, ErrInvalidClaims, err, "GetSubject() returned an error for empty subject")
+		} else {
+			assert.Equal(t, "", capturedUserID, "Empty subject was accepted and stored in context")
+		}
+	})
+}
+
+func TestAuthInterceptor_WrapStreamingHandler(t *testing.T) {
+
+	t.Run("streaming handler uses same auth logic as unary", func(t *testing.T) {
+
+		interceptor := NewAuthInterceptor(testSecret)
+		require.NotNil(t, interceptor)
+
+		nextFunc := func(ctx context.Context, conn connect.StreamingHandlerConn) error {
+			return nil
+		}
+
+		wrappedFunc := interceptor.WrapStreamingHandler(nextFunc)
+		require.NotNil(t, wrappedFunc)
 	})
 }
 

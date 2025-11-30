@@ -22,6 +22,11 @@ type Service interface {
 		req *organizationv1.CreateOrganizationRequest,
 		createdBy string,
 	) error
+	DeleteOrganization(
+		ctx context.Context,
+		organizationId string,
+		userId string,
+	) error
 	RespondToInvitation(
 		ctx context.Context,
 		token string,
@@ -106,7 +111,6 @@ func (s *service) sendInvites(ctx context.Context, orgId, orgName, invitedBy str
 			continue
 		}
 
-		// Create email job for queue processing
 		emailJob := &EmailJobDTO{
 			Id:               uuid.NewString(),
 			InviteId:         invite.Id,
@@ -122,7 +126,6 @@ func (s *service) sendInvites(ctx context.Context, orgId, orgName, invitedBy str
 		emailJobs = append(emailJobs, emailJob)
 	}
 
-	// Enqueue all email jobs in batch
 	if len(emailJobs) > 0 {
 		if err := s.repository.EnqueueEmailJobs(ctx, emailJobs); err != nil {
 			zap.L().Error("failed to enqueue email jobs", zap.Error(err), zap.String("organizationId", orgId))
@@ -132,6 +135,32 @@ func (s *service) sendInvites(ctx context.Context, orgId, orgName, invitedBy str
 			zap.Int("count", len(emailJobs)),
 			zap.String("organizationId", orgId))
 	}
+
+	return nil
+}
+
+func (s *service) DeleteOrganization(
+	ctx context.Context,
+	organizationId string,
+	userId string,
+) error {
+	org, err := s.repository.GetOrganizationById(ctx, organizationId)
+	if err != nil {
+		return err
+	}
+
+	if org.CreatedBy != userId {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("only the organization creator can delete it"))
+	}
+
+	if err := s.repository.DeleteOrganization(ctx, organizationId); err != nil {
+		return err
+	}
+
+	zap.L().Info("organization deleted",
+		zap.String("organizationId", organizationId),
+		zap.String("userId", userId),
+	)
 
 	return nil
 }

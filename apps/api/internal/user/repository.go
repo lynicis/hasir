@@ -290,7 +290,7 @@ func (r *PgRepository) UpdateUserById(ctx context.Context, id string, user *User
 	}
 
 	if len(setParts) == 0 {
-		// No fields to update, but verify user exists
+
 		sql := "select id from users where id = @Id"
 		var existingId string
 		err = connection.QueryRow(ctx, sql, sqlArgs).Scan(&existingId)

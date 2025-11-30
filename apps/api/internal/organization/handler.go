@@ -2,6 +2,7 @@ package organization
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/organization/v1/organizationv1connect"
@@ -105,6 +106,47 @@ func (h *handler) GetOrganizations(
 		NextPage:      nextPage,
 		TotalPage:     int32(totalPages),
 	}), nil
+}
+
+func (h *handler) GetOrganization(
+	ctx context.Context,
+	req *connect.Request[organizationv1.GetOrganizationRequest],
+) (*connect.Response[organizationv1.GetOrganizationResponse], error) {
+	org, err := h.repository.GetOrganizationById(ctx, req.Msg.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&organizationv1.GetOrganizationResponse{
+		Organization: &organizationv1.Organization{
+			Id:   org.Id,
+			Name: org.Name,
+		},
+	}), nil
+}
+
+func (h *handler) UpdateOrganization(
+	ctx context.Context,
+	req *connect.Request[organizationv1.UpdateOrganizationRequest],
+) (*connect.Response[emptypb.Empty], error) {
+
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("UpdateOrganization not implemented"))
+}
+
+func (h *handler) DeleteOrganization(
+	ctx context.Context,
+	req *connect.Request[organizationv1.DeleteOrganizationRequest],
+) (*connect.Response[emptypb.Empty], error) {
+	userId, err := auth.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := h.service.DeleteOrganization(ctx, req.Msg.GetId(), userId); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(new(emptypb.Empty)), nil
 }
 
 func (h *handler) RespondToInvitation(

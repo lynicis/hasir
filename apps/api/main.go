@@ -70,7 +70,6 @@ func main() {
 
 	emailService := email.NewService(cfg)
 
-	// Start email job processor for batch invitation sending
 	ctx := context.Background()
 	organizationPgRepository.StartEmailJobProcessor(ctx, emailService, 10, 5*time.Second)
 
@@ -136,7 +135,6 @@ func gracefulShutdown(server *http.Server, traceProvider *sdktrace.TracerProvide
 	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownRelease()
 
-	// Stop email job processor
 	if organizationRepo != nil {
 		organizationRepo.StopEmailJobProcessor()
 	}

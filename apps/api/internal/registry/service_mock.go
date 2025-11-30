@@ -54,3 +54,32 @@ func (mr *MockServiceMockRecorder) CreateRepository(ctx, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRepository", reflect.TypeOf((*MockService)(nil).CreateRepository), ctx, req)
 }
+
+// DeleteRepository mocks base method.
+func (m *MockService) DeleteRepository(ctx context.Context, req *registryv1.DeleteRepositoryRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRepository", ctx, req)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRepository indicates an expected call of DeleteRepository.
+func (mr *MockServiceMockRecorder) DeleteRepository(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRepository", reflect.TypeOf((*MockService)(nil).DeleteRepository), ctx, req)
+}
+
+// GetRepositories mocks base method.
+func (m *MockService) GetRepositories(ctx context.Context, page, pageSize int) (*registryv1.GetRepositoriesResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRepositories", ctx, page, pageSize)
+	ret0, _ := ret[0].(*registryv1.GetRepositoriesResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRepositories indicates an expected call of GetRepositories.
+func (mr *MockServiceMockRecorder) GetRepositories(ctx, page, pageSize any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositories", reflect.TypeOf((*MockService)(nil).GetRepositories), ctx, page, pageSize)
+}

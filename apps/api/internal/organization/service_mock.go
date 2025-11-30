@@ -55,6 +55,20 @@ func (mr *MockServiceMockRecorder) CreateOrganization(ctx, req, createdBy any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrganization", reflect.TypeOf((*MockService)(nil).CreateOrganization), ctx, req, createdBy)
 }
 
+// DeleteOrganization mocks base method.
+func (m *MockService) DeleteOrganization(ctx context.Context, organizationId, userId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteOrganization", ctx, organizationId, userId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteOrganization indicates an expected call of DeleteOrganization.
+func (mr *MockServiceMockRecorder) DeleteOrganization(ctx, organizationId, userId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteOrganization", reflect.TypeOf((*MockService)(nil).DeleteOrganization), ctx, organizationId, userId)
+}
+
 // RespondToInvitation mocks base method.
 func (m *MockService) RespondToInvitation(ctx context.Context, token, userId string, accept bool) error {
 	m.ctrl.T.Helper()

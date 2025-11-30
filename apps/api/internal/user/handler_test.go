@@ -133,7 +133,6 @@ func TestHandler_Register(t *testing.T) {
 				mockUserService := NewMockService(ctrl)
 				mockUserRepository := NewMockRepository(ctrl)
 
-				// Service might be called if validation doesn't catch the error
 				mockUserService.
 					EXPECT().
 					Register(gomock.Any(), gomock.Any()).
@@ -246,7 +245,6 @@ func TestHandler_Login(t *testing.T) {
 				mockUserService := NewMockService(ctrl)
 				mockUserRepository := NewMockRepository(ctrl)
 
-				// Service might be called if validation doesn't catch the error
 				mockUserService.
 					EXPECT().
 					Login(gomock.Any(), gomock.Any()).
@@ -360,7 +358,6 @@ func TestHandler_UpdateUser(t *testing.T) {
 				mockUserService := NewMockService(ctrl)
 				mockUserRepository := NewMockRepository(ctrl)
 
-				// Service might be called if validation doesn't catch the error
 				mockUserService.
 					EXPECT().
 					UpdateUser(gomock.Any(), gomock.Any()).

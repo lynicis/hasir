@@ -23,8 +23,11 @@ import (
 type Repository interface {
 	CreateRepository(ctx context.Context, repo *RepositoryDTO) error
 	GetRepositoryByName(ctx context.Context, name string) (*RepositoryDTO, error)
+	GetRepositoryById(ctx context.Context, id string) (*RepositoryDTO, error)
 	GetRepositories(ctx context.Context, page, pageSize int) (*[]RepositoryDTO, error)
 	GetRepositoriesCount(ctx context.Context) (int, error)
+	UpdateRepository(ctx context.Context, repo *RepositoryDTO) error
+	DeleteRepository(ctx context.Context, id string) error
 }
 
 var (
@@ -107,15 +110,16 @@ func (r *PgRepository) CreateRepository(ctx context.Context, repo *RepositoryDTO
 	}
 	defer connection.Release()
 
-	sql := `INSERT INTO repositories (id, name, owner_id, path, created_at, updated_at) 
-			VALUES (@Id, @Name, @OwnerId, @Path, @CreatedAt, @UpdatedAt)`
+	sql := `INSERT INTO repositories (id, name, owner_id, organization_id, path, created_at, updated_at) 
+			VALUES (@Id, @Name, @OwnerId, @OrganizationId, @Path, @CreatedAt, @UpdatedAt)`
 	sqlArgs := pgx.NamedArgs{
-		"Id":        repo.Id,
-		"Name":      repo.Name,
-		"OwnerId":   repo.OwnerId,
-		"Path":      repo.Path,
-		"CreatedAt": time.Now().UTC(),
-		"UpdatedAt": time.Now().UTC(),
+		"Id":             repo.Id,
+		"Name":           repo.Name,
+		"OwnerId":        repo.OwnerId,
+		"OrganizationId": repo.OrganizationId,
+		"Path":           repo.Path,
+		"CreatedAt":      time.Now().UTC(),
+		"UpdatedAt":      time.Now().UTC(),
 	}
 
 	if _, err = connection.Exec(ctx, sql, sqlArgs); err != nil {
@@ -234,4 +238,124 @@ func (r *PgRepository) GetRepositoriesCount(ctx context.Context) (int, error) {
 	}
 
 	return count, nil
+}
+
+func (r *PgRepository) GetRepositoryById(ctx context.Context, id string) (*RepositoryDTO, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetRepositoryById", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "id",
+			Value: attribute.StringValue(id),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := "SELECT * FROM repositories WHERE id = $1 AND deleted_at IS NULL"
+
+	var rows pgx.Rows
+	rows, err = connection.Query(ctx, sql, id)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
+	}
+	defer rows.Close()
+
+	var repo RepositoryDTO
+	repo, err = pgx.CollectOneRow[RepositoryDTO](rows, pgx.RowToStructByName)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrRepositoryNotFound
+		}
+
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect row"))
+	}
+
+	return &repo, nil
+}
+
+func (r *PgRepository) UpdateRepository(ctx context.Context, repo *RepositoryDTO) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "UpdateRepository", trace.WithAttributes(attribute.KeyValue{
+		Key:   "repository",
+		Value: attribute.StringValue(fmt.Sprintf("%+v", repo)),
+	}))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `UPDATE repositories 
+			SET name = @Name, updated_at = @UpdatedAt 
+			WHERE id = @Id AND deleted_at IS NULL`
+	sqlArgs := pgx.NamedArgs{
+		"Id":        repo.Id,
+		"Name":      repo.Name,
+		"UpdatedAt": time.Now().UTC(),
+	}
+
+	result, err := connection.Exec(ctx, sql, sqlArgs)
+	if err != nil {
+		span.RecordError(err)
+
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == ErrUniqueViolationCode {
+				return ErrRepositoryAlreadyExists
+			}
+			return err
+		}
+
+		return connect.NewError(connect.CodeInternal, errors.New("failed to execute update repository query"))
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrRepositoryNotFound
+	}
+
+	return nil
+}
+
+func (r *PgRepository) DeleteRepository(ctx context.Context, id string) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "DeleteRepository", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "id",
+			Value: attribute.StringValue(id),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `UPDATE repositories 
+			SET deleted_at = @DeletedAt 
+			WHERE id = @Id AND deleted_at IS NULL`
+	sqlArgs := pgx.NamedArgs{
+		"Id":        id,
+		"DeletedAt": time.Now().UTC(),
+	}
+
+	result, err := connection.Exec(ctx, sql, sqlArgs)
+	if err != nil {
+		span.RecordError(err)
+		return connect.NewError(connect.CodeInternal, errors.New("failed to execute delete repository query"))
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrRepositoryNotFound
+	}
+
+	return nil
 }

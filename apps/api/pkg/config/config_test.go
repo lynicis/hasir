@@ -94,7 +94,7 @@ func TestNewConfigReader(t *testing.T) {
 
 func TestEnvConfig_Read(t *testing.T) {
 	t.Run("reads config from environment variables", func(t *testing.T) {
-		// Set environment variables
+
 		envVars := map[string]string{
 			"HASIR_SERVER_PUBLICURL":            "https://api.example.com",
 			"HASIR_SERVER_IP":                   "0.0.0.0",
@@ -149,7 +149,7 @@ func TestEnvConfig_Read(t *testing.T) {
 	})
 
 	t.Run("returns empty config when no env vars set", func(t *testing.T) {
-		// Clear any existing HASIR_ env vars
+
 		for _, env := range os.Environ() {
 			if len(env) > 6 && env[:6] == "HASIR_" {
 				key := env[:len(env)-len(env[len(env):])]
@@ -167,7 +167,7 @@ func TestEnvConfig_Read(t *testing.T) {
 
 func TestJsonConfig_Read(t *testing.T) {
 	t.Run("reads config from json file", func(t *testing.T) {
-		// Create a temporary config file
+
 		tmpDir := t.TempDir()
 		configContent := `{
 			"server": {

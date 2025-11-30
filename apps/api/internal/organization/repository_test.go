@@ -59,7 +59,6 @@ func createOrganizationsTable(t *testing.T, connString string) {
 		require.NoError(t, err)
 	}()
 
-	// Create the visibility enum type
 	enumSQL := `DO $$ BEGIN
 		CREATE TYPE visibility AS ENUM ('private', 'public');
 	EXCEPTION
@@ -114,7 +113,6 @@ func TestPgRepository_CreateOrganization(t *testing.T) {
 		err = repo.CreateOrganization(t.Context(), testOrg)
 		require.NoError(t, err)
 
-		// Verify the organization was created
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		defer func() {
@@ -153,7 +151,6 @@ func TestPgRepository_CreateOrganization(t *testing.T) {
 		err = repo.CreateOrganization(t.Context(), testOrg)
 		require.NoError(t, err)
 
-		// Verify the organization was created
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		defer func() {
@@ -304,7 +301,6 @@ func TestPgRepository_GetOrganizationByName(t *testing.T) {
 		err = repo.CreateOrganization(t.Context(), testOrg)
 		require.NoError(t, err)
 
-		// Soft delete the organization
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		_, err = conn.Exec(t.Context(), "UPDATE organizations SET deleted_at = NOW() WHERE id = $1", testOrg.Id)
@@ -442,7 +438,6 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 		err = repo.CreateOrganization(t.Context(), deletedOrg)
 		require.NoError(t, err)
 
-		// Soft delete one organization
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		_, err = conn.Exec(t.Context(), "UPDATE organizations SET deleted_at = NOW() WHERE id = $1", deletedOrg.Id)
@@ -479,7 +474,6 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 		err = repo.CreateOrganization(t.Context(), olderOrg)
 		require.NoError(t, err)
 
-		// Small delay to ensure different created_at timestamps
 		time.Sleep(50 * time.Millisecond)
 
 		err = repo.CreateOrganization(t.Context(), newerOrg)
@@ -490,7 +484,6 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 		require.NotNil(t, orgs)
 		require.Len(t, *orgs, 2)
 
-		// Newer org should be first (DESC order)
 		assert.Equal(t, newerOrg.Id, (*orgs)[0].Id)
 		assert.Equal(t, olderOrg.Id, (*orgs)[1].Id)
 	})
@@ -566,7 +559,7 @@ func createTestEmailJob(t *testing.T, inviteId, orgId, email, orgName, token str
 	return &EmailJobDTO{
 		Id:               uuid.NewString(),
 		InviteId:         inviteId,
-		OrganizationId:  orgId,
+		OrganizationId:   orgId,
 		Email:            email,
 		OrganizationName: orgName,
 		InviteToken:      token,
@@ -601,7 +594,6 @@ func TestPgRepository_EnqueueEmailJobs(t *testing.T) {
 		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{job})
 		require.NoError(t, err)
 
-		// Verify the job was created
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		defer func() {
@@ -648,7 +640,6 @@ func TestPgRepository_EnqueueEmailJobs(t *testing.T) {
 		err = repo.EnqueueEmailJobs(t.Context(), jobs)
 		require.NoError(t, err)
 
-		// Verify all jobs were created
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		defer func() {
@@ -700,17 +691,16 @@ func TestPgRepository_GetPendingEmailJobs(t *testing.T) {
 		defer pool.Close()
 
 		orgId := uuid.NewString()
-		// Create pending jobs
+
 		pendingJob1 := createTestEmailJob(t, uuid.NewString(), orgId, "pending1@example.com", "Test Org", "token1")
 		pendingJob2 := createTestEmailJob(t, uuid.NewString(), orgId, "pending2@example.com", "Test Org", "token2")
-		// Create completed job (should not be returned)
+
 		completedJob := createTestEmailJob(t, uuid.NewString(), orgId, "completed@example.com", "Test Org", "token3")
 		completedJob.Status = EmailJobStatusCompleted
 
 		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{pendingJob1, pendingJob2, completedJob})
 		require.NoError(t, err)
 
-		// Manually set completed job status
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		_, err = conn.Exec(t.Context(), "UPDATE email_jobs SET status = 'completed' WHERE id = $1", completedJob.Id)
@@ -719,12 +709,10 @@ func TestPgRepository_GetPendingEmailJobs(t *testing.T) {
 			_ = conn.Close(t.Context())
 		}()
 
-		// Get pending jobs
 		jobs, err := repo.GetPendingEmailJobs(t.Context(), 10)
 		require.NoError(t, err)
 		require.Len(t, jobs, 2)
 
-		// Verify jobs are marked as processing
 		for _, job := range jobs {
 			assert.Equal(t, EmailJobStatusProcessing, job.Status)
 			assert.NotNil(t, job.ProcessedAt)
@@ -758,7 +746,6 @@ func TestPgRepository_GetPendingEmailJobs(t *testing.T) {
 		err = repo.EnqueueEmailJobs(t.Context(), jobs)
 		require.NoError(t, err)
 
-		// Get only 2 jobs
 		retrievedJobs, err := repo.GetPendingEmailJobs(t.Context(), 2)
 		require.NoError(t, err)
 		require.Len(t, retrievedJobs, 2)
@@ -807,17 +794,14 @@ func TestPgRepository_GetPendingEmailJobs(t *testing.T) {
 		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{job})
 		require.NoError(t, err)
 
-		// Get pending jobs - should atomically update to processing
 		jobs, err := repo.GetPendingEmailJobs(t.Context(), 10)
 		require.NoError(t, err)
 		require.Len(t, jobs, 1)
 
-		// Verify status changed to processing
 		assert.Equal(t, EmailJobStatusProcessing, jobs[0].Status)
 		assert.NotNil(t, jobs[0].ProcessedAt)
 		assert.Equal(t, 1, jobs[0].Attempts)
 
-		// Try to get again - should return empty (already processing)
 		jobs2, err := repo.GetPendingEmailJobs(t.Context(), 10)
 		require.NoError(t, err)
 		require.Empty(t, jobs2)
@@ -848,7 +832,6 @@ func TestPgRepository_UpdateEmailJobStatus(t *testing.T) {
 		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{job})
 		require.NoError(t, err)
 
-		// Manually set to processing
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		_, err = conn.Exec(t.Context(), "UPDATE email_jobs SET status = 'processing' WHERE id = $1", job.Id)
@@ -857,11 +840,9 @@ func TestPgRepository_UpdateEmailJobStatus(t *testing.T) {
 			_ = conn.Close(t.Context())
 		}()
 
-		// Update to completed
 		err = repo.UpdateEmailJobStatus(t.Context(), job.Id, EmailJobStatusCompleted, nil)
 		require.NoError(t, err)
 
-		// Verify status
 		var dbStatus string
 		var dbCompletedAt *time.Time
 		err = conn.QueryRow(t.Context(),
@@ -895,7 +876,6 @@ func TestPgRepository_UpdateEmailJobStatus(t *testing.T) {
 		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{job})
 		require.NoError(t, err)
 
-		// Manually set to processing
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		_, err = conn.Exec(t.Context(), "UPDATE email_jobs SET status = 'processing' WHERE id = $1", job.Id)
@@ -908,7 +888,6 @@ func TestPgRepository_UpdateEmailJobStatus(t *testing.T) {
 		err = repo.UpdateEmailJobStatus(t.Context(), job.Id, EmailJobStatusFailed, &errorMsg)
 		require.NoError(t, err)
 
-		// Verify status
 		var dbStatus string
 		var dbErrorMessage *string
 		err = conn.QueryRow(t.Context(),
@@ -943,7 +922,6 @@ func TestPgRepository_UpdateEmailJobStatus(t *testing.T) {
 		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{job})
 		require.NoError(t, err)
 
-		// Manually set to processing
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		_, err = conn.Exec(t.Context(), "UPDATE email_jobs SET status = 'processing' WHERE id = $1", job.Id)
@@ -952,11 +930,9 @@ func TestPgRepository_UpdateEmailJobStatus(t *testing.T) {
 			_ = conn.Close(t.Context())
 		}()
 
-		// Update back to pending for retry
 		err = repo.UpdateEmailJobStatus(t.Context(), job.Id, EmailJobStatusPending, nil)
 		require.NoError(t, err)
 
-		// Verify status
 		var dbStatus string
 		err = conn.QueryRow(t.Context(),
 			"SELECT status FROM email_jobs WHERE id = $1", job.Id).
@@ -1008,9 +984,170 @@ func TestPgRepository_UpdateEmailJobStatus(t *testing.T) {
 		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{job})
 		require.NoError(t, err)
 
-		// Try to update to completed without setting to processing first
-		// Should fail due to optimistic locking (status must be 'processing')
 		err = repo.UpdateEmailJobStatus(t.Context(), job.Id, EmailJobStatusCompleted, nil)
 		require.Error(t, err)
+	})
+}
+
+func TestPgRepository_DeleteOrganization(t *testing.T) {
+	t.Run("success - soft delete organization", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "test-org-"+uuid.NewString(), VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		found, err := repo.GetOrganizationById(t.Context(), org.Id)
+		require.NoError(t, err)
+		require.NotNil(t, found)
+		require.Nil(t, found.DeletedAt)
+
+		err = repo.DeleteOrganization(t.Context(), org.Id)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var deletedAt *time.Time
+		err = conn.QueryRow(t.Context(), "SELECT deleted_at FROM organizations WHERE id = $1", org.Id).Scan(&deletedAt)
+		require.NoError(t, err)
+		require.NotNil(t, deletedAt)
+
+		_, err = repo.GetOrganizationById(t.Context(), org.Id)
+		require.Error(t, err)
+		require.Equal(t, ErrOrganizationNotFound, err)
+	})
+
+	t.Run("organization not found", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		nonExistentID := uuid.NewString()
+		err = repo.DeleteOrganization(t.Context(), nonExistentID)
+		require.Error(t, err)
+		require.Equal(t, ErrOrganizationNotFound, err)
+	})
+
+	t.Run("cannot delete already deleted organization", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "test-org-"+uuid.NewString(), VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		err = repo.DeleteOrganization(t.Context(), org.Id)
+		require.NoError(t, err)
+
+		err = repo.DeleteOrganization(t.Context(), org.Id)
+		require.Error(t, err)
+		require.Equal(t, ErrOrganizationNotFound, err)
+	})
+
+	t.Run("deleted organization excluded from GetOrganizations", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		activeOrg := createTestOrganization(t, "active-org-"+uuid.NewString(), VisibilityPrivate)
+		deletedOrg := createTestOrganization(t, "deleted-org-"+uuid.NewString(), VisibilityPrivate)
+
+		err = repo.CreateOrganization(t.Context(), activeOrg)
+		require.NoError(t, err)
+
+		err = repo.CreateOrganization(t.Context(), deletedOrg)
+		require.NoError(t, err)
+
+		err = repo.DeleteOrganization(t.Context(), deletedOrg.Id)
+		require.NoError(t, err)
+
+		orgs, err := repo.GetOrganizations(t.Context(), 1, 10)
+		require.NoError(t, err)
+		require.NotNil(t, orgs)
+		require.Len(t, *orgs, 1)
+		assert.Equal(t, activeOrg.Id, (*orgs)[0].Id)
+	})
+
+	t.Run("deleted organization excluded from count", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org1 := createTestOrganization(t, "org-1-"+uuid.NewString(), VisibilityPrivate)
+		org2 := createTestOrganization(t, "org-2-"+uuid.NewString(), VisibilityPrivate)
+
+		err = repo.CreateOrganization(t.Context(), org1)
+		require.NoError(t, err)
+
+		err = repo.CreateOrganization(t.Context(), org2)
+		require.NoError(t, err)
+
+		count, err := repo.GetOrganizationsCount(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, 2, count)
+
+		err = repo.DeleteOrganization(t.Context(), org1.Id)
+		require.NoError(t, err)
+
+		count, err = repo.GetOrganizationsCount(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, 1, count)
 	})
 }

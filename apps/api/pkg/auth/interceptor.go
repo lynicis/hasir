@@ -112,10 +112,11 @@ func (a *AuthInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc
 			return ErrInvalidToken
 		}
 
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(tokenString, &JwtClaims{}, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, errors.New("unexpected signing method")
 			}
+
 			return a.jwtSecret, nil
 		})
 
@@ -123,6 +124,7 @@ func (a *AuthInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc
 			if errors.Is(err, jwt.ErrTokenExpired) {
 				return ErrTokenExpired
 			}
+
 			return ErrInvalidToken
 		}
 
@@ -130,21 +132,20 @@ func (a *AuthInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc
 			return ErrInvalidToken
 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
+		claims, ok := token.Claims.(*JwtClaims)
 		if !ok {
 			return ErrInvalidClaims
 		}
 
-		userID, ok := claims["sub"].(string)
-		if !ok || userID == "" {
+		userID, err := claims.GetSubject()
+		if err != nil {
 			return ErrInvalidClaims
 		}
 
 		ctx = context.WithValue(ctx, UserIDKey, userID)
 
-		if email, ok := claims["email"].(string); ok {
-			ctx = context.WithValue(ctx, UserEmailKey, email)
-		}
+		email := claims.Email
+		ctx = context.WithValue(ctx, UserEmailKey, email)
 
 		return next(ctx, conn)
 	}

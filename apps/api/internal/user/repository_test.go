@@ -291,9 +291,9 @@ func TestPgRepository_GetUserByEmail(t *testing.T) {
 		assert.Equal(t, fakeId, user.Id)
 		assert.Equal(t, fakeEmail, user.Email)
 		assert.Equal(t, fakeUsername, user.Username)
-		// Password should be the hashed version
+
 		assert.NotEmpty(t, user.Password)
-		// Verify password is the hashed one (not the plain text)
+
 		err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(fakePassword))
 		assert.NoError(t, err)
 		assert.WithinDuration(t, fakeNow, user.CreatedAt, time.Second)
@@ -346,16 +346,13 @@ func TestPgRepository_GetUserByEmail(t *testing.T) {
 			},
 		}, traceProvider)
 
-		// Try with different case (PostgreSQL string comparison is case-sensitive by default)
 		user, err := pgRepository.GetUserByEmail(t.Context(), "TEST@MAIL.COM")
 
-		// This should fail because email comparison is case-sensitive
-		// (unless the database has a case-insensitive collation)
 		if err != nil {
 			assert.Error(t, err)
 			assert.Nil(t, user)
 		} else {
-			// If it succeeds, verify it's the same user
+
 			require.NotNil(t, user)
 			assert.Equal(t, fakeId, user.Id)
 		}
@@ -374,7 +371,6 @@ func TestPgRepository_GetUserByEmail(t *testing.T) {
 		createUserTable(t, connString)
 		createFakeUser(t, connString)
 
-		// Soft delete the user
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		_, err = conn.Exec(t.Context(), "update users set deleted_at = $1 where id = $2", time.Now().UTC(), fakeId)
@@ -390,8 +386,6 @@ func TestPgRepository_GetUserByEmail(t *testing.T) {
 			},
 		}, traceProvider)
 
-		// The current implementation doesn't filter by deleted_at,
-		// so it should still return the user
 		user, err := pgRepository.GetUserByEmail(t.Context(), fakeEmail)
 
 		assert.NoError(t, err)
@@ -503,7 +497,6 @@ func TestPgRepository_GetUserById(t *testing.T) {
 		createUserTable(t, connString)
 		createFakeUser(t, connString)
 
-		// Soft delete the user
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		deletedAt := time.Now().UTC()
@@ -520,8 +513,6 @@ func TestPgRepository_GetUserById(t *testing.T) {
 			},
 		}, traceProvider)
 
-		// The current implementation doesn't filter by deleted_at,
-		// so it should still return the user
 		user, err := pgRepository.GetUserById(t.Context(), fakeId)
 
 		assert.NoError(t, err)
@@ -576,7 +567,6 @@ func TestPgRepository_GetUserById(t *testing.T) {
 			},
 		}, traceProvider)
 
-		// Use an invalid ID format (not a valid UUID)
 		invalidId := "not-a-valid-uuid"
 		user, err := pgRepository.GetUserById(t.Context(), invalidId)
 
@@ -724,7 +714,6 @@ func TestPgRepository_UpdateUserById(t *testing.T) {
 
 		assert.NoError(t, err)
 
-		// Verify only email was updated
 		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
 		defer func() {
