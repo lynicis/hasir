@@ -10,25 +10,21 @@ import { useClient } from "@/lib/use-client";
 
 import { RepositoryDialogForm } from "./repository-dialog-form";
 
-// eslint-disable-next-line no-var
-var toastSuccess: ReturnType<typeof vi.fn>;
-// eslint-disable-next-line no-var
-var toastError: ReturnType<typeof vi.fn>;
+const { toastSuccess, toastError } = vi.hoisted(() => ({
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+}));
 
 vi.mock("@/lib/use-client", () => ({
   useClient: vi.fn(),
 }));
 
-vi.mock("sonner", () => {
-  toastSuccess = vi.fn();
-  toastError = vi.fn();
-  return {
-    toast: {
-      success: toastSuccess,
-      error: toastError,
-    },
-  };
-});
+vi.mock("sonner", () => ({
+  toast: {
+    success: toastSuccess,
+    error: toastError,
+  },
+}));
 
 const mockUseQuery = vi.fn();
 
@@ -62,7 +58,6 @@ describe("RepositoryDialogForm", () => {
     toastError.mockReset();
     mockUseQuery.mockReset();
 
-    // Default mock implementation: return loaded organizations
     mockUseQuery.mockImplementation((schema: { name: string }) => {
       if (schema.name === "getOrganizations") {
         return {
@@ -129,7 +124,7 @@ describe("RepositoryDialogForm", () => {
       screen.getByLabelText(/name/i),
       "awesome-repository-example"
     );
-    // public is selected by default, so we can submit directly
+
     await user.click(screen.getByRole("button", { name: /create/i }));
 
     await waitFor(() =>
@@ -153,20 +148,17 @@ describe("RepositoryDialogForm", () => {
 
     setup(true);
 
-    // Wait for the dialog to be fully rendered
     await waitFor(() =>
       expect(
         screen.getByRole("heading", { name: /create repository/i })
       ).toBeInTheDocument()
     );
 
-    // Select an organization first - use keyboard navigation
     const organizationSelect = screen.getByRole("combobox", {
       name: /organization/i,
     });
     await user.click(organizationSelect);
 
-    // Wait for the select content to open
     await waitFor(() => {
       const options = screen.getAllByText("Acme Corp");
       return options.length > 0;
@@ -197,7 +189,6 @@ describe("RepositoryDialogForm", () => {
 
     setup(true);
 
-    // Select an organization first - use keyboard navigation
     const organizationSelect = screen.getByRole("combobox", {
       name: /organization/i,
     });
@@ -220,7 +211,6 @@ describe("RepositoryDialogForm", () => {
 
     setup(true);
 
-    // Select an organization first - use keyboard navigation
     const organizationSelect = screen.getByRole("combobox", {
       name: /organization/i,
     });
@@ -242,7 +232,6 @@ describe("RepositoryDialogForm", () => {
     const user = userEvent.setup();
     const { onCancel } = setup(true);
 
-    // Select an organization first - use keyboard navigation
     const organizationSelect = screen.getByRole("combobox", {
       name: /organization/i,
     });

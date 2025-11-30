@@ -11,14 +11,23 @@ interface PaginationProps {
   disabled?: boolean;
 }
 
-export function Pagination({ currentPage, totalPages, onPageChange, className, disabled = false }: PaginationProps) {
+export function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+  className,
+  disabled = false,
+}: PaginationProps) {
   const getVisiblePages = () => {
     const delta = 2;
     const range = [];
     const rangeWithDots = [];
-    let l;
 
-    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+    for (
+      let i = Math.max(2, currentPage - delta);
+      i <= Math.min(totalPages - 1, currentPage + delta);
+      i++
+    ) {
       range.push(i);
     }
 
@@ -57,7 +66,10 @@ export function Pagination({ currentPage, totalPages, onPageChange, className, d
 
       {visiblePages.map((page, index) =>
         page === "..." ? (
-          <div key={`dots-${index}`} className="flex h-8 w-8 items-center justify-center">
+          <div
+            key={`dots-${index}`}
+            className="flex h-8 w-8 items-center justify-center"
+          >
             <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
           </div>
         ) : (

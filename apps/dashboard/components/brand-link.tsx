@@ -1,4 +1,4 @@
-import { Box } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 type BrandLinkProps = {
@@ -19,9 +19,13 @@ export function BrandLink({
         className ?? ""
       }`.trim()}
     >
-      <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-        <Box className="size-4" />
-      </div>
+      <Image
+        src="/logo.webp"
+        alt="Hasir Logo"
+        width={24}
+        height={24}
+        className="size-6"
+      />
       {label}
     </Link>
   );

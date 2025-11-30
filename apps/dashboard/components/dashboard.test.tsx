@@ -6,20 +6,19 @@ import { useSession } from "@/lib/session-provider";
 
 import { Dashboard } from "./dashboard";
 
-var toastError: ReturnType<typeof vi.fn>;
+const { toastError } = vi.hoisted(() => ({
+  toastError: vi.fn(),
+}));
 
 vi.mock("@/lib/session-provider", () => ({
   useSession: vi.fn(),
 }));
 
-vi.mock("sonner", () => {
-  toastError = vi.fn();
-  return {
-    toast: {
-      error: toastError,
-    },
-  };
-});
+vi.mock("sonner", () => ({
+  toast: {
+    error: toastError,
+  },
+}));
 
 const mockUseQuery = vi.fn();
 

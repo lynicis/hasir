@@ -10,9 +10,10 @@ import { useClient } from "@/lib/use-client";
 
 import { OrganizationSettingsForm } from "./organization-settings-form";
 
-var toastSuccess: ReturnType<typeof vi.fn>;
-
-var toastError: ReturnType<typeof vi.fn>;
+const { toastSuccess, toastError } = vi.hoisted(() => ({
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+}));
 
 const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -31,16 +32,12 @@ vi.mock("@/lib/use-client", () => ({
   useClient: vi.fn(),
 }));
 
-vi.mock("sonner", () => {
-  toastSuccess = vi.fn();
-  toastError = vi.fn();
-  return {
-    toast: {
-      success: toastSuccess,
-      error: toastError,
-    },
-  };
-});
+vi.mock("sonner", () => ({
+  toast: {
+    success: toastSuccess,
+    error: toastError,
+  },
+}));
 
 const mockUpdateOrganization = vi.fn();
 const mockDeleteOrganization = vi.fn();
@@ -474,7 +471,6 @@ describe("OrganizationSettingsForm", () => {
       expect(screen.getByLabelText(/organization name/i)).toBeInTheDocument();
     });
 
-    const nameInput = screen.getByLabelText(/organization name/i);
     const submitButton = screen.getByRole("button", { name: /save changes/i });
 
     await user.click(submitButton);

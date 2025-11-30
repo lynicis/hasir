@@ -44,7 +44,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           setSession(null);
 
           const publicPaths = ["/login", "/register", "/invite"];
-          if (!publicPaths.some((path) => pathname.startsWith(path))) {
+          const isRootPath = pathname === "/";
+          if (
+            !isRootPath &&
+            !publicPaths.some((path) => pathname.startsWith(path))
+          ) {
             router.push("/login");
           }
         }

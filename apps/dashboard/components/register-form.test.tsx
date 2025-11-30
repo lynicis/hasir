@@ -9,35 +9,28 @@ import { useClient } from "@/lib/use-client";
 
 import { RegisterForm } from "./register-form";
 
-var mockRouterPush: ReturnType<typeof vi.fn>;
-
-var toastSuccess: ReturnType<typeof vi.fn>;
-
-var toastError: ReturnType<typeof vi.fn>;
+const { mockRouterPush, toastSuccess, toastError } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+}));
 
 vi.mock("@/lib/use-client", () => ({
   useClient: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => {
-  mockRouterPush = vi.fn();
-  return {
-    useRouter: () => ({
-      push: mockRouterPush,
-    }),
-  };
-});
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}));
 
-vi.mock("sonner", () => {
-  toastSuccess = vi.fn();
-  toastError = vi.fn();
-  return {
-    toast: {
-      success: toastSuccess,
-      error: toastError,
-    },
-  };
-});
+vi.mock("sonner", () => ({
+  toast: {
+    success: toastSuccess,
+    error: toastError,
+  },
+}));
 
 const mockRegister = vi.fn();
 const mockedUseClient = useClient as unknown as Mock;

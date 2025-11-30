@@ -9,24 +9,21 @@ import { useClient } from "@/lib/use-client";
 
 import { OrganizationDialogForm } from "./organization-dialog-form";
 
-var toastSuccess: ReturnType<typeof vi.fn>;
-
-var toastError: ReturnType<typeof vi.fn>;
+const { toastSuccess, toastError } = vi.hoisted(() => ({
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+}));
 
 vi.mock("@/lib/use-client", () => ({
   useClient: vi.fn(),
 }));
 
-vi.mock("sonner", () => {
-  toastSuccess = vi.fn();
-  toastError = vi.fn();
-  return {
-    toast: {
-      success: toastSuccess,
-      error: toastError,
-    },
-  };
-});
+vi.mock("sonner", () => ({
+  toast: {
+    success: toastSuccess,
+    error: toastError,
+  },
+}));
 
 const mockCreateOrganization = vi.fn();
 const mockedUseClient = useClient as unknown as Mock;
