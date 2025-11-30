@@ -14,8 +14,9 @@ message Repository {
 }
 
 message CreateRepositoryRequest {
-  string name = 1 [(buf.validate.field).string.min_len = 1];
-  shared.Visibility visibility = 2 [(buf.validate.field).enum = {
+  string organization_id = 1 [(buf.validate.field).required = true];
+  string name = 2 [(buf.validate.field).string.min_len = 1];
+  shared.Visibility visibility = 3 [(buf.validate.field).enum = {
     not_in: [0]
   }];
 }
