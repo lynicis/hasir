@@ -195,7 +195,7 @@ func TestService_DeleteRepository(t *testing.T) {
 		require.DirExists(t, repoPath)
 	})
 
-	t.Run("filesystem removal failure is logged but doesn't fail operation", func(t *testing.T) {
+	t.Run("filesystem removal failure returns error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
 		tmpDir := t.TempDir()
@@ -232,8 +232,10 @@ func TestService_DeleteRepository(t *testing.T) {
 			RepositoryId: repoId,
 		})
 
-		require.NoError(t, err)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to remove repository directory")
 
+		// Cleanup: restore permissions so temp dir can be cleaned up
 		if _, err := os.Stat(repoPath); err == nil {
 			require.NoError(t, os.Chmod(repoPath, 0o755))
 		}

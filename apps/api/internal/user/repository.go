@@ -124,12 +124,8 @@ func (r *PgRepository) CreateUser(ctx context.Context, user *UserDTO) error {
 		span.RecordError(err)
 
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == "40001" {
-				return ErrIdentifierAlreadyExists
-			}
-
-			return err
+		if errors.As(err, &pgErr) && pgErr.Code == ErrUniqueViolationCode {
+			return ErrIdentifierAlreadyExists
 		}
 
 		return connect.NewError(connect.CodeInternal, errors.New("failed to execute insert user query"))
@@ -159,10 +155,7 @@ func (r *PgRepository) GetUserByEmail(ctx context.Context, email string) (*UserD
 	var rows pgx.Rows
 	rows, err = connection.Query(ctx, sql, email)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNoRows
-		}
-
+		span.RecordError(err)
 		return nil, ErrInternalServer
 	}
 	defer rows.Close()
@@ -201,6 +194,7 @@ func (r *PgRepository) GetUserById(ctx context.Context, id string) (*UserDTO, er
 	var rows pgx.Rows
 	rows, err = connection.Query(ctx, sql, id)
 	if err != nil {
+		span.RecordError(err)
 		return nil, ErrInternalServer
 	}
 	defer rows.Close()
@@ -247,6 +241,7 @@ func (r *PgRepository) CreateRefreshToken(ctx context.Context, id, token string,
 	}
 
 	if _, err = connection.Exec(ctx, sql, sqlArgs); err != nil {
+		span.RecordError(err)
 		return ErrInternalServer
 	}
 
@@ -351,6 +346,7 @@ func (r *PgRepository) DeleteUser(ctx context.Context, userId string) error {
 	}
 
 	if _, err = connection.Exec(ctx, sql, sqlArgs); err != nil {
+		span.RecordError(err)
 		return ErrInternalServer
 	}
 

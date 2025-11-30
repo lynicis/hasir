@@ -150,6 +150,7 @@ func (s *service) DeleteRepository(
 			zap.Error(err),
 		)
 
+		return fmt.Errorf("failed to remove repository directory: %w", err)
 	}
 
 	zap.L().Info("repository deleted",

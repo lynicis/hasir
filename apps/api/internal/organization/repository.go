@@ -571,8 +571,11 @@ func (r *PgRepository) GetPendingEmailJobs(ctx context.Context, limit int) ([]*E
 		span.RecordError(err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to begin transaction"))
 	}
+	committed := false
 	defer func() {
-		_ = tx.Rollback(ctx)
+		if !committed {
+			_ = tx.Rollback(ctx)
+		}
 	}()
 
 	sql := `UPDATE email_jobs 
@@ -603,6 +606,7 @@ func (r *PgRepository) GetPendingEmailJobs(ctx context.Context, limit int) ([]*E
 		span.RecordError(err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to commit transaction"))
 	}
+	committed = true
 
 	result := make([]*EmailJobDTO, len(jobs))
 	for i := range jobs {
@@ -740,8 +744,7 @@ func (r *PgRepository) processEmailJobs(ctx context.Context, emailService email.
 				zap.String("jobId", job.Id),
 				zap.String("email", job.Email))
 
-			if job.Attempts+1 < job.MaxAttempts {
-
+			if job.Attempts < job.MaxAttempts {
 				if updateErr := r.UpdateEmailJobStatus(ctx, job.Id, EmailJobStatusPending, nil); updateErr != nil {
 					zap.L().Error("failed to reset job to pending", zap.Error(updateErr))
 				}

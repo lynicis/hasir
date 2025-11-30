@@ -61,7 +61,11 @@ func (s *service) CreateOrganization(
 		return connect.NewError(connect.CodeAlreadyExists, errors.New("organization already exists"))
 	}
 
-	visibility := protoVisibilityMap[req.GetVisibility()]
+	visibility, ok := protoVisibilityMap[req.GetVisibility()]
+	if !ok {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("invalid visibility value"))
+	}
+
 	org := &OrganizationDTO{
 		Id:         uuid.NewString(),
 		Name:       req.GetName(),

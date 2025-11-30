@@ -110,30 +110,26 @@ func (r *PgRepository) CreateRepository(ctx context.Context, repo *RepositoryDTO
 	}
 	defer connection.Release()
 
-	sql := `INSERT INTO repositories (id, name, owner_id, organization_id, path, created_at, updated_at) 
-			VALUES (@Id, @Name, @OwnerId, @OrganizationId, @Path, @CreatedAt, @UpdatedAt)`
-	sqlArgs := pgx.NamedArgs{
-		"Id":             repo.Id,
-		"Name":           repo.Name,
-		"OwnerId":        repo.OwnerId,
-		"OrganizationId": repo.OrganizationId,
-		"Path":           repo.Path,
-		"CreatedAt":      time.Now().UTC(),
-		"UpdatedAt":      time.Now().UTC(),
+	now := time.Now().UTC()
+	updatedAt := repo.UpdatedAt
+	if updatedAt == nil {
+		updatedAt = &now
 	}
 
-	if _, err = connection.Exec(ctx, sql, sqlArgs); err != nil {
+	sql := `INSERT INTO repositories (id, name, owner_id, organization_id, path, created_at, updated_at) 
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`
+	if _, err = connection.Exec(ctx, sql, repo.Id, repo.Name, repo.OwnerId, repo.OrganizationId, repo.Path, now, updatedAt); err != nil {
 		span.RecordError(err)
 
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == ErrUniqueViolationCode {
-				return ErrRepositoryAlreadyExists
-			}
-			return err
+		if errors.As(err, &pgErr) && pgErr.Code == ErrUniqueViolationCode {
+			return ErrRepositoryAlreadyExists
 		}
 
-		return connect.NewError(connect.CodeInternal, errors.New("failed to execute insert repository query"))
+		return connect.NewError(
+			connect.CodeInternal,
+			errors.New("failed to execute insert repository query"),
+		)
 	}
 
 	return nil
@@ -160,7 +156,8 @@ func (r *PgRepository) GetRepositoryByName(ctx context.Context, name string) (*R
 	var rows pgx.Rows
 	rows, err = connection.Query(ctx, sql, name)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to query repository by name"))
 	}
 	defer rows.Close()
 
@@ -261,7 +258,8 @@ func (r *PgRepository) GetRepositoryById(ctx context.Context, id string) (*Repos
 	var rows pgx.Rows
 	rows, err = connection.Query(ctx, sql, id)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to query repository by id"))
 	}
 	defer rows.Close()
 
@@ -292,16 +290,12 @@ func (r *PgRepository) UpdateRepository(ctx context.Context, repo *RepositoryDTO
 	}
 	defer connection.Release()
 
-	sql := `UPDATE repositories 
-			SET name = @Name, updated_at = @UpdatedAt 
-			WHERE id = @Id AND deleted_at IS NULL`
-	sqlArgs := pgx.NamedArgs{
-		"Id":        repo.Id,
-		"Name":      repo.Name,
-		"UpdatedAt": time.Now().UTC(),
-	}
+	now := time.Now().UTC()
+	sql := `UPDATE repositories
+			SET name = $1, updated_at = $2
+			WHERE id = $3 AND deleted_at IS NULL`
 
-	result, err := connection.Exec(ctx, sql, sqlArgs)
+	result, err := connection.Exec(ctx, sql, repo.Name, &now, repo.Id)
 	if err != nil {
 		span.RecordError(err)
 
@@ -310,7 +304,7 @@ func (r *PgRepository) UpdateRepository(ctx context.Context, repo *RepositoryDTO
 			if pgErr.Code == ErrUniqueViolationCode {
 				return ErrRepositoryAlreadyExists
 			}
-			return err
+			return connect.NewError(connect.CodeInternal, err)
 		}
 
 		return connect.NewError(connect.CodeInternal, errors.New("failed to execute update repository query"))
@@ -339,18 +333,18 @@ func (r *PgRepository) DeleteRepository(ctx context.Context, id string) error {
 	}
 	defer connection.Release()
 
-	sql := `UPDATE repositories 
-			SET deleted_at = @DeletedAt 
-			WHERE id = @Id AND deleted_at IS NULL`
-	sqlArgs := pgx.NamedArgs{
-		"Id":        id,
-		"DeletedAt": time.Now().UTC(),
-	}
+	now := time.Now().UTC()
+	sql := `UPDATE repositories
+			SET deleted_at = $1
+			WHERE id = $2 AND deleted_at IS NULL`
 
-	result, err := connection.Exec(ctx, sql, sqlArgs)
+	result, err := connection.Exec(ctx, sql, &now, id)
 	if err != nil {
 		span.RecordError(err)
-		return connect.NewError(connect.CodeInternal, errors.New("failed to execute delete repository query"))
+		return connect.NewError(
+			connect.CodeInternal,
+			errors.New("failed to execute delete repository query"),
+		)
 	}
 
 	if result.RowsAffected() == 0 {
