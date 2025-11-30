@@ -32,7 +32,12 @@ message GetRepositoriesResponse {
   int32 total_page = 3;
 }
 
+message DeleteRepositoryRequest {
+  string repository_id = 1 [(buf.validate.field).required = true];
+}
+
 service RegistryService {
   rpc CreateRepository(CreateRepositoryRequest) returns (google.protobuf.Empty);
   rpc GetRepositories(GetRepositoriesRequest) returns (GetRepositoriesResponse);
+  rpc DeleteRepository(DeleteRepositoryRequest) returns (google.protobuf.Empty);
 }
