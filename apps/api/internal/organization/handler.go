@@ -158,6 +158,22 @@ func (h *handler) DeleteOrganization(
 	return connect.NewResponse(new(emptypb.Empty)), nil
 }
 
+func (h *handler) InviteMember(
+	ctx context.Context,
+	req *connect.Request[organizationv1.InviteMemberRequest],
+) (*connect.Response[emptypb.Empty], error) {
+	userId, err := auth.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := h.service.InviteUser(ctx, req.Msg, userId); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(new(emptypb.Empty)), nil
+}
+
 func (h *handler) RespondToInvitation(
 	ctx context.Context,
 	req *connect.Request[organizationv1.RespondToInvitationRequest],
@@ -171,7 +187,7 @@ func (h *handler) RespondToInvitation(
 		ctx,
 		req.Msg.GetInvitationId(),
 		userId,
-		req.Msg.GetAccept(),
+		req.Msg.GetStatus(),
 	); err != nil {
 		return nil, err
 	}
@@ -191,4 +207,29 @@ func (h *handler) IsInvitationValid(
 	}
 
 	return connect.NewResponse(new(emptypb.Empty)), nil
+}
+
+func (h *handler) GetMembers(
+	ctx context.Context,
+	req *connect.Request[organizationv1.GetMembersRequest],
+) (*connect.Response[organizationv1.GetMembersResponse], error) {
+	members, usernames, emails, err := h.repository.GetMembers(ctx, req.Msg.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	var resp []*organizationv1.Member
+	for i, member := range members {
+		role := MemberRoleToSharedRoleMap[member.Role]
+		resp = append(resp, &organizationv1.Member{
+			Id:       member.UserId,
+			Username: usernames[i],
+			Email:    emails[i],
+			Role:     role,
+		})
+	}
+
+	return connect.NewResponse(&organizationv1.GetMembersResponse{
+		Members: resp,
+	}), nil
 }

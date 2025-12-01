@@ -70,6 +70,20 @@ func (mr *MockRepositoryMockRecorder) CreateInvite(ctx, invite any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInvite", reflect.TypeOf((*MockRepository)(nil).CreateInvite), ctx, invite)
 }
 
+// CreateInvites mocks base method.
+func (m *MockRepository) CreateInvites(ctx context.Context, invites []*OrganizationInviteDTO) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateInvites", ctx, invites)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateInvites indicates an expected call of CreateInvites.
+func (mr *MockRepositoryMockRecorder) CreateInvites(ctx, invites any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInvites", reflect.TypeOf((*MockRepository)(nil).CreateInvites), ctx, invites)
+}
+
 // CreateOrganization mocks base method.
 func (m *MockRepository) CreateOrganization(ctx context.Context, org *OrganizationDTO) error {
 	m.ctrl.T.Helper()
@@ -125,6 +139,23 @@ func (m *MockRepository) GetInviteByToken(ctx context.Context, token string) (*O
 func (mr *MockRepositoryMockRecorder) GetInviteByToken(ctx, token any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInviteByToken", reflect.TypeOf((*MockRepository)(nil).GetInviteByToken), ctx, token)
+}
+
+// GetMembers mocks base method.
+func (m *MockRepository) GetMembers(ctx context.Context, organizationId string) ([]*OrganizationMemberDTO, []string, []string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMembers", ctx, organizationId)
+	ret0, _ := ret[0].([]*OrganizationMemberDTO)
+	ret1, _ := ret[1].([]string)
+	ret2, _ := ret[2].([]string)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// GetMembers indicates an expected call of GetMembers.
+func (mr *MockRepositoryMockRecorder) GetMembers(ctx, organizationId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMembers", reflect.TypeOf((*MockRepository)(nil).GetMembers), ctx, organizationId)
 }
 
 // GetOrganizationById mocks base method.

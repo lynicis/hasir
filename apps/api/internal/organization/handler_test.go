@@ -551,3 +551,72 @@ func TestHandler_UpdateOrganization(t *testing.T) {
 		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
+
+func TestHandler_InviteMember(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-123"
+		orgID := "org-123"
+		email := "user1@example.com"
+
+		mockService.EXPECT().
+			InviteUser(gomock.Any(), gomock.Any(), testUserID).
+			DoAndReturn(func(_ context.Context, req *organizationv1.InviteMemberRequest, invitedBy string) error {
+				require.Equal(t, orgID, req.GetId())
+				require.Equal(t, email, req.GetEmail())
+				require.Equal(t, testUserID, invitedBy)
+				return nil
+			})
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.InviteMember(context.Background(), connect.NewRequest(&organizationv1.InviteMemberRequest{
+			Id:    orgID,
+			Email: email,
+		}))
+		require.NoError(t, err)
+	})
+
+	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.InviteMember(context.Background(), connect.NewRequest(&organizationv1.InviteMemberRequest{
+			Id:    "org-123",
+			Email: "user@example.com",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+	})
+}

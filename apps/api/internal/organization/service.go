@@ -34,12 +34,22 @@ type Service interface {
 		organizationId string,
 		userId string,
 	) error
+	InviteUser(
+		ctx context.Context,
+		req *organizationv1.InviteMemberRequest,
+		invitedBy string,
+	) error
 	RespondToInvitation(
 		ctx context.Context,
 		token string,
 		userId string,
 		accept bool,
 	) error
+}
+
+type inviteInfo struct {
+	email string
+	role  MemberRole
 }
 
 type service struct {
@@ -82,9 +92,15 @@ func (s *service) CreateOrganization(
 		return err
 	}
 
-	inviteEmails := req.GetInviteEmails()
-	if len(inviteEmails) > 0 {
-		if err := s.sendInvites(ctx, org.Id, org.Name, createdBy, inviteEmails); err != nil {
+	var invites []inviteInfo
+	for _, member := range req.GetMembers() {
+		email := member.GetEmail()
+		role := SharedRoleToMemberRoleMap[member.GetRole()]
+		invites = append(invites, inviteInfo{email: email, role: role})
+	}
+
+	if len(invites) > 0 {
+		if err := s.sendInvites(ctx, org.Id, org.Name, createdBy, invites); err != nil {
 			zap.L().Error("failed to send invites", zap.Error(err), zap.String("organizationId", org.Id))
 		}
 	}
@@ -92,38 +108,66 @@ func (s *service) CreateOrganization(
 	return nil
 }
 
-func (s *service) sendInvites(ctx context.Context, orgId, orgName, invitedBy string, emails []string) error {
+func (s *service) InviteUser(
+	ctx context.Context,
+	req *organizationv1.InviteMemberRequest,
+	invitedBy string,
+) error {
+	org, err := s.repository.GetOrganizationById(ctx, req.GetId())
+	if err != nil {
+		return err
+	}
+
+	if org.CreatedBy != invitedBy {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("only the organization creator can invite users"))
+	}
+
+	email := req.GetEmail()
+	if email == "" {
+		return nil
+	}
+
+	invites := []inviteInfo{
+		{email: email, role: MemberRoleAuthor},
+	}
+
+	if err := s.sendInvites(ctx, org.Id, org.Name, invitedBy, invites); err != nil {
+		zap.L().Error("failed to send invites", zap.Error(err), zap.String("organizationId", org.Id))
+	}
+
+	return nil
+}
+
+func (s *service) sendInvites(ctx context.Context, orgId, orgName, invitedBy string, invites []inviteInfo) error {
+	var organizationInvites []*OrganizationInviteDTO
 	var emailJobs []*EmailJobDTO
 	now := time.Now().UTC()
 
-	for _, emailAddr := range emails {
+	for _, inviteData := range invites {
 		token, err := generateInviteToken()
 		if err != nil {
-			zap.L().Error("failed to generate invite token", zap.Error(err), zap.String("email", emailAddr))
+			zap.L().Error("failed to generate invite token", zap.Error(err), zap.String("email", inviteData.email))
 			continue
 		}
 
 		invite := &OrganizationInviteDTO{
 			Id:             uuid.NewString(),
 			OrganizationId: orgId,
-			Email:          emailAddr,
+			Email:          inviteData.email,
 			Token:          token,
 			InvitedBy:      invitedBy,
+			Role:           inviteData.role,
 			Status:         InviteStatusPending,
 			CreatedAt:      now,
 			ExpiresAt:      now.AddDate(0, 0, 7),
 		}
-
-		if err := s.repository.CreateInvite(ctx, invite); err != nil {
-			zap.L().Error("failed to create invite", zap.Error(err), zap.String("email", emailAddr))
-			continue
-		}
+		organizationInvites = append(organizationInvites, invite)
 
 		emailJob := &EmailJobDTO{
 			Id:               uuid.NewString(),
 			InviteId:         invite.Id,
 			OrganizationId:   orgId,
-			Email:            emailAddr,
+			Email:            inviteData.email,
 			OrganizationName: orgName,
 			InviteToken:      token,
 			Status:           EmailJobStatusPending,
@@ -134,15 +178,18 @@ func (s *service) sendInvites(ctx context.Context, orgId, orgName, invitedBy str
 		emailJobs = append(emailJobs, emailJob)
 	}
 
-	if len(emailJobs) > 0 {
-		if err := s.repository.EnqueueEmailJobs(ctx, emailJobs); err != nil {
-			zap.L().Error("failed to enqueue email jobs", zap.Error(err), zap.String("organizationId", orgId))
-			return err
-		}
-		zap.L().Info("enqueued email jobs for batch processing",
-			zap.Int("count", len(emailJobs)),
-			zap.String("organizationId", orgId))
+	if err := s.repository.CreateInvites(ctx, organizationInvites); err != nil {
+		zap.L().Error("failed to create invites", zap.Error(err), zap.String("organizationId", orgId))
+		return err
 	}
+
+	if err := s.repository.EnqueueEmailJobs(ctx, emailJobs); err != nil {
+		zap.L().Error("failed to enqueue email jobs", zap.Error(err), zap.String("organizationId", orgId))
+		return err
+	}
+	zap.L().Info("enqueued email jobs for batch processing",
+		zap.Int("count", len(emailJobs)),
+		zap.String("organizationId", orgId))
 
 	return nil
 }
@@ -248,7 +295,7 @@ func (s *service) RespondToInvitation(
 		Id:             uuid.NewString(),
 		OrganizationId: invite.OrganizationId,
 		UserId:         userId,
-		Role:           MemberRoleMember,
+		Role:           invite.Role,
 		JoinedAt:       now,
 	}
 

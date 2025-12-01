@@ -69,6 +69,20 @@ func (mr *MockServiceMockRecorder) DeleteOrganization(ctx, organizationId, userI
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteOrganization", reflect.TypeOf((*MockService)(nil).DeleteOrganization), ctx, organizationId, userId)
 }
 
+// InviteUser mocks base method.
+func (m *MockService) InviteUser(ctx context.Context, req *organizationv1.InviteMemberRequest, invitedBy string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InviteUser", ctx, req, invitedBy)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InviteUser indicates an expected call of InviteUser.
+func (mr *MockServiceMockRecorder) InviteUser(ctx, req, invitedBy any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InviteUser", reflect.TypeOf((*MockService)(nil).InviteUser), ctx, req, invitedBy)
+}
+
 // RespondToInvitation mocks base method.
 func (m *MockService) RespondToInvitation(ctx context.Context, token, userId string, accept bool) error {
 	m.ctrl.T.Helper()

@@ -3,6 +3,8 @@ package organization
 import (
 	"hasir-api/pkg/proto"
 	"time"
+
+	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
 )
 
 type OrganizationDTO struct {
@@ -29,6 +31,7 @@ type OrganizationInviteDTO struct {
 	Email          string       `json:"email" db:"email"`
 	Token          string       `json:"token" db:"token"`
 	InvitedBy      string       `json:"invited_by" db:"invited_by"`
+	Role           MemberRole   `json:"role" db:"role"`
 	Status         InviteStatus `json:"status" db:"status"`
 	CreatedAt      time.Time    `json:"created_at" db:"created_at"`
 	ExpiresAt      time.Time    `json:"expires_at" db:"expires_at"`
@@ -38,9 +41,9 @@ type OrganizationInviteDTO struct {
 type MemberRole string
 
 const (
+	MemberRoleReader MemberRole = "reader"
+	MemberRoleAuthor MemberRole = "author"
 	MemberRoleOwner  MemberRole = "owner"
-	MemberRoleAdmin  MemberRole = "admin"
-	MemberRoleMember MemberRole = "member"
 )
 
 type OrganizationMemberDTO struct {
@@ -60,6 +63,18 @@ const (
 	EmailJobStatusFailed     EmailJobStatus = "failed"
 )
 
+var SharedRoleToMemberRoleMap = map[shared.Role]MemberRole{
+	shared.Role_ROLE_OWNER:  MemberRoleOwner,
+	shared.Role_ROLE_AUTHOR: MemberRoleAuthor,
+	shared.Role_ROLE_READER: MemberRoleReader,
+}
+
+var MemberRoleToSharedRoleMap = map[MemberRole]shared.Role{
+	MemberRoleOwner:  shared.Role_ROLE_OWNER,
+	MemberRoleAuthor: shared.Role_ROLE_AUTHOR,
+	MemberRoleReader: shared.Role_ROLE_READER,
+}
+
 type EmailJobDTO struct {
 	Id               string         `json:"id" db:"id"`
 	InviteId         string         `json:"invite_id" db:"invite_id"`
@@ -74,4 +89,10 @@ type EmailJobDTO struct {
 	ProcessedAt      *time.Time     `json:"processed_at,omitempty" db:"processed_at"`
 	CompletedAt      *time.Time     `json:"completed_at,omitempty" db:"completed_at"`
 	ErrorMessage     *string        `json:"error_message,omitempty" db:"error_message"`
+}
+
+type memberRow struct {
+	OrganizationMemberDTO
+	Username string `db:"username"`
+	Email    string `db:"email"`
 }

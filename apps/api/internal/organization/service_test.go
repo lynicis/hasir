@@ -68,9 +68,12 @@ func TestCreateOrganization(t *testing.T) {
 	t.Run("with invites", func(t *testing.T) {
 		svc, mockRepo, _, _, ctx := newTestService(t)
 		req := &organizationv1.CreateOrganizationRequest{
-			Name:         "test-org",
-			Visibility:   shared.Visibility_VISIBILITY_PUBLIC,
-			InviteEmails: []string{"friend1@example.com", "friend2@example.com"},
+			Name:       "test-org",
+			Visibility: shared.Visibility_VISIBILITY_PUBLIC,
+			Members: []*organizationv1.InvitationMember{
+				{Email: "friend1@example.com", Role: shared.Role_ROLE_AUTHOR},
+				{Email: "friend2@example.com", Role: shared.Role_ROLE_AUTHOR},
+			},
 		}
 		createdBy := "user-123"
 
@@ -83,16 +86,21 @@ func TestCreateOrganization(t *testing.T) {
 			Return(nil)
 
 		mockRepo.EXPECT().
-			CreateInvite(ctx, gomock.Any()).
-			DoAndReturn(func(_ context.Context, invite *OrganizationInviteDTO) error {
-				if invite.Email != "friend1@example.com" && invite.Email != "friend2@example.com" {
-					t.Errorf("unexpected email: %s", invite.Email)
+			CreateInvites(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, invites []*OrganizationInviteDTO) error {
+				if len(invites) != 2 {
+					t.Errorf("expected 2 invites, got %d", len(invites))
 				}
-				if invite.Status != InviteStatusPending {
-					t.Errorf("expected status 'pending', got %s", invite.Status)
+				for _, invite := range invites {
+					if invite.Email != "friend1@example.com" && invite.Email != "friend2@example.com" {
+						t.Errorf("unexpected email: %s", invite.Email)
+					}
+					if invite.Status != InviteStatusPending {
+						t.Errorf("expected status 'pending', got %s", invite.Status)
+					}
 				}
 				return nil
-			}).Times(2)
+			})
 
 		mockRepo.EXPECT().
 			EnqueueEmailJobs(ctx, gomock.Any()).
@@ -204,9 +212,11 @@ func TestCreateOrganization(t *testing.T) {
 	t.Run("invite create error", func(t *testing.T) {
 		svc, mockRepo, _, _, ctx := newTestService(t)
 		req := &organizationv1.CreateOrganizationRequest{
-			Name:         "test-org",
-			Visibility:   shared.Visibility_VISIBILITY_PRIVATE,
-			InviteEmails: []string{"friend@example.com"},
+			Name:       "test-org",
+			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
+			Members: []*organizationv1.InvitationMember{
+				{Email: "friend@example.com", Role: shared.Role_ROLE_AUTHOR},
+			},
 		}
 		createdBy := "user-123"
 
@@ -219,7 +229,7 @@ func TestCreateOrganization(t *testing.T) {
 			Return(nil)
 
 		mockRepo.EXPECT().
-			CreateInvite(ctx, gomock.Any()).
+			CreateInvites(ctx, gomock.Any()).
 			Return(connect.NewError(connect.CodeInternal, errors.New("invite creation failed")))
 
 		err := svc.CreateOrganization(ctx, req, createdBy)
@@ -231,9 +241,11 @@ func TestCreateOrganization(t *testing.T) {
 	t.Run("email send error", func(t *testing.T) {
 		svc, mockRepo, _, _, ctx := newTestService(t)
 		req := &organizationv1.CreateOrganizationRequest{
-			Name:         "test-org",
-			Visibility:   shared.Visibility_VISIBILITY_PRIVATE,
-			InviteEmails: []string{"friend@example.com"},
+			Name:       "test-org",
+			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
+			Members: []*organizationv1.InvitationMember{
+				{Email: "friend@example.com", Role: shared.Role_ROLE_AUTHOR},
+			},
 		}
 		createdBy := "user-123"
 
@@ -246,7 +258,7 @@ func TestCreateOrganization(t *testing.T) {
 			Return(nil)
 
 		mockRepo.EXPECT().
-			CreateInvite(ctx, gomock.Any()).
+			CreateInvites(ctx, gomock.Any()).
 			Return(nil)
 
 		mockRepo.EXPECT().
@@ -309,6 +321,105 @@ func TestCreateOrganization(t *testing.T) {
 	})
 }
 
+func TestInviteUser(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		req := &organizationv1.InviteMemberRequest{
+			Id:    "org-123",
+			Email: "friend1@example.com",
+		}
+		invitedBy := "user-123"
+
+		org := &OrganizationDTO{
+			Id:        "org-123",
+			Name:      "test-org",
+			CreatedBy: invitedBy,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, "org-123").
+			Return(org, nil)
+
+		mockRepo.EXPECT().
+			CreateInvites(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, invites []*OrganizationInviteDTO) error {
+				if len(invites) != 1 {
+					t.Errorf("expected 1 invite, got %d", len(invites))
+				}
+				if invites[0].Email != "friend1@example.com" {
+					t.Errorf("expected email 'friend1@example.com', got %s", invites[0].Email)
+				}
+				return nil
+			})
+
+		mockRepo.EXPECT().
+			EnqueueEmailJobs(ctx, gomock.Any()).
+			Return(nil)
+
+		err := svc.InviteUser(ctx, req, invitedBy)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("permission denied when not creator", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		req := &organizationv1.InviteMemberRequest{
+			Id:    "org-123",
+			Email: "friend@example.com",
+		}
+		invitedBy := "user-123"
+
+		org := &OrganizationDTO{
+			Id:        "org-123",
+			Name:      "test-org",
+			CreatedBy: "other-user",
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, "org-123").
+			Return(org, nil)
+
+		err := svc.InviteUser(ctx, req, invitedBy)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodePermissionDenied {
+			t.Errorf("expected CodePermissionDenied, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("no emails provided", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		req := &organizationv1.InviteMemberRequest{
+			Id:    "org-123",
+			Email: "",
+		}
+		invitedBy := "user-123"
+
+		org := &OrganizationDTO{
+			Id:        "org-123",
+			Name:      "test-org",
+			CreatedBy: invitedBy,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, "org-123").
+			Return(org, nil)
+
+		err := svc.InviteUser(ctx, req, invitedBy)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+}
+
 func TestGenerateInviteToken(t *testing.T) {
 	token1, err := generateInviteToken()
 	if err != nil {
@@ -341,6 +452,7 @@ func TestRespondToInvitation(t *testing.T) {
 			Email:          "user@example.com",
 			Token:          token,
 			InvitedBy:      "inviter-789",
+			Role:           MemberRoleAuthor,
 			Status:         InviteStatusPending,
 			CreatedAt:      time.Now().UTC(),
 			ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
@@ -363,8 +475,8 @@ func TestRespondToInvitation(t *testing.T) {
 				if member.UserId != userId {
 					t.Errorf("expected userId %s, got %s", userId, member.UserId)
 				}
-				if member.Role != MemberRoleMember {
-					t.Errorf("expected role 'member', got %s", member.Role)
+				if member.Role != invite.Role {
+					t.Errorf("expected role %s, got %s", invite.Role, member.Role)
 				}
 				return nil
 			})

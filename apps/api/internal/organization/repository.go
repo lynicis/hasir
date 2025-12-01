@@ -31,9 +31,11 @@ type Repository interface {
 	UpdateOrganization(ctx context.Context, org *OrganizationDTO) error
 	DeleteOrganization(ctx context.Context, id string) error
 	CreateInvite(ctx context.Context, invite *OrganizationInviteDTO) error
+	CreateInvites(ctx context.Context, invites []*OrganizationInviteDTO) error
 	GetInviteByToken(ctx context.Context, token string) (*OrganizationInviteDTO, error)
 	UpdateInviteStatus(ctx context.Context, id string, status InviteStatus, acceptedAt *time.Time) error
 	AddMember(ctx context.Context, member *OrganizationMemberDTO) error
+	GetMembers(ctx context.Context, organizationId string) ([]*OrganizationMemberDTO, []string, []string, error)
 	EnqueueEmailJobs(ctx context.Context, jobs []*EmailJobDTO) error
 	GetPendingEmailJobs(ctx context.Context, limit int) ([]*EmailJobDTO, error)
 	UpdateEmailJobStatus(ctx context.Context, jobId string, status EmailJobStatus, errorMsg *string) error
@@ -391,14 +393,15 @@ func (r *PgRepository) CreateInvite(ctx context.Context, invite *OrganizationInv
 	}
 	defer connection.Release()
 
-	sql := `INSERT INTO organization_invites (id, organization_id, email, token, invited_by, status, created_at, expires_at)
-			VALUES (@Id, @OrganizationId, @Email, @Token, @InvitedBy, @Status, @CreatedAt, @ExpiresAt)`
+	sql := `INSERT INTO organization_invites (id, organization_id, email, token, invited_by, role, status, created_at, expires_at)
+			VALUES (@Id, @OrganizationId, @Email, @Token, @InvitedBy, @Role, @Status, @CreatedAt, @ExpiresAt)`
 	sqlArgs := pgx.NamedArgs{
 		"Id":             invite.Id,
 		"OrganizationId": invite.OrganizationId,
 		"Email":          invite.Email,
 		"Token":          invite.Token,
 		"InvitedBy":      invite.InvitedBy,
+		"Role":           invite.Role,
 		"Status":         invite.Status,
 		"CreatedAt":      invite.CreatedAt,
 		"ExpiresAt":      invite.ExpiresAt,
@@ -417,6 +420,86 @@ func (r *PgRepository) CreateInvite(ctx context.Context, invite *OrganizationInv
 
 		return connect.NewError(connect.CodeInternal, errors.New("failed to execute insert invite query"))
 	}
+
+	return nil
+}
+
+func (r *PgRepository) CreateInvites(ctx context.Context, invites []*OrganizationInviteDTO) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "CreateInvites", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "inviteCount",
+			Value: attribute.IntValue(len(invites)),
+		},
+	))
+	defer span.End()
+
+	if len(invites) == 0 {
+		return nil
+	}
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	tx, err := connection.Begin(ctx)
+	if err != nil {
+		span.RecordError(err)
+		return connect.NewError(connect.CodeInternal, errors.New("failed to begin transaction"))
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback(ctx)
+		}
+	}()
+
+	sql := `INSERT INTO organization_invites (id, organization_id, email, token, invited_by, role, status, created_at, expires_at)
+			VALUES (@Id, @OrganizationId, @Email, @Token, @InvitedBy, @Role, @Status, @CreatedAt, @ExpiresAt)`
+
+	batch := &pgx.Batch{}
+	for _, invite := range invites {
+		sqlArgs := pgx.NamedArgs{
+			"Id":             invite.Id,
+			"OrganizationId": invite.OrganizationId,
+			"Email":          invite.Email,
+			"Token":          invite.Token,
+			"InvitedBy":      invite.InvitedBy,
+			"Role":           invite.Role,
+			"Status":         invite.Status,
+			"CreatedAt":      invite.CreatedAt,
+			"ExpiresAt":      invite.ExpiresAt,
+		}
+		batch.Queue(sql, sqlArgs)
+	}
+
+	results := tx.SendBatch(ctx, batch)
+	defer func() {
+		_ = results.Close()
+	}()
+
+	for i := 0; i < len(invites); i++ {
+		_, err := results.Exec()
+		if err != nil {
+			span.RecordError(err)
+			_ = results.Close()
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) {
+				if pgErr.Code == ErrUniqueViolationCode {
+					return connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("invite already exists for email: %s", invites[i].Email))
+				}
+			}
+			return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to create invite %d: %w", i, err))
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		span.RecordError(err)
+		return connect.NewError(connect.CodeInternal, errors.New("failed to commit transaction"))
+	}
+	committed = true
 
 	return nil
 }
@@ -540,6 +623,53 @@ func (r *PgRepository) AddMember(ctx context.Context, member *OrganizationMember
 	}
 
 	return nil
+}
+
+func (r *PgRepository) GetMembers(ctx context.Context, organizationId string) ([]*OrganizationMemberDTO, []string, []string, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetMembers", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "organizationId",
+			Value: attribute.StringValue(organizationId),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, nil, nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `SELECT id, organization_id, user_id, role, joined_at, username, email
+			FROM organization_members_view
+			WHERE organization_id = $1
+			ORDER BY joined_at ASC`
+
+	rows, err := connection.Query(ctx, sql, organizationId)
+	if err != nil {
+		span.RecordError(err)
+		return nil, nil, nil, connect.NewError(connect.CodeInternal, errors.New("failed to query members"))
+	}
+	defer rows.Close()
+
+	memberRows, err := pgx.CollectRows[memberRow](rows, pgx.RowToStructByName)
+	if err != nil {
+		span.RecordError(err)
+		return nil, nil, nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect member rows"))
+	}
+
+	members := make([]*OrganizationMemberDTO, len(memberRows))
+	usernames := make([]string, len(memberRows))
+	emails := make([]string, len(memberRows))
+
+	for i, row := range memberRows {
+		members[i] = &row.OrganizationMemberDTO
+		usernames[i] = row.Username
+		emails[i] = row.Email
+	}
+
+	return members, usernames, emails, nil
 }
 
 func (r *PgRepository) EnqueueEmailJobs(ctx context.Context, jobs []*EmailJobDTO) error {
