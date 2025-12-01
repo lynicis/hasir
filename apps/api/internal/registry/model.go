@@ -5,7 +5,7 @@ import "time"
 type RepositoryDTO struct {
 	Id             string     `json:"id" db:"id"`
 	Name           string     `json:"name" db:"name"`
-	OwnerId        string     `json:"owner_id" db:"owner_id"`
+	CreatedBy      string     `json:"created_by" db:"created_by"`
 	OrganizationId string     `json:"organization_id" db:"organization_id"`
 	Path           string     `json:"path" db:"path"`
 	CreatedAt      time.Time  `json:"created_at" db:"created_at"`

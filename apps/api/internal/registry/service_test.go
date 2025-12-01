@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"hasir-api/pkg/auth"
+
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 )
 
@@ -37,13 +39,15 @@ func TestService_CreateRepository(t *testing.T) {
 		}
 
 		const repoName = "my-repo"
-		ctx := context.Background()
+		const userID = "test-user-id"
+		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
 
 		mockRepo.EXPECT().
 			CreateRepository(ctx, gomock.Any()).
 			DoAndReturn(func(_ context.Context, repo *RepositoryDTO) error {
 				require.Equal(t, repoName, repo.Name)
 				require.Equal(t, filepath.Join(tmpDir, repo.Id), repo.Path)
+				require.Equal(t, userID, repo.CreatedBy)
 				require.NotEmpty(t, repo.Id)
 				return nil
 			})
@@ -75,7 +79,8 @@ func TestService_CreateRepository(t *testing.T) {
 		}
 
 		const repoName = "my-repo"
-		ctx := context.Background()
+		const userID = "test-user-id"
+		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
 		dbErr := errors.New("database insert failed")
 
 		mockRepo.EXPECT().

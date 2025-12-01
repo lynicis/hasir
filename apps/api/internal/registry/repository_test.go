@@ -62,7 +62,7 @@ func createRepositoriesTable(t *testing.T, connString string) {
 	sql := `CREATE TABLE repositories (
 		id VARCHAR PRIMARY KEY,
 		name VARCHAR NOT NULL,
-		owner_id VARCHAR NOT NULL,
+		created_by VARCHAR NOT NULL,
 		organization_id VARCHAR,
 		path VARCHAR NOT NULL,
 		created_at TIMESTAMP NOT NULL,
@@ -81,7 +81,7 @@ func createTestRepository(t *testing.T, name string) *RepositoryDTO {
 		Id:        uuid.NewString(),
 		Name:      name,
 		Path:      "/test/path/" + name,
-		OwnerId:   uuid.NewString(),
+		CreatedBy: uuid.NewString(),
 		CreatedAt: now,
 		UpdatedAt: &now,
 	}
@@ -154,13 +154,13 @@ func TestPgRepository_CreateRepository(t *testing.T) {
 		var dbId, dbName, dbOwnerId, dbPath string
 		var dbCreatedAt, dbUpdatedAt time.Time
 		err = conn.QueryRow(t.Context(),
-			"SELECT id, name, owner_id, path, created_at, updated_at FROM repositories WHERE id = $1", testRepo.Id).
+			"SELECT id, name, created_by, path, created_at, updated_at FROM repositories WHERE id = $1", testRepo.Id).
 			Scan(&dbId, &dbName, &dbOwnerId, &dbPath, &dbCreatedAt, &dbUpdatedAt)
 		require.NoError(t, err)
 
 		assert.Equal(t, testRepo.Id, dbId)
 		assert.Equal(t, testRepo.Name, dbName)
-		assert.Equal(t, testRepo.OwnerId, dbOwnerId)
+		assert.Equal(t, testRepo.CreatedBy, dbOwnerId)
 		assert.Equal(t, testRepo.Path, dbPath)
 		assert.WithinDuration(t, time.Now().UTC(), dbCreatedAt, 5*time.Second)
 		assert.WithinDuration(t, time.Now().UTC(), dbUpdatedAt, 5*time.Second)
@@ -273,7 +273,7 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 
 		assert.Equal(t, testRepo.Id, found.Id)
 		assert.Equal(t, testRepo.Name, found.Name)
-		assert.Equal(t, testRepo.OwnerId, found.OwnerId)
+		assert.Equal(t, testRepo.CreatedBy, found.CreatedBy)
 		assert.Equal(t, testRepo.Path, found.Path)
 		assert.WithinDuration(t, time.Now().UTC(), found.CreatedAt, 5*time.Second)
 		assert.WithinDuration(t, time.Now().UTC(), *found.UpdatedAt, 5*time.Second)
@@ -449,7 +449,7 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 		found := (*repos)[0]
 		assert.Equal(t, testRepo.Id, found.Id)
 		assert.Equal(t, testRepo.Name, found.Name)
-		assert.Equal(t, testRepo.OwnerId, found.OwnerId)
+		assert.Equal(t, testRepo.CreatedBy, found.CreatedBy)
 		assert.Equal(t, testRepo.Path, found.Path)
 		assert.WithinDuration(t, time.Now().UTC(), found.CreatedAt, 5*time.Second)
 		assert.WithinDuration(t, time.Now().UTC(), *found.UpdatedAt, 5*time.Second)

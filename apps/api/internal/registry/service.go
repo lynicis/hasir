@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	"hasir-api/pkg/auth"
+
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 )
 
@@ -42,6 +44,11 @@ func (s *service) CreateRepository(
 	repoName := req.GetName()
 	organizationId := req.GetOrganizationId()
 
+	createdBy, err := auth.MustGetUserID(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get repository owner from context: %w", err)
+	}
+
 	repoId := uuid.NewString()
 	repoPath := filepath.Join(s.rootPath, repoId)
 
@@ -49,7 +56,7 @@ func (s *service) CreateRepository(
 		return fmt.Errorf("failed to create repository directory: %w", err)
 	}
 
-	_, err := git.PlainInit(repoPath, true)
+	_, err = git.PlainInit(repoPath, true)
 	if err != nil {
 		if errors.Is(err, git.ErrRepositoryAlreadyExists) {
 			zap.L().Warn("repository already exists on filesystem", zap.String("path", repoPath))
@@ -63,6 +70,7 @@ func (s *service) CreateRepository(
 	repoDTO := &RepositoryDTO{
 		Id:             repoId,
 		Name:           repoName,
+		CreatedBy:      createdBy,
 		OrganizationId: organizationId,
 		Path:           repoPath,
 		CreatedAt:      now,
