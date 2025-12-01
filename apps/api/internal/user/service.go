@@ -21,6 +21,7 @@ type Service interface {
 	Register(ctx context.Context, req *userv1.RegisterRequest) error
 	Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.TokenEnvelope, error)
 	UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.TokenEnvelope, error)
+	RenewTokens(ctx context.Context, req *userv1.RenewTokensRequest) (*userv1.RenewTokensResponse, error)
 }
 
 type service struct {
@@ -77,7 +78,7 @@ func (s *service) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
 
-	tokens, err := s.generateTokens(user)
+	tokens, refreshTokenID, err := s.generateTokens(user)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +87,7 @@ func (s *service) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.
 	if err = s.userRepository.CreateRefreshToken(
 		ctx,
 		user.Id,
-		tokens.RefreshToken,
+		refreshTokenID,
 		expiresAt,
 	); err != nil {
 		return nil, err
@@ -126,7 +127,7 @@ func (s *service) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest)
 		return nil, err
 	}
 
-	tokens, err := s.generateTokens(updatedUser)
+	tokens, refreshTokenID, err := s.generateTokens(updatedUser)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +136,7 @@ func (s *service) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest)
 	if err = s.userRepository.CreateRefreshToken(
 		ctx,
 		updatedUser.Id,
-		tokens.RefreshToken,
+		refreshTokenID,
 		expiresAt,
 	); err != nil {
 		return nil, err
@@ -144,13 +145,83 @@ func (s *service) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest)
 	return tokens, nil
 }
 
-func (s *service) generateTokens(user *UserDTO) (*userv1.TokenEnvelope, error) {
+func (s *service) RenewTokens(ctx context.Context, req *userv1.RenewTokensRequest) (*userv1.RenewTokensResponse, error) {
+	refreshTokenString := req.GetRefreshToken()
+
+	token, err := jwt.ParseWithClaims(refreshTokenString, &auth.JwtClaims{}, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+
+		return s.config.JwtSecret, nil
+	})
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("refresh token has expired"))
+		}
+
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token"))
+	}
+
+	if !token.Valid {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token"))
+	}
+
+	claims, ok := token.Claims.(*auth.JwtClaims)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token claims"))
+	}
+
+	userID, err := claims.GetSubject()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token subject"))
+	}
+
+	if claims.ID == "" {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token id"))
+	}
+
+	refreshTokenRecord, err := s.userRepository.GetRefreshTokenByTokenId(ctx, claims.ID)
+	if err != nil {
+		if errors.Is(err, ErrRefreshTokenNotFound) {
+			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token"))
+		}
+
+		return nil, err
+	}
+
+	now := time.Now().UTC()
+	if now.After(refreshTokenRecord.ExpiresAt) {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("refresh token has expired"))
+	}
+
+	if refreshTokenRecord.UserId != userID {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token"))
+	}
+
+	user, err := s.userRepository.GetUserById(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	tokens, _, err := s.generateTokens(user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.RenewTokensResponse{
+		AccessToken: tokens.AccessToken,
+	}, nil
+}
+
+func (s *service) generateTokens(user *UserDTO) (*userv1.TokenEnvelope, string, error) {
 	now := time.Now().UTC()
 	accessTokenExpiresAt := now.Add(2 * time.Hour)
 	accessTokenClaims := auth.JwtClaims{
 		Email:    user.Email,
 		Username: user.Username,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.NewString(),
 			Issuer:    s.config.Server.PublicUrl,
 			Subject:   user.Id,
 			ExpiresAt: jwt.NewNumericDate(accessTokenExpiresAt),
@@ -163,7 +234,7 @@ func (s *service) generateTokens(user *UserDTO) (*userv1.TokenEnvelope, error) {
 
 	signedAccessToken, err := accessToken.SignedString(s.config.JwtSecret)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to create access token"))
+		return nil, "", connect.NewError(connect.CodeInternal, errors.New("failed to create access token"))
 	}
 
 	refreshTokenExpiresAt := now.AddDate(0, 0, 7)
@@ -171,6 +242,7 @@ func (s *service) generateTokens(user *UserDTO) (*userv1.TokenEnvelope, error) {
 		Email:    user.Email,
 		Username: user.Username,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.NewString(),
 			Issuer:    s.config.Server.PublicUrl,
 			Subject:   user.Id,
 			ExpiresAt: jwt.NewNumericDate(refreshTokenExpiresAt),
@@ -184,11 +256,11 @@ func (s *service) generateTokens(user *UserDTO) (*userv1.TokenEnvelope, error) {
 	var signedRefreshToken string
 	signedRefreshToken, err = refreshToken.SignedString(s.config.JwtSecret)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to create refresh token"))
+		return nil, "", connect.NewError(connect.CodeInternal, errors.New("failed to create refresh token"))
 	}
 
 	return &userv1.TokenEnvelope{
 		AccessToken:  signedAccessToken,
 		RefreshToken: signedRefreshToken,
-	}, nil
+	}, refreshTokenClaims.ID, nil
 }

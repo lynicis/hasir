@@ -61,6 +61,18 @@ func (h *handler) Login(
 	return connect.NewResponse(tokens), nil
 }
 
+func (h *handler) RenewTokens(
+	ctx context.Context,
+	req *connect.Request[userv1.RenewTokensRequest],
+) (*connect.Response[userv1.RenewTokensResponse], error) {
+	tokens, err := h.userService.RenewTokens(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(tokens), nil
+}
+
 func (h *handler) UpdateUser(
 	ctx context.Context,
 	req *connect.Request[userv1.UpdateUserRequest],

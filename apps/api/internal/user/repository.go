@@ -26,6 +26,8 @@ type Repository interface {
 	GetUserByEmail(ctx context.Context, email string) (*UserDTO, error)
 	GetUserById(ctx context.Context, id string) (*UserDTO, error)
 	CreateRefreshToken(ctx context.Context, id, token string, expiresAt time.Time) error
+	GetRefreshTokenByTokenId(ctx context.Context, token string) (*RefreshTokensDTO, error)
+	DeleteRefreshToken(ctx context.Context, userId, token string) error
 	UpdateUserById(ctx context.Context, id string, user *UserDTO) error
 	DeleteUser(ctx context.Context, userId string) error
 }
@@ -34,6 +36,7 @@ var (
 	ErrFailedAcquireConnection = connect.NewError(connect.CodeInternal, errors.New("failed to acquire connection"))
 	ErrIdentifierAlreadyExists = connect.NewError(connect.CodeAlreadyExists, errors.New("email already exists"))
 	ErrNoRows                  = connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+	ErrRefreshTokenNotFound    = connect.NewError(connect.CodeNotFound, errors.New("refresh token not found"))
 	ErrInternalServer          = connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
 	ErrUniqueViolationCode     = "23505"
 )
@@ -220,7 +223,7 @@ func (r *PgRepository) CreateRefreshToken(ctx context.Context, id, token string,
 			Value: attribute.StringValue(id),
 		},
 		attribute.KeyValue{
-			Key:   "token",
+			Key:   "jti",
 			Value: attribute.StringValue(token),
 		},
 	))
@@ -232,12 +235,85 @@ func (r *PgRepository) CreateRefreshToken(ctx context.Context, id, token string,
 	}
 	defer connection.Release()
 
-	sql := "insert into refresh_tokens (user_id, token, created_at, expires_at) values (@UserId, @Token, @CreatedAt, @ExpiresAt)"
+	sql := "insert into refresh_tokens (user_id, jti, created_at, expires_at) values (@UserId, @Jti, @CreatedAt, @ExpiresAt)"
 	sqlArgs := pgx.NamedArgs{
 		"UserId":    id,
-		"Token":     token,
+		"Jti":       token,
 		"CreatedAt": time.Now().UTC(),
 		"ExpiresAt": expiresAt,
+	}
+
+	if _, err = connection.Exec(ctx, sql, sqlArgs); err != nil {
+		span.RecordError(err)
+		return ErrInternalServer
+	}
+
+	return nil
+}
+
+func (r *PgRepository) GetRefreshTokenByTokenId(ctx context.Context, token string) (*RefreshTokensDTO, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetRefreshTokenByTokenId", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "jti",
+			Value: attribute.StringValue(token),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := "select user_id as id, jti, expires_at, created_at from refresh_tokens where jti = $1"
+
+	var rows pgx.Rows
+	rows, err = connection.Query(ctx, sql, token)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrInternalServer
+	}
+	defer rows.Close()
+
+	var refreshToken RefreshTokensDTO
+	refreshToken, err = pgx.CollectOneRow[RefreshTokensDTO](rows, pgx.RowToStructByName)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrRefreshTokenNotFound
+		}
+
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect row"))
+	}
+
+	return &refreshToken, nil
+}
+
+func (r *PgRepository) DeleteRefreshToken(ctx context.Context, userId, token string) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "DeleteRefreshToken", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "id",
+			Value: attribute.StringValue(userId),
+		},
+		attribute.KeyValue{
+			Key:   "jti",
+			Value: attribute.StringValue(token),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := "delete from refresh_tokens where user_id = @UserId and jti = @Jti"
+	sqlArgs := pgx.NamedArgs{
+		"UserId": userId,
+		"Jti":    token,
 	}
 
 	if _, err = connection.Exec(ctx, sql, sqlArgs); err != nil {

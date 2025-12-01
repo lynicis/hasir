@@ -69,6 +69,20 @@ func (mr *MockRepositoryMockRecorder) CreateUser(ctx, user any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockRepository)(nil).CreateUser), ctx, user)
 }
 
+// DeleteRefreshToken mocks base method.
+func (m *MockRepository) DeleteRefreshToken(ctx context.Context, userId, token string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRefreshToken", ctx, userId, token)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRefreshToken indicates an expected call of DeleteRefreshToken.
+func (mr *MockRepositoryMockRecorder) DeleteRefreshToken(ctx, userId, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRefreshToken", reflect.TypeOf((*MockRepository)(nil).DeleteRefreshToken), ctx, userId, token)
+}
+
 // DeleteUser mocks base method.
 func (m *MockRepository) DeleteUser(ctx context.Context, userId string) error {
 	m.ctrl.T.Helper()
@@ -81,6 +95,21 @@ func (m *MockRepository) DeleteUser(ctx context.Context, userId string) error {
 func (mr *MockRepositoryMockRecorder) DeleteUser(ctx, userId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockRepository)(nil).DeleteUser), ctx, userId)
+}
+
+// GetRefreshTokenByTokenId mocks base method.
+func (m *MockRepository) GetRefreshTokenByTokenId(ctx context.Context, token string) (*RefreshTokensDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRefreshTokenByTokenId", ctx, token)
+	ret0, _ := ret[0].(*RefreshTokensDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRefreshTokenByTokenId indicates an expected call of GetRefreshTokenByTokenId.
+func (mr *MockRepositoryMockRecorder) GetRefreshTokenByTokenId(ctx, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRefreshTokenByTokenId", reflect.TypeOf((*MockRepository)(nil).GetRefreshTokenByTokenId), ctx, token)
 }
 
 // GetUserByEmail mocks base method.

@@ -13,7 +13,7 @@ type UserDTO struct {
 
 type RefreshTokensDTO struct {
 	UserId    string    `json:"id" db:"id"`
-	Token     string    `json:"token" db:"token"`
+	Jti       string    `json:"jti" db:"jti"`
 	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 }

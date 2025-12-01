@@ -70,6 +70,21 @@ func (mr *MockServiceMockRecorder) Register(ctx, req any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockService)(nil).Register), ctx, req)
 }
 
+// RenewTokens mocks base method.
+func (m *MockService) RenewTokens(ctx context.Context, req *userv1.RenewTokensRequest) (*userv1.RenewTokensResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RenewTokens", ctx, req)
+	ret0, _ := ret[0].(*userv1.RenewTokensResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RenewTokens indicates an expected call of RenewTokens.
+func (mr *MockServiceMockRecorder) RenewTokens(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenewTokens", reflect.TypeOf((*MockService)(nil).RenewTokens), ctx, req)
+}
+
 // UpdateUser mocks base method.
 func (m *MockService) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.TokenEnvelope, error) {
 	m.ctrl.T.Helper()

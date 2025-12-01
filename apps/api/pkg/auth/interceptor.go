@@ -32,8 +32,9 @@ func NewAuthInterceptor(jwtSecret []byte) *AuthInterceptor {
 	return &AuthInterceptor{
 		jwtSecret: jwtSecret,
 		publicMethods: map[string]bool{
-			"/user.v1.UserService/Register": true,
-			"/user.v1.UserService/Login":    true,
+			"/user.v1.UserService/Register":   true,
+			"/user.v1.UserService/Login":      true,
+			"/user.v1.UserService/RenewTokens": true,
 		},
 	}
 }

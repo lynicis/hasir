@@ -290,6 +290,67 @@ func TestHandler_Login(t *testing.T) {
 	})
 }
 
+func TestHandler_RenewTokens(t *testing.T) {
+	validateInterceptor := validate.NewInterceptor()
+	otelInterceptor, err := otelconnect.NewInterceptor()
+	require.NoError(t, err)
+	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
+
+	t.Run("happy path", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		mockRespBody := &userv1.RenewTokensResponse{
+			AccessToken: "new.access.token",
+		}
+
+		mockUserService.
+			EXPECT().
+			RenewTokens(gomock.Any(), gomock.Any()).
+			Return(mockRespBody, nil).
+			Times(1)
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.RenewTokens(context.Background(), connect.NewRequest(&userv1.RenewTokensRequest{
+			RefreshToken: "old.refresh.token",
+		}))
+
+		assert.NoError(t, err)
+		require.NotNil(t, resp, "response should not be nil")
+		require.NotNil(t, resp.Msg, "response message should not be nil")
+		assert.Equal(t, mockRespBody.AccessToken, resp.Msg.AccessToken)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		mockUserService.
+			EXPECT().
+			RenewTokens(gomock.Any(), gomock.Any()).
+			Return(nil, errors.New("something went wrong")).
+			Times(1)
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.RenewTokens(context.Background(), connect.NewRequest(&userv1.RenewTokensRequest{
+			RefreshToken: "old.refresh.token",
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+}
+
 func TestHandler_UpdateUser(t *testing.T) {
 	validateInterceptor := validate.NewInterceptor()
 	otelInterceptor, err := otelconnect.NewInterceptor()

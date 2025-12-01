@@ -957,6 +957,180 @@ func TestPgRepository_DeleteAccount(t *testing.T) {
 	})
 }
 
+func TestPgRepository_CreateRefreshToken(t *testing.T) {
+	t.Run("stores record with jti", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createRefreshTokensTable(t, connString)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		jti := uuid.NewString()
+		expiresAt := time.Now().UTC().Add(7 * 24 * time.Hour)
+
+		err = pgRepository.CreateRefreshToken(t.Context(), fakeId, jti, expiresAt)
+		assert.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var dbUserID, dbJti string
+		var dbExpiresAt, dbCreatedAt time.Time
+		err = conn.QueryRow(t.Context(),
+			"select user_id, jti, expires_at, created_at from refresh_tokens where user_id = $1 and jti = $2",
+			fakeId, jti).
+			Scan(&dbUserID, &dbJti, &dbExpiresAt, &dbCreatedAt)
+		require.NoError(t, err)
+
+		assert.Equal(t, fakeId, dbUserID)
+		assert.Equal(t, jti, dbJti)
+		assert.WithinDuration(t, expiresAt, dbExpiresAt, 5*time.Second)
+		assert.WithinDuration(t, time.Now().UTC(), dbCreatedAt, 5*time.Second)
+	})
+
+}
+
+func TestPgRepository_GetRefreshTokenByTokenId(t *testing.T) {
+	t.Run("returns record by jti", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createRefreshTokensTable(t, connString)
+
+		jti := uuid.NewString()
+		expiresAt := time.Now().UTC().Add(7 * 24 * time.Hour)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		_, err = conn.Exec(t.Context(),
+			"insert into refresh_tokens (user_id, jti, expires_at, created_at) values ($1, $2, $3, $4)",
+			fakeId, jti, expiresAt, fakeNow)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		rec, err := pgRepository.GetRefreshTokenByTokenId(t.Context(), jti)
+
+		assert.NoError(t, err)
+		require.NotNil(t, rec)
+		assert.Equal(t, fakeId, rec.UserId)
+		assert.Equal(t, jti, rec.Jti)
+		assert.WithinDuration(t, expiresAt, rec.ExpiresAt, time.Second)
+		assert.WithinDuration(t, fakeNow, rec.CreatedAt, time.Second)
+	})
+
+	t.Run("returns ErrRefreshTokenNotFound when jti does not exist", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createRefreshTokensTable(t, connString)
+
+		missingJti := uuid.NewString()
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		rec, err := pgRepository.GetRefreshTokenByTokenId(t.Context(), missingJti)
+
+		assert.Error(t, err)
+		assert.Equal(t, ErrRefreshTokenNotFound, err)
+		assert.Nil(t, rec)
+	})
+
+}
+
+func TestPgRepository_DeleteRefreshToken(t *testing.T) {
+	t.Run("removes record by user and jti", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createRefreshTokensTable(t, connString)
+
+		jti := uuid.NewString()
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		_, err = conn.Exec(t.Context(),
+			"insert into refresh_tokens (user_id, jti, expires_at, created_at) values ($1, $2, $3, $4)",
+			fakeId, jti, time.Now().UTC().Add(7*24*time.Hour), fakeNow)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		err = pgRepository.DeleteRefreshToken(t.Context(), fakeId, jti)
+		assert.NoError(t, err)
+
+		var count int
+		err = conn.QueryRow(t.Context(),
+			"select count(*) from refresh_tokens where user_id = $1 and jti = $2",
+			fakeId, jti).
+			Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 0, count)
+	})
+}
+
 func createUserTable(t *testing.T, connString string) {
 	conn, err := pgx.Connect(t.Context(), connString)
 	require.NoError(t, err)
@@ -966,6 +1140,20 @@ func createUserTable(t *testing.T, connString string) {
 	}()
 
 	sql := "CREATE TABLE users (id varchar primary key, email varchar not null, username varchar not null, password varchar not null, created_at timestamp not null, deleted_at timestamp)"
+
+	_, err = conn.Exec(t.Context(), sql)
+	require.NoError(t, err)
+}
+
+func createRefreshTokensTable(t *testing.T, connString string) {
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		err = conn.Close(t.Context())
+		require.NoError(t, err)
+	}()
+
+	sql := "CREATE TABLE refresh_tokens (user_id varchar not null, jti varchar not null, expires_at timestamp not null, created_at timestamp not null, PRIMARY KEY (user_id, jti))"
 
 	_, err = conn.Exec(t.Context(), sql)
 	require.NoError(t, err)

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -399,5 +400,101 @@ func TestService_UpdateUser(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "something went wrong")
 		assert.Nil(t, tokens)
+	})
+}
+
+func TestService_RenewTokens(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+
+	cfg := &config.Config{
+		Server: config.ServerConfig{
+			PublicUrl: "http://api.test.com",
+		},
+		DashboardUrl: "http://test.com/dashboard",
+		JwtSecret:    []byte("jwt-secret"),
+	}
+
+	t.Run("happy path", func(t *testing.T) {
+		userId := uuid.NewString()
+		refreshTokenID := uuid.NewString()
+		now := time.Now().UTC()
+
+		claims := auth.JwtClaims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				ID:        refreshTokenID,
+				Issuer:    cfg.Server.PublicUrl,
+				Subject:   userId,
+				ExpiresAt: jwt.NewNumericDate(now.AddDate(0, 0, 7)),
+				IssuedAt:  jwt.NewNumericDate(now),
+				Audience:  jwt.ClaimStrings{cfg.DashboardUrl},
+			},
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		signedToken, err := token.SignedString(cfg.JwtSecret)
+		require.NoError(t, err)
+
+		mockUserRepository := NewMockRepository(mockController)
+		mockUserRepository.
+			EXPECT().
+			GetRefreshTokenByTokenId(gomock.Any(), refreshTokenID).
+			Return(&RefreshTokensDTO{
+				UserId:    userId,
+				Jti:       refreshTokenID,
+				ExpiresAt: now.AddDate(0, 0, 14),
+				CreatedAt: now,
+			}, nil).
+			Times(1)
+		mockUserRepository.
+			EXPECT().
+			GetUserById(gomock.Any(), userId).
+			Return(&UserDTO{
+				Id:        userId,
+				Username:  "test-user",
+				Email:     "test@mail.com",
+				Password:  "hashed-password",
+				CreatedAt: now,
+			}, nil).
+			Times(1)
+
+		s := NewService(cfg, mockUserRepository)
+		resp, err := s.RenewTokens(t.Context(), &userv1.RenewTokensRequest{
+			RefreshToken: signedToken,
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.NotEmpty(t, resp.AccessToken)
+	})
+
+	t.Run("missing token id", func(t *testing.T) {
+		userId := uuid.NewString()
+		now := time.Now().UTC()
+
+		claims := auth.JwtClaims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				Issuer:    cfg.Server.PublicUrl,
+				Subject:   userId,
+				ExpiresAt: jwt.NewNumericDate(now.AddDate(0, 0, 7)),
+				IssuedAt:  jwt.NewNumericDate(now),
+				Audience:  jwt.ClaimStrings{cfg.DashboardUrl},
+			},
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		signedToken, err := token.SignedString(cfg.JwtSecret)
+		require.NoError(t, err)
+
+		mockUserRepository := NewMockRepository(mockController)
+
+		s := NewService(cfg, mockUserRepository)
+		resp, err := s.RenewTokens(t.Context(), &userv1.RenewTokensRequest{
+			RefreshToken: signedToken,
+		})
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "invalid refresh token id")
 	})
 }
