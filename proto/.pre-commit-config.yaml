@@ -1,0 +1,25 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        files: "\\.ya?ml$"
+
+  - repo: local
+    hooks:
+      - id: buf-format
+        name: buf format
+        entry: buf format --write
+        language: system
+        files: "\\.proto$"
+        pass_filenames: false
+
+      - id: buf-lint
+        name: buf lint
+        entry: buf lint
+        language: system
+        files: "\\.proto$"
+        pass_filenames: false
+

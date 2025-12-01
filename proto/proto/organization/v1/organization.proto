@@ -5,6 +5,7 @@ package organization.v1;
 import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
 import "shared/filter.proto";
+import "shared/role.proto";
 import "shared/visibility.proto";
 
 message Organization {
@@ -13,10 +14,17 @@ message Organization {
   shared.Visibility visibility = 3;
 }
 
+message InvitationMember {
+  string email = 1 [(buf.validate.field).string.email = true];
+  shared.Role role = 2 [(buf.validate.field).enum = {
+    not_in: [0]
+  }];
+}
+
 message CreateOrganizationRequest {
   string name = 1 [(buf.validate.field).string.min_len = 1];
   shared.Visibility visibility = 2 [(buf.validate.field).required = true];
-  repeated string invite_emails = 3 [(buf.validate.field).repeated.items.string.email = true];
+  repeated InvitationMember members = 3 [(buf.validate.field).required = true];
 }
 
 message GetOrganizationsRequest {
@@ -35,7 +43,7 @@ message IsInvitationValidRequest {
 
 message RespondToInvitationRequest {
   string invitation_id = 1 [(buf.validate.field).required = true];
-  bool accept = 2 [(buf.validate.field).required = true];
+  bool status = 2 [(buf.validate.field).required = true];
 }
 
 message UpdateOrganizationRequest {
@@ -56,12 +64,35 @@ message DeleteOrganizationRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 
+message InviteMemberRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  string email = 2 [(buf.validate.field).string.email = true];
+  shared.Role role = 3 [(buf.validate.field).required = true];
+}
+
+message GetMembersRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+
+message Member {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  shared.Role role = 4;
+}
+
+message GetMembersResponse {
+  repeated Member members = 1;
+}
+
 service OrganizationService {
   rpc CreateOrganization(CreateOrganizationRequest) returns (google.protobuf.Empty);
   rpc GetOrganizations(GetOrganizationsRequest) returns (GetOrganizationsResponse);
   rpc GetOrganization(GetOrganizationRequest) returns (GetOrganizationResponse);
-  rpc IsInvitationValid(IsInvitationValidRequest) returns (google.protobuf.Empty);
-  rpc RespondToInvitation(RespondToInvitationRequest) returns (google.protobuf.Empty);
   rpc UpdateOrganization(UpdateOrganizationRequest) returns (google.protobuf.Empty);
   rpc DeleteOrganization(DeleteOrganizationRequest) returns (google.protobuf.Empty);
+  rpc InviteMember(InviteMemberRequest) returns (google.protobuf.Empty);
+  rpc IsInvitationValid(IsInvitationValidRequest) returns (google.protobuf.Empty);
+  rpc RespondToInvitation(RespondToInvitationRequest) returns (google.protobuf.Empty);
+  rpc GetMembers(GetMembersRequest) returns (GetMembersResponse);
 }
