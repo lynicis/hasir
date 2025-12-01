@@ -55,6 +55,20 @@ func (mr *MockServiceMockRecorder) CreateRepository(ctx, req any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRepository", reflect.TypeOf((*MockService)(nil).CreateRepository), ctx, req)
 }
 
+// DeleteRepositoriesByOrganization mocks base method.
+func (m *MockService) DeleteRepositoriesByOrganization(ctx context.Context, organizationId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRepositoriesByOrganization", ctx, organizationId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRepositoriesByOrganization indicates an expected call of DeleteRepositoriesByOrganization.
+func (mr *MockServiceMockRecorder) DeleteRepositoriesByOrganization(ctx, organizationId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRepositoriesByOrganization", reflect.TypeOf((*MockService)(nil).DeleteRepositoriesByOrganization), ctx, organizationId)
+}
+
 // DeleteRepository mocks base method.
 func (m *MockService) DeleteRepository(ctx context.Context, req *registryv1.DeleteRepositoryRequest) error {
 	m.ctrl.T.Helper()

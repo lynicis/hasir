@@ -23,6 +23,7 @@ type Service interface {
 	CreateRepository(ctx context.Context, req *registryv1.CreateRepositoryRequest) error
 	GetRepositories(ctx context.Context, page, pageSize int) (*registryv1.GetRepositoriesResponse, error)
 	DeleteRepository(ctx context.Context, req *registryv1.DeleteRepositoryRequest) error
+	DeleteRepositoriesByOrganization(ctx context.Context, organizationId string) error
 }
 
 type service struct {
@@ -166,6 +167,41 @@ func (s *service) DeleteRepository(
 		zap.String("name", repo.Name),
 		zap.String("path", repo.Path),
 	)
+
+	return nil
+}
+
+func (s *service) DeleteRepositoriesByOrganization(
+	ctx context.Context,
+	organizationId string,
+) error {
+	repos, err := s.repository.GetRepositoriesByOrganizationId(ctx, organizationId)
+	if err != nil {
+		return fmt.Errorf("failed to get repositories for organization: %w", err)
+	}
+
+	for _, repo := range *repos {
+		if err := s.repository.DeleteRepository(ctx, repo.Id); err != nil {
+			return fmt.Errorf("failed to delete repository %s from database: %w", repo.Id, err)
+		}
+
+		if err := os.RemoveAll(repo.Path); err != nil {
+			zap.L().Error("failed to remove repository directory after database deletion",
+				zap.String("id", repo.Id),
+				zap.String("path", repo.Path),
+				zap.Error(err),
+			)
+
+			return fmt.Errorf("failed to remove repository directory for %s: %w", repo.Id, err)
+		}
+
+		zap.L().Info("repository deleted as part of organization deletion",
+			zap.String("id", repo.Id),
+			zap.String("name", repo.Name),
+			zap.String("path", repo.Path),
+			zap.String("organizationId", organizationId),
+		)
+	}
 
 	return nil
 }

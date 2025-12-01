@@ -83,6 +83,21 @@ func (mr *MockRepositoryMockRecorder) GetRepositories(ctx, page, pageSize any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositories", reflect.TypeOf((*MockRepository)(nil).GetRepositories), ctx, page, pageSize)
 }
 
+// GetRepositoriesByOrganizationId mocks base method.
+func (m *MockRepository) GetRepositoriesByOrganizationId(ctx context.Context, organizationId string) (*[]RepositoryDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRepositoriesByOrganizationId", ctx, organizationId)
+	ret0, _ := ret[0].(*[]RepositoryDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRepositoriesByOrganizationId indicates an expected call of GetRepositoriesByOrganizationId.
+func (mr *MockRepositoryMockRecorder) GetRepositoriesByOrganizationId(ctx, organizationId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositoriesByOrganizationId", reflect.TypeOf((*MockRepository)(nil).GetRepositoriesByOrganizationId), ctx, organizationId)
+}
+
 // GetRepositoriesCount mocks base method.
 func (m *MockRepository) GetRepositoriesCount(ctx context.Context) (int, error) {
 	m.ctrl.T.Helper()

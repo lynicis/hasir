@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	"go.uber.org/mock/gomock"
 
+	"hasir-api/internal/registry"
 	"hasir-api/pkg/email"
 )
 
@@ -19,9 +20,10 @@ func TestCreateOrganization_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	req := &organizationv1.CreateOrganizationRequest{
@@ -60,9 +62,10 @@ func TestCreateOrganization_WithInvites(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	req := &organizationv1.CreateOrganizationRequest{
@@ -123,9 +126,10 @@ func TestCreateOrganization_AlreadyExists(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	req := &organizationv1.CreateOrganizationRequest{
@@ -163,9 +167,10 @@ func TestCreateOrganization_RepositoryError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	req := &organizationv1.CreateOrganizationRequest{
@@ -202,9 +207,10 @@ func TestCreateOrganization_GetByNameError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	req := &organizationv1.CreateOrganizationRequest{
@@ -228,9 +234,10 @@ func TestCreateOrganization_InviteCreateError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	req := &organizationv1.CreateOrganizationRequest{
@@ -263,9 +270,10 @@ func TestCreateOrganization_EmailSendError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	req := &organizationv1.CreateOrganizationRequest{
@@ -321,9 +329,10 @@ func TestCreateOrganization_VisibilityMapping(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockRepo := NewMockRepository(ctrl)
+			mockRegistry := registry.NewMockService(ctrl)
 			mockEmail := email.NewMockService(ctrl)
 
-			svc := NewService(mockRepo, mockEmail)
+			svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 			ctx := context.Background()
 			req := &organizationv1.CreateOrganizationRequest{
@@ -378,9 +387,10 @@ func TestRespondToInvitation_AcceptSuccess(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	token := "valid-token-123"
@@ -431,9 +441,10 @@ func TestRespondToInvitation_RejectSuccess(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	token := "valid-token-123"
@@ -469,9 +480,10 @@ func TestRespondToInvitation_InviteNotFound(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	token := "invalid-token"
@@ -496,9 +508,10 @@ func TestRespondToInvitation_InviteAlreadyAccepted(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	token := "valid-token-123"
@@ -541,9 +554,10 @@ func TestRespondToInvitation_InviteExpired(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	token := "expired-token"
@@ -588,9 +602,10 @@ func TestRespondToInvitation_MemberAlreadyExists(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	token := "valid-token-123"
@@ -630,9 +645,10 @@ func TestRespondToInvitation_UpdateStatusError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	token := "valid-token-123"
@@ -677,9 +693,10 @@ func TestRespondToInvitation_AddMemberError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	token := "valid-token-123"
@@ -728,9 +745,10 @@ func TestRespondToInvitation_InviteCancelled(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	token := "cancelled-token"
@@ -771,9 +789,10 @@ func TestDeleteOrganization_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	orgID := "org-123"
@@ -788,6 +807,10 @@ func TestDeleteOrganization_Success(t *testing.T) {
 	mockRepo.EXPECT().
 		GetOrganizationById(ctx, orgID).
 		Return(org, nil)
+
+	mockRegistry.EXPECT().
+		DeleteRepositoriesByOrganization(ctx, orgID).
+		Return(nil)
 
 	mockRepo.EXPECT().
 		DeleteOrganization(ctx, orgID).
@@ -804,9 +827,10 @@ func TestDeleteOrganization_OrganizationNotFound(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	orgID := "non-existent-org"
@@ -836,9 +860,10 @@ func TestDeleteOrganization_PermissionDenied(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	orgID := "org-123"
@@ -875,9 +900,10 @@ func TestDeleteOrganization_RepositoryError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepository(ctrl)
+	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 
-	svc := NewService(mockRepo, mockEmail)
+	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
 	ctx := context.Background()
 	orgID := "org-123"
@@ -892,6 +918,10 @@ func TestDeleteOrganization_RepositoryError(t *testing.T) {
 	mockRepo.EXPECT().
 		GetOrganizationById(ctx, orgID).
 		Return(org, nil)
+
+	mockRegistry.EXPECT().
+		DeleteRepositoriesByOrganization(ctx, orgID).
+		Return(nil)
 
 	mockRepo.EXPECT().
 		DeleteOrganization(ctx, orgID).

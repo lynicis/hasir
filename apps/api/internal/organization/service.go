@@ -13,6 +13,7 @@ import (
 
 	organizationv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/organization/v1"
 
+	"hasir-api/internal/registry"
 	"hasir-api/pkg/email"
 )
 
@@ -36,14 +37,16 @@ type Service interface {
 }
 
 type service struct {
-	repository   Repository
-	emailService email.Service
+	repository      Repository
+	emailService    email.Service
+	registryService registry.Service
 }
 
-func NewService(repository Repository, emailService email.Service) Service {
+func NewService(repository Repository, registryService registry.Service, emailService email.Service) Service {
 	return &service{
-		repository:   repository,
-		emailService: emailService,
+		repository:      repository,
+		emailService:    emailService,
+		registryService: registryService,
 	}
 }
 
@@ -155,6 +158,10 @@ func (s *service) DeleteOrganization(
 
 	if org.CreatedBy != userId {
 		return connect.NewError(connect.CodePermissionDenied, errors.New("only the organization creator can delete it"))
+	}
+
+	if err := s.registryService.DeleteRepositoriesByOrganization(ctx, organizationId); err != nil {
+		return err
 	}
 
 	if err := s.repository.DeleteOrganization(ctx, organizationId); err != nil {

@@ -25,6 +25,7 @@ type Repository interface {
 	GetRepositoryByName(ctx context.Context, name string) (*RepositoryDTO, error)
 	GetRepositoryById(ctx context.Context, id string) (*RepositoryDTO, error)
 	GetRepositories(ctx context.Context, page, pageSize int) (*[]RepositoryDTO, error)
+	GetRepositoriesByOrganizationId(ctx context.Context, organizationId string) (*[]RepositoryDTO, error)
 	GetRepositoriesCount(ctx context.Context) (int, error)
 	UpdateRepository(ctx context.Context, repo *RepositoryDTO) error
 	DeleteRepository(ctx context.Context, id string) error
@@ -197,6 +198,40 @@ func (r *PgRepository) GetRepositories(ctx context.Context, page, pageSize int) 
 	if err != nil {
 		span.RecordError(err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to query repositories"))
+	}
+	defer rows.Close()
+
+	repos, err := pgx.CollectRows[RepositoryDTO](rows, pgx.RowToStructByName)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect rows"))
+	}
+
+	return &repos, nil
+}
+
+func (r *PgRepository) GetRepositoriesByOrganizationId(ctx context.Context, organizationId string) (*[]RepositoryDTO, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetRepositoriesByOrganizationId", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "organization_id",
+			Value: attribute.StringValue(organizationId),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := "SELECT * FROM repositories WHERE organization_id = $1 AND deleted_at IS NULL"
+
+	rows, err := connection.Query(ctx, sql, organizationId)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to query repositories by organization id"))
 	}
 	defer rows.Close()
 

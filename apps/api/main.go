@@ -75,7 +75,7 @@ func main() {
 
 	userService := user.NewService(cfg, userPgRepository)
 	gitRepositoryService := registry.NewService(repositoryPgRepository)
-	organizationService := organization.NewService(organizationPgRepository, emailService)
+	organizationService := organization.NewService(organizationPgRepository, gitRepositoryService, emailService)
 
 	authInterceptor := auth.NewAuthInterceptor(cfg.JwtSecret)
 
