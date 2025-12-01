@@ -95,7 +95,7 @@ export function OrganizationDialogForm({
       await organizationApiClient.createOrganization({
         name: values.name,
         visibility:
-          visibilityMapper.get(values.visibility) ?? Visibility.PRIVATE,
+          visibilityMapper.get(values.visibility) || Visibility.PUBLIC,
         inviteEmails,
       });
 

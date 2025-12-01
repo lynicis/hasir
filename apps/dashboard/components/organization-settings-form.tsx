@@ -25,9 +25,12 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import {
+  reverseVisibilityMapper,
+  visibilityMapper,
+} from "@/lib/visibility-mapper";
 import { DeleteOrganizationDialog } from "@/components/delete-organization-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { visibilityMapper } from "@/lib/visibility-mapper";
 import { useRefreshStore } from "@/stores/refresh-store";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -67,7 +70,7 @@ export function OrganizationSettingsForm() {
     {
       id: organizationId,
     },
-    { retry: customRetry, enabled: Boolean(organizationId) }
+    { retry: customRetry }
   );
 
   const organizationsRefreshKey = useRefreshStore(
@@ -94,7 +97,7 @@ export function OrganizationSettingsForm() {
       reset({
         name: organization.name,
         visibility:
-          organization.visibility === Visibility.PUBLIC ? "public" : "private",
+          reverseVisibilityMapper.get(organization.visibility) || "private",
       });
     }
   }, [organization, reset]);
@@ -117,7 +120,7 @@ export function OrganizationSettingsForm() {
         id: organizationId,
         name: values.name,
         visibility:
-          visibilityMapper.get(values.visibility) ?? Visibility.PRIVATE,
+          visibilityMapper.get(values.visibility) || Visibility.PUBLIC,
       });
 
       toast.success("Organization updated successfully.");

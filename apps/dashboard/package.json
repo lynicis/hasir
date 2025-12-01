@@ -35,7 +35,7 @@
     "@vercel/otel": "^2.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "framer-motion": "^12.23.24",
+    "framer-motion": "^12.23.25",
     "iron-session": "^8.0.4",
     "jose": "^6.1.2",
     "lucide-react": "^0.555.0",

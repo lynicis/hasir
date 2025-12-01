@@ -116,7 +116,7 @@ export function RepositoryDialogForm({
         name: values.name,
         organizationId: values.organizationId,
         visibility:
-          visibilityMapper.get(values.visibility) ?? Visibility.PRIVATE,
+          visibilityMapper.get(values.visibility) || Visibility.PRIVATE,
       });
 
       refreshRepositories();
