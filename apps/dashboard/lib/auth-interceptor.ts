@@ -13,15 +13,15 @@ function isPublicPage(): boolean {
 function isPublicMethod(req: { url?: string }): boolean {
   const url = req.url?.toLowerCase() || '';
   if (!url) return false;
-  
+
   const urlPath = url.split('?')[0];
   const parts = urlPath.split('/').filter(Boolean);
   const methodPart = parts[parts.length - 1] || '';
-  
-  return publicMethods.some(method => 
-    methodPart === method || 
-    methodPart.endsWith(method) || 
-    url.includes(`/${method}/`) || 
+
+  return publicMethods.some(method =>
+    methodPart === method ||
+    methodPart.endsWith(method) ||
+    url.includes(`/${method}/`) ||
     url.includes(`/${method}`)
   );
 }
@@ -41,13 +41,13 @@ async function redirectToLogin(): Promise<void> {
 
 export const authInterceptor: Interceptor = (next) => async (req) => {
   const isPublic = isPublicMethod(req) || isPublicPage();
-  
+
   if (isPublic) {
     return await next(req);
   }
 
   const sessionResponse = await fetch('/api/auth/session');
-  
+
   if (sessionResponse.status === 401) {
     await redirectToLogin();
     throw new ConnectError("Unauthenticated", Code.Unauthenticated);

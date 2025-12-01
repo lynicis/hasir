@@ -19,4 +19,3 @@ export const useRefreshStore = create<RefreshState>((set) => ({
       repositoriesRefreshKey: state.repositoriesRefreshKey + 1,
     })),
 }));
-

@@ -38,6 +38,7 @@ import { useClient } from "@/lib/use-client";
 const organizationSchema = z.object({
   name: z
     .string()
+    .trim()
     .min(1, { error: "Please enter an organization name." })
     .max(100, { error: "Organization name must be at most 100 characters." }),
   visibility: z.enum(["public", "private"], {
@@ -56,7 +57,7 @@ export function OrganizationSettingsForm() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const {
-    data: organizationData,
+    data,
     isLoading: isLoadingOrganization,
     error: organizationError,
   } = useQuery(
@@ -67,9 +68,7 @@ export function OrganizationSettingsForm() {
     { retry: customRetry, enabled: Boolean(organizationId) }
   );
 
-  const organization = organizationData as
-    | { id: string; name: string; visibility?: Visibility }
-    | undefined;
+  const organization = data?.organization;
 
   const {
     control,
@@ -79,7 +78,7 @@ export function OrganizationSettingsForm() {
   } = useForm<OrganizationFormValues>({
     resolver: zodResolver(organizationSchema),
     defaultValues: {
-      name: "",
+      name: organization?.name || "",
       visibility: "public",
     },
   });
@@ -119,6 +118,14 @@ export function OrganizationSettingsForm() {
 
         if (error.code === Code.NotFound) {
           toast.error("Organization not found.");
+          return;
+        }
+
+        if (error.code === Code.InvalidArgument) {
+          const errorMessage =
+            error.message ||
+            "Invalid organization data. Please check your input.";
+          toast.error(errorMessage);
           return;
         }
       }
@@ -273,7 +280,11 @@ export function OrganizationSettingsForm() {
               />
               <Separator />
               <Field>
-                <Button type="submit" isLoading={isSubmitting}>
+                <Button
+                  type="submit"
+                  isLoading={isSubmitting}
+                  disabled={isSubmitting}
+                >
                   Save Changes
                 </Button>
               </Field>

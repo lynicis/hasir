@@ -21,5 +21,3 @@ function Kbd({
 }
 
 export { Kbd };
-
-

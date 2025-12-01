@@ -25,5 +25,3 @@ if (typeof Element.prototype.setPointerCapture === "undefined") {
 if (typeof Element.prototype.releasePointerCapture === "undefined") {
   Element.prototype.releasePointerCapture = () => {};
 }
-
-

@@ -90,9 +90,11 @@ describe("OrganizationSettingsForm", () => {
   it("renders form with organization data (public visibility)", async () => {
     mockUseQuery.mockReturnValue({
       data: {
-        id: "org-123",
-        name: "Test Organization",
-        visibility: Visibility.PUBLIC,
+        organization: {
+          id: "org-123",
+          name: "Test Organization",
+          visibility: Visibility.PUBLIC,
+        },
       },
       isLoading: false,
       error: null,
@@ -116,9 +118,11 @@ describe("OrganizationSettingsForm", () => {
   it("renders form with organization data (private visibility)", async () => {
     mockUseQuery.mockReturnValue({
       data: {
-        id: "org-123",
-        name: "Private Org",
-        visibility: Visibility.PRIVATE,
+        organization: {
+          id: "org-123",
+          name: "Private Org",
+          visibility: Visibility.PRIVATE,
+        },
       },
       isLoading: false,
       error: null,
@@ -143,9 +147,11 @@ describe("OrganizationSettingsForm", () => {
     const user = userEvent.setup();
     mockUseQuery.mockReturnValue({
       data: {
-        id: "org-123",
-        name: "Original Name",
-        visibility: Visibility.PUBLIC,
+        organization: {
+          id: "org-123",
+          name: "Original Name",
+          visibility: Visibility.PUBLIC,
+        },
       },
       isLoading: false,
       error: null,
@@ -168,9 +174,11 @@ describe("OrganizationSettingsForm", () => {
     const user = userEvent.setup();
     mockUseQuery.mockReturnValue({
       data: {
-        id: "org-123",
-        name: "Test Org",
-        visibility: Visibility.PUBLIC,
+        organization: {
+          id: "org-123",
+          name: "Test Org",
+          visibility: Visibility.PUBLIC,
+        },
       },
       isLoading: false,
       error: null,
@@ -194,9 +202,11 @@ describe("OrganizationSettingsForm", () => {
     const user = userEvent.setup();
     mockUseQuery.mockReturnValue({
       data: {
-        id: "org-123",
-        name: "Test Org",
-        visibility: Visibility.PRIVATE,
+        organization: {
+          id: "org-123",
+          name: "Test Org",
+          visibility: Visibility.PRIVATE,
+        },
       },
       isLoading: false,
       error: null,
@@ -222,9 +232,11 @@ describe("OrganizationSettingsForm", () => {
 
     mockUseQuery.mockReturnValue({
       data: {
-        id: "org-123",
-        name: "Original Name",
-        visibility: Visibility.PUBLIC,
+        organization: {
+          id: "org-123",
+          name: "Original Name",
+          visibility: Visibility.PUBLIC,
+        },
       },
       isLoading: false,
       error: null,
@@ -265,9 +277,11 @@ describe("OrganizationSettingsForm", () => {
     const user = userEvent.setup();
     mockUseQuery.mockReturnValue({
       data: {
-        id: "org-123",
-        name: "Test Org",
-        visibility: Visibility.PUBLIC,
+        organization: {
+          id: "org-123",
+          name: "Test Org",
+          visibility: Visibility.PUBLIC,
+        },
       },
       isLoading: false,
       error: null,
@@ -298,9 +312,11 @@ describe("OrganizationSettingsForm", () => {
     const user = userEvent.setup();
     mockUseQuery.mockReturnValue({
       data: {
-        id: "org-123",
-        name: "Test Org",
-        visibility: Visibility.PUBLIC,
+        organization: {
+          id: "org-123",
+          name: "Test Org",
+          visibility: Visibility.PUBLIC,
+        },
       },
       isLoading: false,
       error: null,
@@ -335,9 +351,11 @@ describe("OrganizationSettingsForm", () => {
 
     mockUseQuery.mockReturnValue({
       data: {
-        id: "org-123",
-        name: "Test Org",
-        visibility: Visibility.PUBLIC,
+        organization: {
+          id: "org-123",
+          name: "Test Org",
+          visibility: Visibility.PUBLIC,
+        },
       },
       isLoading: false,
       error: null,
@@ -366,9 +384,11 @@ describe("OrganizationSettingsForm", () => {
 
     mockUseQuery.mockReturnValue({
       data: {
-        id: "org-123",
-        name: "Test Org",
-        visibility: Visibility.PUBLIC,
+        organization: {
+          id: "org-123",
+          name: "Test Org",
+          visibility: Visibility.PUBLIC,
+        },
       },
       isLoading: false,
       error: null,
@@ -395,9 +415,11 @@ describe("OrganizationSettingsForm", () => {
 
     mockUseQuery.mockReturnValue({
       data: {
-        id: "org-123",
-        name: "Test Org",
-        visibility: Visibility.PUBLIC,
+        organization: {
+          id: "org-123",
+          name: "Test Org",
+          visibility: Visibility.PUBLIC,
+        },
       },
       isLoading: false,
       error: null,
@@ -457,9 +479,11 @@ describe("OrganizationSettingsForm", () => {
 
     mockUseQuery.mockReturnValue({
       data: {
-        id: "org-123",
-        name: "Test Org",
-        visibility: Visibility.PUBLIC,
+        organization: {
+          id: "org-123",
+          name: "Test Org",
+          visibility: Visibility.PUBLIC,
+        },
       },
       isLoading: false,
       error: null,
@@ -487,9 +511,11 @@ describe("OrganizationSettingsForm", () => {
     const renderFormWithOrganization = () => {
       mockUseQuery.mockReturnValue({
         data: {
-          id: "org-123",
-          name: "Test Organization",
-          visibility: Visibility.PUBLIC,
+          organization: {
+            id: "org-123",
+            name: "Test Organization",
+            visibility: Visibility.PUBLIC,
+          },
         },
         isLoading: false,
         error: null,

@@ -2,7 +2,7 @@ import { UserService } from '@buf/hasir_hasir.bufbuild_es/user/v1/user_pb';
 import { createConnectTransport } from '@connectrpc/connect-web';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@connectrpc/connect';
-import { decodeJwt } from "jose";
+import { decodeJwt, JWTPayload } from "jose";
 
 import { saveSession } from '@/lib/session';
 
@@ -22,17 +22,23 @@ export async function POST(request: NextRequest) {
       password,
     });
 
-    const payload = decodeJwt(response.accessToken);
+    const accessTokenPayload = decodeJwt(response.accessToken) as JWTPayload;
     const userInfo = {
-      id: payload.sub || '',
-      email: payload.email || email,
+      id: accessTokenPayload.sub || '',
+      email: accessTokenPayload.email || email,
     };
+
+    const refreshTokenPayload = decodeJwt(response.refreshToken) as JWTPayload;
+
+    const accessTokenExpiryMs = (accessTokenPayload.exp ?? 0) * 1000;
+    const refreshTokenExpiryMs = (refreshTokenPayload.exp ?? 0) * 1000;
 
     await saveSession({
       user: userInfo,
       accessToken: response.accessToken,
       refreshToken: response.refreshToken,
-      expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000),
+      expiresAt: refreshTokenExpiryMs,
+      refreshAt: accessTokenExpiryMs,
     });
 
     return NextResponse.json({
