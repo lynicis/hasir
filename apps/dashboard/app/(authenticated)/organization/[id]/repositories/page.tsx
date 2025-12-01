@@ -1,8 +1,10 @@
 "use client";
 
 import { getRepositories } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
+import { RegistryService } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -11,8 +13,10 @@ import { DeleteRepositoryDialog } from "@/components/delete-repository-dialog";
 import { type OrganizationRepository } from "@/components/repository-item";
 import { RepositoryDialogForm } from "@/components/repository-dialog-form";
 import { RepositoriesList } from "@/components/repositories-list";
+import { useRefreshStore } from "@/stores/refresh-store";
 import { customRetry } from "@/lib/query-retry";
 import { isNotFoundError } from "@/lib/utils";
+import { useClient } from "@/lib/use-client";
 
 const PAGE_SIZE = 10;
 
@@ -21,6 +25,10 @@ export default function RepositoriesPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const organizationId = params.id as string;
+  const registryApiClient = useClient(RegistryService);
+  const refreshRepositories = useRefreshStore(
+    (state) => state.refreshRepositories
+  );
 
   const currentPage = useMemo(() => {
     const page = searchParams.get("page");
@@ -31,6 +39,7 @@ export default function RepositoriesPage() {
     data: repositoriesData,
     isLoading,
     error,
+    refetch,
   } = useQuery(
     getRepositories,
     {
@@ -82,11 +91,40 @@ export default function RepositoriesPage() {
     setDeleteRepoDialog({ open: true, repo });
   }
 
-  function confirmDeleteRepository() {
+  async function confirmDeleteRepository() {
     if (!deleteRepoDialog.repo) return;
 
-    toast.success(`Repository ${deleteRepoDialog.repo.name} has been deleted`);
-    setDeleteRepoDialog({ open: false, repo: null });
+    try {
+      await registryApiClient.deleteRepository({
+        repositoryId: deleteRepoDialog.repo.id,
+      });
+
+      toast.success(
+        `Repository ${deleteRepoDialog.repo.name} has been deleted.`
+      );
+
+      await refetch();
+      refreshRepositories();
+
+      setDeleteRepoDialog({ open: false, repo: null });
+    } catch (err) {
+      if (err instanceof ConnectError) {
+        if (err.code === Code.PermissionDenied) {
+          toast.error("You don't have permission to delete this repository.");
+          setDeleteRepoDialog({ open: false, repo: null });
+          return;
+        }
+
+        if (err.code === Code.NotFound) {
+          toast.error("Repository not found.");
+          setDeleteRepoDialog({ open: false, repo: null });
+          return;
+        }
+      }
+
+      toast.error("Failed to delete repository. Please try again.");
+      setDeleteRepoDialog({ open: false, repo: null });
+    }
   }
 
   function handleCreateRepository() {

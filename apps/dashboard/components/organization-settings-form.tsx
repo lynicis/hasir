@@ -28,6 +28,7 @@ import {
 import { DeleteOrganizationDialog } from "@/components/delete-organization-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { visibilityMapper } from "@/lib/visibility-mapper";
+import { useRefreshStore } from "@/stores/refresh-store";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { customRetry } from "@/lib/query-retry";
@@ -60,12 +61,17 @@ export function OrganizationSettingsForm() {
     data,
     isLoading: isLoadingOrganization,
     error: organizationError,
+    refetch,
   } = useQuery(
     getOrganization,
     {
       id: organizationId,
     },
     { retry: customRetry, enabled: Boolean(organizationId) }
+  );
+
+  const organizationsRefreshKey = useRefreshStore(
+    (state) => state.organizationsRefreshKey
   );
 
   const organization = data?.organization;
@@ -98,6 +104,12 @@ export function OrganizationSettingsForm() {
       toast.error("Error occurred while fetching organization");
     }
   }, [organizationError]);
+
+  useEffect(() => {
+    if (organizationsRefreshKey > 0) {
+      refetch();
+    }
+  }, [organizationsRefreshKey, refetch]);
 
   async function handleFormSubmit(values: OrganizationFormValues) {
     try {
