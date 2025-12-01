@@ -30,6 +30,14 @@ message TokenEnvelope {
   string refresh_token = 2;
 }
 
+message RenewTokensRequest {
+  string refresh_token = 1 [(buf.validate.field).required = true];
+}
+
+message RenewTokensResponse {
+  string access_token = 1;
+}
+
 message UpdateUserRequest {
   string password = 1 [
     (buf.validate.field).string.min_len = 8,
@@ -46,6 +54,7 @@ message UpdateUserRequest {
 service UserService {
   rpc Register(RegisterRequest) returns (google.protobuf.Empty);
   rpc Login(LoginRequest) returns (TokenEnvelope);
+  rpc RenewTokens(RenewTokensRequest) returns (RenewTokensResponse);
   rpc UpdateUser(UpdateUserRequest) returns (TokenEnvelope);
   rpc DeleteAccount(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
