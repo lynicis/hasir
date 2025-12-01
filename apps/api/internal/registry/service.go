@@ -8,13 +8,13 @@ import (
 	"path/filepath"
 	"time"
 
+	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	"github.com/go-git/go-git/v5"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"hasir-api/pkg/auth"
-
-	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
+	"hasir-api/pkg/proto"
 )
 
 const defaultReposPath = "./repos"
@@ -45,9 +45,9 @@ func (s *service) CreateRepository(
 	repoName := req.GetName()
 	organizationId := req.GetOrganizationId()
 
-	visibility, ok := protoVisibilityMap[req.GetVisibility()]
+	visibility, ok := proto.VisibilityMap[req.GetVisibility()]
 	if !ok {
-		visibility = VisibilityPrivate
+		visibility = proto.VisibilityPrivate
 	}
 
 	createdBy, err := auth.MustGetUserID(ctx)
@@ -122,8 +122,9 @@ func (s *service) GetRepositories(
 	var resp []*registryv1.Repository
 	for _, repository := range *repositories {
 		resp = append(resp, &registryv1.Repository{
-			Id:   repository.Id,
-			Name: repository.Name,
+			Id:         repository.Id,
+			Name:       repository.Name,
+			Visibility: proto.ReverseVisibilityMap[repository.Visibility],
 		})
 	}
 

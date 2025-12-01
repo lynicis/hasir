@@ -16,6 +16,7 @@ import (
 	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
 
 	"hasir-api/pkg/auth"
+	"hasir-api/pkg/proto"
 )
 
 func testAuthInterceptor(userID string) connect.UnaryInterceptorFunc {
@@ -218,8 +219,8 @@ func TestHandler_GetOrganizations(t *testing.T) {
 		mockRepository := NewMockRepository(ctrl)
 
 		orgs := &[]OrganizationDTO{
-			{Id: "org-1", Name: "first-org", Visibility: VisibilityPrivate},
-			{Id: "org-2", Name: "second-org", Visibility: VisibilityPublic},
+			{Id: "org-1", Name: "first-org", Visibility: proto.VisibilityPrivate},
+			{Id: "org-2", Name: "second-org", Visibility: proto.VisibilityPublic},
 		}
 
 		mockRepository.EXPECT().
@@ -436,6 +437,112 @@ func TestHandler_DeleteOrganization(t *testing.T) {
 
 		_, err := client.DeleteOrganization(context.Background(), connect.NewRequest(&organizationv1.DeleteOrganizationRequest{
 			Id: "org-123",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+	})
+}
+
+func TestHandler_UpdateOrganization(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-123"
+		orgID := "org-123"
+
+		mockService.EXPECT().
+			UpdateOrganization(gomock.Any(), gomock.Any(), testUserID).
+			DoAndReturn(func(_ context.Context, req *organizationv1.UpdateOrganizationRequest, userId string) error {
+				require.Equal(t, orgID, req.GetId())
+				require.Equal(t, "updated-name", req.GetName())
+				require.Equal(t, shared.Visibility_VISIBILITY_PUBLIC, req.GetVisibility())
+				require.Equal(t, testUserID, userId)
+				return nil
+			})
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.UpdateOrganization(context.Background(), connect.NewRequest(&organizationv1.UpdateOrganizationRequest{
+			Id:         orgID,
+			Name:       "updated-name",
+			Visibility: shared.Visibility_VISIBILITY_PUBLIC,
+		}))
+		require.NoError(t, err)
+	})
+
+	t.Run("service error - permission denied", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-456"
+		orgID := "org-456"
+
+		mockService.EXPECT().
+			UpdateOrganization(gomock.Any(), gomock.Any(), testUserID).
+			Return(connect.NewError(connect.CodePermissionDenied, errors.New("only the organization creator can update it")))
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.UpdateOrganization(context.Background(), connect.NewRequest(&organizationv1.UpdateOrganizationRequest{
+			Id:   orgID,
+			Name: "updated-name",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+	})
+
+	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.UpdateOrganization(context.Background(), connect.NewRequest(&organizationv1.UpdateOrganizationRequest{
+			Id:   "org-123",
+			Name: "updated-name",
 		}))
 		require.Error(t, err)
 

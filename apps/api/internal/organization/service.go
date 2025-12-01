@@ -15,6 +15,7 @@ import (
 
 	"hasir-api/internal/registry"
 	"hasir-api/pkg/email"
+	"hasir-api/pkg/proto"
 )
 
 type Service interface {
@@ -22,6 +23,11 @@ type Service interface {
 		ctx context.Context,
 		req *organizationv1.CreateOrganizationRequest,
 		createdBy string,
+	) error
+	UpdateOrganization(
+		ctx context.Context,
+		req *organizationv1.UpdateOrganizationRequest,
+		userId string,
 	) error
 	DeleteOrganization(
 		ctx context.Context,
@@ -64,15 +70,10 @@ func (s *service) CreateOrganization(
 		return connect.NewError(connect.CodeAlreadyExists, errors.New("organization already exists"))
 	}
 
-	visibility, ok := protoVisibilityMap[req.GetVisibility()]
-	if !ok {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("invalid visibility value"))
-	}
-
 	org := &OrganizationDTO{
 		Id:         uuid.NewString(),
 		Name:       req.GetName(),
-		Visibility: visibility,
+		Visibility: proto.VisibilityMap[req.GetVisibility()],
 		CreatedBy:  createdBy,
 		CreatedAt:  time.Now().UTC(),
 	}
@@ -146,6 +147,29 @@ func (s *service) sendInvites(ctx context.Context, orgId, orgName, invitedBy str
 	return nil
 }
 
+func (s *service) UpdateOrganization(
+	ctx context.Context,
+	req *organizationv1.UpdateOrganizationRequest,
+	userId string,
+) error {
+	org, err := s.repository.GetOrganizationById(ctx, req.GetId())
+	if err != nil {
+		return err
+	}
+
+	if org.CreatedBy != userId {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("only the organization creator can update it"))
+	}
+
+	org.Name = req.GetName()
+	org.Visibility = proto.VisibilityMap[req.GetVisibility()]
+	if err := s.repository.UpdateOrganization(ctx, org); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *service) DeleteOrganization(
 	ctx context.Context,
 	organizationId string,
@@ -181,6 +205,7 @@ func generateInviteToken() (string, error) {
 	if _, err := rand.Read(bytes); err != nil {
 		return "", err
 	}
+
 	return hex.EncodeToString(bytes), nil
 }
 

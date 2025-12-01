@@ -2,7 +2,6 @@ package organization
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/organization/v1/organizationv1connect"
@@ -11,6 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"hasir-api/pkg/auth"
+	"hasir-api/pkg/proto"
 )
 
 type handler struct {
@@ -119,8 +119,9 @@ func (h *handler) GetOrganization(
 
 	return connect.NewResponse(&organizationv1.GetOrganizationResponse{
 		Organization: &organizationv1.Organization{
-			Id:   org.Id,
-			Name: org.Name,
+			Id:         org.Id,
+			Name:       org.Name,
+			Visibility: proto.ReverseVisibilityMap[org.Visibility],
 		},
 	}), nil
 }
@@ -129,8 +130,16 @@ func (h *handler) UpdateOrganization(
 	ctx context.Context,
 	req *connect.Request[organizationv1.UpdateOrganizationRequest],
 ) (*connect.Response[emptypb.Empty], error) {
+	userId, err := auth.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("UpdateOrganization not implemented"))
+	if err := h.service.UpdateOrganization(ctx, req.Msg, userId); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(new(emptypb.Empty)), nil
 }
 
 func (h *handler) DeleteOrganization(

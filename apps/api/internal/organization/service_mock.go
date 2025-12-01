@@ -82,3 +82,17 @@ func (mr *MockServiceMockRecorder) RespondToInvitation(ctx, token, userId, accep
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RespondToInvitation", reflect.TypeOf((*MockService)(nil).RespondToInvitation), ctx, token, userId, accept)
 }
+
+// UpdateOrganization mocks base method.
+func (m *MockService) UpdateOrganization(ctx context.Context, req *organizationv1.UpdateOrganizationRequest, userId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateOrganization", ctx, req, userId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateOrganization indicates an expected call of UpdateOrganization.
+func (mr *MockServiceMockRecorder) UpdateOrganization(ctx, req, userId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateOrganization", reflect.TypeOf((*MockService)(nil).UpdateOrganization), ctx, req, userId)
+}

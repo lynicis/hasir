@@ -28,6 +28,7 @@ type Repository interface {
 	GetOrganizationsCount(ctx context.Context) (int, error)
 	GetOrganizationByName(ctx context.Context, name string) (*OrganizationDTO, error)
 	GetOrganizationById(ctx context.Context, id string) (*OrganizationDTO, error)
+	UpdateOrganization(ctx context.Context, org *OrganizationDTO) error
 	DeleteOrganization(ctx context.Context, id string) error
 	CreateInvite(ctx context.Context, invite *OrganizationInviteDTO) error
 	GetInviteByToken(ctx context.Context, token string) (*OrganizationInviteDTO, error)
@@ -290,6 +291,54 @@ func (r *PgRepository) GetOrganizationById(ctx context.Context, id string) (*Org
 	}
 
 	return &org, nil
+}
+
+func (r *PgRepository) UpdateOrganization(ctx context.Context, org *OrganizationDTO) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "UpdateOrganization", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "id",
+			Value: attribute.StringValue(org.Id),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `UPDATE organizations
+			SET name = @Name,
+				visibility = @Visibility
+			WHERE id = @Id AND deleted_at IS NULL`
+	sqlArgs := pgx.NamedArgs{
+		"Id":         org.Id,
+		"Name":       org.Name,
+		"Visibility": org.Visibility,
+	}
+
+	result, err := connection.Exec(ctx, sql, sqlArgs)
+	if err != nil {
+		span.RecordError(err)
+
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == ErrUniqueViolationCode {
+				return ErrOrganizationAlreadyExists
+			}
+			return err
+		}
+
+		return connect.NewError(connect.CodeInternal, errors.New("failed to update organization"))
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrOrganizationNotFound
+	}
+
+	return nil
 }
 
 func (r *PgRepository) DeleteOrganization(ctx context.Context, id string) error {

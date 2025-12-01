@@ -11,6 +11,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"hasir-api/pkg/auth"
+	"hasir-api/pkg/proto"
 
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
@@ -49,7 +50,7 @@ func TestService_CreateRepository(t *testing.T) {
 				require.Equal(t, repoName, repo.Name)
 				require.Equal(t, filepath.Join(tmpDir, repo.Id), repo.Path)
 				require.Equal(t, userID, repo.CreatedBy)
-				require.Equal(t, VisibilityPrivate, repo.Visibility)
+				require.Equal(t, proto.VisibilityPrivate, repo.Visibility)
 				require.NotEmpty(t, repo.Id)
 				return nil
 			})
@@ -90,7 +91,7 @@ func TestService_CreateRepository(t *testing.T) {
 				require.Equal(t, repoName, repo.Name)
 				require.Equal(t, filepath.Join(tmpDir, repo.Id), repo.Path)
 				require.Equal(t, userID, repo.CreatedBy)
-				require.Equal(t, VisibilityPublic, repo.Visibility)
+				require.Equal(t, proto.VisibilityPublic, repo.Visibility)
 				require.NotEmpty(t, repo.Id)
 				return nil
 			})

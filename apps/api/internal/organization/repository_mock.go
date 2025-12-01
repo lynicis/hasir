@@ -253,3 +253,17 @@ func (mr *MockRepositoryMockRecorder) UpdateInviteStatus(ctx, id, status, accept
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateInviteStatus", reflect.TypeOf((*MockRepository)(nil).UpdateInviteStatus), ctx, id, status, acceptedAt)
 }
+
+// UpdateOrganization mocks base method.
+func (m *MockRepository) UpdateOrganization(ctx context.Context, org *OrganizationDTO) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateOrganization", ctx, org)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateOrganization indicates an expected call of UpdateOrganization.
+func (mr *MockRepositoryMockRecorder) UpdateOrganization(ctx, org any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateOrganization", reflect.TypeOf((*MockRepository)(nil).UpdateOrganization), ctx, org)
+}

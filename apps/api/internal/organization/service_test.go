@@ -13,11 +13,14 @@ import (
 
 	"hasir-api/internal/registry"
 	"hasir-api/pkg/email"
+	"hasir-api/pkg/proto"
 )
 
-func TestCreateOrganization_Success(t *testing.T) {
+func newTestService(t *testing.T) (Service, *MockRepository, *registry.MockService, *email.MockService, context.Context) {
+	t.Helper()
+
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	t.Cleanup(ctrl.Finish)
 
 	mockRepo := NewMockRepository(ctrl)
 	mockRegistry := registry.NewMockService(ctrl)
@@ -25,341 +28,285 @@ func TestCreateOrganization_Success(t *testing.T) {
 
 	svc := NewService(mockRepo, mockRegistry, mockEmail)
 
-	ctx := context.Background()
-	req := &organizationv1.CreateOrganizationRequest{
-		Name:       "test-org",
-		Visibility: shared.Visibility_VISIBILITY_PRIVATE,
-	}
-	createdBy := "user-123"
-
-	mockRepo.EXPECT().
-		GetOrganizationByName(ctx, "test-org").
-		Return(nil, ErrOrganizationNotFound)
-
-	mockRepo.EXPECT().
-		CreateOrganization(ctx, gomock.Any()).
-		DoAndReturn(func(_ context.Context, org *OrganizationDTO) error {
-			if org.Name != "test-org" {
-				t.Errorf("expected name 'test-org', got %s", org.Name)
-			}
-			if org.Visibility != VisibilityPrivate {
-				t.Errorf("expected visibility 'private', got %s", org.Visibility)
-			}
-			if org.CreatedBy != createdBy {
-				t.Errorf("expected createdBy '%s', got %s", createdBy, org.CreatedBy)
-			}
-			return nil
-		})
-
-	err := svc.CreateOrganization(ctx, req, createdBy)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+	return svc, mockRepo, mockRegistry, mockEmail, context.Background()
 }
 
-func TestCreateOrganization_WithInvites(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+func TestCreateOrganization(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		req := &organizationv1.CreateOrganizationRequest{
+			Name:       "test-org",
+			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
+		}
+		createdBy := "user-123"
 
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
+		mockRepo.EXPECT().
+			GetOrganizationByName(ctx, "test-org").
+			Return(nil, ErrOrganizationNotFound)
 
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	req := &organizationv1.CreateOrganizationRequest{
-		Name:         "test-org",
-		Visibility:   shared.Visibility_VISIBILITY_PUBLIC,
-		InviteEmails: []string{"friend1@example.com", "friend2@example.com"},
-	}
-	createdBy := "user-123"
-
-	mockRepo.EXPECT().
-		GetOrganizationByName(ctx, "test-org").
-		Return(nil, ErrOrganizationNotFound)
-
-	mockRepo.EXPECT().
-		CreateOrganization(ctx, gomock.Any()).
-		Return(nil)
-
-	mockRepo.EXPECT().
-		CreateInvite(ctx, gomock.Any()).
-		DoAndReturn(func(_ context.Context, invite *OrganizationInviteDTO) error {
-			if invite.Email != "friend1@example.com" && invite.Email != "friend2@example.com" {
-				t.Errorf("unexpected email: %s", invite.Email)
-			}
-			if invite.Status != InviteStatusPending {
-				t.Errorf("expected status 'pending', got %s", invite.Status)
-			}
-			return nil
-		}).Times(2)
-
-	mockRepo.EXPECT().
-		EnqueueEmailJobs(ctx, gomock.Any()).
-		DoAndReturn(func(_ context.Context, jobs []*EmailJobDTO) error {
-			if len(jobs) != 2 {
-				t.Errorf("expected 2 email jobs, got %d", len(jobs))
-			}
-			for _, job := range jobs {
-				if job.Email != "friend1@example.com" && job.Email != "friend2@example.com" {
-					t.Errorf("unexpected email in job: %s", job.Email)
+		mockRepo.EXPECT().
+			CreateOrganization(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, org *OrganizationDTO) error {
+				if org.Name != "test-org" {
+					t.Errorf("expected name 'test-org', got %s", org.Name)
 				}
-				if job.OrganizationName != "test-org" {
-					t.Errorf("expected organization name 'test-org', got %s", job.OrganizationName)
+				if org.Visibility != proto.VisibilityPrivate {
+					t.Errorf("expected visibility 'private', got %s", org.Visibility)
 				}
-				if job.Status != EmailJobStatusPending {
-					t.Errorf("expected job status 'pending', got %s", job.Status)
+				if org.CreatedBy != createdBy {
+					t.Errorf("expected createdBy '%s', got %s", createdBy, org.CreatedBy)
 				}
-			}
-			return nil
-		})
+				return nil
+			})
 
-	err := svc.CreateOrganization(ctx, req, createdBy)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-}
+		err := svc.CreateOrganization(ctx, req, createdBy)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
 
-func TestCreateOrganization_AlreadyExists(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	t.Run("with invites", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		req := &organizationv1.CreateOrganizationRequest{
+			Name:         "test-org",
+			Visibility:   shared.Visibility_VISIBILITY_PUBLIC,
+			InviteEmails: []string{"friend1@example.com", "friend2@example.com"},
+		}
+		createdBy := "user-123"
 
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
+		mockRepo.EXPECT().
+			GetOrganizationByName(ctx, "test-org").
+			Return(nil, ErrOrganizationNotFound)
 
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
+		mockRepo.EXPECT().
+			CreateOrganization(ctx, gomock.Any()).
+			Return(nil)
 
-	ctx := context.Background()
-	req := &organizationv1.CreateOrganizationRequest{
-		Name:       "existing-org",
-		Visibility: shared.Visibility_VISIBILITY_PRIVATE,
-	}
-	createdBy := "user-123"
+		mockRepo.EXPECT().
+			CreateInvite(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, invite *OrganizationInviteDTO) error {
+				if invite.Email != "friend1@example.com" && invite.Email != "friend2@example.com" {
+					t.Errorf("unexpected email: %s", invite.Email)
+				}
+				if invite.Status != InviteStatusPending {
+					t.Errorf("expected status 'pending', got %s", invite.Status)
+				}
+				return nil
+			}).Times(2)
 
-	existingOrg := &OrganizationDTO{
-		Id:   "existing-id",
-		Name: "existing-org",
-	}
-
-	mockRepo.EXPECT().
-		GetOrganizationByName(ctx, "existing-org").
-		Return(existingOrg, nil)
-
-	err := svc.CreateOrganization(ctx, req, createdBy)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("expected connect.Error, got %T", err)
-	}
-
-	if connectErr.Code() != connect.CodeAlreadyExists {
-		t.Errorf("expected CodeAlreadyExists, got %v", connectErr.Code())
-	}
-}
-
-func TestCreateOrganization_RepositoryError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	req := &organizationv1.CreateOrganizationRequest{
-		Name:       "test-org",
-		Visibility: shared.Visibility_VISIBILITY_PRIVATE,
-	}
-	createdBy := "user-123"
-
-	mockRepo.EXPECT().
-		GetOrganizationByName(ctx, "test-org").
-		Return(nil, ErrOrganizationNotFound)
-
-	mockRepo.EXPECT().
-		CreateOrganization(ctx, gomock.Any()).
-		Return(connect.NewError(connect.CodeInternal, errors.New("database error")))
-
-	err := svc.CreateOrganization(ctx, req, createdBy)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("expected connect.Error, got %T", err)
-	}
-
-	if connectErr.Code() != connect.CodeInternal {
-		t.Errorf("expected CodeInternal, got %v", connectErr.Code())
-	}
-}
-
-func TestCreateOrganization_GetByNameError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	req := &organizationv1.CreateOrganizationRequest{
-		Name:       "test-org",
-		Visibility: shared.Visibility_VISIBILITY_PRIVATE,
-	}
-	createdBy := "user-123"
-
-	mockRepo.EXPECT().
-		GetOrganizationByName(ctx, "test-org").
-		Return(nil, connect.NewError(connect.CodeInternal, errors.New("database error")))
-
-	err := svc.CreateOrganization(ctx, req, createdBy)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-}
-
-func TestCreateOrganization_InviteCreateError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	req := &organizationv1.CreateOrganizationRequest{
-		Name:         "test-org",
-		Visibility:   shared.Visibility_VISIBILITY_PRIVATE,
-		InviteEmails: []string{"friend@example.com"},
-	}
-	createdBy := "user-123"
-
-	mockRepo.EXPECT().
-		GetOrganizationByName(ctx, "test-org").
-		Return(nil, ErrOrganizationNotFound)
-
-	mockRepo.EXPECT().
-		CreateOrganization(ctx, gomock.Any()).
-		Return(nil)
-
-	mockRepo.EXPECT().
-		CreateInvite(ctx, gomock.Any()).
-		Return(connect.NewError(connect.CodeInternal, errors.New("invite creation failed")))
-
-	err := svc.CreateOrganization(ctx, req, createdBy)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-}
-
-func TestCreateOrganization_EmailSendError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	req := &organizationv1.CreateOrganizationRequest{
-		Name:         "test-org",
-		Visibility:   shared.Visibility_VISIBILITY_PRIVATE,
-		InviteEmails: []string{"friend@example.com"},
-	}
-	createdBy := "user-123"
-
-	mockRepo.EXPECT().
-		GetOrganizationByName(ctx, "test-org").
-		Return(nil, ErrOrganizationNotFound)
-
-	mockRepo.EXPECT().
-		CreateOrganization(ctx, gomock.Any()).
-		Return(nil)
-
-	mockRepo.EXPECT().
-		CreateInvite(ctx, gomock.Any()).
-		Return(nil)
-
-	mockRepo.EXPECT().
-		EnqueueEmailJobs(ctx, gomock.Any()).
-		Return(errors.New("queue error"))
-
-	err := svc.CreateOrganization(ctx, req, createdBy)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-}
-
-func TestCreateOrganization_VisibilityMapping(t *testing.T) {
-	tests := []struct {
-		name               string
-		protoVisibility    shared.Visibility
-		expectedVisibility Visibility
-	}{
-		{
-			name:               "public visibility",
-			protoVisibility:    shared.Visibility_VISIBILITY_PUBLIC,
-			expectedVisibility: VisibilityPublic,
-		},
-		{
-			name:               "private visibility",
-			protoVisibility:    shared.Visibility_VISIBILITY_PRIVATE,
-			expectedVisibility: VisibilityPrivate,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
-			mockRepo := NewMockRepository(ctrl)
-			mockRegistry := registry.NewMockService(ctrl)
-			mockEmail := email.NewMockService(ctrl)
-
-			svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-			ctx := context.Background()
-			req := &organizationv1.CreateOrganizationRequest{
-				Name:       "test-org",
-				Visibility: tt.protoVisibility,
-			}
-			createdBy := "user-123"
-
-			mockRepo.EXPECT().
-				GetOrganizationByName(ctx, "test-org").
-				Return(nil, ErrOrganizationNotFound)
-
-			mockRepo.EXPECT().
-				CreateOrganization(ctx, gomock.Any()).
-				DoAndReturn(func(_ context.Context, org *OrganizationDTO) error {
-					if org.Visibility != tt.expectedVisibility {
-						t.Errorf("expected visibility %s, got %s", tt.expectedVisibility, org.Visibility)
+		mockRepo.EXPECT().
+			EnqueueEmailJobs(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, jobs []*EmailJobDTO) error {
+				if len(jobs) != 2 {
+					t.Errorf("expected 2 email jobs, got %d", len(jobs))
+				}
+				for _, job := range jobs {
+					if job.Email != "friend1@example.com" && job.Email != "friend2@example.com" {
+						t.Errorf("unexpected email in job: %s", job.Email)
 					}
-					return nil
-				})
+					if job.OrganizationName != "test-org" {
+						t.Errorf("expected organization name 'test-org', got %s", job.OrganizationName)
+					}
+					if job.Status != EmailJobStatusPending {
+						t.Errorf("expected job status 'pending', got %s", job.Status)
+					}
+				}
+				return nil
+			})
 
-			err := svc.CreateOrganization(ctx, req, createdBy)
-			if err != nil {
-				t.Fatalf("expected no error, got %v", err)
-			}
-		})
-	}
+		err := svc.CreateOrganization(ctx, req, createdBy)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("already exists", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		req := &organizationv1.CreateOrganizationRequest{
+			Name:       "existing-org",
+			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
+		}
+		createdBy := "user-123"
+
+		existingOrg := &OrganizationDTO{
+			Id:   "existing-id",
+			Name: "existing-org",
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationByName(ctx, "existing-org").
+			Return(existingOrg, nil)
+
+		err := svc.CreateOrganization(ctx, req, createdBy)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeAlreadyExists {
+			t.Errorf("expected CodeAlreadyExists, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("repository error", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		req := &organizationv1.CreateOrganizationRequest{
+			Name:       "test-org",
+			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
+		}
+		createdBy := "user-123"
+
+		mockRepo.EXPECT().
+			GetOrganizationByName(ctx, "test-org").
+			Return(nil, ErrOrganizationNotFound)
+
+		mockRepo.EXPECT().
+			CreateOrganization(ctx, gomock.Any()).
+			Return(connect.NewError(connect.CodeInternal, errors.New("database error")))
+
+		err := svc.CreateOrganization(ctx, req, createdBy)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeInternal {
+			t.Errorf("expected CodeInternal, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("get by name error", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		req := &organizationv1.CreateOrganizationRequest{
+			Name:       "test-org",
+			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
+		}
+		createdBy := "user-123"
+
+		mockRepo.EXPECT().
+			GetOrganizationByName(ctx, "test-org").
+			Return(nil, connect.NewError(connect.CodeInternal, errors.New("database error")))
+
+		err := svc.CreateOrganization(ctx, req, createdBy)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+
+	t.Run("invite create error", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		req := &organizationv1.CreateOrganizationRequest{
+			Name:         "test-org",
+			Visibility:   shared.Visibility_VISIBILITY_PRIVATE,
+			InviteEmails: []string{"friend@example.com"},
+		}
+		createdBy := "user-123"
+
+		mockRepo.EXPECT().
+			GetOrganizationByName(ctx, "test-org").
+			Return(nil, ErrOrganizationNotFound)
+
+		mockRepo.EXPECT().
+			CreateOrganization(ctx, gomock.Any()).
+			Return(nil)
+
+		mockRepo.EXPECT().
+			CreateInvite(ctx, gomock.Any()).
+			Return(connect.NewError(connect.CodeInternal, errors.New("invite creation failed")))
+
+		err := svc.CreateOrganization(ctx, req, createdBy)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("email send error", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		req := &organizationv1.CreateOrganizationRequest{
+			Name:         "test-org",
+			Visibility:   shared.Visibility_VISIBILITY_PRIVATE,
+			InviteEmails: []string{"friend@example.com"},
+		}
+		createdBy := "user-123"
+
+		mockRepo.EXPECT().
+			GetOrganizationByName(ctx, "test-org").
+			Return(nil, ErrOrganizationNotFound)
+
+		mockRepo.EXPECT().
+			CreateOrganization(ctx, gomock.Any()).
+			Return(nil)
+
+		mockRepo.EXPECT().
+			CreateInvite(ctx, gomock.Any()).
+			Return(nil)
+
+		mockRepo.EXPECT().
+			EnqueueEmailJobs(ctx, gomock.Any()).
+			Return(errors.New("queue error"))
+
+		err := svc.CreateOrganization(ctx, req, createdBy)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("visibility mapping", func(t *testing.T) {
+		tests := []struct {
+			name               string
+			protoVisibility    shared.Visibility
+			expectedVisibility proto.Visibility
+		}{
+			{
+				name:               "public visibility",
+				protoVisibility:    shared.Visibility_VISIBILITY_PUBLIC,
+				expectedVisibility: proto.VisibilityPublic,
+			},
+			{
+				name:               "private visibility",
+				protoVisibility:    shared.Visibility_VISIBILITY_PRIVATE,
+				expectedVisibility: proto.VisibilityPrivate,
+			},
+		}
+
+		for _, tt := range tests {
+			tt := tt
+			t.Run(tt.name, func(t *testing.T) {
+				svc, mockRepo, _, _, ctx := newTestService(t)
+				req := &organizationv1.CreateOrganizationRequest{
+					Name:       "test-org",
+					Visibility: tt.protoVisibility,
+				}
+				createdBy := "user-123"
+
+				mockRepo.EXPECT().
+					GetOrganizationByName(ctx, "test-org").
+					Return(nil, ErrOrganizationNotFound)
+
+				mockRepo.EXPECT().
+					CreateOrganization(ctx, gomock.Any()).
+					DoAndReturn(func(_ context.Context, org *OrganizationDTO) error {
+						if org.Visibility != tt.expectedVisibility {
+							t.Errorf("expected visibility %s, got %s", tt.expectedVisibility, org.Visibility)
+						}
+						return nil
+					})
+
+				err := svc.CreateOrganization(ctx, req, createdBy)
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+			})
+		}
+	})
 }
 
 func TestGenerateInviteToken(t *testing.T) {
@@ -382,562 +329,572 @@ func TestGenerateInviteToken(t *testing.T) {
 	}
 }
 
-func TestRespondToInvitation_AcceptSuccess(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+func TestRespondToInvitation(t *testing.T) {
+	t.Run("accept success", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		token := "valid-token-123"
+		userId := "user-456"
 
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
+		invite := &OrganizationInviteDTO{
+			Id:             "invite-id",
+			OrganizationId: "org-123",
+			Email:          "user@example.com",
+			Token:          token,
+			InvitedBy:      "inviter-789",
+			Status:         InviteStatusPending,
+			CreatedAt:      time.Now().UTC(),
+			ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
+		}
 
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
+		mockRepo.EXPECT().
+			GetInviteByToken(ctx, token).
+			Return(invite, nil)
 
-	ctx := context.Background()
-	token := "valid-token-123"
-	userId := "user-456"
+		mockRepo.EXPECT().
+			UpdateInviteStatus(ctx, invite.Id, InviteStatusAccepted, gomock.Any()).
+			Return(nil)
 
-	invite := &OrganizationInviteDTO{
-		Id:             "invite-id",
-		OrganizationId: "org-123",
-		Email:          "user@example.com",
-		Token:          token,
-		InvitedBy:      "inviter-789",
-		Status:         InviteStatusPending,
-		CreatedAt:      time.Now().UTC(),
-		ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
-	}
+		mockRepo.EXPECT().
+			AddMember(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, member *OrganizationMemberDTO) error {
+				if member.OrganizationId != invite.OrganizationId {
+					t.Errorf("expected organizationId %s, got %s", invite.OrganizationId, member.OrganizationId)
+				}
+				if member.UserId != userId {
+					t.Errorf("expected userId %s, got %s", userId, member.UserId)
+				}
+				if member.Role != MemberRoleMember {
+					t.Errorf("expected role 'member', got %s", member.Role)
+				}
+				return nil
+			})
 
-	mockRepo.EXPECT().
-		GetInviteByToken(ctx, token).
-		Return(invite, nil)
+		err := svc.RespondToInvitation(ctx, token, userId, true)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
 
-	mockRepo.EXPECT().
-		UpdateInviteStatus(ctx, invite.Id, InviteStatusAccepted, gomock.Any()).
-		Return(nil)
+	t.Run("reject success", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		token := "valid-token-123"
+		userId := "user-456"
 
-	mockRepo.EXPECT().
-		AddMember(ctx, gomock.Any()).
-		DoAndReturn(func(_ context.Context, member *OrganizationMemberDTO) error {
-			if member.OrganizationId != invite.OrganizationId {
-				t.Errorf("expected organizationId %s, got %s", invite.OrganizationId, member.OrganizationId)
-			}
-			if member.UserId != userId {
-				t.Errorf("expected userId %s, got %s", userId, member.UserId)
-			}
-			if member.Role != MemberRoleMember {
-				t.Errorf("expected role 'member', got %s", member.Role)
-			}
-			return nil
-		})
+		invite := &OrganizationInviteDTO{
+			Id:             "invite-id",
+			OrganizationId: "org-123",
+			Email:          "user@example.com",
+			Token:          token,
+			InvitedBy:      "inviter-789",
+			Status:         InviteStatusPending,
+			CreatedAt:      time.Now().UTC(),
+			ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
+		}
 
-	err := svc.RespondToInvitation(ctx, token, userId, true)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+		mockRepo.EXPECT().
+			GetInviteByToken(ctx, token).
+			Return(invite, nil)
+
+		mockRepo.EXPECT().
+			UpdateInviteStatus(ctx, invite.Id, InviteStatusCancelled, nil).
+			Return(nil)
+
+		err := svc.RespondToInvitation(ctx, token, userId, false)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("invite not found", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		token := "invalid-token"
+		userId := "user-456"
+
+		mockRepo.EXPECT().
+			GetInviteByToken(ctx, token).
+			Return(nil, ErrInviteNotFound)
+
+		err := svc.RespondToInvitation(ctx, token, userId, true)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		if !errors.Is(err, ErrInviteNotFound) {
+			t.Errorf("expected ErrInviteNotFound, got %v", err)
+		}
+	})
+
+	t.Run("invite already accepted", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		token := "valid-token-123"
+		userId := "user-456"
+
+		acceptedAt := time.Now().UTC()
+		invite := &OrganizationInviteDTO{
+			Id:             "invite-id",
+			OrganizationId: "org-123",
+			Email:          "user@example.com",
+			Token:          token,
+			InvitedBy:      "inviter-789",
+			Status:         InviteStatusAccepted,
+			CreatedAt:      time.Now().UTC(),
+			ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
+			AcceptedAt:     &acceptedAt,
+		}
+
+		mockRepo.EXPECT().
+			GetInviteByToken(ctx, token).
+			Return(invite, nil)
+
+		err := svc.RespondToInvitation(ctx, token, userId, true)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeFailedPrecondition {
+			t.Errorf("expected CodeFailedPrecondition, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("invite expired", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		token := "expired-token"
+		userId := "user-456"
+
+		invite := &OrganizationInviteDTO{
+			Id:             "invite-id",
+			OrganizationId: "org-123",
+			Email:          "user@example.com",
+			Token:          token,
+			InvitedBy:      "inviter-789",
+			Status:         InviteStatusPending,
+			CreatedAt:      time.Now().UTC().AddDate(0, 0, -14),
+			ExpiresAt:      time.Now().UTC().AddDate(0, 0, -7), // Expired 7 days ago
+		}
+
+		mockRepo.EXPECT().
+			GetInviteByToken(ctx, token).
+			Return(invite, nil)
+
+		mockRepo.EXPECT().
+			UpdateInviteStatus(ctx, invite.Id, InviteStatusExpired, nil).
+			Return(nil)
+
+		err := svc.RespondToInvitation(ctx, token, userId, true)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeFailedPrecondition {
+			t.Errorf("expected CodeFailedPrecondition, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("member already exists", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		token := "valid-token-123"
+		userId := "user-456"
+
+		invite := &OrganizationInviteDTO{
+			Id:             "invite-id",
+			OrganizationId: "org-123",
+			Email:          "user@example.com",
+			Token:          token,
+			InvitedBy:      "inviter-789",
+			Status:         InviteStatusPending,
+			CreatedAt:      time.Now().UTC(),
+			ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
+		}
+
+		mockRepo.EXPECT().
+			GetInviteByToken(ctx, token).
+			Return(invite, nil)
+
+		mockRepo.EXPECT().
+			UpdateInviteStatus(ctx, invite.Id, InviteStatusAccepted, gomock.Any()).
+			Return(nil)
+
+		mockRepo.EXPECT().
+			AddMember(ctx, gomock.Any()).
+			Return(ErrMemberAlreadyExists)
+
+		err := svc.RespondToInvitation(ctx, token, userId, true)
+		if err != nil {
+			t.Fatalf("expected no error when member already exists, got %v", err)
+		}
+	})
+
+	t.Run("update status error", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		token := "valid-token-123"
+		userId := "user-456"
+
+		invite := &OrganizationInviteDTO{
+			Id:             "invite-id",
+			OrganizationId: "org-123",
+			Email:          "user@example.com",
+			Token:          token,
+			InvitedBy:      "inviter-789",
+			Status:         InviteStatusPending,
+			CreatedAt:      time.Now().UTC(),
+			ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
+		}
+
+		mockRepo.EXPECT().
+			GetInviteByToken(ctx, token).
+			Return(invite, nil)
+
+		mockRepo.EXPECT().
+			UpdateInviteStatus(ctx, invite.Id, InviteStatusAccepted, gomock.Any()).
+			Return(connect.NewError(connect.CodeInternal, errors.New("database error")))
+
+		err := svc.RespondToInvitation(ctx, token, userId, true)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeInternal {
+			t.Errorf("expected CodeInternal, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("add member error", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		token := "valid-token-123"
+		userId := "user-456"
+
+		invite := &OrganizationInviteDTO{
+			Id:             "invite-id",
+			OrganizationId: "org-123",
+			Email:          "user@example.com",
+			Token:          token,
+			InvitedBy:      "inviter-789",
+			Status:         InviteStatusPending,
+			CreatedAt:      time.Now().UTC(),
+			ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
+		}
+
+		mockRepo.EXPECT().
+			GetInviteByToken(ctx, token).
+			Return(invite, nil)
+
+		mockRepo.EXPECT().
+			UpdateInviteStatus(ctx, invite.Id, InviteStatusAccepted, gomock.Any()).
+			Return(nil)
+
+		mockRepo.EXPECT().
+			AddMember(ctx, gomock.Any()).
+			Return(connect.NewError(connect.CodeInternal, errors.New("database error")))
+
+		err := svc.RespondToInvitation(ctx, token, userId, true)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeInternal {
+			t.Errorf("expected CodeInternal, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("invite cancelled", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		token := "cancelled-token"
+		userId := "user-456"
+
+		invite := &OrganizationInviteDTO{
+			Id:             "invite-id",
+			OrganizationId: "org-123",
+			Email:          "user@example.com",
+			Token:          token,
+			InvitedBy:      "inviter-789",
+			Status:         InviteStatusCancelled,
+			CreatedAt:      time.Now().UTC(),
+			ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
+		}
+
+		mockRepo.EXPECT().
+			GetInviteByToken(ctx, token).
+			Return(invite, nil)
+
+		err := svc.RespondToInvitation(ctx, token, userId, true)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeFailedPrecondition {
+			t.Errorf("expected CodeFailedPrecondition, got %v", connectErr.Code())
+		}
+	})
 }
 
-func TestRespondToInvitation_RejectSuccess(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+func TestDeleteOrganization(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		svc, mockRepo, mockRegistry, _, ctx := newTestService(t)
+		orgID := "org-123"
+		userID := "user-123"
 
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
+		org := &OrganizationDTO{
+			Id:        orgID,
+			Name:      "test-org",
+			CreatedBy: userID,
+		}
 
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(org, nil)
 
-	ctx := context.Background()
-	token := "valid-token-123"
-	userId := "user-456"
+		mockRegistry.EXPECT().
+			DeleteRepositoriesByOrganization(ctx, orgID).
+			Return(nil)
 
-	invite := &OrganizationInviteDTO{
-		Id:             "invite-id",
-		OrganizationId: "org-123",
-		Email:          "user@example.com",
-		Token:          token,
-		InvitedBy:      "inviter-789",
-		Status:         InviteStatusPending,
-		CreatedAt:      time.Now().UTC(),
-		ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
-	}
+		mockRepo.EXPECT().
+			DeleteOrganization(ctx, orgID).
+			Return(nil)
 
-	mockRepo.EXPECT().
-		GetInviteByToken(ctx, token).
-		Return(invite, nil)
+		err := svc.DeleteOrganization(ctx, orgID, userID)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
 
-	mockRepo.EXPECT().
-		UpdateInviteStatus(ctx, invite.Id, InviteStatusCancelled, nil).
-		Return(nil)
+	t.Run("organization not found", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "non-existent-org"
+		userID := "user-123"
 
-	err := svc.RespondToInvitation(ctx, token, userId, false)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(nil, ErrOrganizationNotFound)
+
+		err := svc.DeleteOrganization(ctx, orgID, userID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeNotFound {
+			t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("permission denied", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		userID := "user-123"
+		otherUserID := "user-456"
+
+		org := &OrganizationDTO{
+			Id:        orgID,
+			Name:      "test-org",
+			CreatedBy: otherUserID, // Different user created it
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(org, nil)
+
+		err := svc.DeleteOrganization(ctx, orgID, userID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodePermissionDenied {
+			t.Errorf("expected CodePermissionDenied, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("repository error", func(t *testing.T) {
+		svc, mockRepo, mockRegistry, _, ctx := newTestService(t)
+		orgID := "org-123"
+		userID := "user-123"
+
+		org := &OrganizationDTO{
+			Id:        orgID,
+			Name:      "test-org",
+			CreatedBy: userID,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(org, nil)
+
+		mockRegistry.EXPECT().
+			DeleteRepositoriesByOrganization(ctx, orgID).
+			Return(nil)
+
+		mockRepo.EXPECT().
+			DeleteOrganization(ctx, orgID).
+			Return(connect.NewError(connect.CodeInternal, errors.New("database error")))
+
+		err := svc.DeleteOrganization(ctx, orgID, userID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeInternal {
+			t.Errorf("expected CodeInternal, got %v", connectErr.Code())
+		}
+	})
 }
 
-func TestRespondToInvitation_InviteNotFound(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	token := "invalid-token"
-	userId := "user-456"
-
-	mockRepo.EXPECT().
-		GetInviteByToken(ctx, token).
-		Return(nil, ErrInviteNotFound)
-
-	err := svc.RespondToInvitation(ctx, token, userId, true)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	if !errors.Is(err, ErrInviteNotFound) {
-		t.Errorf("expected ErrInviteNotFound, got %v", err)
-	}
-}
-
-func TestRespondToInvitation_InviteAlreadyAccepted(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	token := "valid-token-123"
-	userId := "user-456"
-
-	acceptedAt := time.Now().UTC()
-	invite := &OrganizationInviteDTO{
-		Id:             "invite-id",
-		OrganizationId: "org-123",
-		Email:          "user@example.com",
-		Token:          token,
-		InvitedBy:      "inviter-789",
-		Status:         InviteStatusAccepted,
-		CreatedAt:      time.Now().UTC(),
-		ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
-		AcceptedAt:     &acceptedAt,
-	}
-
-	mockRepo.EXPECT().
-		GetInviteByToken(ctx, token).
-		Return(invite, nil)
-
-	err := svc.RespondToInvitation(ctx, token, userId, true)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("expected connect.Error, got %T", err)
-	}
-
-	if connectErr.Code() != connect.CodeFailedPrecondition {
-		t.Errorf("expected CodeFailedPrecondition, got %v", connectErr.Code())
-	}
-}
-
-func TestRespondToInvitation_InviteExpired(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	token := "expired-token"
-	userId := "user-456"
-
-	invite := &OrganizationInviteDTO{
-		Id:             "invite-id",
-		OrganizationId: "org-123",
-		Email:          "user@example.com",
-		Token:          token,
-		InvitedBy:      "inviter-789",
-		Status:         InviteStatusPending,
-		CreatedAt:      time.Now().UTC().AddDate(0, 0, -14),
-		ExpiresAt:      time.Now().UTC().AddDate(0, 0, -7), // Expired 7 days ago
-	}
-
-	mockRepo.EXPECT().
-		GetInviteByToken(ctx, token).
-		Return(invite, nil)
-
-	mockRepo.EXPECT().
-		UpdateInviteStatus(ctx, invite.Id, InviteStatusExpired, nil).
-		Return(nil)
-
-	err := svc.RespondToInvitation(ctx, token, userId, true)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("expected connect.Error, got %T", err)
-	}
-
-	if connectErr.Code() != connect.CodeFailedPrecondition {
-		t.Errorf("expected CodeFailedPrecondition, got %v", connectErr.Code())
-	}
-}
-
-func TestRespondToInvitation_MemberAlreadyExists(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	token := "valid-token-123"
-	userId := "user-456"
-
-	invite := &OrganizationInviteDTO{
-		Id:             "invite-id",
-		OrganizationId: "org-123",
-		Email:          "user@example.com",
-		Token:          token,
-		InvitedBy:      "inviter-789",
-		Status:         InviteStatusPending,
-		CreatedAt:      time.Now().UTC(),
-		ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
-	}
-
-	mockRepo.EXPECT().
-		GetInviteByToken(ctx, token).
-		Return(invite, nil)
-
-	mockRepo.EXPECT().
-		UpdateInviteStatus(ctx, invite.Id, InviteStatusAccepted, gomock.Any()).
-		Return(nil)
-
-	mockRepo.EXPECT().
-		AddMember(ctx, gomock.Any()).
-		Return(ErrMemberAlreadyExists)
-
-	err := svc.RespondToInvitation(ctx, token, userId, true)
-	if err != nil {
-		t.Fatalf("expected no error when member already exists, got %v", err)
-	}
-}
-
-func TestRespondToInvitation_UpdateStatusError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	token := "valid-token-123"
-	userId := "user-456"
-
-	invite := &OrganizationInviteDTO{
-		Id:             "invite-id",
-		OrganizationId: "org-123",
-		Email:          "user@example.com",
-		Token:          token,
-		InvitedBy:      "inviter-789",
-		Status:         InviteStatusPending,
-		CreatedAt:      time.Now().UTC(),
-		ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
-	}
-
-	mockRepo.EXPECT().
-		GetInviteByToken(ctx, token).
-		Return(invite, nil)
-
-	mockRepo.EXPECT().
-		UpdateInviteStatus(ctx, invite.Id, InviteStatusAccepted, gomock.Any()).
-		Return(connect.NewError(connect.CodeInternal, errors.New("database error")))
-
-	err := svc.RespondToInvitation(ctx, token, userId, true)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("expected connect.Error, got %T", err)
-	}
-
-	if connectErr.Code() != connect.CodeInternal {
-		t.Errorf("expected CodeInternal, got %v", connectErr.Code())
-	}
-}
-
-func TestRespondToInvitation_AddMemberError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	token := "valid-token-123"
-	userId := "user-456"
-
-	invite := &OrganizationInviteDTO{
-		Id:             "invite-id",
-		OrganizationId: "org-123",
-		Email:          "user@example.com",
-		Token:          token,
-		InvitedBy:      "inviter-789",
-		Status:         InviteStatusPending,
-		CreatedAt:      time.Now().UTC(),
-		ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
-	}
-
-	mockRepo.EXPECT().
-		GetInviteByToken(ctx, token).
-		Return(invite, nil)
-
-	mockRepo.EXPECT().
-		UpdateInviteStatus(ctx, invite.Id, InviteStatusAccepted, gomock.Any()).
-		Return(nil)
-
-	mockRepo.EXPECT().
-		AddMember(ctx, gomock.Any()).
-		Return(connect.NewError(connect.CodeInternal, errors.New("database error")))
-
-	err := svc.RespondToInvitation(ctx, token, userId, true)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("expected connect.Error, got %T", err)
-	}
-
-	if connectErr.Code() != connect.CodeInternal {
-		t.Errorf("expected CodeInternal, got %v", connectErr.Code())
-	}
-}
-
-func TestRespondToInvitation_InviteCancelled(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	token := "cancelled-token"
-	userId := "user-456"
-
-	invite := &OrganizationInviteDTO{
-		Id:             "invite-id",
-		OrganizationId: "org-123",
-		Email:          "user@example.com",
-		Token:          token,
-		InvitedBy:      "inviter-789",
-		Status:         InviteStatusCancelled,
-		CreatedAt:      time.Now().UTC(),
-		ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
-	}
-
-	mockRepo.EXPECT().
-		GetInviteByToken(ctx, token).
-		Return(invite, nil)
-
-	err := svc.RespondToInvitation(ctx, token, userId, true)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("expected connect.Error, got %T", err)
-	}
-
-	if connectErr.Code() != connect.CodeFailedPrecondition {
-		t.Errorf("expected CodeFailedPrecondition, got %v", connectErr.Code())
-	}
-}
-
-func TestDeleteOrganization_Success(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	orgID := "org-123"
-	userID := "user-123"
-
-	org := &OrganizationDTO{
-		Id:        orgID,
-		Name:      "test-org",
-		CreatedBy: userID,
-	}
-
-	mockRepo.EXPECT().
-		GetOrganizationById(ctx, orgID).
-		Return(org, nil)
-
-	mockRegistry.EXPECT().
-		DeleteRepositoriesByOrganization(ctx, orgID).
-		Return(nil)
-
-	mockRepo.EXPECT().
-		DeleteOrganization(ctx, orgID).
-		Return(nil)
-
-	err := svc.DeleteOrganization(ctx, orgID, userID)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-}
-
-func TestDeleteOrganization_OrganizationNotFound(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	orgID := "non-existent-org"
-	userID := "user-123"
-
-	mockRepo.EXPECT().
-		GetOrganizationById(ctx, orgID).
-		Return(nil, ErrOrganizationNotFound)
-
-	err := svc.DeleteOrganization(ctx, orgID, userID)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("expected connect.Error, got %T", err)
-	}
-
-	if connectErr.Code() != connect.CodeNotFound {
-		t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
-	}
-}
-
-func TestDeleteOrganization_PermissionDenied(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	orgID := "org-123"
-	userID := "user-123"
-	otherUserID := "user-456"
-
-	org := &OrganizationDTO{
-		Id:        orgID,
-		Name:      "test-org",
-		CreatedBy: otherUserID, // Different user created it
-	}
-
-	mockRepo.EXPECT().
-		GetOrganizationById(ctx, orgID).
-		Return(org, nil)
-
-	err := svc.DeleteOrganization(ctx, orgID, userID)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("expected connect.Error, got %T", err)
-	}
-
-	if connectErr.Code() != connect.CodePermissionDenied {
-		t.Errorf("expected CodePermissionDenied, got %v", connectErr.Code())
-	}
-}
-
-func TestDeleteOrganization_RepositoryError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockRepo := NewMockRepository(ctrl)
-	mockRegistry := registry.NewMockService(ctrl)
-	mockEmail := email.NewMockService(ctrl)
-
-	svc := NewService(mockRepo, mockRegistry, mockEmail)
-
-	ctx := context.Background()
-	orgID := "org-123"
-	userID := "user-123"
-
-	org := &OrganizationDTO{
-		Id:        orgID,
-		Name:      "test-org",
-		CreatedBy: userID,
-	}
-
-	mockRepo.EXPECT().
-		GetOrganizationById(ctx, orgID).
-		Return(org, nil)
-
-	mockRegistry.EXPECT().
-		DeleteRepositoriesByOrganization(ctx, orgID).
-		Return(nil)
-
-	mockRepo.EXPECT().
-		DeleteOrganization(ctx, orgID).
-		Return(connect.NewError(connect.CodeInternal, errors.New("database error")))
-
-	err := svc.DeleteOrganization(ctx, orgID, userID)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		t.Fatalf("expected connect.Error, got %T", err)
-	}
-
-	if connectErr.Code() != connect.CodeInternal {
-		t.Errorf("expected CodeInternal, got %v", connectErr.Code())
-	}
+func TestUpdateOrganization(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		userID := "user-123"
+
+		existingOrg := &OrganizationDTO{
+			Id:         orgID,
+			Name:       "old-name",
+			Visibility: proto.VisibilityPrivate,
+			CreatedBy:  userID,
+		}
+
+		req := &organizationv1.UpdateOrganizationRequest{
+			Id:         orgID,
+			Name:       "new-name",
+			Visibility: shared.Visibility_VISIBILITY_PUBLIC,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			UpdateOrganization(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, org *OrganizationDTO) error {
+				if org.Id != orgID {
+					t.Errorf("expected id %s, got %s", orgID, org.Id)
+				}
+				if org.Name != "new-name" {
+					t.Errorf("expected name 'new-name', got %s", org.Name)
+				}
+				if org.Visibility != proto.VisibilityPublic {
+					t.Errorf("expected visibility 'public', got %s", org.Visibility)
+				}
+				return nil
+			})
+
+		err := svc.UpdateOrganization(ctx, req, userID)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("permission denied when not creator", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		creatorID := "creator-123"
+		otherUserID := "user-456"
+
+		existingOrg := &OrganizationDTO{
+			Id:         orgID,
+			Name:       "org-name",
+			Visibility: proto.VisibilityPrivate,
+			CreatedBy:  creatorID,
+		}
+
+		req := &organizationv1.UpdateOrganizationRequest{
+			Id:   orgID,
+			Name: "updated-name",
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		err := svc.UpdateOrganization(ctx, req, otherUserID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodePermissionDenied {
+			t.Errorf("expected CodePermissionDenied, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("name already exists", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		userID := "user-123"
+
+		existingOrg := &OrganizationDTO{
+			Id:         orgID,
+			Name:       "old-name",
+			Visibility: proto.VisibilityPrivate,
+			CreatedBy:  userID,
+		}
+
+		req := &organizationv1.UpdateOrganizationRequest{
+			Id:   orgID,
+			Name: "conflict-name",
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		// Simulate the repository enforcing name uniqueness at the database level.
+		mockRepo.EXPECT().
+			UpdateOrganization(ctx, gomock.Any()).
+			Return(ErrOrganizationAlreadyExists)
+
+		err := svc.UpdateOrganization(ctx, req, userID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeAlreadyExists {
+			t.Errorf("expected CodeAlreadyExists, got %v", connectErr.Code())
+		}
+	})
 }

@@ -1,6 +1,7 @@
 package organization
 
 import (
+	"hasir-api/pkg/proto"
 	"testing"
 	"time"
 
@@ -80,7 +81,7 @@ func createOrganizationsTable(t *testing.T, connString string) {
 	require.NoError(t, err)
 }
 
-func createTestOrganization(t *testing.T, name string, visibility Visibility) *OrganizationDTO {
+func createTestOrganization(t *testing.T, name string, visibility proto.Visibility) *OrganizationDTO {
 	t.Helper()
 	now := time.Now().UTC()
 	return &OrganizationDTO{
@@ -108,7 +109,7 @@ func TestPgRepository_CreateOrganization(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		testOrg := createTestOrganization(t, "test-org-"+uuid.NewString(), VisibilityPrivate)
+		testOrg := createTestOrganization(t, "test-org-"+uuid.NewString(), proto.VisibilityPrivate)
 
 		err = repo.CreateOrganization(t.Context(), testOrg)
 		require.NoError(t, err)
@@ -146,7 +147,7 @@ func TestPgRepository_CreateOrganization(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		testOrg := createTestOrganization(t, "public-org-"+uuid.NewString(), VisibilityPublic)
+		testOrg := createTestOrganization(t, "public-org-"+uuid.NewString(), proto.VisibilityPublic)
 
 		err = repo.CreateOrganization(t.Context(), testOrg)
 		require.NoError(t, err)
@@ -182,8 +183,8 @@ func TestPgRepository_CreateOrganization(t *testing.T) {
 		defer pool.Close()
 
 		orgName := "duplicate-org-" + uuid.NewString()
-		testOrg1 := createTestOrganization(t, orgName, VisibilityPrivate)
-		testOrg2 := createTestOrganization(t, orgName, VisibilityPrivate)
+		testOrg1 := createTestOrganization(t, orgName, proto.VisibilityPrivate)
+		testOrg2 := createTestOrganization(t, orgName, proto.VisibilityPrivate)
 
 		err = repo.CreateOrganization(t.Context(), testOrg1)
 		require.NoError(t, err)
@@ -207,7 +208,7 @@ func TestPgRepository_CreateOrganization(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		testOrg := createTestOrganization(t, "full-fields-org-"+uuid.NewString(), VisibilityPublic)
+		testOrg := createTestOrganization(t, "full-fields-org-"+uuid.NewString(), proto.VisibilityPublic)
 
 		err = repo.CreateOrganization(t.Context(), testOrg)
 		require.NoError(t, err)
@@ -249,7 +250,7 @@ func TestPgRepository_GetOrganizationByName(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		testOrg := createTestOrganization(t, "get-by-name-"+uuid.NewString(), VisibilityPrivate)
+		testOrg := createTestOrganization(t, "get-by-name-"+uuid.NewString(), proto.VisibilityPrivate)
 
 		err = repo.CreateOrganization(t.Context(), testOrg)
 		require.NoError(t, err)
@@ -259,7 +260,7 @@ func TestPgRepository_GetOrganizationByName(t *testing.T) {
 		require.NotNil(t, found)
 		assert.Equal(t, testOrg.Id, found.Id)
 		assert.Equal(t, testOrg.Name, found.Name)
-		assert.Equal(t, VisibilityPrivate, found.Visibility)
+		assert.Equal(t, proto.VisibilityPrivate, found.Visibility)
 	})
 
 	t.Run("not found", func(t *testing.T) {
@@ -296,7 +297,7 @@ func TestPgRepository_GetOrganizationByName(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		testOrg := createTestOrganization(t, "deleted-org-"+uuid.NewString(), VisibilityPrivate)
+		testOrg := createTestOrganization(t, "deleted-org-"+uuid.NewString(), proto.VisibilityPrivate)
 
 		err = repo.CreateOrganization(t.Context(), testOrg)
 		require.NoError(t, err)
@@ -328,7 +329,7 @@ func TestPgRepository_GetOrganizationByName(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		testOrg := createTestOrganization(t, "full-fields-org-"+uuid.NewString(), VisibilityPublic)
+		testOrg := createTestOrganization(t, "full-fields-org-"+uuid.NewString(), proto.VisibilityPublic)
 
 		err = repo.CreateOrganization(t.Context(), testOrg)
 		require.NoError(t, err)
@@ -339,7 +340,7 @@ func TestPgRepository_GetOrganizationByName(t *testing.T) {
 
 		assert.Equal(t, testOrg.Id, found.Id)
 		assert.Equal(t, testOrg.Name, found.Name)
-		assert.Equal(t, VisibilityPublic, found.Visibility)
+		assert.Equal(t, proto.VisibilityPublic, found.Visibility)
 		assert.Equal(t, testOrg.CreatedBy, found.CreatedBy)
 		assert.WithinDuration(t, time.Now().UTC(), found.CreatedAt, 5*time.Second)
 	})
@@ -361,8 +362,8 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		testOrg1 := createTestOrganization(t, "list-org-1-"+uuid.NewString(), VisibilityPrivate)
-		testOrg2 := createTestOrganization(t, "list-org-2-"+uuid.NewString(), VisibilityPublic)
+		testOrg1 := createTestOrganization(t, "list-org-1-"+uuid.NewString(), proto.VisibilityPrivate)
+		testOrg2 := createTestOrganization(t, "list-org-2-"+uuid.NewString(), proto.VisibilityPublic)
 
 		err = repo.CreateOrganization(t.Context(), testOrg1)
 		require.NoError(t, err)
@@ -381,12 +382,12 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 			if o.Id == testOrg1.Id {
 				foundOrg1 = true
 				assert.Equal(t, testOrg1.Name, o.Name)
-				assert.Equal(t, VisibilityPrivate, o.Visibility)
+				assert.Equal(t, proto.VisibilityPrivate, o.Visibility)
 			}
 			if o.Id == testOrg2.Id {
 				foundOrg2 = true
 				assert.Equal(t, testOrg2.Name, o.Name)
-				assert.Equal(t, VisibilityPublic, o.Visibility)
+				assert.Equal(t, proto.VisibilityPublic, o.Visibility)
 			}
 		}
 		assert.True(t, foundOrg1, "testOrg1 should be found in results")
@@ -429,8 +430,8 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		activeOrg := createTestOrganization(t, "active-org-"+uuid.NewString(), VisibilityPrivate)
-		deletedOrg := createTestOrganization(t, "deleted-org-"+uuid.NewString(), VisibilityPrivate)
+		activeOrg := createTestOrganization(t, "active-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		deletedOrg := createTestOrganization(t, "deleted-org-"+uuid.NewString(), proto.VisibilityPrivate)
 
 		err = repo.CreateOrganization(t.Context(), activeOrg)
 		require.NoError(t, err)
@@ -468,8 +469,8 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		olderOrg := createTestOrganization(t, "older-org-"+uuid.NewString(), VisibilityPrivate)
-		newerOrg := createTestOrganization(t, "newer-org-"+uuid.NewString(), VisibilityPrivate)
+		olderOrg := createTestOrganization(t, "older-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		newerOrg := createTestOrganization(t, "newer-org-"+uuid.NewString(), proto.VisibilityPrivate)
 
 		err = repo.CreateOrganization(t.Context(), olderOrg)
 		require.NoError(t, err)
@@ -503,7 +504,7 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		testOrg := createTestOrganization(t, "full-fields-org-"+uuid.NewString(), VisibilityPublic)
+		testOrg := createTestOrganization(t, "full-fields-org-"+uuid.NewString(), proto.VisibilityPublic)
 
 		err = repo.CreateOrganization(t.Context(), testOrg)
 		require.NoError(t, err)
@@ -516,7 +517,7 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 		found := (*orgs)[0]
 		assert.Equal(t, testOrg.Id, found.Id)
 		assert.Equal(t, testOrg.Name, found.Name)
-		assert.Equal(t, VisibilityPublic, found.Visibility)
+		assert.Equal(t, proto.VisibilityPublic, found.Visibility)
 		assert.Equal(t, testOrg.CreatedBy, found.CreatedBy)
 		assert.WithinDuration(t, time.Now().UTC(), found.CreatedAt, 5*time.Second)
 	})
@@ -1005,7 +1006,7 @@ func TestPgRepository_DeleteOrganization(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		org := createTestOrganization(t, "test-org-"+uuid.NewString(), VisibilityPrivate)
+		org := createTestOrganization(t, "test-org-"+uuid.NewString(), proto.VisibilityPrivate)
 		err = repo.CreateOrganization(t.Context(), org)
 		require.NoError(t, err)
 
@@ -1069,7 +1070,7 @@ func TestPgRepository_DeleteOrganization(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		org := createTestOrganization(t, "test-org-"+uuid.NewString(), VisibilityPrivate)
+		org := createTestOrganization(t, "test-org-"+uuid.NewString(), proto.VisibilityPrivate)
 		err = repo.CreateOrganization(t.Context(), org)
 		require.NoError(t, err)
 
@@ -1096,8 +1097,8 @@ func TestPgRepository_DeleteOrganization(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		activeOrg := createTestOrganization(t, "active-org-"+uuid.NewString(), VisibilityPrivate)
-		deletedOrg := createTestOrganization(t, "deleted-org-"+uuid.NewString(), VisibilityPrivate)
+		activeOrg := createTestOrganization(t, "active-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		deletedOrg := createTestOrganization(t, "deleted-org-"+uuid.NewString(), proto.VisibilityPrivate)
 
 		err = repo.CreateOrganization(t.Context(), activeOrg)
 		require.NoError(t, err)
@@ -1130,8 +1131,8 @@ func TestPgRepository_DeleteOrganization(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		org1 := createTestOrganization(t, "org-1-"+uuid.NewString(), VisibilityPrivate)
-		org2 := createTestOrganization(t, "org-2-"+uuid.NewString(), VisibilityPrivate)
+		org1 := createTestOrganization(t, "org-1-"+uuid.NewString(), proto.VisibilityPrivate)
+		org2 := createTestOrganization(t, "org-2-"+uuid.NewString(), proto.VisibilityPrivate)
 
 		err = repo.CreateOrganization(t.Context(), org1)
 		require.NoError(t, err)

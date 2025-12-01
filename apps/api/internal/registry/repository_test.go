@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"go.opentelemetry.io/otel/trace/noop"
+
+	"hasir-api/pkg/proto"
 )
 
 const (
@@ -91,7 +93,7 @@ func createTestRepository(t *testing.T, name string) *RepositoryDTO {
 		Name:       name,
 		Path:       "/test/path/" + name,
 		CreatedBy:  uuid.NewString(),
-		Visibility: VisibilityPrivate,
+		Visibility: proto.VisibilityPrivate,
 		CreatedAt:  now,
 		UpdatedAt:  &now,
 	}
@@ -195,7 +197,7 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 		defer pool.Close()
 
 		testRepo := createTestRepository(t, "get-by-name-"+uuid.NewString())
-		testRepo.Visibility = VisibilityPublic
+		testRepo.Visibility = proto.VisibilityPublic
 
 		err = repo.CreateRepository(t.Context(), testRepo)
 		require.NoError(t, err)
@@ -276,7 +278,7 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 		defer pool.Close()
 
 		testRepo := createTestRepository(t, "full-fields-repo-"+uuid.NewString())
-		testRepo.Visibility = VisibilityPublic
+		testRepo.Visibility = proto.VisibilityPublic
 
 		err = repo.CreateRepository(t.Context(), testRepo)
 		require.NoError(t, err)
@@ -313,7 +315,7 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 
 		testRepo1 := createTestRepository(t, "list-repo-1-"+uuid.NewString())
 		testRepo2 := createTestRepository(t, "list-repo-2-"+uuid.NewString())
-		testRepo2.Visibility = VisibilityPublic
+		testRepo2.Visibility = proto.VisibilityPublic
 
 		err = repo.CreateRepository(t.Context(), testRepo1)
 		require.NoError(t, err)
@@ -455,7 +457,7 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 		defer pool.Close()
 
 		testRepo := createTestRepository(t, "full-fields-repo-"+uuid.NewString())
-		testRepo.Visibility = VisibilityPublic
+		testRepo.Visibility = proto.VisibilityPublic
 
 		err = repo.CreateRepository(t.Context(), testRepo)
 		require.NoError(t, err)
