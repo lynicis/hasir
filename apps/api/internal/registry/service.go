@@ -45,6 +45,11 @@ func (s *service) CreateRepository(
 	repoName := req.GetName()
 	organizationId := req.GetOrganizationId()
 
+	visibility, ok := protoVisibilityMap[req.GetVisibility()]
+	if !ok {
+		visibility = VisibilityPrivate
+	}
+
 	createdBy, err := auth.MustGetUserID(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get repository owner from context: %w", err)
@@ -74,6 +79,7 @@ func (s *service) CreateRepository(
 		CreatedBy:      createdBy,
 		OrganizationId: organizationId,
 		Path:           repoPath,
+		Visibility:     visibility,
 		CreatedAt:      now,
 		UpdatedAt:      &now,
 	}

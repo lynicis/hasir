@@ -13,6 +13,7 @@ import (
 	"hasir-api/pkg/auth"
 
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
+	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
 )
 
 func TestNewService(t *testing.T) {
@@ -28,7 +29,7 @@ func TestNewService(t *testing.T) {
 }
 
 func TestService_CreateRepository(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
+	t.Run("success with default visibility (private)", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
 		tmpDir := t.TempDir()
@@ -48,6 +49,7 @@ func TestService_CreateRepository(t *testing.T) {
 				require.Equal(t, repoName, repo.Name)
 				require.Equal(t, filepath.Join(tmpDir, repo.Id), repo.Path)
 				require.Equal(t, userID, repo.CreatedBy)
+				require.Equal(t, VisibilityPrivate, repo.Visibility)
 				require.NotEmpty(t, repo.Id)
 				return nil
 			})
@@ -66,6 +68,38 @@ func TestService_CreateRepository(t *testing.T) {
 		repoPath := filepath.Join(tmpDir, dirs[0].Name())
 		require.DirExists(t, repoPath)
 		require.FileExists(t, filepath.Join(repoPath, "HEAD"))
+	})
+
+	t.Run("success with explicit public visibility", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		tmpDir := t.TempDir()
+
+		svc := &service{
+			rootPath:   tmpDir,
+			repository: mockRepo,
+		}
+
+		const repoName = "public-repo"
+		const userID = "test-user-id"
+		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
+
+		mockRepo.EXPECT().
+			CreateRepository(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, repo *RepositoryDTO) error {
+				require.Equal(t, repoName, repo.Name)
+				require.Equal(t, filepath.Join(tmpDir, repo.Id), repo.Path)
+				require.Equal(t, userID, repo.CreatedBy)
+				require.Equal(t, VisibilityPublic, repo.Visibility)
+				require.NotEmpty(t, repo.Id)
+				return nil
+			})
+
+		err := svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
+			Name:       repoName,
+			Visibility: shared.Visibility_VISIBILITY_PUBLIC,
+		})
+		require.NoError(t, err)
 	})
 
 	t.Run("database save error rolls back git directory", func(t *testing.T) {

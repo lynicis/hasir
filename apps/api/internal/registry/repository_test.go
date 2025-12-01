@@ -59,12 +59,21 @@ func createRepositoriesTable(t *testing.T, connString string) {
 		require.NoError(t, err)
 	}()
 
+	enumSQL := `DO $$ BEGIN
+		CREATE TYPE visibility AS ENUM ('private', 'public');
+	EXCEPTION
+		WHEN duplicate_object THEN null;
+	END $$`
+	_, err = conn.Exec(t.Context(), enumSQL)
+	require.NoError(t, err)
+
 	sql := `CREATE TABLE repositories (
 		id VARCHAR PRIMARY KEY,
 		name VARCHAR NOT NULL,
 		created_by VARCHAR NOT NULL,
 		organization_id VARCHAR,
 		path VARCHAR NOT NULL,
+		visibility visibility NOT NULL DEFAULT 'private',
 		created_at TIMESTAMP NOT NULL,
 		updated_at TIMESTAMP NOT NULL,
 		deleted_at TIMESTAMP
@@ -78,12 +87,13 @@ func createTestRepository(t *testing.T, name string) *RepositoryDTO {
 	t.Helper()
 	now := time.Now().UTC()
 	return &RepositoryDTO{
-		Id:        uuid.NewString(),
-		Name:      name,
-		Path:      "/test/path/" + name,
-		CreatedBy: uuid.NewString(),
-		CreatedAt: now,
-		UpdatedAt: &now,
+		Id:         uuid.NewString(),
+		Name:       name,
+		Path:       "/test/path/" + name,
+		CreatedBy:  uuid.NewString(),
+		Visibility: VisibilityPrivate,
+		CreatedAt:  now,
+		UpdatedAt:  &now,
 	}
 }
 
@@ -151,17 +161,18 @@ func TestPgRepository_CreateRepository(t *testing.T) {
 			_ = conn.Close(t.Context())
 		}()
 
-		var dbId, dbName, dbOwnerId, dbPath string
+		var dbId, dbName, dbOwnerId, dbPath, dbVisibility string
 		var dbCreatedAt, dbUpdatedAt time.Time
 		err = conn.QueryRow(t.Context(),
-			"SELECT id, name, created_by, path, created_at, updated_at FROM repositories WHERE id = $1", testRepo.Id).
-			Scan(&dbId, &dbName, &dbOwnerId, &dbPath, &dbCreatedAt, &dbUpdatedAt)
+			"SELECT id, name, created_by, path, visibility, created_at, updated_at FROM repositories WHERE id = $1", testRepo.Id).
+			Scan(&dbId, &dbName, &dbOwnerId, &dbPath, &dbVisibility, &dbCreatedAt, &dbUpdatedAt)
 		require.NoError(t, err)
 
 		assert.Equal(t, testRepo.Id, dbId)
 		assert.Equal(t, testRepo.Name, dbName)
 		assert.Equal(t, testRepo.CreatedBy, dbOwnerId)
 		assert.Equal(t, testRepo.Path, dbPath)
+		assert.Equal(t, string(testRepo.Visibility), dbVisibility)
 		assert.WithinDuration(t, time.Now().UTC(), dbCreatedAt, 5*time.Second)
 		assert.WithinDuration(t, time.Now().UTC(), dbUpdatedAt, 5*time.Second)
 	})
@@ -184,6 +195,7 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 		defer pool.Close()
 
 		testRepo := createTestRepository(t, "get-by-name-"+uuid.NewString())
+		testRepo.Visibility = VisibilityPublic
 
 		err = repo.CreateRepository(t.Context(), testRepo)
 		require.NoError(t, err)
@@ -194,6 +206,7 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 		assert.Equal(t, testRepo.Id, found.Id)
 		assert.Equal(t, testRepo.Name, found.Name)
 		assert.Equal(t, testRepo.Path, found.Path)
+		assert.Equal(t, testRepo.Visibility, found.Visibility)
 	})
 
 	t.Run("not found", func(t *testing.T) {
@@ -263,6 +276,7 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 		defer pool.Close()
 
 		testRepo := createTestRepository(t, "full-fields-repo-"+uuid.NewString())
+		testRepo.Visibility = VisibilityPublic
 
 		err = repo.CreateRepository(t.Context(), testRepo)
 		require.NoError(t, err)
@@ -275,6 +289,7 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 		assert.Equal(t, testRepo.Name, found.Name)
 		assert.Equal(t, testRepo.CreatedBy, found.CreatedBy)
 		assert.Equal(t, testRepo.Path, found.Path)
+		assert.Equal(t, testRepo.Visibility, found.Visibility)
 		assert.WithinDuration(t, time.Now().UTC(), found.CreatedAt, 5*time.Second)
 		assert.WithinDuration(t, time.Now().UTC(), *found.UpdatedAt, 5*time.Second)
 	})
@@ -298,6 +313,7 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 
 		testRepo1 := createTestRepository(t, "list-repo-1-"+uuid.NewString())
 		testRepo2 := createTestRepository(t, "list-repo-2-"+uuid.NewString())
+		testRepo2.Visibility = VisibilityPublic
 
 		err = repo.CreateRepository(t.Context(), testRepo1)
 		require.NoError(t, err)
@@ -316,10 +332,12 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 			if r.Id == testRepo1.Id {
 				foundRepo1 = true
 				assert.Equal(t, testRepo1.Name, r.Name)
+				assert.Equal(t, testRepo1.Visibility, r.Visibility)
 			}
 			if r.Id == testRepo2.Id {
 				foundRepo2 = true
 				assert.Equal(t, testRepo2.Name, r.Name)
+				assert.Equal(t, testRepo2.Visibility, r.Visibility)
 			}
 		}
 		assert.True(t, foundRepo1, "testRepo1 should be found in results")
@@ -437,6 +455,7 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 		defer pool.Close()
 
 		testRepo := createTestRepository(t, "full-fields-repo-"+uuid.NewString())
+		testRepo.Visibility = VisibilityPublic
 
 		err = repo.CreateRepository(t.Context(), testRepo)
 		require.NoError(t, err)
@@ -451,6 +470,7 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 		assert.Equal(t, testRepo.Name, found.Name)
 		assert.Equal(t, testRepo.CreatedBy, found.CreatedBy)
 		assert.Equal(t, testRepo.Path, found.Path)
+		assert.Equal(t, testRepo.Visibility, found.Visibility)
 		assert.WithinDuration(t, time.Now().UTC(), found.CreatedAt, 5*time.Second)
 		assert.WithinDuration(t, time.Now().UTC(), *found.UpdatedAt, 5*time.Second)
 	})

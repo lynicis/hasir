@@ -112,9 +112,18 @@ func (r *PgRepository) CreateRepository(ctx context.Context, repo *RepositoryDTO
 	defer connection.Release()
 
 	now := time.Now().UTC()
-	sql := `INSERT INTO repositories (id, name, created_by, organization_id, path, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)`
-	if _, err = connection.Exec(ctx, sql, repo.Id, repo.Name, repo.CreatedBy, repo.OrganizationId, repo.Path, now, &now); err != nil {
+	sql := `INSERT INTO repositories (id, name, created_by, organization_id, path, visibility, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+	if _, err = connection.Exec(ctx, sql,
+		repo.Id,
+		repo.Name,
+		repo.CreatedBy,
+		repo.OrganizationId,
+		repo.Path,
+		repo.Visibility,
+		now,
+		&now,
+	); err != nil {
 		span.RecordError(err)
 
 		var pgErr *pgconn.PgError
