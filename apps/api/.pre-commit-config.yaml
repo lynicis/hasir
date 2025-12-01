@@ -1,0 +1,34 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        entry: gofmt
+        language: system
+        types: [go]
+
+      - id: goimports
+        name: goimports
+        entry: goimports
+        language: system
+        types: [go]
+        fail_fast: true
+
+      - id: go-test
+        name: go test ./...
+        entry: go test ./...
+        language: system
+        pass_filenames: false
+
+      - id: golangci-lint
+        name: golangci-lint run
+        entry: golangci-lint run ./...
+        language: system
+        pass_filenames: false

@@ -27,4 +27,3 @@
   "jwtSecret": "your-secret-key-here",
   "dashboardUrl": "http://localhost:3000"
 }
-

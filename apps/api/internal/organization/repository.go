@@ -126,7 +126,7 @@ func (r *PgRepository) CreateOrganization(ctx context.Context, org *Organization
 	}
 	defer connection.Release()
 
-	sql := `INSERT INTO organizations (id, name, visibility, created_by, created_at) 
+	sql := `INSERT INTO organizations (id, name, visibility, created_by, created_at)
 			VALUES (@Id, @Name, @Visibility, @CreatedBy, @CreatedAt)`
 	sqlArgs := pgx.NamedArgs{
 		"Id":         org.Id,
@@ -342,7 +342,7 @@ func (r *PgRepository) CreateInvite(ctx context.Context, invite *OrganizationInv
 	}
 	defer connection.Release()
 
-	sql := `INSERT INTO organization_invites (id, organization_id, email, token, invited_by, status, created_at, expires_at) 
+	sql := `INSERT INTO organization_invites (id, organization_id, email, token, invited_by, status, created_at, expires_at)
 			VALUES (@Id, @OrganizationId, @Email, @Token, @InvitedBy, @Status, @CreatedAt, @ExpiresAt)`
 	sqlArgs := pgx.NamedArgs{
 		"Id":             invite.Id,
@@ -466,7 +466,7 @@ func (r *PgRepository) AddMember(ctx context.Context, member *OrganizationMember
 	}
 	defer connection.Release()
 
-	sql := `INSERT INTO organization_members (id, organization_id, user_id, role, joined_at) 
+	sql := `INSERT INTO organization_members (id, organization_id, user_id, role, joined_at)
 			VALUES (@Id, @OrganizationId, @UserId, @Role, @JoinedAt)`
 	sqlArgs := pgx.NamedArgs{
 		"Id":             member.Id,
@@ -515,7 +515,7 @@ func (r *PgRepository) EnqueueEmailJobs(ctx context.Context, jobs []*EmailJobDTO
 
 	batch := &pgx.Batch{}
 	for _, job := range jobs {
-		sql := `INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at) 
+		sql := `INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
 				VALUES (@Id, @InviteId, @OrganizationId, @Email, @OrganizationName, @InviteToken, @Status, @Attempts, @MaxAttempts, @CreatedAt)`
 		sqlArgs := pgx.NamedArgs{
 			"Id":               job.Id,
@@ -578,13 +578,13 @@ func (r *PgRepository) GetPendingEmailJobs(ctx context.Context, limit int) ([]*E
 		}
 	}()
 
-	sql := `UPDATE email_jobs 
+	sql := `UPDATE email_jobs
 			SET status = 'processing', processed_at = NOW(), attempts = attempts + 1
 			WHERE id IN (
-				SELECT id FROM email_jobs 
-				WHERE status = 'pending' 
-				ORDER BY created_at ASC 
-				LIMIT $1 
+				SELECT id FROM email_jobs
+				WHERE status = 'pending'
+				ORDER BY created_at ASC
+				LIMIT $1
 				FOR UPDATE SKIP LOCKED
 			)
 			RETURNING id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at, processed_at, completed_at, error_message`

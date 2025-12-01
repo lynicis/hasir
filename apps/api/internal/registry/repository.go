@@ -116,7 +116,7 @@ func (r *PgRepository) CreateRepository(ctx context.Context, repo *RepositoryDTO
 		updatedAt = &now
 	}
 
-	sql := `INSERT INTO repositories (id, name, owner_id, organization_id, path, created_at, updated_at) 
+	sql := `INSERT INTO repositories (id, name, owner_id, organization_id, path, created_at, updated_at)
 			VALUES ($1, $2, $3, $4, $5, $6, $7)`
 	if _, err = connection.Exec(ctx, sql, repo.Id, repo.Name, repo.OwnerId, repo.OrganizationId, repo.Path, now, updatedAt); err != nil {
 		span.RecordError(err)

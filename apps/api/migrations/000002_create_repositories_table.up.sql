@@ -11,4 +11,3 @@ CREATE TABLE IF NOT EXISTS repositories (
 CREATE INDEX idx_repositories_name ON repositories(name);
 CREATE INDEX idx_repositories_owner_id ON repositories(owner_id);
 CREATE INDEX idx_repositories_deleted_at ON repositories(deleted_at);
-

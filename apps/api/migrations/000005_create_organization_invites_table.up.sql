@@ -16,4 +16,3 @@ CREATE INDEX idx_organization_invites_email ON organization_invites(email);
 CREATE INDEX idx_organization_invites_token ON organization_invites(token);
 CREATE INDEX idx_organization_invites_status ON organization_invites(status);
 CREATE INDEX idx_organization_invites_expires_at ON organization_invites(expires_at);
-

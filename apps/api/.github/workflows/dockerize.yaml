@@ -114,11 +114,11 @@ jobs:
         run: |
           CURRENT_TAG="${{ steps.tag.outputs.tag }}"
           PREV_TAG="${{ steps.prev_tag.outputs.prev_tag }}"
-          
+
           {
             echo "## What's Changed"
             echo ""
-            
+
             # Get commits between previous tag/commit and current tag
             if [ -n "$PREV_TAG" ]; then
               git log --pretty=format:"- %s (%h)" "${PREV_TAG}..${CURRENT_TAG}" 2>/dev/null || \
@@ -127,7 +127,7 @@ jobs:
             else
               echo "- Initial release"
             fi
-            
+
             echo ""
             if [ -n "$PREV_TAG" ]; then
               echo "**Full Changelog**: ${PREV_TAG}...${CURRENT_TAG}"
@@ -135,7 +135,7 @@ jobs:
               echo "**Full Changelog**: ${CURRENT_TAG}"
             fi
           } > CHANGELOG.md
-          
+
           # Use multiline output for GitHub Actions
           {
             echo "changelog<<EOF"

@@ -22,4 +22,3 @@ CREATE INDEX idx_email_jobs_organization_id ON email_jobs(organization_id);
 
 -- Index for efficient job selection (pending jobs ordered by creation time)
 CREATE INDEX idx_email_jobs_pending ON email_jobs(status, created_at) WHERE status = 'pending';
-

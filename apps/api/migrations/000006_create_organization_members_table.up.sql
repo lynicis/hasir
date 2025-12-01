@@ -11,4 +11,3 @@ CREATE TABLE IF NOT EXISTS organization_members (
 CREATE INDEX idx_organization_members_org_id ON organization_members(organization_id);
 CREATE INDEX idx_organization_members_user_id ON organization_members(user_id);
 CREATE INDEX idx_organization_members_role ON organization_members(role);
-
