@@ -6,6 +6,7 @@ import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { useQuery } from "@connectrpc/connect-query";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { z } from "zod/v4";
 
@@ -68,20 +69,32 @@ export function RepositoryDialogForm({
   const refreshRepositories = useRefreshStore(
     (state) => state.refreshRepositories
   );
+  const organizationsRefreshKey = useRefreshStore(
+    (state) => state.organizationsRefreshKey
+  );
 
-  const { data: organizationsData, isLoading: isLoadingOrganizations } =
-    useQuery(
-      getOrganizations,
-      {
-        pagination: {
-          page: 1,
-          pageLimit: 100,
-        },
+  const {
+    data: organizationsData,
+    isLoading: isLoadingOrganizations,
+    refetch: refetchOrganizations,
+  } = useQuery(
+    getOrganizations,
+    {
+      pagination: {
+        page: 1,
+        pageLimit: 100,
       },
-      { retry: customRetry }
-    );
+    },
+    { retry: customRetry }
+  );
 
   const organizations = organizationsData?.organizations ?? [];
+
+  useEffect(() => {
+    if (organizationsRefreshKey > 0) {
+      refetchOrganizations();
+    }
+  }, [organizationsRefreshKey, refetchOrganizations]);
 
   const {
     control,

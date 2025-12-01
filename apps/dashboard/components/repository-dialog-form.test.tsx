@@ -32,6 +32,12 @@ vi.mock("@connectrpc/connect-query", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
 
+const mockUseRefreshStore = vi.fn();
+
+vi.mock("@/stores/refresh-store", () => ({
+  useRefreshStore: (...args: unknown[]) => mockUseRefreshStore(...args),
+}));
+
 vi.mock(
   "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery",
   () => ({
@@ -58,6 +64,8 @@ describe("RepositoryDialogForm", () => {
     toastError.mockReset();
     mockUseQuery.mockReset();
 
+    mockUseRefreshStore.mockReset();
+
     mockUseQuery.mockImplementation((schema: { name: string }) => {
       if (schema.name === "getOrganizations") {
         return {
@@ -68,6 +76,16 @@ describe("RepositoryDialogForm", () => {
       }
       return { data: null, isLoading: false, error: null };
     });
+
+    mockUseRefreshStore.mockImplementation(
+      (selector: (state: unknown) => unknown) =>
+        selector({
+          organizationsRefreshKey: 0,
+          repositoriesRefreshKey: 0,
+          refreshOrganizations: vi.fn(),
+          refreshRepositories: vi.fn(),
+        })
+    );
   });
 
   function setup(open = true) {
@@ -282,5 +300,37 @@ describe("RepositoryDialogForm", () => {
       name: /organization/i,
     });
     expect(organizationSelect).toBeDisabled();
+  });
+
+  it("refetches organizations when organizationsRefreshKey changes", async () => {
+    const refetchOrganizations = vi.fn();
+
+    mockUseQuery.mockImplementation((schema: { name: string }) => {
+      if (schema.name === "getOrganizations") {
+        return {
+          data: { organizations: mockOrganizations },
+          isLoading: false,
+          error: null,
+          refetch: refetchOrganizations,
+        };
+      }
+      return { data: null, isLoading: false, error: null };
+    });
+
+    mockUseRefreshStore.mockImplementation(
+      (selector: (state: unknown) => unknown) =>
+        selector({
+          organizationsRefreshKey: 1,
+          repositoriesRefreshKey: 0,
+          refreshOrganizations: vi.fn(),
+          refreshRepositories: vi.fn(),
+        })
+    );
+
+    setup(true);
+
+    await waitFor(() => {
+      expect(refetchOrganizations).toHaveBeenCalled();
+    });
   });
 });
