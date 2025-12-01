@@ -7,6 +7,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import userEvent from "@testing-library/user-event";
 
 import { useClient } from "@/lib/use-client";
+import { useRefreshStore } from "@/stores/refresh-store";
 
 import { OrganizationSettingsForm } from "./organization-settings-form";
 
@@ -32,6 +33,10 @@ vi.mock("@/lib/use-client", () => ({
   useClient: vi.fn(),
 }));
 
+vi.mock("@/stores/refresh-store", () => ({
+  useRefreshStore: vi.fn(),
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: toastSuccess,
@@ -42,6 +47,7 @@ vi.mock("sonner", () => ({
 const mockUpdateOrganization = vi.fn();
 const mockDeleteOrganization = vi.fn();
 const mockedUseClient = useClient as unknown as Mock;
+const mockedUseRefreshStore = useRefreshStore as unknown as Mock;
 
 describe("OrganizationSettingsForm", () => {
   beforeEach(() => {
@@ -54,6 +60,10 @@ describe("OrganizationSettingsForm", () => {
     mockPush.mockReset();
     toastSuccess.mockReset();
     toastError.mockReset();
+    mockedUseRefreshStore.mockImplementation(
+      (selector: (state: { organizationsRefreshKey: number }) => unknown) =>
+        selector({ organizationsRefreshKey: 0 })
+    );
   });
 
   it("shows loading state when fetching organization", () => {
@@ -504,6 +514,34 @@ describe("OrganizationSettingsForm", () => {
     resolveUpdate!();
     await waitFor(() => {
       expect(mockUpdateOrganization).toHaveBeenCalled();
+    });
+  });
+
+  it("refetches organization when organizationsRefreshKey is greater than zero", async () => {
+    const mockRefetch = vi.fn();
+
+    mockedUseRefreshStore.mockImplementation(
+      (selector: (state: { organizationsRefreshKey: number }) => unknown) =>
+        selector({ organizationsRefreshKey: 1 })
+    );
+
+    mockUseQuery.mockReturnValue({
+      data: {
+        organization: {
+          id: "org-123",
+          name: "Test Org",
+          visibility: Visibility.PUBLIC,
+        },
+      },
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    });
+
+    render(<OrganizationSettingsForm />);
+
+    await waitFor(() => {
+      expect(mockRefetch).toHaveBeenCalled();
     });
   });
 

@@ -1,4 +1,6 @@
-import { Header } from "@/components/header";
+import type React from "react";
+
+import { HeaderClient } from "@/components/header-client";
 
 export default function RootLayout({
   children,
@@ -7,7 +9,7 @@ export default function RootLayout({
 }>) {
   return (
     <>
-      <Header />
+      <HeaderClient />
       {children}
     </>
   );
