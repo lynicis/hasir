@@ -55,6 +55,20 @@ func (mr *MockServiceMockRecorder) CreateOrganization(ctx, req, createdBy any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrganization", reflect.TypeOf((*MockService)(nil).CreateOrganization), ctx, req, createdBy)
 }
 
+// DeleteMember mocks base method.
+func (m *MockService) DeleteMember(ctx context.Context, req *organizationv1.DeleteMemberRequest, deletedBy string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteMember", ctx, req, deletedBy)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteMember indicates an expected call of DeleteMember.
+func (mr *MockServiceMockRecorder) DeleteMember(ctx, req, deletedBy any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMember", reflect.TypeOf((*MockService)(nil).DeleteMember), ctx, req, deletedBy)
+}
+
 // DeleteOrganization mocks base method.
 func (m *MockService) DeleteOrganization(ctx context.Context, organizationId, userId string) error {
 	m.ctrl.T.Helper()
@@ -95,6 +109,20 @@ func (m *MockService) RespondToInvitation(ctx context.Context, token, userId str
 func (mr *MockServiceMockRecorder) RespondToInvitation(ctx, token, userId, accept any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RespondToInvitation", reflect.TypeOf((*MockService)(nil).RespondToInvitation), ctx, token, userId, accept)
+}
+
+// UpdateMemberRole mocks base method.
+func (m *MockService) UpdateMemberRole(ctx context.Context, req *organizationv1.UpdateMemberRoleRequest, updatedBy string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMemberRole", ctx, req, updatedBy)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateMemberRole indicates an expected call of UpdateMemberRole.
+func (mr *MockServiceMockRecorder) UpdateMemberRole(ctx, req, updatedBy any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMemberRole", reflect.TypeOf((*MockService)(nil).UpdateMemberRole), ctx, req, updatedBy)
 }
 
 // UpdateOrganization mocks base method.

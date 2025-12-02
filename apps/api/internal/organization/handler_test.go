@@ -620,3 +620,368 @@ func TestHandler_InviteMember(t *testing.T) {
 		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
+
+func TestHandler_UpdateMemberRole(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-123"
+		orgID := "org-123"
+		memberID := "member-456"
+
+		mockService.EXPECT().
+			UpdateMemberRole(gomock.Any(), gomock.Any(), testUserID).
+			DoAndReturn(func(_ context.Context, req *organizationv1.UpdateMemberRoleRequest, userId string) error {
+				require.Equal(t, orgID, req.GetOrganizationId())
+				require.Equal(t, memberID, req.GetMemberId())
+				require.Equal(t, shared.Role_ROLE_AUTHOR, req.GetRole())
+				require.Equal(t, testUserID, userId)
+				return nil
+			})
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.UpdateMemberRole(context.Background(), connect.NewRequest(&organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+			Role:           shared.Role_ROLE_AUTHOR,
+		}))
+		require.NoError(t, err)
+	})
+
+	t.Run("service error - permission denied", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-456"
+		orgID := "org-456"
+		memberID := "member-789"
+
+		mockService.EXPECT().
+			UpdateMemberRole(gomock.Any(), gomock.Any(), testUserID).
+			Return(connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can update member roles")))
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.UpdateMemberRole(context.Background(), connect.NewRequest(&organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+			Role:           shared.Role_ROLE_AUTHOR,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+	})
+
+	t.Run("service error - owner cannot decrease own role", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-123"
+		orgID := "org-123"
+
+		mockService.EXPECT().
+			UpdateMemberRole(gomock.Any(), gomock.Any(), testUserID).
+			Return(connect.NewError(connect.CodePermissionDenied, errors.New("owners cannot decrease their own role")))
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.UpdateMemberRole(context.Background(), connect.NewRequest(&organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       testUserID,
+			Role:           shared.Role_ROLE_AUTHOR,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+	})
+
+	t.Run("service error - member not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-123"
+		orgID := "org-123"
+		nonExistentMemberID := "non-existent-456"
+
+		mockService.EXPECT().
+			UpdateMemberRole(gomock.Any(), gomock.Any(), testUserID).
+			Return(connect.NewError(connect.CodeNotFound, errors.New("member not found")))
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.UpdateMemberRole(context.Background(), connect.NewRequest(&organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       nonExistentMemberID,
+			Role:           shared.Role_ROLE_AUTHOR,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+
+	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.UpdateMemberRole(context.Background(), connect.NewRequest(&organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: "org-123",
+			MemberId:       "member-456",
+			Role:           shared.Role_ROLE_AUTHOR,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+	})
+}
+
+func TestHandler_DeleteMember(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-123"
+		orgID := "org-123"
+		memberID := "member-456"
+
+		mockService.EXPECT().
+			DeleteMember(gomock.Any(), gomock.Any(), testUserID).
+			DoAndReturn(func(_ context.Context, req *organizationv1.DeleteMemberRequest, userId string) error {
+				require.Equal(t, orgID, req.GetOrganizationId())
+				require.Equal(t, memberID, req.GetMemberId())
+				require.Equal(t, testUserID, userId)
+				return nil
+			})
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.DeleteMember(context.Background(), connect.NewRequest(&organizationv1.DeleteMemberRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+		}))
+		require.NoError(t, err)
+	})
+
+	t.Run("service error - permission denied", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-456"
+		orgID := "org-456"
+		memberID := "member-789"
+
+		mockService.EXPECT().
+			DeleteMember(gomock.Any(), gomock.Any(), testUserID).
+			Return(connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can delete members")))
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.DeleteMember(context.Background(), connect.NewRequest(&organizationv1.DeleteMemberRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+	})
+
+	t.Run("service error - cannot delete last owner", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-123"
+		orgID := "org-123"
+		lastOwnerID := "last-owner-456"
+
+		mockService.EXPECT().
+			DeleteMember(gomock.Any(), gomock.Any(), testUserID).
+			Return(connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot delete the last owner")))
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.DeleteMember(context.Background(), connect.NewRequest(&organizationv1.DeleteMemberRequest{
+			OrganizationId: orgID,
+			MemberId:       lastOwnerID,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeFailedPrecondition, connectErr.Code())
+	})
+
+	t.Run("service error - member not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-123"
+		orgID := "org-123"
+		nonExistentMemberID := "non-existent-456"
+
+		mockService.EXPECT().
+			DeleteMember(gomock.Any(), gomock.Any(), testUserID).
+			Return(connect.NewError(connect.CodeNotFound, errors.New("member not found")))
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.DeleteMember(context.Background(), connect.NewRequest(&organizationv1.DeleteMemberRequest{
+			OrganizationId: orgID,
+			MemberId:       nonExistentMemberID,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+
+	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.DeleteMember(context.Background(), connect.NewRequest(&organizationv1.DeleteMemberRequest{
+			OrganizationId: "org-123",
+			MemberId:       "member-456",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+	})
+}

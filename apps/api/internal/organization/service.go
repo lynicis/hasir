@@ -45,6 +45,16 @@ type Service interface {
 		userId string,
 		accept bool,
 	) error
+	UpdateMemberRole(
+		ctx context.Context,
+		req *organizationv1.UpdateMemberRoleRequest,
+		updatedBy string,
+	) error
+	DeleteMember(
+		ctx context.Context,
+		req *organizationv1.DeleteMemberRequest,
+		deletedBy string,
+	) error
 }
 
 type inviteInfo struct {
@@ -343,6 +353,141 @@ func (s *service) RespondToInvitation(
 		zap.String("inviteId", invite.Id),
 		zap.String("userId", userId),
 		zap.String("organizationId", invite.OrganizationId),
+	)
+
+	return nil
+}
+
+func (s *service) UpdateMemberRole(
+	ctx context.Context,
+	req *organizationv1.UpdateMemberRoleRequest,
+	updatedBy string,
+) error {
+	organizationId := req.GetOrganizationId()
+	memberUserId := req.GetMemberId()
+	newRole := SharedRoleToMemberRoleMap[req.GetRole()]
+
+	_, err := s.repository.GetOrganizationById(ctx, organizationId)
+	if err != nil {
+		return err
+	}
+
+	updaterRole, err := s.repository.GetMemberRole(ctx, organizationId, updatedBy)
+	if err != nil {
+		if errors.Is(err, ErrMemberNotFound) {
+			return connect.NewError(connect.CodePermissionDenied, errors.New("you are not a member of this organization"))
+		}
+		return err
+	}
+
+	if updaterRole != MemberRoleOwner {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can update member roles"))
+	}
+
+	currentMemberRole, err := s.repository.GetMemberRole(ctx, organizationId, memberUserId)
+	if err != nil {
+		if errors.Is(err, ErrMemberNotFound) {
+			return connect.NewError(connect.CodeNotFound, errors.New("member not found"))
+		}
+		return err
+	}
+
+	if updatedBy == memberUserId && currentMemberRole == MemberRoleOwner && newRole != MemberRoleOwner {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("owners cannot decrease their own role"))
+	}
+
+	if newRole != MemberRoleOwner {
+		members, _, _, err := s.repository.GetMembers(ctx, organizationId)
+		if err != nil {
+			return err
+		}
+
+		ownerCount := 0
+		for _, member := range members {
+			if member.Role == MemberRoleOwner {
+				ownerCount++
+			}
+		}
+
+		if currentMemberRole == MemberRoleOwner && ownerCount == 1 {
+			return connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot change role of the last owner"))
+		}
+	}
+
+	if err := s.repository.UpdateMemberRole(ctx, organizationId, memberUserId, newRole); err != nil {
+		return err
+	}
+
+	zap.L().Info("member role updated",
+		zap.String("organizationId", organizationId),
+		zap.String("memberUserId", memberUserId),
+		zap.String("newRole", string(newRole)),
+		zap.String("updatedBy", updatedBy),
+	)
+
+	return nil
+}
+
+func (s *service) DeleteMember(
+	ctx context.Context,
+	req *organizationv1.DeleteMemberRequest,
+	deletedBy string,
+) error {
+	organizationId := req.GetOrganizationId()
+	memberUserId := req.GetMemberId()
+
+	_, err := s.repository.GetOrganizationById(ctx, organizationId)
+	if err != nil {
+		return err
+	}
+
+	deleterRole, err := s.repository.GetMemberRole(ctx, organizationId, deletedBy)
+	if err != nil {
+		if errors.Is(err, ErrMemberNotFound) {
+			return connect.NewError(connect.CodePermissionDenied, errors.New("you are not a member of this organization"))
+		}
+		return err
+	}
+
+	if deleterRole != MemberRoleOwner {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can delete members"))
+	}
+
+	memberRole, err := s.repository.GetMemberRole(ctx, organizationId, memberUserId)
+	if err != nil {
+		if errors.Is(err, ErrMemberNotFound) {
+			return connect.NewError(connect.CodeNotFound, errors.New("member not found"))
+		}
+		return err
+	}
+
+	// Prevent deleting the last owner
+	if memberRole == MemberRoleOwner {
+		members, _, _, err := s.repository.GetMembers(ctx, organizationId)
+		if err != nil {
+			return err
+		}
+
+		ownerCount := 0
+		for _, member := range members {
+			if member.Role == MemberRoleOwner {
+				ownerCount++
+			}
+		}
+
+		if ownerCount == 1 {
+			return connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot delete the last owner"))
+		}
+	}
+
+	if err := s.repository.DeleteMember(ctx, organizationId, memberUserId); err != nil {
+		return err
+	}
+
+	zap.L().Info("member deleted",
+		zap.String("organizationId", organizationId),
+		zap.String("memberUserId", memberUserId),
+		zap.String("deletedBy", deletedBy),
 	)
 
 	return nil

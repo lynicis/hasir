@@ -1690,3 +1690,650 @@ func TestPgRepository_GetMembers(t *testing.T) {
 		assert.True(t, roleMap[MemberRoleReader])
 	})
 }
+
+func TestPgRepository_UpdateMemberRole(t *testing.T) {
+	t.Run("success - update reader to author", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "update-role-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "testuser", "test@example.com")
+		insertTestUser(t, connString, user)
+
+		member := createTestMember(t, org.Id, user.Id, MemberRoleReader)
+		insertTestMember(t, connString, member)
+
+		err = repo.UpdateMemberRole(t.Context(), org.Id, user.Id, MemberRoleAuthor)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var dbRole string
+		err = conn.QueryRow(t.Context(),
+			"SELECT role FROM organization_members WHERE organization_id = $1 AND user_id = $2",
+			org.Id, user.Id).Scan(&dbRole)
+		require.NoError(t, err)
+		assert.Equal(t, string(MemberRoleAuthor), dbRole)
+	})
+
+	t.Run("success - update author to owner", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "promote-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "authoruser", "author@example.com")
+		insertTestUser(t, connString, user)
+
+		member := createTestMember(t, org.Id, user.Id, MemberRoleAuthor)
+		insertTestMember(t, connString, member)
+
+		err = repo.UpdateMemberRole(t.Context(), org.Id, user.Id, MemberRoleOwner)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var dbRole string
+		err = conn.QueryRow(t.Context(),
+			"SELECT role FROM organization_members WHERE organization_id = $1 AND user_id = $2",
+			org.Id, user.Id).Scan(&dbRole)
+		require.NoError(t, err)
+		assert.Equal(t, string(MemberRoleOwner), dbRole)
+	})
+
+	t.Run("success - update owner to reader", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "demote-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "owneruser", "owner@example.com")
+		insertTestUser(t, connString, user)
+
+		member := createTestMember(t, org.Id, user.Id, MemberRoleOwner)
+		insertTestMember(t, connString, member)
+
+		err = repo.UpdateMemberRole(t.Context(), org.Id, user.Id, MemberRoleReader)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var dbRole string
+		err = conn.QueryRow(t.Context(),
+			"SELECT role FROM organization_members WHERE organization_id = $1 AND user_id = $2",
+			org.Id, user.Id).Scan(&dbRole)
+		require.NoError(t, err)
+		assert.Equal(t, string(MemberRoleReader), dbRole)
+	})
+
+	t.Run("success - update role for specific member in multi-member organization", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "multi-member-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user1 := createTestUser(t, "user1", "user1@example.com")
+		user2 := createTestUser(t, "user2", "user2@example.com")
+		user3 := createTestUser(t, "user3", "user3@example.com")
+
+		insertTestUser(t, connString, user1)
+		insertTestUser(t, connString, user2)
+		insertTestUser(t, connString, user3)
+
+		member1 := createTestMember(t, org.Id, user1.Id, MemberRoleOwner)
+		member2 := createTestMember(t, org.Id, user2.Id, MemberRoleAuthor)
+		member3 := createTestMember(t, org.Id, user3.Id, MemberRoleReader)
+
+		insertTestMember(t, connString, member1)
+		insertTestMember(t, connString, member2)
+		insertTestMember(t, connString, member3)
+
+		err = repo.UpdateMemberRole(t.Context(), org.Id, user2.Id, MemberRoleOwner)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var role1, role2, role3 string
+		err = conn.QueryRow(t.Context(),
+			"SELECT role FROM organization_members WHERE organization_id = $1 AND user_id = $2",
+			org.Id, user1.Id).Scan(&role1)
+		require.NoError(t, err)
+
+		err = conn.QueryRow(t.Context(),
+			"SELECT role FROM organization_members WHERE organization_id = $1 AND user_id = $2",
+			org.Id, user2.Id).Scan(&role2)
+		require.NoError(t, err)
+
+		err = conn.QueryRow(t.Context(),
+			"SELECT role FROM organization_members WHERE organization_id = $1 AND user_id = $2",
+			org.Id, user3.Id).Scan(&role3)
+		require.NoError(t, err)
+
+		assert.Equal(t, string(MemberRoleOwner), role1)
+		assert.Equal(t, string(MemberRoleOwner), role2)
+		assert.Equal(t, string(MemberRoleReader), role3)
+	})
+
+	t.Run("member not found - non-existent user", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "notfound-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		nonExistentUserId := uuid.NewString()
+
+		err = repo.UpdateMemberRole(t.Context(), org.Id, nonExistentUserId, MemberRoleAuthor)
+		require.Error(t, err)
+		assert.Equal(t, ErrMemberNotFound, err)
+	})
+
+	t.Run("member not found - user not in organization", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org1 := createTestOrganization(t, "org1-"+uuid.NewString(), proto.VisibilityPrivate)
+		org2 := createTestOrganization(t, "org2-"+uuid.NewString(), proto.VisibilityPrivate)
+
+		err = repo.CreateOrganization(t.Context(), org1)
+		require.NoError(t, err)
+		err = repo.CreateOrganization(t.Context(), org2)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "otherorguser", "other@example.com")
+		insertTestUser(t, connString, user)
+
+		member := createTestMember(t, org1.Id, user.Id, MemberRoleOwner)
+		insertTestMember(t, connString, member)
+
+		err = repo.UpdateMemberRole(t.Context(), org2.Id, user.Id, MemberRoleAuthor)
+		require.Error(t, err)
+		assert.Equal(t, ErrMemberNotFound, err)
+	})
+
+	t.Run("success - update to same role", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "same-role-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "sameuser", "same@example.com")
+		insertTestUser(t, connString, user)
+
+		member := createTestMember(t, org.Id, user.Id, MemberRoleAuthor)
+		insertTestMember(t, connString, member)
+
+		err = repo.UpdateMemberRole(t.Context(), org.Id, user.Id, MemberRoleAuthor)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var dbRole string
+		err = conn.QueryRow(t.Context(),
+			"SELECT role FROM organization_members WHERE organization_id = $1 AND user_id = $2",
+			org.Id, user.Id).Scan(&dbRole)
+		require.NoError(t, err)
+		assert.Equal(t, string(MemberRoleAuthor), dbRole)
+	})
+}
+
+func TestPgRepository_DeleteMember(t *testing.T) {
+	t.Run("success - delete reader member", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "delete-reader-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "readeruser", "reader@example.com")
+		insertTestUser(t, connString, user)
+
+		member := createTestMember(t, org.Id, user.Id, MemberRoleReader)
+		insertTestMember(t, connString, member)
+
+		err = repo.DeleteMember(t.Context(), org.Id, user.Id)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var count int
+		err = conn.QueryRow(t.Context(),
+			"SELECT COUNT(*) FROM organization_members WHERE organization_id = $1 AND user_id = $2",
+			org.Id, user.Id).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("success - delete author member", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "delete-author-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "authoruser", "author@example.com")
+		insertTestUser(t, connString, user)
+
+		member := createTestMember(t, org.Id, user.Id, MemberRoleAuthor)
+		insertTestMember(t, connString, member)
+
+		err = repo.DeleteMember(t.Context(), org.Id, user.Id)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var count int
+		err = conn.QueryRow(t.Context(),
+			"SELECT COUNT(*) FROM organization_members WHERE organization_id = $1 AND user_id = $2",
+			org.Id, user.Id).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("success - delete owner member when multiple owners exist", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "delete-owner-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		owner1 := createTestUser(t, "owner1", "owner1@example.com")
+		owner2 := createTestUser(t, "owner2", "owner2@example.com")
+		insertTestUser(t, connString, owner1)
+		insertTestUser(t, connString, owner2)
+
+		member1 := createTestMember(t, org.Id, owner1.Id, MemberRoleOwner)
+		member2 := createTestMember(t, org.Id, owner2.Id, MemberRoleOwner)
+		insertTestMember(t, connString, member1)
+		insertTestMember(t, connString, member2)
+
+		err = repo.DeleteMember(t.Context(), org.Id, owner1.Id)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var count int
+		err = conn.QueryRow(t.Context(),
+			"SELECT COUNT(*) FROM organization_members WHERE organization_id = $1 AND user_id = $2",
+			org.Id, owner1.Id).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 0, count)
+
+		var remainingCount int
+		err = conn.QueryRow(t.Context(),
+			"SELECT COUNT(*) FROM organization_members WHERE organization_id = $1",
+			org.Id).Scan(&remainingCount)
+		require.NoError(t, err)
+		assert.Equal(t, 1, remainingCount)
+	})
+
+	t.Run("success - delete member from multi-member organization", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "multi-delete-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user1 := createTestUser(t, "user1", "user1@example.com")
+		user2 := createTestUser(t, "user2", "user2@example.com")
+		user3 := createTestUser(t, "user3", "user3@example.com")
+
+		insertTestUser(t, connString, user1)
+		insertTestUser(t, connString, user2)
+		insertTestUser(t, connString, user3)
+
+		member1 := createTestMember(t, org.Id, user1.Id, MemberRoleOwner)
+		member2 := createTestMember(t, org.Id, user2.Id, MemberRoleAuthor)
+		member3 := createTestMember(t, org.Id, user3.Id, MemberRoleReader)
+
+		insertTestMember(t, connString, member1)
+		insertTestMember(t, connString, member2)
+		insertTestMember(t, connString, member3)
+
+		err = repo.DeleteMember(t.Context(), org.Id, user2.Id)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var count int
+		err = conn.QueryRow(t.Context(),
+			"SELECT COUNT(*) FROM organization_members WHERE organization_id = $1 AND user_id = $2",
+			org.Id, user2.Id).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 0, count)
+
+		var totalCount int
+		err = conn.QueryRow(t.Context(),
+			"SELECT COUNT(*) FROM organization_members WHERE organization_id = $1",
+			org.Id).Scan(&totalCount)
+		require.NoError(t, err)
+		assert.Equal(t, 2, totalCount)
+	})
+
+	t.Run("member not found - non-existent user", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "notfound-delete-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		nonExistentUserId := uuid.NewString()
+
+		err = repo.DeleteMember(t.Context(), org.Id, nonExistentUserId)
+		require.Error(t, err)
+		assert.Equal(t, ErrMemberNotFound, err)
+	})
+
+	t.Run("member not found - user not in organization", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org1 := createTestOrganization(t, "org1-"+uuid.NewString(), proto.VisibilityPrivate)
+		org2 := createTestOrganization(t, "org2-"+uuid.NewString(), proto.VisibilityPrivate)
+
+		err = repo.CreateOrganization(t.Context(), org1)
+		require.NoError(t, err)
+		err = repo.CreateOrganization(t.Context(), org2)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "otherorguser", "other@example.com")
+		insertTestUser(t, connString, user)
+
+		member := createTestMember(t, org1.Id, user.Id, MemberRoleOwner)
+		insertTestMember(t, connString, member)
+
+		err = repo.DeleteMember(t.Context(), org2.Id, user.Id)
+		require.Error(t, err)
+		assert.Equal(t, ErrMemberNotFound, err)
+	})
+
+	t.Run("success - verify other members remain after deletion", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createUsersTable(t, connString)
+		createOrganizationMembersTable(t, connString)
+		createOrganizationMembersView(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "verify-remaining-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user1 := createTestUser(t, "keepuser1", "keep1@example.com")
+		user2 := createTestUser(t, "deleteuser", "delete@example.com")
+		user3 := createTestUser(t, "keepuser2", "keep2@example.com")
+
+		insertTestUser(t, connString, user1)
+		insertTestUser(t, connString, user2)
+		insertTestUser(t, connString, user3)
+
+		member1 := createTestMember(t, org.Id, user1.Id, MemberRoleOwner)
+		member2 := createTestMember(t, org.Id, user2.Id, MemberRoleAuthor)
+		member3 := createTestMember(t, org.Id, user3.Id, MemberRoleReader)
+
+		insertTestMember(t, connString, member1)
+		insertTestMember(t, connString, member2)
+		insertTestMember(t, connString, member3)
+
+		err = repo.DeleteMember(t.Context(), org.Id, user2.Id)
+		require.NoError(t, err)
+
+		members, _, _, err := repo.GetMembers(t.Context(), org.Id)
+		require.NoError(t, err)
+		require.Len(t, members, 2)
+
+		userIds := make(map[string]bool)
+		for _, m := range members {
+			userIds[m.UserId] = true
+		}
+
+		assert.True(t, userIds[user1.Id])
+		assert.False(t, userIds[user2.Id])
+		assert.True(t, userIds[user3.Id])
+	})
+}

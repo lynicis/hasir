@@ -233,3 +233,35 @@ func (h *handler) GetMembers(
 		Members: resp,
 	}), nil
 }
+
+func (h *handler) UpdateMemberRole(
+	ctx context.Context,
+	req *connect.Request[organizationv1.UpdateMemberRoleRequest],
+) (*connect.Response[emptypb.Empty], error) {
+	userId, err := auth.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := h.service.UpdateMemberRole(ctx, req.Msg, userId); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(new(emptypb.Empty)), nil
+}
+
+func (h *handler) DeleteMember(
+	ctx context.Context,
+	req *connect.Request[organizationv1.DeleteMemberRequest],
+) (*connect.Response[emptypb.Empty], error) {
+	userId, err := auth.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := h.service.DeleteMember(ctx, req.Msg, userId); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(new(emptypb.Empty)), nil
+}

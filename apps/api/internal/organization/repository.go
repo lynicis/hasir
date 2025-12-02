@@ -38,6 +38,8 @@ type Repository interface {
 	GetMembers(ctx context.Context, organizationId string) ([]*OrganizationMemberDTO, []string, []string, error)
 	GetMemberRole(ctx context.Context, organizationId, userId string) (MemberRole, error)
 	GetMemberRoleString(ctx context.Context, organizationId, userId string) (string, error)
+	UpdateMemberRole(ctx context.Context, organizationId, userId string, role MemberRole) error
+	DeleteMember(ctx context.Context, organizationId, userId string) error
 	EnqueueEmailJobs(ctx context.Context, jobs []*EmailJobDTO) error
 	GetPendingEmailJobs(ctx context.Context, limit int) ([]*EmailJobDTO, error)
 	UpdateEmailJobStatus(ctx context.Context, jobId string, status EmailJobStatus, errorMsg *string) error
@@ -713,6 +715,89 @@ func (r *PgRepository) GetMemberRole(ctx context.Context, organizationId, userId
 func (r *PgRepository) GetMemberRoleString(ctx context.Context, organizationId, userId string) (string, error) {
 	role, err := r.GetMemberRole(ctx, organizationId, userId)
 	return string(role), err
+}
+
+func (r *PgRepository) UpdateMemberRole(ctx context.Context, organizationId, userId string, role MemberRole) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "UpdateMemberRole", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "organizationId",
+			Value: attribute.StringValue(organizationId),
+		},
+		attribute.KeyValue{
+			Key:   "userId",
+			Value: attribute.StringValue(userId),
+		},
+		attribute.KeyValue{
+			Key:   "role",
+			Value: attribute.StringValue(string(role)),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `UPDATE organization_members SET role = @Role WHERE organization_id = @OrganizationId AND user_id = @UserId`
+	sqlArgs := pgx.NamedArgs{
+		"OrganizationId": organizationId,
+		"UserId":         userId,
+		"Role":           role,
+	}
+
+	result, err := connection.Exec(ctx, sql, sqlArgs)
+	if err != nil {
+		span.RecordError(err)
+		return connect.NewError(connect.CodeInternal, errors.New("failed to update member role"))
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrMemberNotFound
+	}
+
+	return nil
+}
+
+func (r *PgRepository) DeleteMember(ctx context.Context, organizationId, userId string) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "DeleteMember", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "organizationId",
+			Value: attribute.StringValue(organizationId),
+		},
+		attribute.KeyValue{
+			Key:   "userId",
+			Value: attribute.StringValue(userId),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `DELETE FROM organization_members WHERE organization_id = @OrganizationId AND user_id = @UserId`
+	sqlArgs := pgx.NamedArgs{
+		"OrganizationId": organizationId,
+		"UserId":         userId,
+	}
+
+	result, err := connection.Exec(ctx, sql, sqlArgs)
+	if err != nil {
+		span.RecordError(err)
+		return connect.NewError(connect.CodeInternal, errors.New("failed to delete member"))
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrMemberNotFound
+	}
+
+	return nil
 }
 
 func (r *PgRepository) EnqueueEmailJobs(ctx context.Context, jobs []*EmailJobDTO) error {

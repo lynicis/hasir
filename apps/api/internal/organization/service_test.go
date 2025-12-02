@@ -1035,3 +1035,671 @@ func TestUpdateOrganization(t *testing.T) {
 		}
 	})
 }
+
+func TestUpdateMemberRole(t *testing.T) {
+	t.Run("success - owner updating another member's role", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		ownerID := "owner-123"
+		memberID := "member-456"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+			Role:           shared.Role_ROLE_AUTHOR,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, ownerID).
+			Return(MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, memberID).
+			Return(MemberRoleReader, nil)
+
+		mockRepo.EXPECT().
+			GetMembers(ctx, orgID).
+			Return([]*OrganizationMemberDTO{
+				{UserId: ownerID, Role: MemberRoleOwner},
+				{UserId: memberID, Role: MemberRoleReader},
+			}, []string{"owner", "member"}, []string{"owner@example.com", "member@example.com"}, nil)
+
+		mockRepo.EXPECT().
+			UpdateMemberRole(ctx, orgID, memberID, MemberRoleAuthor).
+			Return(nil)
+
+		err := svc.UpdateMemberRole(ctx, req, ownerID)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("permission denied - non-owner trying to update", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		authorID := "author-123"
+		memberID := "member-456"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+			Role:           shared.Role_ROLE_READER,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, authorID).
+			Return(MemberRoleAuthor, nil)
+
+		err := svc.UpdateMemberRole(ctx, req, authorID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodePermissionDenied {
+			t.Errorf("expected CodePermissionDenied, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("permission denied - owner trying to decrease their own role", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		ownerID := "owner-123"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       ownerID,
+			Role:           shared.Role_ROLE_AUTHOR,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, ownerID).
+			Return(MemberRoleOwner, nil).
+			Times(2) // Called once for updater check, once for current member role check
+
+		err := svc.UpdateMemberRole(ctx, req, ownerID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodePermissionDenied {
+			t.Errorf("expected CodePermissionDenied, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("success - multiple owners can change another owner's role", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		ownerID := "owner-123"
+		otherOwnerID := "owner-456"
+		memberID := "member-789"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+			Role:           shared.Role_ROLE_READER,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, ownerID).
+			Return(MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, memberID).
+			Return(MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			GetMembers(ctx, orgID).
+			Return([]*OrganizationMemberDTO{
+				{UserId: ownerID, Role: MemberRoleOwner},
+				{UserId: otherOwnerID, Role: MemberRoleOwner},
+				{UserId: memberID, Role: MemberRoleOwner},
+			}, []string{"owner1", "owner2", "member"}, []string{"o1@example.com", "o2@example.com", "m@example.com"}, nil)
+
+		// This should pass since there are multiple owners
+		mockRepo.EXPECT().
+			UpdateMemberRole(ctx, orgID, memberID, MemberRoleReader).
+			Return(nil)
+
+		err := svc.UpdateMemberRole(ctx, req, ownerID)
+		if err != nil {
+			t.Fatalf("expected no error when multiple owners exist, got %v", err)
+		}
+	})
+
+	t.Run("failed precondition - trying to change only owner's role", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		ownerID := "owner-123"
+		onlyOwnerID := "only-owner-456"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       onlyOwnerID,
+			Role:           shared.Role_ROLE_READER,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, ownerID).
+			Return(MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, onlyOwnerID).
+			Return(MemberRoleOwner, nil)
+
+		// Only one owner in the organization - cannot change role
+		mockRepo.EXPECT().
+			GetMembers(ctx, orgID).
+			Return([]*OrganizationMemberDTO{
+				{UserId: onlyOwnerID, Role: MemberRoleOwner},
+			}, []string{"only-owner"}, []string{"only-owner@example.com"}, nil)
+
+		err := svc.UpdateMemberRole(ctx, req, ownerID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeFailedPrecondition {
+			t.Errorf("expected CodeFailedPrecondition, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("member not found", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		ownerID := "owner-123"
+		nonExistentMemberID := "non-existent-456"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       nonExistentMemberID,
+			Role:           shared.Role_ROLE_AUTHOR,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, ownerID).
+			Return(MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, nonExistentMemberID).
+			Return(MemberRole(""), ErrMemberNotFound)
+
+		err := svc.UpdateMemberRole(ctx, req, ownerID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeNotFound {
+			t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("organization not found", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "non-existent-org"
+		ownerID := "owner-123"
+		memberID := "member-456"
+
+		req := &organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+			Role:           shared.Role_ROLE_AUTHOR,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(nil, ErrOrganizationNotFound)
+
+		err := svc.UpdateMemberRole(ctx, req, ownerID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeNotFound {
+			t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("updater not a member", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		nonMemberID := "non-member-123"
+		memberID := "member-456"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+			Role:           shared.Role_ROLE_AUTHOR,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, nonMemberID).
+			Return(MemberRole(""), ErrMemberNotFound)
+
+		err := svc.UpdateMemberRole(ctx, req, nonMemberID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodePermissionDenied {
+			t.Errorf("expected CodePermissionDenied, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("success - owner can promote another member to owner", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		ownerID := "owner-123"
+		memberID := "member-456"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+			Role:           shared.Role_ROLE_OWNER,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, ownerID).
+			Return(MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, memberID).
+			Return(MemberRoleAuthor, nil)
+
+		mockRepo.EXPECT().
+			UpdateMemberRole(ctx, orgID, memberID, MemberRoleOwner).
+			Return(nil)
+
+		err := svc.UpdateMemberRole(ctx, req, ownerID)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+}
+
+func TestDeleteMember(t *testing.T) {
+	t.Run("success - owner deleting non-owner member", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		ownerID := "owner-123"
+		memberID := "member-456"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.DeleteMemberRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, ownerID).
+			Return(MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, memberID).
+			Return(MemberRoleAuthor, nil)
+
+		mockRepo.EXPECT().
+			DeleteMember(ctx, orgID, memberID).
+			Return(nil)
+
+		err := svc.DeleteMember(ctx, req, ownerID)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("success - owner deleting another owner when multiple owners exist", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		ownerID := "owner-123"
+		otherOwnerID := "owner-456"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.DeleteMemberRequest{
+			OrganizationId: orgID,
+			MemberId:       otherOwnerID,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, ownerID).
+			Return(MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, otherOwnerID).
+			Return(MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			GetMembers(ctx, orgID).
+			Return([]*OrganizationMemberDTO{
+				{UserId: ownerID, Role: MemberRoleOwner},
+				{UserId: otherOwnerID, Role: MemberRoleOwner},
+			}, []string{"owner1", "owner2"}, []string{"o1@example.com", "o2@example.com"}, nil)
+
+		mockRepo.EXPECT().
+			DeleteMember(ctx, orgID, otherOwnerID).
+			Return(nil)
+
+		err := svc.DeleteMember(ctx, req, ownerID)
+		if err != nil {
+			t.Fatalf("expected no error when multiple owners exist, got %v", err)
+		}
+	})
+
+	t.Run("permission denied - non-owner trying to delete", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		authorID := "author-123"
+		memberID := "member-456"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.DeleteMemberRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, authorID).
+			Return(MemberRoleAuthor, nil)
+
+		err := svc.DeleteMember(ctx, req, authorID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodePermissionDenied {
+			t.Errorf("expected CodePermissionDenied, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("permission denied - user not a member", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		nonMemberID := "non-member-123"
+		memberID := "member-456"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.DeleteMemberRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, nonMemberID).
+			Return(MemberRole(""), ErrMemberNotFound)
+
+		err := svc.DeleteMember(ctx, req, nonMemberID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodePermissionDenied {
+			t.Errorf("expected CodePermissionDenied, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("failed precondition - trying to delete the last owner", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		ownerID := "owner-123"
+		lastOwnerID := "last-owner-456"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.DeleteMemberRequest{
+			OrganizationId: orgID,
+			MemberId:       lastOwnerID,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, ownerID).
+			Return(MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, lastOwnerID).
+			Return(MemberRoleOwner, nil)
+
+		// Only one owner in the organization - cannot delete
+		mockRepo.EXPECT().
+			GetMembers(ctx, orgID).
+			Return([]*OrganizationMemberDTO{
+				{UserId: lastOwnerID, Role: MemberRoleOwner},
+			}, []string{"last-owner"}, []string{"last-owner@example.com"}, nil)
+
+		err := svc.DeleteMember(ctx, req, ownerID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeFailedPrecondition {
+			t.Errorf("expected CodeFailedPrecondition, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("not found - member does not exist", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		ownerID := "owner-123"
+		nonExistentMemberID := "non-existent-456"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.DeleteMemberRequest{
+			OrganizationId: orgID,
+			MemberId:       nonExistentMemberID,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, ownerID).
+			Return(MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, nonExistentMemberID).
+			Return(MemberRole(""), ErrMemberNotFound)
+
+		err := svc.DeleteMember(ctx, req, ownerID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeNotFound {
+			t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
+		}
+	})
+
+	t.Run("organization not found", func(t *testing.T) {
+		svc, mockRepo, _, _, ctx := newTestService(t)
+		orgID := "non-existent-org"
+		ownerID := "owner-123"
+		memberID := "member-456"
+
+		req := &organizationv1.DeleteMemberRequest{
+			OrganizationId: orgID,
+			MemberId:       memberID,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(nil, ErrOrganizationNotFound)
+
+		err := svc.DeleteMember(ctx, req, ownerID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodeNotFound {
+			t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
+		}
+	})
+}
