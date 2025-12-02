@@ -85,6 +85,19 @@ message GetMembersResponse {
   repeated Member members = 1;
 }
 
+message UpdateMemberRoleRequest {
+  string organization_id = 1 [(buf.validate.field).required = true];
+  string member_id = 2 [(buf.validate.field).required = true];
+  shared.Role role = 3 [(buf.validate.field).enum = {
+    not_in: [0]
+  }];
+}
+
+message DeleteMemberRequest {
+  string organization_id = 1 [(buf.validate.field).required = true];
+  string member_id = 2 [(buf.validate.field).required = true];
+}
+
 service OrganizationService {
   rpc CreateOrganization(CreateOrganizationRequest) returns (google.protobuf.Empty);
   rpc GetOrganizations(GetOrganizationsRequest) returns (GetOrganizationsResponse);
@@ -95,4 +108,6 @@ service OrganizationService {
   rpc IsInvitationValid(IsInvitationValidRequest) returns (google.protobuf.Empty);
   rpc RespondToInvitation(RespondToInvitationRequest) returns (google.protobuf.Empty);
   rpc GetMembers(GetMembersRequest) returns (GetMembersResponse);
+  rpc UpdateMemberRole(UpdateMemberRoleRequest) returns (google.protobuf.Empty);
+  rpc DeleteMember(DeleteMemberRequest) returns (google.protobuf.Empty);
 }
