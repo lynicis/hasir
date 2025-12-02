@@ -141,6 +141,36 @@ func (mr *MockRepositoryMockRecorder) GetInviteByToken(ctx, token any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInviteByToken", reflect.TypeOf((*MockRepository)(nil).GetInviteByToken), ctx, token)
 }
 
+// GetMemberRole mocks base method.
+func (m *MockRepository) GetMemberRole(ctx context.Context, organizationId, userId string) (MemberRole, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMemberRole", ctx, organizationId, userId)
+	ret0, _ := ret[0].(MemberRole)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMemberRole indicates an expected call of GetMemberRole.
+func (mr *MockRepositoryMockRecorder) GetMemberRole(ctx, organizationId, userId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMemberRole", reflect.TypeOf((*MockRepository)(nil).GetMemberRole), ctx, organizationId, userId)
+}
+
+// GetMemberRoleString mocks base method.
+func (m *MockRepository) GetMemberRoleString(ctx context.Context, organizationId, userId string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMemberRoleString", ctx, organizationId, userId)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMemberRoleString indicates an expected call of GetMemberRoleString.
+func (mr *MockRepositoryMockRecorder) GetMemberRoleString(ctx, organizationId, userId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMemberRoleString", reflect.TypeOf((*MockRepository)(nil).GetMemberRoleString), ctx, organizationId, userId)
+}
+
 // GetMembers mocks base method.
 func (m *MockRepository) GetMembers(ctx context.Context, organizationId string) ([]*OrganizationMemberDTO, []string, []string, error) {
 	m.ctrl.T.Helper()

@@ -26,13 +26,14 @@ import (
 	"go.uber.org/zap"
 
 	"hasir-api/internal"
-	"hasir-api/internal/organization"
+	internalOrganization "hasir-api/internal/organization"
 	"hasir-api/internal/registry"
 	"hasir-api/internal/user"
 	"hasir-api/pkg/auth"
 	"hasir-api/pkg/config"
 	"hasir-api/pkg/email"
 	_ "hasir-api/pkg/log"
+	"hasir-api/pkg/organization"
 )
 
 func main() {
@@ -66,16 +67,18 @@ func main() {
 
 	userPgRepository := user.NewPgRepository(cfg, traceProvider)
 	repositoryPgRepository := registry.NewPgRepository(cfg, traceProvider)
-	organizationPgRepository := organization.NewPgRepository(cfg, traceProvider)
+	organizationPgRepository := internalOrganization.NewPgRepository(cfg, traceProvider)
 
 	emailService := email.NewService(cfg)
 
 	ctx := context.Background()
 	organizationPgRepository.StartEmailJobProcessor(ctx, emailService, 10, 5*time.Second)
 
+	orgRepoAdapter := organization.NewOrgRepositoryAdapter(organizationPgRepository)
+
 	userService := user.NewService(cfg, userPgRepository)
-	gitRepositoryService := registry.NewService(repositoryPgRepository)
-	organizationService := organization.NewService(organizationPgRepository, gitRepositoryService, emailService)
+	gitRepositoryService := registry.NewService(repositoryPgRepository, orgRepoAdapter)
+	organizationService := internalOrganization.NewService(organizationPgRepository, gitRepositoryService, emailService)
 
 	authInterceptor := auth.NewAuthInterceptor(cfg.JwtSecret)
 
@@ -92,7 +95,7 @@ func main() {
 
 	userHandler := user.NewHandler(userService, userPgRepository, interceptors...)
 	registryHandler := registry.NewHandler(gitRepositoryService, repositoryPgRepository, interceptors...)
-	organizationHandler := organization.NewHandler(organizationService, organizationPgRepository, interceptors...)
+	organizationHandler := internalOrganization.NewHandler(organizationService, organizationPgRepository, interceptors...)
 	handlers := []internal.GlobalHandler{
 		userHandler,
 		registryHandler,
@@ -125,7 +128,7 @@ func main() {
 	gracefulShutdown(server, traceProvider, organizationPgRepository)
 }
 
-func gracefulShutdown(server *http.Server, traceProvider *sdktrace.TracerProvider, organizationRepo *organization.PgRepository) {
+func gracefulShutdown(server *http.Server, traceProvider *sdktrace.TracerProvider, organizationRepo *internalOrganization.PgRepository) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 

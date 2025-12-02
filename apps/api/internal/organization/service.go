@@ -92,6 +92,19 @@ func (s *service) CreateOrganization(
 		return err
 	}
 
+	ownerMember := &OrganizationMemberDTO{
+		Id:             uuid.NewString(),
+		OrganizationId: org.Id,
+		UserId:         createdBy,
+		Role:           MemberRoleOwner,
+		JoinedAt:       time.Now().UTC(),
+	}
+
+	if err := s.repository.AddMember(ctx, ownerMember); err != nil {
+		zap.L().Error("failed to add creator as owner", zap.Error(err), zap.String("organizationId", org.Id))
+		return err
+	}
+
 	var invites []inviteInfo
 	for _, member := range req.GetMembers() {
 		email := member.GetEmail()
@@ -118,8 +131,16 @@ func (s *service) InviteUser(
 		return err
 	}
 
-	if org.CreatedBy != invitedBy {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("only the organization creator can invite users"))
+	role, err := s.repository.GetMemberRole(ctx, req.GetId(), invitedBy)
+	if err != nil {
+		if errors.Is(err, ErrMemberNotFound) {
+			return connect.NewError(connect.CodePermissionDenied, errors.New("you are not a member of this organization"))
+		}
+		return err
+	}
+
+	if role != MemberRoleOwner {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can invite users"))
 	}
 
 	email := req.GetEmail()
@@ -204,8 +225,16 @@ func (s *service) UpdateOrganization(
 		return err
 	}
 
-	if org.CreatedBy != userId {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("only the organization creator can update it"))
+	role, err := s.repository.GetMemberRole(ctx, req.GetId(), userId)
+	if err != nil {
+		if errors.Is(err, ErrMemberNotFound) {
+			return connect.NewError(connect.CodePermissionDenied, errors.New("you are not a member of this organization"))
+		}
+		return err
+	}
+
+	if role != MemberRoleOwner {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can update the organization"))
 	}
 
 	org.Name = req.GetName()
@@ -222,13 +251,16 @@ func (s *service) DeleteOrganization(
 	organizationId string,
 	userId string,
 ) error {
-	org, err := s.repository.GetOrganizationById(ctx, organizationId)
+	role, err := s.repository.GetMemberRole(ctx, organizationId, userId)
 	if err != nil {
+		if errors.Is(err, ErrMemberNotFound) {
+			return connect.NewError(connect.CodePermissionDenied, errors.New("you are not a member of this organization"))
+		}
 		return err
 	}
 
-	if org.CreatedBy != userId {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("only the organization creator can delete it"))
+	if role != MemberRoleOwner {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can delete the organization"))
 	}
 
 	if err := s.registryService.DeleteRepositoriesByOrganization(ctx, organizationId); err != nil {

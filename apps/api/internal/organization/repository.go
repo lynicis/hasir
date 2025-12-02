@@ -36,6 +36,8 @@ type Repository interface {
 	UpdateInviteStatus(ctx context.Context, id string, status InviteStatus, acceptedAt *time.Time) error
 	AddMember(ctx context.Context, member *OrganizationMemberDTO) error
 	GetMembers(ctx context.Context, organizationId string) ([]*OrganizationMemberDTO, []string, []string, error)
+	GetMemberRole(ctx context.Context, organizationId, userId string) (MemberRole, error)
+	GetMemberRoleString(ctx context.Context, organizationId, userId string) (string, error)
 	EnqueueEmailJobs(ctx context.Context, jobs []*EmailJobDTO) error
 	GetPendingEmailJobs(ctx context.Context, limit int) ([]*EmailJobDTO, error)
 	UpdateEmailJobStatus(ctx context.Context, jobId string, status EmailJobStatus, errorMsg *string) error
@@ -49,6 +51,7 @@ var (
 	ErrOrganizationNotFound      = connect.NewError(connect.CodeNotFound, errors.New("organization not found"))
 	ErrInviteNotFound            = connect.NewError(connect.CodeNotFound, errors.New("invite not found"))
 	ErrMemberAlreadyExists       = connect.NewError(connect.CodeAlreadyExists, errors.New("member already exists"))
+	ErrMemberNotFound            = connect.NewError(connect.CodeNotFound, errors.New("member not found"))
 	ErrUniqueViolationCode       = "23505"
 )
 
@@ -670,6 +673,46 @@ func (r *PgRepository) GetMembers(ctx context.Context, organizationId string) ([
 	}
 
 	return members, usernames, emails, nil
+}
+
+func (r *PgRepository) GetMemberRole(ctx context.Context, organizationId, userId string) (MemberRole, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetMemberRole", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "organizationId",
+			Value: attribute.StringValue(organizationId),
+		},
+		attribute.KeyValue{
+			Key:   "userId",
+			Value: attribute.StringValue(userId),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return "", ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `SELECT role FROM organization_members WHERE organization_id = $1 AND user_id = $2`
+
+	var role MemberRole
+	err = connection.QueryRow(ctx, sql, organizationId, userId).Scan(&role)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrMemberNotFound
+		}
+		span.RecordError(err)
+		return "", connect.NewError(connect.CodeInternal, errors.New("failed to query member role"))
+	}
+
+	return role, nil
+}
+
+func (r *PgRepository) GetMemberRoleString(ctx context.Context, organizationId, userId string) (string, error) {
+	role, err := r.GetMemberRole(ctx, organizationId, userId)
+	return string(role), err
 }
 
 func (r *PgRepository) EnqueueEmailJobs(ctx context.Context, jobs []*EmailJobDTO) error {

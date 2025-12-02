@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 
 	"hasir-api/pkg/auth"
+	"hasir-api/pkg/organization"
 	"hasir-api/pkg/proto"
 )
 
@@ -29,12 +30,14 @@ type Service interface {
 type service struct {
 	rootPath   string
 	repository Repository
+	orgRepo    organization.MemberRoleChecker
 }
 
-func NewService(repository Repository) Service {
+func NewService(repository Repository, orgRepo organization.MemberRoleChecker) Service {
 	return &service{
 		rootPath:   defaultReposPath,
 		repository: repository,
+		orgRepo:    orgRepo,
 	}
 }
 
@@ -53,6 +56,10 @@ func (s *service) CreateRepository(
 	createdBy, err := auth.MustGetUserID(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get repository owner from context: %w", err)
+	}
+
+	if err := organization.IsUserOwner(ctx, s.orgRepo, organizationId, createdBy); err != nil {
+		return err
 	}
 
 	repoId := uuid.NewString()
@@ -153,6 +160,15 @@ func (s *service) DeleteRepository(
 	repo, err := s.repository.GetRepositoryById(ctx, repoId)
 	if err != nil {
 		return fmt.Errorf("failed to get repository: %w", err)
+	}
+
+	userId, err := auth.MustGetUserID(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get user from context: %w", err)
+	}
+
+	if err := organization.IsUserOwner(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
+		return err
 	}
 
 	if err := s.repository.DeleteRepository(ctx, repoId); err != nil {

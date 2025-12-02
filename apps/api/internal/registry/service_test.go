@@ -11,6 +11,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"hasir-api/pkg/auth"
+	"hasir-api/pkg/organization"
 	"hasir-api/pkg/proto"
 
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
@@ -21,8 +22,9 @@ func TestNewService(t *testing.T) {
 	t.Run("default root path", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
 
-		svc := NewService(mockRepo)
+		svc := NewService(mockRepo, mockOrgRepo)
 		concrete, ok := svc.(*service)
 		require.True(t, ok, "NewService should return *service")
 		require.Equal(t, defaultReposPath, concrete.rootPath)
@@ -33,16 +35,23 @@ func TestService_CreateRepository(t *testing.T) {
 	t.Run("success with default visibility (private)", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
 		tmpDir := t.TempDir()
 
 		svc := &service{
 			rootPath:   tmpDir,
 			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
 		}
 
 		const repoName = "my-repo"
+		const orgID = "org-123"
 		const userID = "test-user-id"
 		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(organization.MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
 			CreateRepository(ctx, gomock.Any()).
@@ -56,7 +65,8 @@ func TestService_CreateRepository(t *testing.T) {
 			})
 
 		err := svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
-			Name: repoName,
+			Name:           repoName,
+			OrganizationId: orgID,
 		})
 		require.NoError(t, err)
 
@@ -74,16 +84,23 @@ func TestService_CreateRepository(t *testing.T) {
 	t.Run("success with explicit public visibility", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
 		tmpDir := t.TempDir()
 
 		svc := &service{
 			rootPath:   tmpDir,
 			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
 		}
 
 		const repoName = "public-repo"
+		const orgID = "org-123"
 		const userID = "test-user-id"
 		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(organization.MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
 			CreateRepository(ctx, gomock.Any()).
@@ -97,8 +114,9 @@ func TestService_CreateRepository(t *testing.T) {
 			})
 
 		err := svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
-			Name:       repoName,
-			Visibility: shared.Visibility_VISIBILITY_PUBLIC,
+			Name:           repoName,
+			OrganizationId: orgID,
+			Visibility:     shared.Visibility_VISIBILITY_PUBLIC,
 		})
 		require.NoError(t, err)
 	})
@@ -106,24 +124,32 @@ func TestService_CreateRepository(t *testing.T) {
 	t.Run("database save error rolls back git directory", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
 		tmpDir := t.TempDir()
 
 		svc := &service{
 			rootPath:   tmpDir,
 			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
 		}
 
 		const repoName = "my-repo"
+		const orgID = "org-123"
 		const userID = "test-user-id"
 		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
 		dbErr := errors.New("database insert failed")
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(organization.MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
 			CreateRepository(ctx, gomock.Any()).
 			Return(dbErr)
 
 		err := svc.CreateRepository(ctx, &registryv1.CreateRepositoryRequest{
-			Name: repoName,
+			Name:           repoName,
+			OrganizationId: orgID,
 		})
 		require.ErrorContains(t, err, "failed to save repository to database")
 		require.ErrorIs(t, err, dbErr)
@@ -137,27 +163,36 @@ func TestService_DeleteRepository(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
 		tmpDir := t.TempDir()
 
 		svc := &service{
 			rootPath:   tmpDir,
 			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
 		}
 
 		repoId := "test-repo-id"
+		orgID := "org-123"
+		userID := "user-123"
 		repoPath := filepath.Join(tmpDir, repoId)
 		repoName := "test-repo"
-		ctx := context.Background()
+		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
 
 		require.NoError(t, os.MkdirAll(repoPath, 0o755))
 
 		mockRepo.EXPECT().
 			GetRepositoryById(ctx, repoId).
 			Return(&RepositoryDTO{
-				Id:   repoId,
-				Name: repoName,
-				Path: repoPath,
+				Id:             repoId,
+				Name:           repoName,
+				Path:           repoPath,
+				OrganizationId: orgID,
 			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(organization.MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
 			DeleteRepository(ctx, repoId).
@@ -174,14 +209,17 @@ func TestService_DeleteRepository(t *testing.T) {
 	t.Run("repository not found", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
 
 		svc := &service{
 			rootPath:   t.TempDir(),
 			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
 		}
 
 		repoId := "nonexistent-repo-id"
-		ctx := context.Background()
+		userID := "user-123"
+		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
 
 		mockRepo.EXPECT().
 			GetRepositoryById(ctx, repoId).
@@ -197,17 +235,21 @@ func TestService_DeleteRepository(t *testing.T) {
 	t.Run("database delete error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
 		tmpDir := t.TempDir()
 
 		svc := &service{
 			rootPath:   tmpDir,
 			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
 		}
 
 		repoId := "test-repo-id"
+		orgID := "org-123"
+		userID := "user-123"
 		repoPath := filepath.Join(tmpDir, repoId)
 		repoName := "test-repo"
-		ctx := context.Background()
+		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
 
 		require.NoError(t, os.MkdirAll(repoPath, 0o755))
 
@@ -216,10 +258,15 @@ func TestService_DeleteRepository(t *testing.T) {
 		mockRepo.EXPECT().
 			GetRepositoryById(ctx, repoId).
 			Return(&RepositoryDTO{
-				Id:   repoId,
-				Name: repoName,
-				Path: repoPath,
+				Id:             repoId,
+				Name:           repoName,
+				Path:           repoPath,
+				OrganizationId: orgID,
 			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(organization.MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
 			DeleteRepository(ctx, repoId).
@@ -238,27 +285,36 @@ func TestService_DeleteRepository(t *testing.T) {
 	t.Run("filesystem removal failure returns error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
 		tmpDir := t.TempDir()
 
 		svc := &service{
 			rootPath:   tmpDir,
 			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
 		}
 
 		repoId := "test-repo-id"
+		orgID := "org-123"
+		userID := "user-123"
 		repoPath := filepath.Join(tmpDir, repoId)
 		repoName := "test-repo"
-		ctx := context.Background()
+		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
 
 		require.NoError(t, os.MkdirAll(repoPath, 0o755))
 
 		mockRepo.EXPECT().
 			GetRepositoryById(ctx, repoId).
 			Return(&RepositoryDTO{
-				Id:   repoId,
-				Name: repoName,
-				Path: repoPath,
+				Id:             repoId,
+				Name:           repoName,
+				Path:           repoPath,
+				OrganizationId: orgID,
 			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(organization.MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
 			DeleteRepository(ctx, repoId).

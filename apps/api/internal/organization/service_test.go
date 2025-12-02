@@ -59,6 +59,10 @@ func TestCreateOrganization(t *testing.T) {
 				return nil
 			})
 
+		mockRepo.EXPECT().
+			AddMember(ctx, gomock.Any()).
+			Return(nil)
+
 		err := svc.CreateOrganization(ctx, req, createdBy)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
@@ -83,6 +87,10 @@ func TestCreateOrganization(t *testing.T) {
 
 		mockRepo.EXPECT().
 			CreateOrganization(ctx, gomock.Any()).
+			Return(nil)
+
+		mockRepo.EXPECT().
+			AddMember(ctx, gomock.Any()).
 			Return(nil)
 
 		mockRepo.EXPECT().
@@ -229,6 +237,10 @@ func TestCreateOrganization(t *testing.T) {
 			Return(nil)
 
 		mockRepo.EXPECT().
+			AddMember(ctx, gomock.Any()).
+			Return(nil)
+
+		mockRepo.EXPECT().
 			CreateInvites(ctx, gomock.Any()).
 			Return(connect.NewError(connect.CodeInternal, errors.New("invite creation failed")))
 
@@ -255,6 +267,10 @@ func TestCreateOrganization(t *testing.T) {
 
 		mockRepo.EXPECT().
 			CreateOrganization(ctx, gomock.Any()).
+			Return(nil)
+
+		mockRepo.EXPECT().
+			AddMember(ctx, gomock.Any()).
 			Return(nil)
 
 		mockRepo.EXPECT().
@@ -312,6 +328,10 @@ func TestCreateOrganization(t *testing.T) {
 						return nil
 					})
 
+				mockRepo.EXPECT().
+					AddMember(ctx, gomock.Any()).
+					Return(nil)
+
 				err := svc.CreateOrganization(ctx, req, createdBy)
 				if err != nil {
 					t.Fatalf("expected no error, got %v", err)
@@ -339,6 +359,10 @@ func TestInviteUser(t *testing.T) {
 		mockRepo.EXPECT().
 			GetOrganizationById(ctx, "org-123").
 			Return(org, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, "org-123", invitedBy).
+			Return(MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
 			CreateInvites(ctx, gomock.Any()).
@@ -380,6 +404,10 @@ func TestInviteUser(t *testing.T) {
 			GetOrganizationById(ctx, "org-123").
 			Return(org, nil)
 
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, "org-123", invitedBy).
+			Return(MemberRoleAuthor, nil)
+
 		err := svc.InviteUser(ctx, req, invitedBy)
 		if err == nil {
 			t.Fatal("expected error, got nil")
@@ -412,6 +440,10 @@ func TestInviteUser(t *testing.T) {
 		mockRepo.EXPECT().
 			GetOrganizationById(ctx, "org-123").
 			Return(org, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, "org-123", invitedBy).
+			Return(MemberRoleOwner, nil)
 
 		err := svc.InviteUser(ctx, req, invitedBy)
 		if err != nil {
@@ -770,15 +802,9 @@ func TestDeleteOrganization(t *testing.T) {
 		orgID := "org-123"
 		userID := "user-123"
 
-		org := &OrganizationDTO{
-			Id:        orgID,
-			Name:      "test-org",
-			CreatedBy: userID,
-		}
-
 		mockRepo.EXPECT().
-			GetOrganizationById(ctx, orgID).
-			Return(org, nil)
+			GetMemberRole(ctx, orgID, userID).
+			Return(MemberRoleOwner, nil)
 
 		mockRegistry.EXPECT().
 			DeleteRepositoriesByOrganization(ctx, orgID).
@@ -800,8 +826,8 @@ func TestDeleteOrganization(t *testing.T) {
 		userID := "user-123"
 
 		mockRepo.EXPECT().
-			GetOrganizationById(ctx, orgID).
-			Return(nil, ErrOrganizationNotFound)
+			GetMemberRole(ctx, orgID, userID).
+			Return(MemberRole(""), ErrMemberNotFound)
 
 		err := svc.DeleteOrganization(ctx, orgID, userID)
 		if err == nil {
@@ -813,7 +839,7 @@ func TestDeleteOrganization(t *testing.T) {
 			t.Fatalf("expected connect.Error, got %T", err)
 		}
 
-		if connectErr.Code() != connect.CodeNotFound {
+		if connectErr.Code() != connect.CodePermissionDenied {
 			t.Errorf("expected CodeNotFound, got %v", connectErr.Code())
 		}
 	})
@@ -822,17 +848,10 @@ func TestDeleteOrganization(t *testing.T) {
 		svc, mockRepo, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		userID := "user-123"
-		otherUserID := "user-456"
-
-		org := &OrganizationDTO{
-			Id:        orgID,
-			Name:      "test-org",
-			CreatedBy: otherUserID, // Different user created it
-		}
 
 		mockRepo.EXPECT().
-			GetOrganizationById(ctx, orgID).
-			Return(org, nil)
+			GetMemberRole(ctx, orgID, userID).
+			Return(MemberRoleReader, nil)
 
 		err := svc.DeleteOrganization(ctx, orgID, userID)
 		if err == nil {
@@ -854,15 +873,9 @@ func TestDeleteOrganization(t *testing.T) {
 		orgID := "org-123"
 		userID := "user-123"
 
-		org := &OrganizationDTO{
-			Id:        orgID,
-			Name:      "test-org",
-			CreatedBy: userID,
-		}
-
 		mockRepo.EXPECT().
-			GetOrganizationById(ctx, orgID).
-			Return(org, nil)
+			GetMemberRole(ctx, orgID, userID).
+			Return(MemberRoleOwner, nil)
 
 		mockRegistry.EXPECT().
 			DeleteRepositoriesByOrganization(ctx, orgID).
@@ -912,6 +925,10 @@ func TestUpdateOrganization(t *testing.T) {
 			Return(existingOrg, nil)
 
 		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
 			UpdateOrganization(ctx, gomock.Any()).
 			DoAndReturn(func(_ context.Context, org *OrganizationDTO) error {
 				if org.Id != orgID {
@@ -954,6 +971,10 @@ func TestUpdateOrganization(t *testing.T) {
 			GetOrganizationById(ctx, orgID).
 			Return(existingOrg, nil)
 
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, otherUserID).
+			Return(MemberRoleReader, nil)
+
 		err := svc.UpdateOrganization(ctx, req, otherUserID)
 		if err == nil {
 			t.Fatal("expected error, got nil")
@@ -989,6 +1010,10 @@ func TestUpdateOrganization(t *testing.T) {
 		mockRepo.EXPECT().
 			GetOrganizationById(ctx, orgID).
 			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(MemberRoleOwner, nil)
 
 		// Simulate the repository enforcing name uniqueness at the database level.
 		mockRepo.EXPECT().
