@@ -1,13 +1,9 @@
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20250912141014-52f32327d4b0.1 h1:31on4W/yPcV4nZHL4+UCiCvLPsMqe/vJcNg8Rci0scc=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20250912141014-52f32327d4b0.1/go.mod h1:fUl8CEN/6ZAMk6bP8ahBJPUJw7rbp+j4x+wCcYi2IG4=
-buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251201104707-252cd96d2a4a.2 h1:BtHpwHUkTv1sd291Cmpaux9QugCXiqJQgaK0y64ofeI=
-buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251201104707-252cd96d2a4a.2/go.mod h1:A8OVysUhpCU+VTqGVNB3gL4L2Fl1oXJnYBpQAni+nV8=
-buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251201161848-0ee36fc0facc.2 h1:BVnAuwkTOq9Y5jSXkbITFWIMk1u/6WGDaoNU4PBRk2c=
-buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251201161848-0ee36fc0facc.2/go.mod h1:RqP0AMQ9YVLz9oSLcUumwtXPYcesSOs4oHsTyqVzN2g=
-buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251201104707-252cd96d2a4a.1 h1:KXICeJMuXp/6glEr3xPNgznLOcz4mSrrVygslXllAUo=
-buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251201104707-252cd96d2a4a.1/go.mod h1:zI1JEBm9ommmarkR/IDTL0Xv1iEmRG96sARZqun8vhE=
-buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251201161848-0ee36fc0facc.1 h1:bL7H535s84X+XRW2EfjisBlrQuKkQukHENc6mCTeN1Y=
-buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251201161848-0ee36fc0facc.1/go.mod h1:zI1JEBm9ommmarkR/IDTL0Xv1iEmRG96sARZqun8vhE=
+buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251202073816-0280013a5145.2 h1:eI0sG2JQUP7engYvvmNJ2ZEhdA9rypYqsMErVQtfCog=
+buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251202073816-0280013a5145.2/go.mod h1:HPLbRUDQLIWKHlesbuuq/49lHvl2XalH4nhPplluvh0=
+buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251202073816-0280013a5145.1 h1:Y86U8MCEe97GJCx50TbWfK3484Mhr6wcOfK40OAccho=
+buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251202073816-0280013a5145.1/go.mod h1:zI1JEBm9ommmarkR/IDTL0Xv1iEmRG96sARZqun8vhE=
 buf.build/go/protovalidate v1.0.1 h1:Fwmf08OOUuKVeMvEnDmcKxQam4PJc/zFgvVX64BhTms=
 buf.build/go/protovalidate v1.0.1/go.mod h1:SoZmvk/3ZzOVg9YSkTdm4grMAByjf8zgZq4ZNaLZXoQ=
 cel.dev/expr v0.25.1 h1:1KrZg61W6TWSxuNZ37Xy49ps13NUovb66QLprthtwi4=
