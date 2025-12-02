@@ -3,6 +3,7 @@
 import { OrganizationService } from "@buf/hasir_hasir.bufbuild_es/organization/v1/organization_pb";
 import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
 import { ArrowLeftIcon, PlusIcon, XIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
@@ -17,6 +18,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Field,
   FieldError,
@@ -42,6 +50,9 @@ const organizationSchema = z.object({
   invites: z.array(
     z.object({
       email: z.email({ error: "Please enter a valid email address." }),
+      role: z.enum(["reader", "author", "owner"] as const, {
+        error: "Please select a role.",
+      }),
     })
   ),
 });
@@ -88,15 +99,25 @@ export function OrganizationDialogForm({
 
   async function handleFormSubmit(values: OrganizationFormValues) {
     try {
-      const inviteEmails = await Promise.all(
-        values.invites.map(({ email }) => email)
-      );
+      const members = values.invites.map(({ email, role }) => {
+        const mappedRole =
+          role === "author"
+            ? Role.AUTHOR
+            : role === "owner"
+            ? Role.OWNER
+            : Role.READER;
+
+        return {
+          email,
+          role: mappedRole,
+        };
+      });
 
       await organizationApiClient.createOrganization({
         name: values.name,
         visibility:
           visibilityMapper.get(values.visibility) || Visibility.PUBLIC,
-        inviteEmails,
+        members,
       });
 
       refreshOrganizations();
@@ -136,7 +157,7 @@ export function OrganizationDialogForm({
   }
 
   function addInvite() {
-    append({ email: "" });
+    append({ email: "", role: "reader" });
   }
 
   return (
@@ -264,39 +285,70 @@ export function OrganizationDialogForm({
                   </div>
                 ) : (
                   fields.map((field, index) => (
-                    <Controller
-                      key={field.id}
-                      control={control}
-                      name={`invites.${index}.email`}
-                      render={({ field: inputField, fieldState }) => (
-                        <Field data-invalid={fieldState.invalid}>
-                          <div className="flex items-center gap-2">
-                            <Input
-                              {...inputField}
-                              type="email"
-                              placeholder="friend@example.com"
-                              disabled={isSubmitting}
-                              autoFocus={index === fields.length - 1}
-                              aria-invalid={fieldState.invalid}
+                    <div key={field.id} className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <Controller
+                          control={control}
+                          name={`invites.${index}.email`}
+                          render={({ field: inputField, fieldState }) => (
+                            <Field
+                              data-invalid={fieldState.invalid}
                               className="flex-1"
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => remove(index)}
-                              disabled={isSubmitting}
-                              className="shrink-0"
                             >
-                              <XIcon className="size-4" />
-                            </Button>
-                          </div>
-                          {fieldState.error && (
-                            <FieldError errors={[fieldState.error]} />
+                              <Input
+                                {...inputField}
+                                type="email"
+                                placeholder="friend@example.com"
+                                disabled={isSubmitting}
+                                autoFocus={index === fields.length - 1}
+                                aria-invalid={fieldState.invalid}
+                              />
+                              {fieldState.error && (
+                                <FieldError errors={[fieldState.error]} />
+                              )}
+                            </Field>
                           )}
-                        </Field>
-                      )}
-                    />
+                        />
+                        <Controller
+                          control={control}
+                          name={`invites.${index}.role`}
+                          render={({ field: selectField, fieldState }) => (
+                            <Field
+                              data-invalid={fieldState.invalid}
+                              className="w-32"
+                            >
+                              <Select
+                                value={selectField.value}
+                                onValueChange={selectField.onChange}
+                                disabled={isSubmitting}
+                              >
+                                <SelectTrigger aria-label="Role">
+                                  <SelectValue placeholder="Role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="reader">Reader</SelectItem>
+                                  <SelectItem value="author">Author</SelectItem>
+                                  <SelectItem value="owner">Owner</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {fieldState.error && (
+                                <FieldError errors={[fieldState.error]} />
+                              )}
+                            </Field>
+                          )}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => remove(index)}
+                          disabled={isSubmitting}
+                          className="shrink-0"
+                        >
+                          <XIcon className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
                   ))
                 )}
               </div>

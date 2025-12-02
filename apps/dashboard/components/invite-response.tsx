@@ -76,25 +76,25 @@ export function InviteResponse({
     validateToken();
   }, [invitationToken, organizationApiClient]);
 
-  async function handleResponse(accept: boolean) {
-    const setLoading = accept ? setIsAccepting : setIsRejecting;
+  async function handleResponse(status: boolean) {
+    const setLoading = status ? setIsAccepting : setIsRejecting;
     setLoading(true);
 
     try {
       await organizationApiClient.respondToInvitation({
         invitationId: invitationToken,
-        accept,
+        status: status,
       });
 
-      setStatus(accept ? "accepted" : "rejected");
+      setStatus(status ? "accepted" : "rejected");
       toast.success(
-        accept
+        status
           ? "You have joined the organization!"
           : "Invitation declined successfully."
       );
 
-      if (accept) {
-        setTimeout(() => router.push("/dashboard"), 1500);
+      if (status) {
+        setTimeout(() => router.push("/dashboard"), 600);
       }
     } catch (error) {
       setStatus("error");

@@ -43,6 +43,8 @@ export function MemberItem({
   onDelete,
   getInitials,
 }: MemberItemProps) {
+  const isOwner = member.permission === "owner";
+
   return (
     <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card px-4 py-3 hover:bg-accent/50 transition-colors">
       <div className="flex items-center gap-3">
@@ -56,28 +58,34 @@ export function MemberItem({
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              {permissionLabels[member.permission]}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Change Permission</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {Object.entries(permissionLabels).map(([value, label]) => (
-              <DropdownMenuItem
-                key={value}
-                onClick={() =>
-                  onPermissionChange(member.id, value as Permission)
-                }
-                className={member.permission === value ? "bg-accent" : ""}
-              >
-                {label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {isOwner ? (
+          <Button variant="outline" size="sm" disabled>
+            {permissionLabels[member.permission]}
+          </Button>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                {permissionLabels[member.permission]}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Change Permission</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {Object.entries(permissionLabels).map(([value, label]) => (
+                <DropdownMenuItem
+                  key={value}
+                  onClick={() =>
+                    onPermissionChange(member.id, value as Permission)
+                  }
+                  className={member.permission === value ? "bg-accent" : ""}
+                >
+                  {label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">

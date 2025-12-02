@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { getMembers } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
+import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
+import { useQuery } from "@connectrpc/connect-query";
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 import { toast } from "sonner";
 
 import {
@@ -8,41 +12,54 @@ import {
   type Permission,
 } from "@/components/member-item";
 import { DeleteMemberDialog } from "@/components/delete-member-dialog";
+import { InviteUserDialog } from "@/components/invite-user-dialog";
 import { MembersList } from "@/components/members-list";
+import { customRetry } from "@/lib/query-retry";
+import { isNotFoundError } from "@/lib/utils";
 
-const mockMembers: OrganizationMember[] = [
-  {
-    id: "1",
-    email: "john.doe@example.com",
-    name: "John Doe",
-    permission: "owner",
-  },
-  {
-    id: "2",
-    email: "jane.smith@example.com",
-    name: "Jane Smith",
-    permission: "admin",
-  },
-  {
-    id: "3",
-    email: "bob.johnson@example.com",
-    name: "Bob Johnson",
-    permission: "member",
-  },
-  {
-    id: "4",
-    email: "alice.brown@example.com",
-    name: "Alice Brown",
-    permission: "viewer",
-  },
-];
+const memberRoleMapper = new Map<Role, Permission>([
+  [Role.OWNER, "owner"],
+  [Role.AUTHOR, "admin"],
+  [Role.READER, "member"],
+]);
 
 export default function UsersPage() {
-  const [members, setMembers] = useState<OrganizationMember[]>(mockMembers);
+  const params = useParams();
+  const organizationId = params.id as string;
+
+  const { data: membersData, error: membersError } = useQuery(
+    getMembers,
+    { id: organizationId },
+    { retry: customRetry }
+  );
+
+  const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [deleteMemberDialog, setDeleteMemberDialog] = useState<{
     open: boolean;
     member: OrganizationMember | null;
   }>({ open: false, member: null });
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+
+  const fetchedMembers = useMemo<OrganizationMember[]>(() => {
+    if (!membersData?.members) return [];
+
+    return membersData.members.map((member) => ({
+      id: member.id,
+      email: member.email,
+      name: member.email.split("@")[0] || member.email,
+      permission: memberRoleMapper.get(member.role) as Permission,
+    }));
+  }, [membersData]);
+
+  useEffect(() => {
+    setMembers(fetchedMembers);
+  }, [fetchedMembers]);
+
+  useEffect(() => {
+    if (membersError && !isNotFoundError(membersError)) {
+      toast.error("Error occurred while fetching members");
+    }
+  }, [membersError]);
 
   function handlePermissionChange(memberId: string, newPermission: Permission) {
     setMembers((prev) =>
@@ -72,7 +89,7 @@ export default function UsersPage() {
   }
 
   function handleInviteMember() {
-    toast.info("Invite member functionality coming soon");
+    setIsInviteDialogOpen(true);
   }
 
   function getInitials(name: string): string {
@@ -106,6 +123,11 @@ export default function UsersPage() {
           setDeleteMemberDialog({ open, member: deleteMemberDialog.member })
         }
         onConfirm={confirmDeleteMember}
+      />
+      <InviteUserDialog
+        open={isInviteDialogOpen}
+        onOpenChange={setIsInviteDialogOpen}
+        organizationId={organizationId}
       />
     </div>
   );

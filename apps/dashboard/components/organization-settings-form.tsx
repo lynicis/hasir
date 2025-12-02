@@ -31,6 +31,7 @@ import {
 } from "@/lib/visibility-mapper";
 import { DeleteOrganizationDialog } from "@/components/delete-organization-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { InviteUserDialog } from "@/components/invite-user-dialog";
 import { useRefreshStore } from "@/stores/refresh-store";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ export function OrganizationSettingsForm() {
   const organizationId = params.id as string;
   const organizationApiClient = useClient(OrganizationService);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const {
@@ -308,6 +310,33 @@ export function OrganizationSettingsForm() {
         </CardContent>
       </Card>
 
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Members</CardTitle>
+          <CardDescription>
+            Invite users to join your organization
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4">
+            <div>
+              <h3 className="text-sm font-medium mb-1">Invite User</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Send an invitation email to add new members to your
+                organization.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsInviteDialogOpen(true)}
+              >
+                Invite User
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="mt-6 border-destructive/50">
         <CardHeader>
           <CardTitle className="text-xl text-destructive">
@@ -337,6 +366,12 @@ export function OrganizationSettingsForm() {
           </div>
         </CardContent>
       </Card>
+
+      <InviteUserDialog
+        open={isInviteDialogOpen}
+        onOpenChange={setIsInviteDialogOpen}
+        organizationId={organizationId}
+      />
 
       <DeleteOrganizationDialog
         open={isDeleteDialogOpen}

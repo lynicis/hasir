@@ -1,6 +1,7 @@
 import type { Mock } from "vitest";
 
 import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
+import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, beforeEach, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
@@ -179,7 +180,7 @@ describe("OrganizationDialogForm", () => {
       expect(mockCreateOrganization).toHaveBeenCalledWith({
         name: "Test Org",
         visibility: Visibility.PRIVATE,
-        inviteEmails: ["friend@test.com"],
+        members: [{ email: "friend@test.com", role: Role.READER }],
       })
     );
 
@@ -214,7 +215,7 @@ describe("OrganizationDialogForm", () => {
       expect(mockCreateOrganization).toHaveBeenCalledWith({
         name: "Solo Org",
         visibility: Visibility.PUBLIC,
-        inviteEmails: [],
+        members: [],
       })
     );
 
@@ -254,5 +255,49 @@ describe("OrganizationDialogForm", () => {
     await waitFor(() => {
       expect(mockCreateOrganization).not.toHaveBeenCalled();
     });
+  });
+
+  it("creates organization with invites and selected roles", async () => {
+    const user = userEvent.setup();
+    const { onOpenChange } = setup(true);
+
+    await user.type(screen.getByLabelText(/name/i), "Test Org");
+    await user.click(screen.getByRole("radio", { name: /private/i }));
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: /invite your friends/i })
+      ).toBeInTheDocument()
+    );
+
+    await user.click(screen.getByRole("button", { name: /add email/i }));
+    await user.type(
+      screen.getByPlaceholderText(/friend@example.com/i),
+      "friend@test.com"
+    );
+
+    // Select role
+    const roleSelects = screen.getAllByRole("combobox");
+    const roleSelect =
+      roleSelects.find((select) =>
+        select.getAttribute("aria-label")?.includes("Role")
+      ) || roleSelects[roleSelects.length - 1];
+
+    await user.click(roleSelect);
+    const authorOption = await screen.findByRole("option", { name: /author/i });
+    await user.click(authorOption);
+
+    await user.click(screen.getByRole("button", { name: /create & invite/i }));
+
+    await waitFor(() =>
+      expect(mockCreateOrganization).toHaveBeenCalledWith({
+        name: "Test Org",
+        visibility: Visibility.PRIVATE,
+        members: [{ email: "friend@test.com", role: Role.AUTHOR }],
+      })
+    );
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

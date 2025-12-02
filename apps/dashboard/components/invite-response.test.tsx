@@ -131,7 +131,7 @@ describe("InviteResponse", () => {
       mockIsInvitationValid.mockResolvedValue({});
     });
 
-    it("calls respondToInvitation with accept=true", async () => {
+    it("calls respondToInvitation with status=true", async () => {
       const user = userEvent.setup();
       mockRespondToInvitation.mockResolvedValue({});
 
@@ -148,7 +148,7 @@ describe("InviteResponse", () => {
       await waitFor(() =>
         expect(mockRespondToInvitation).toHaveBeenCalledWith({
           invitationId: "test-token",
-          accept: true,
+          status: true,
         })
       );
     });
@@ -199,7 +199,7 @@ describe("InviteResponse", () => {
       mockIsInvitationValid.mockResolvedValue({});
     });
 
-    it("calls respondToInvitation with accept=false", async () => {
+    it("calls respondToInvitation with status=false", async () => {
       const user = userEvent.setup();
       mockRespondToInvitation.mockResolvedValue({});
 
@@ -214,7 +214,7 @@ describe("InviteResponse", () => {
       await waitFor(() =>
         expect(mockRespondToInvitation).toHaveBeenCalledWith({
           invitationId: "test-token",
-          accept: false,
+          status: false,
         })
       );
     });

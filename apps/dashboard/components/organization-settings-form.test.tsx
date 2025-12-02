@@ -6,8 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Code, ConnectError } from "@connectrpc/connect";
 import userEvent from "@testing-library/user-event";
 
-import { useClient } from "@/lib/use-client";
 import { useRefreshStore } from "@/stores/refresh-store";
+import { useClient } from "@/lib/use-client";
 
 import { OrganizationSettingsForm } from "./organization-settings-form";
 
