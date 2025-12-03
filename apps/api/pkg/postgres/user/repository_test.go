@@ -12,6 +12,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"golang.org/x/crypto/bcrypt"
 
+	"hasir-api/internal/user"
 	"hasir-api/pkg/config"
 )
 
@@ -48,7 +49,7 @@ func Test_NewPgRepository(t *testing.T) {
 		},
 	}, traceProvider)
 
-	assert.Implements(t, (*Repository)(nil), pgRepository)
+	assert.Implements(t, (*user.Repository)(nil), pgRepository)
 }
 
 func TestPgRepository_CreateUser(t *testing.T) {
@@ -72,7 +73,7 @@ func TestPgRepository_CreateUser(t *testing.T) {
 		}, traceProvider)
 
 		userId := uuid.NewString()
-		user := &UserDTO{
+		user := &user.UserDTO{
 			Id:        userId,
 			Username:  "test",
 			Email:     "test@mail.com",
@@ -132,7 +133,7 @@ func TestPgRepository_CreateUser(t *testing.T) {
 			},
 		}, traceProvider)
 
-		user := &UserDTO{
+		user := &user.UserDTO{
 			Id:        uuid.NewString(),
 			Username:  "another-user",
 			Email:     fakeEmail,
@@ -165,7 +166,7 @@ func TestPgRepository_CreateUser(t *testing.T) {
 			},
 		}, traceProvider)
 
-		user := &UserDTO{
+		user := &user.UserDTO{
 			Id:        fakeId,
 			Username:  "another-user",
 			Email:     "another@mail.com",
@@ -203,7 +204,7 @@ func TestPgRepository_CreateUser(t *testing.T) {
 		password := "TestPassword123_"
 		createdAt := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
-		user := &UserDTO{
+		user := &user.UserDTO{
 			Id:        userId,
 			Username:  username,
 			Email:     email,
@@ -614,7 +615,7 @@ func TestPgRepository_UpdateUserById(t *testing.T) {
 		newHashedPassword, err := bcrypt.GenerateFromPassword([]byte("NewPassword123_"), bcrypt.DefaultCost)
 		require.NoError(t, err)
 
-		updatedUser := &UserDTO{
+		updatedUser := &user.UserDTO{
 			Id:       fakeId,
 			Username: "updated-username",
 			Email:    "updated@mail.com",
@@ -661,7 +662,7 @@ func TestPgRepository_UpdateUserById(t *testing.T) {
 			},
 		}, traceProvider)
 
-		updatedUser := &UserDTO{
+		updatedUser := &user.UserDTO{
 			Id:       fakeId,
 			Username: "only-username-updated",
 		}
@@ -705,7 +706,7 @@ func TestPgRepository_UpdateUserById(t *testing.T) {
 			},
 		}, traceProvider)
 
-		updatedUser := &UserDTO{
+		updatedUser := &user.UserDTO{
 			Id:    fakeId,
 			Email: "only-email-updated@mail.com",
 		}
@@ -749,7 +750,7 @@ func TestPgRepository_UpdateUserById(t *testing.T) {
 			},
 		}, traceProvider)
 
-		updatedUser := &UserDTO{
+		updatedUser := &user.UserDTO{
 			Id: fakeId,
 		}
 
@@ -778,7 +779,7 @@ func TestPgRepository_UpdateUserById(t *testing.T) {
 		}, traceProvider)
 
 		nonExistentId := uuid.NewString()
-		updatedUser := &UserDTO{
+		updatedUser := &user.UserDTO{
 			Id:       nonExistentId,
 			Username: "updated-username",
 		}
@@ -831,7 +832,7 @@ func TestPgRepository_UpdateUserById(t *testing.T) {
 			},
 		}, traceProvider)
 
-		updatedUser := &UserDTO{
+		updatedUser := &user.UserDTO{
 			Id:    fakeId,
 			Email: anotherEmail,
 		}

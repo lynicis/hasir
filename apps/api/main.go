@@ -36,6 +36,7 @@ import (
 	_ "hasir-api/pkg/log"
 	postgresOrganization "hasir-api/pkg/postgres/organization"
 	postgresRegistry "hasir-api/pkg/postgres/registry"
+	postgresUser "hasir-api/pkg/postgres/user"
 )
 
 func main() {
@@ -67,7 +68,7 @@ func main() {
 		traceProvider = initTracer(cfg)
 	}
 
-	userPgRepository := user.NewPgRepository(cfg, traceProvider)
+	userPgRepository := postgresUser.NewPgRepository(cfg, traceProvider)
 	repositoryPgRepository := postgresRegistry.NewPgRepository(cfg, traceProvider)
 	organizationPgRepository := postgresOrganization.NewOrganizationRepository(cfg, traceProvider)
 
