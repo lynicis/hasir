@@ -34,11 +34,10 @@ func NewAuthInterceptor(jwtSecret []byte) *AuthInterceptor {
 	return &AuthInterceptor{
 		jwtSecret: jwtSecret,
 		publicMethods: map[string]bool{
-			userv1connect.UserServiceRegisterProcedure:                            true,
-			userv1connect.UserServiceLoginProcedure:                               true,
-			userv1connect.UserServiceRenewTokensProcedure:                         true,
-			organizationv1connect.OrganizationServiceIsInvitationValidProcedure:   true,
-			organizationv1connect.OrganizationServiceRespondToInvitationProcedure: true,
+			userv1connect.UserServiceRegisterProcedure:                          true,
+			userv1connect.UserServiceLoginProcedure:                             true,
+			userv1connect.UserServiceRenewTokensProcedure:                       true,
+			organizationv1connect.OrganizationServiceIsInvitationValidProcedure: true,
 		},
 	}
 }

@@ -218,19 +218,21 @@ func TestHandler_GetOrganizations(t *testing.T) {
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
 
+		testUserID := "test-user-123"
+
 		orgs := &[]OrganizationDTO{
 			{Id: "org-1", Name: "first-org", Visibility: proto.VisibilityPrivate},
 			{Id: "org-2", Name: "second-org", Visibility: proto.VisibilityPublic},
 		}
 
 		mockRepository.EXPECT().
-			GetOrganizationsCount(gomock.Any()).
+			GetUserOrganizationsCount(gomock.Any(), testUserID).
 			Return(2, nil)
 		mockRepository.EXPECT().
-			GetOrganizations(gomock.Any(), 1, 10).
+			GetUserOrganizations(gomock.Any(), testUserID, 1, 10).
 			Return(orgs, nil)
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -257,16 +259,18 @@ func TestHandler_GetOrganizations(t *testing.T) {
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
 
+		testUserID := "test-user-456"
+
 		orgs := &[]OrganizationDTO{}
 
 		mockRepository.EXPECT().
-			GetOrganizationsCount(gomock.Any()).
+			GetUserOrganizationsCount(gomock.Any(), testUserID).
 			Return(0, nil)
 		mockRepository.EXPECT().
-			GetOrganizations(gomock.Any(), 1, 10).
+			GetUserOrganizations(gomock.Any(), testUserID, 1, 10).
 			Return(orgs, nil)
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -288,10 +292,37 @@ func TestHandler_GetOrganizations(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		testUserID := "test-user-789"
 
 		mockRepository.EXPECT().
-			GetOrganizationsCount(gomock.Any()).
+			GetUserOrganizationsCount(gomock.Any(), testUserID).
 			Return(0, connect.NewError(connect.CodeInternal, errors.New("database error")))
+
+		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.GetOrganizations(context.Background(), connect.NewRequest(&organizationv1.GetOrganizationsRequest{}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeInternal, connectErr.Code())
+	})
+
+	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
 
 		h := NewHandler(mockService, mockRepository)
 		mux := http.NewServeMux()
@@ -311,7 +342,7 @@ func TestHandler_GetOrganizations(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeInternal, connectErr.Code())
+		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
 

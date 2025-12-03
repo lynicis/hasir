@@ -54,6 +54,11 @@ func (h *handler) GetOrganizations(
 	ctx context.Context,
 	req *connect.Request[organizationv1.GetOrganizationsRequest],
 ) (*connect.Response[organizationv1.GetOrganizationsResponse], error) {
+	userId, err := auth.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	page := 1
 	pageSize := 10
 
@@ -74,12 +79,12 @@ func (h *handler) GetOrganizations(
 		page = 1
 	}
 
-	totalCount, err := h.repository.GetOrganizationsCount(ctx)
+	totalCount, err := h.repository.GetUserOrganizationsCount(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
 
-	organizations, err := h.repository.GetOrganizations(ctx, page, pageSize)
+	organizations, err := h.repository.GetUserOrganizations(ctx, userId, page, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +188,7 @@ func (h *handler) RespondToInvitation(
 		return nil, err
 	}
 
-	if err := h.service.RespondToInvitation(
+	if err = h.service.RespondToInvitation(
 		ctx,
 		req.Msg.GetInvitationId(),
 		userId,

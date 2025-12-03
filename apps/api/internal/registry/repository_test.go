@@ -99,6 +99,30 @@ func createTestRepository(t *testing.T, name string) *RepositoryDTO {
 	}
 }
 
+func createRepositoriesAndMembersTables(t *testing.T, connString string) {
+	t.Helper()
+
+	createRepositoriesTable(t, connString)
+
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		err = conn.Close(t.Context())
+		require.NoError(t, err)
+	}()
+
+	sql := `CREATE TABLE organization_members (
+		id VARCHAR PRIMARY KEY,
+		organization_id VARCHAR NOT NULL,
+		user_id VARCHAR NOT NULL,
+		role VARCHAR NOT NULL,
+		joined_at TIMESTAMP NOT NULL
+	)`
+
+	_, err = conn.Exec(t.Context(), sql)
+	require.NoError(t, err)
+}
+
 func TestPgRepository_CreateRepository(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		container := setupPgContainer(t)
@@ -475,5 +499,62 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 		assert.Equal(t, testRepo.Visibility, found.Visibility)
 		assert.WithinDuration(t, time.Now().UTC(), found.CreatedAt, 5*time.Second)
 		assert.WithinDuration(t, time.Now().UTC(), *found.UpdatedAt, 5*time.Second)
+	})
+}
+
+func TestPgRepository_GetRepositoriesByUser(t *testing.T) {
+	t.Run("returns repositories for a specific user via organization membership", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesAndMembersTables(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		userID := uuid.NewString()
+		orgID1 := uuid.NewString()
+		orgID2 := uuid.NewString()
+		otherOrgID := uuid.NewString()
+
+		repo1 := createTestRepository(t, "user-repo-1-"+uuid.NewString())
+		repo1.OrganizationId = orgID1
+		repo2 := createTestRepository(t, "user-repo-2-"+uuid.NewString())
+		repo2.OrganizationId = orgID2
+		repoOther := createTestRepository(t, "other-repo-"+uuid.NewString())
+		repoOther.OrganizationId = otherOrgID
+
+		err = repo.CreateRepository(t.Context(), repo1)
+		require.NoError(t, err)
+		err = repo.CreateRepository(t.Context(), repo2)
+		require.NoError(t, err)
+		err = repo.CreateRepository(t.Context(), repoOther)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		_, err = conn.Exec(t.Context(),
+			`INSERT INTO organization_members (id, organization_id, user_id, role, joined_at)
+			 VALUES ($1, $2, $3, 'owner', NOW()),
+			        ($4, $5, $3, 'author', NOW())`,
+			uuid.NewString(), orgID1, userID,
+			uuid.NewString(), orgID2,
+		)
+		require.NoError(t, err)
+
+		repos, err := repo.GetRepositoriesByUser(t.Context(), userID, 1, 10)
+		require.NoError(t, err)
+		require.NotNil(t, repos)
+		require.Len(t, *repos, 2)
 	})
 }

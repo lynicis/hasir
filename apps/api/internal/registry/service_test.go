@@ -31,6 +31,10 @@ func TestNewService(t *testing.T) {
 	})
 }
 
+func testAuthInterceptor(userID string) context.Context {
+	return context.WithValue(context.Background(), auth.UserIDKey, userID)
+}
+
 func TestService_CreateRepository(t *testing.T) {
 	t.Run("success with default visibility (private)", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -47,7 +51,7 @@ func TestService_CreateRepository(t *testing.T) {
 		const repoName = "my-repo"
 		const orgID = "org-123"
 		const userID = "test-user-id"
-		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
+		ctx := testAuthInterceptor(userID)
 
 		mockOrgRepo.EXPECT().
 			GetMemberRole(ctx, orgID, userID).
@@ -96,7 +100,7 @@ func TestService_CreateRepository(t *testing.T) {
 		const repoName = "public-repo"
 		const orgID = "org-123"
 		const userID = "test-user-id"
-		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
+		ctx := testAuthInterceptor(userID)
 
 		mockOrgRepo.EXPECT().
 			GetMemberRole(ctx, orgID, userID).
@@ -136,7 +140,7 @@ func TestService_CreateRepository(t *testing.T) {
 		const repoName = "my-repo"
 		const orgID = "org-123"
 		const userID = "test-user-id"
-		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
+		ctx := testAuthInterceptor(userID)
 		dbErr := errors.New("database insert failed")
 
 		mockOrgRepo.EXPECT().
@@ -177,7 +181,7 @@ func TestService_DeleteRepository(t *testing.T) {
 		userID := "user-123"
 		repoPath := filepath.Join(tmpDir, repoId)
 		repoName := "test-repo"
-		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
+		ctx := testAuthInterceptor(userID)
 
 		require.NoError(t, os.MkdirAll(repoPath, 0o755))
 
@@ -219,7 +223,7 @@ func TestService_DeleteRepository(t *testing.T) {
 
 		repoId := "nonexistent-repo-id"
 		userID := "user-123"
-		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
+		ctx := testAuthInterceptor(userID)
 
 		mockRepo.EXPECT().
 			GetRepositoryById(ctx, repoId).
@@ -249,7 +253,7 @@ func TestService_DeleteRepository(t *testing.T) {
 		userID := "user-123"
 		repoPath := filepath.Join(tmpDir, repoId)
 		repoName := "test-repo"
-		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
+		ctx := testAuthInterceptor(userID)
 
 		require.NoError(t, os.MkdirAll(repoPath, 0o755))
 
@@ -299,7 +303,7 @@ func TestService_DeleteRepository(t *testing.T) {
 		userID := "user-123"
 		repoPath := filepath.Join(tmpDir, repoId)
 		repoName := "test-repo"
-		ctx := context.WithValue(context.Background(), auth.UserIDKey, userID)
+		ctx := testAuthInterceptor(userID)
 
 		require.NoError(t, os.MkdirAll(repoPath, 0o755))
 
@@ -334,5 +338,41 @@ func TestService_DeleteRepository(t *testing.T) {
 		if _, err := os.Stat(repoPath); err == nil {
 			require.NoError(t, os.Chmod(repoPath, 0o755))
 		}
+	})
+
+	t.Run("GetRepositories returns repositories for authenticated user", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   t.TempDir(),
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoriesByUserCount(ctx, userID).
+			Return(2, nil)
+
+		repos := &[]RepositoryDTO{
+			{Id: "repo-1", Name: "first-repo", Visibility: proto.VisibilityPrivate},
+			{Id: "repo-2", Name: "second-repo", Visibility: proto.VisibilityPublic},
+		}
+
+		mockRepo.EXPECT().
+			GetRepositoriesByUser(ctx, userID, 1, 10).
+			Return(repos, nil)
+
+		resp, err := svc.GetRepositories(ctx, 1, 10)
+		require.NoError(t, err)
+		require.Len(t, resp.GetRepositories(), 2)
+		require.Equal(t, "repo-1", resp.GetRepositories()[0].GetId())
+		require.Equal(t, "first-repo", resp.GetRepositories()[0].GetName())
+		require.Equal(t, "repo-2", resp.GetRepositories()[1].GetId())
+		require.Equal(t, "second-repo", resp.GetRepositories()[1].GetName())
 	})
 }

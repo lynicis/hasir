@@ -116,12 +116,17 @@ func (s *service) GetRepositories(
 	ctx context.Context,
 	page, pageSize int,
 ) (*registryv1.GetRepositoriesResponse, error) {
-	totalCount, err := s.repository.GetRepositoriesCount(ctx)
+	userId, err := auth.MustGetUserID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user from context: %w", err)
+	}
+
+	totalCount, err := s.repository.GetRepositoriesByUserCount(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
 
-	repositories, err := s.repository.GetRepositories(ctx, page, pageSize)
+	repositories, err := s.repository.GetRepositoriesByUser(ctx, userId, page, pageSize)
 	if err != nil {
 		return nil, err
 	}

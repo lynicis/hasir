@@ -82,6 +82,30 @@ func createOrganizationsTable(t *testing.T, connString string) {
 	require.NoError(t, err)
 }
 
+func createOrganizationsAndMembersTables(t *testing.T, connString string) {
+	t.Helper()
+
+	createOrganizationsTable(t, connString)
+
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		err = conn.Close(t.Context())
+		require.NoError(t, err)
+	}()
+
+	sql := `CREATE TABLE organization_members (
+		id VARCHAR PRIMARY KEY,
+		organization_id VARCHAR NOT NULL,
+		user_id VARCHAR NOT NULL,
+		role VARCHAR NOT NULL,
+		joined_at TIMESTAMP NOT NULL
+	)`
+
+	_, err = conn.Exec(t.Context(), sql)
+	require.NoError(t, err)
+}
+
 func createTestOrganization(t *testing.T, name string, visibility proto.Visibility) *OrganizationDTO {
 	t.Helper()
 	now := time.Now().UTC()
@@ -521,6 +545,57 @@ func TestPgRepository_GetOrganizations(t *testing.T) {
 		assert.Equal(t, proto.VisibilityPublic, found.Visibility)
 		assert.Equal(t, testOrg.CreatedBy, found.CreatedBy)
 		assert.WithinDuration(t, time.Now().UTC(), found.CreatedAt, 5*time.Second)
+	})
+}
+
+func TestPgRepository_GetUserOrganizations(t *testing.T) {
+	t.Run("returns organizations for a specific user", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsAndMembersTables(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		userID := uuid.NewString()
+
+		org1 := createTestOrganization(t, "user-org-1", proto.VisibilityPrivate)
+		org2 := createTestOrganization(t, "user-org-2", proto.VisibilityPrivate)
+		orgOther := createTestOrganization(t, "other-org", proto.VisibilityPrivate)
+
+		err = repo.CreateOrganization(t.Context(), org1)
+		require.NoError(t, err)
+		err = repo.CreateOrganization(t.Context(), org2)
+		require.NoError(t, err)
+		err = repo.CreateOrganization(t.Context(), orgOther)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		_, err = conn.Exec(t.Context(),
+			`INSERT INTO organization_members (id, organization_id, user_id, role, joined_at)
+			 VALUES ($1, $2, $3, 'owner', NOW()),
+			        ($4, $5, $3, 'author', NOW())`,
+			uuid.NewString(), org1.Id, userID,
+			uuid.NewString(), org2.Id,
+		)
+		require.NoError(t, err)
+
+		orgs, err := repo.GetUserOrganizations(t.Context(), userID, 1, 10)
+		require.NoError(t, err)
+		require.NotNil(t, orgs)
+		require.Len(t, *orgs, 2)
 	})
 }
 

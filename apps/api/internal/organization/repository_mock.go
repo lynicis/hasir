@@ -249,6 +249,36 @@ func (mr *MockRepositoryMockRecorder) GetPendingEmailJobs(ctx, limit any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingEmailJobs", reflect.TypeOf((*MockRepository)(nil).GetPendingEmailJobs), ctx, limit)
 }
 
+// GetUserOrganizations mocks base method.
+func (m *MockRepository) GetUserOrganizations(ctx context.Context, userId string, page, pageSize int) (*[]OrganizationDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserOrganizations", ctx, userId, page, pageSize)
+	ret0, _ := ret[0].(*[]OrganizationDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserOrganizations indicates an expected call of GetUserOrganizations.
+func (mr *MockRepositoryMockRecorder) GetUserOrganizations(ctx, userId, page, pageSize any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserOrganizations", reflect.TypeOf((*MockRepository)(nil).GetUserOrganizations), ctx, userId, page, pageSize)
+}
+
+// GetUserOrganizationsCount mocks base method.
+func (m *MockRepository) GetUserOrganizationsCount(ctx context.Context, userId string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserOrganizationsCount", ctx, userId)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserOrganizationsCount indicates an expected call of GetUserOrganizationsCount.
+func (mr *MockRepositoryMockRecorder) GetUserOrganizationsCount(ctx, userId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserOrganizationsCount", reflect.TypeOf((*MockRepository)(nil).GetUserOrganizationsCount), ctx, userId)
+}
+
 // StartEmailJobProcessor mocks base method.
 func (m *MockRepository) StartEmailJobProcessor(ctx context.Context, emailService email.Service, batchSize int, pollInterval time.Duration) {
 	m.ctrl.T.Helper()
