@@ -12,6 +12,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"go.opentelemetry.io/otel/trace/noop"
 
+	"hasir-api/internal/registry"
 	"hasir-api/pkg/proto"
 )
 
@@ -85,10 +86,10 @@ func createRepositoriesTable(t *testing.T, connString string) {
 	require.NoError(t, err)
 }
 
-func createTestRepository(t *testing.T, name string) *RepositoryDTO {
+func createTestRepository(t *testing.T, name string) *registry.RepositoryDTO {
 	t.Helper()
 	now := time.Now().UTC()
-	return &RepositoryDTO{
+	return &registry.RepositoryDTO{
 		Id:         uuid.NewString(),
 		Name:       name,
 		Path:       "/test/path/" + name,
@@ -251,7 +252,7 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 		defer pool.Close()
 
 		_, err = repo.GetRepositoryByName(t.Context(), "nonexistent-repo-"+uuid.NewString())
-		require.ErrorIs(t, err, ErrRepositoryNotFound)
+		require.ErrorIs(t, err, registry.ErrRepositoryNotFound)
 	})
 
 	t.Run("deleted repository not found", func(t *testing.T) {
@@ -283,7 +284,7 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 		}()
 
 		_, err = repo.GetRepositoryByName(t.Context(), testRepo.Name)
-		require.ErrorIs(t, err, ErrRepositoryNotFound)
+		require.ErrorIs(t, err, registry.ErrRepositoryNotFound)
 	})
 
 	t.Run("verify all fields are retrieved correctly", func(t *testing.T) {

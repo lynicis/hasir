@@ -632,23 +632,6 @@ func createEmailJobsTable(t *testing.T, connString string) {
 	require.NoError(t, err)
 }
 
-func createTestEmailJob(t *testing.T, inviteId, orgId, email, orgName, token string) *organization.EmailJobDTO {
-	t.Helper()
-	now := time.Now().UTC()
-	return &organization.EmailJobDTO{
-		Id:               uuid.NewString(),
-		InviteId:         inviteId,
-		OrganizationId:   orgId,
-		Email:            email,
-		OrganizationName: orgName,
-		InviteToken:      token,
-		Status:           organization.EmailJobStatusPending,
-		Attempts:         0,
-		MaxAttempts:      3,
-		CreatedAt:        now,
-	}
-}
-
 func createOrganizationInvitesTable(t *testing.T, connString string) {
 	t.Helper()
 

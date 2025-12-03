@@ -35,6 +35,7 @@ import (
 	"hasir-api/pkg/email"
 	_ "hasir-api/pkg/log"
 	postgresOrganization "hasir-api/pkg/postgres/organization"
+	postgresRegistry "hasir-api/pkg/postgres/registry"
 )
 
 func main() {
@@ -67,7 +68,7 @@ func main() {
 	}
 
 	userPgRepository := user.NewPgRepository(cfg, traceProvider)
-	repositoryPgRepository := registry.NewPgRepository(cfg, traceProvider)
+	repositoryPgRepository := postgresRegistry.NewPgRepository(cfg, traceProvider)
 	organizationPgRepository := postgresOrganization.NewOrganizationRepository(cfg, traceProvider)
 
 	emailService := email.NewService(cfg)
