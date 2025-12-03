@@ -1,10 +1,11 @@
 package organization
 
 import (
-	"hasir-api/pkg/proto"
 	"time"
 
 	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
+
+	"hasir-api/pkg/proto"
 )
 
 type OrganizationDTO struct {
@@ -89,10 +90,4 @@ type EmailJobDTO struct {
 	ProcessedAt      *time.Time     `json:"processed_at,omitempty" db:"processed_at"`
 	CompletedAt      *time.Time     `json:"completed_at,omitempty" db:"completed_at"`
 	ErrorMessage     *string        `json:"error_message,omitempty" db:"error_message"`
-}
-
-type memberRow struct {
-	OrganizationMemberDTO
-	Username string `db:"username"`
-	Email    string `db:"email"`
 }

@@ -11,7 +11,6 @@ package organization
 
 import (
 	context "context"
-	email "hasir-api/pkg/email"
 	reflect "reflect"
 	time "time"
 
@@ -56,18 +55,18 @@ func (mr *MockRepositoryMockRecorder) AddMember(ctx, member any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMember", reflect.TypeOf((*MockRepository)(nil).AddMember), ctx, member)
 }
 
-// CreateInvitesAndEnqueueEmailJobs mocks base method.
-func (m *MockRepository) CreateInvitesAndEnqueueEmailJobs(ctx context.Context, invites []*OrganizationInviteDTO, jobs []*EmailJobDTO) error {
+// CreateInvites mocks base method.
+func (m *MockRepository) CreateInvites(ctx context.Context, invites []*OrganizationInviteDTO) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateInvitesAndEnqueueEmailJobs", ctx, invites, jobs)
+	ret := m.ctrl.Call(m, "CreateInvites", ctx, invites)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// CreateInvitesAndEnqueueEmailJobs indicates an expected call of CreateInvitesAndEnqueueEmailJobs.
-func (mr *MockRepositoryMockRecorder) CreateInvitesAndEnqueueEmailJobs(ctx, invites, jobs any) *gomock.Call {
+// CreateInvites indicates an expected call of CreateInvites.
+func (mr *MockRepositoryMockRecorder) CreateInvites(ctx, invites any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInvitesAndEnqueueEmailJobs", reflect.TypeOf((*MockRepository)(nil).CreateInvitesAndEnqueueEmailJobs), ctx, invites, jobs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInvites", reflect.TypeOf((*MockRepository)(nil).CreateInvites), ctx, invites)
 }
 
 // CreateOrganization mocks base method.
@@ -234,21 +233,6 @@ func (mr *MockRepositoryMockRecorder) GetOrganizationsCount(ctx any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrganizationsCount", reflect.TypeOf((*MockRepository)(nil).GetOrganizationsCount), ctx)
 }
 
-// GetPendingEmailJobs mocks base method.
-func (m *MockRepository) GetPendingEmailJobs(ctx context.Context, limit int) ([]*EmailJobDTO, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPendingEmailJobs", ctx, limit)
-	ret0, _ := ret[0].([]*EmailJobDTO)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetPendingEmailJobs indicates an expected call of GetPendingEmailJobs.
-func (mr *MockRepositoryMockRecorder) GetPendingEmailJobs(ctx, limit any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingEmailJobs", reflect.TypeOf((*MockRepository)(nil).GetPendingEmailJobs), ctx, limit)
-}
-
 // GetUserOrganizations mocks base method.
 func (m *MockRepository) GetUserOrganizations(ctx context.Context, userId string, page, pageSize int) (*[]OrganizationDTO, error) {
 	m.ctrl.T.Helper()
@@ -277,44 +261,6 @@ func (m *MockRepository) GetUserOrganizationsCount(ctx context.Context, userId s
 func (mr *MockRepositoryMockRecorder) GetUserOrganizationsCount(ctx, userId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserOrganizationsCount", reflect.TypeOf((*MockRepository)(nil).GetUserOrganizationsCount), ctx, userId)
-}
-
-// StartEmailJobProcessor mocks base method.
-func (m *MockRepository) StartEmailJobProcessor(ctx context.Context, emailService email.Service, batchSize int, pollInterval time.Duration) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StartEmailJobProcessor", ctx, emailService, batchSize, pollInterval)
-}
-
-// StartEmailJobProcessor indicates an expected call of StartEmailJobProcessor.
-func (mr *MockRepositoryMockRecorder) StartEmailJobProcessor(ctx, emailService, batchSize, pollInterval any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartEmailJobProcessor", reflect.TypeOf((*MockRepository)(nil).StartEmailJobProcessor), ctx, emailService, batchSize, pollInterval)
-}
-
-// StopEmailJobProcessor mocks base method.
-func (m *MockRepository) StopEmailJobProcessor() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StopEmailJobProcessor")
-}
-
-// StopEmailJobProcessor indicates an expected call of StopEmailJobProcessor.
-func (mr *MockRepositoryMockRecorder) StopEmailJobProcessor() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopEmailJobProcessor", reflect.TypeOf((*MockRepository)(nil).StopEmailJobProcessor))
-}
-
-// UpdateEmailJobStatus mocks base method.
-func (m *MockRepository) UpdateEmailJobStatus(ctx context.Context, jobId string, status EmailJobStatus, errorMsg *string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateEmailJobStatus", ctx, jobId, status, errorMsg)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateEmailJobStatus indicates an expected call of UpdateEmailJobStatus.
-func (mr *MockRepositoryMockRecorder) UpdateEmailJobStatus(ctx, jobId, status, errorMsg any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEmailJobStatus", reflect.TypeOf((*MockRepository)(nil).UpdateEmailJobStatus), ctx, jobId, status, errorMsg)
 }
 
 // UpdateInviteStatus mocks base method.

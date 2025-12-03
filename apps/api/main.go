@@ -29,11 +29,12 @@ import (
 	internalOrganization "hasir-api/internal/organization"
 	"hasir-api/internal/registry"
 	"hasir-api/internal/user"
-	"hasir-api/pkg/auth"
+	"hasir-api/pkg/authentication"
+	"hasir-api/pkg/authorization"
 	"hasir-api/pkg/config"
 	"hasir-api/pkg/email"
 	_ "hasir-api/pkg/log"
-	"hasir-api/pkg/organization"
+	postgresOrganization "hasir-api/pkg/postgres/organization"
 )
 
 func main() {
@@ -67,25 +68,30 @@ func main() {
 
 	userPgRepository := user.NewPgRepository(cfg, traceProvider)
 	repositoryPgRepository := registry.NewPgRepository(cfg, traceProvider)
-	organizationPgRepository := internalOrganization.NewPgRepository(cfg, traceProvider)
+	organizationPgRepository := postgresOrganization.NewOrganizationRepository(cfg, traceProvider)
 
 	emailService := email.NewService(cfg)
 
 	ctx := context.Background()
-	organizationPgRepository.StartEmailJobProcessor(ctx, emailService, 10, 5*time.Second)
+	emailJobQueue := postgresOrganization.NewEmailJobQueue(
+		organizationPgRepository.GetConnectionPool(),
+		organizationPgRepository.GetTracer(),
+	)
+	emailJobQueue.Start(ctx, emailService, 10, 5*time.Second)
 
-	orgRepoAdapter := organization.NewOrgRepositoryAdapter(organizationPgRepository)
+	orgRepoAdapter := authorization.NewOrgRepositoryAdapter(organizationPgRepository)
 
 	userService := user.NewService(cfg, userPgRepository)
 	registryService := registry.NewService(repositoryPgRepository, orgRepoAdapter)
 	organizationService := internalOrganization.NewService(
 		organizationPgRepository,
+		emailJobQueue,
 		registryService,
 		emailService,
 		userPgRepository,
 	)
 
-	authInterceptor := auth.NewAuthInterceptor(cfg.JwtSecret)
+	authInterceptor := authentication.NewAuthInterceptor(cfg.JwtSecret)
 
 	interceptors := []connect.Interceptor{validate.NewInterceptor(), authInterceptor}
 	if cfg.Otel.Enabled {
@@ -130,10 +136,10 @@ func main() {
 	}()
 	zap.L().Info("Server started on port", zap.String("port", cfg.Server.Port))
 
-	gracefulShutdown(server, traceProvider, organizationPgRepository)
+	gracefulShutdown(server, traceProvider, emailJobQueue)
 }
 
-func gracefulShutdown(server *http.Server, traceProvider *sdktrace.TracerProvider, organizationRepo *internalOrganization.PgRepository) {
+func gracefulShutdown(server *http.Server, traceProvider *sdktrace.TracerProvider, emailJobQueue internalOrganization.Queue) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
@@ -143,9 +149,7 @@ func gracefulShutdown(server *http.Server, traceProvider *sdktrace.TracerProvide
 	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownRelease()
 
-	if organizationRepo != nil {
-		organizationRepo.StopEmailJobProcessor()
-	}
+	emailJobQueue.Stop()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		zap.L().Error("HTTP shutdown error", zap.Error(err))

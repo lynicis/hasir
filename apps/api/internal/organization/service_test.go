@@ -17,25 +17,26 @@ import (
 	"hasir-api/pkg/proto"
 )
 
-func newTestService(t *testing.T) (Service, *MockRepository, *registry.MockService, *email.MockService, *user.MockRepository, context.Context) {
+func newTestService(t *testing.T) (Service, *MockRepository, *MockQueue, *registry.MockService, *email.MockService, *user.MockRepository, context.Context) {
 	t.Helper()
 
 	ctrl := gomock.NewController(t)
 	t.Cleanup(ctrl.Finish)
 
 	mockRepo := NewMockRepository(ctrl)
+	mockQueue := NewMockQueue(ctrl)
 	mockRegistry := registry.NewMockService(ctrl)
 	mockEmail := email.NewMockService(ctrl)
 	mockUserRepo := user.NewMockRepository(ctrl)
 
-	svc := NewService(mockRepo, mockRegistry, mockEmail, mockUserRepo)
+	svc := NewService(mockRepo, mockQueue, mockRegistry, mockEmail, mockUserRepo)
 
-	return svc, mockRepo, mockRegistry, mockEmail, mockUserRepo, context.Background()
+	return svc, mockRepo, mockQueue, mockRegistry, mockEmail, mockUserRepo, context.Background()
 }
 
 func TestCreateOrganization(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		req := &organizationv1.CreateOrganizationRequest{
 			Name:       "test-org",
 			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
@@ -72,7 +73,7 @@ func TestCreateOrganization(t *testing.T) {
 	})
 
 	t.Run("with invites", func(t *testing.T) {
-		svc, mockRepo, _, _, mockUserRepo, ctx := newTestService(t)
+		svc, mockRepo, mockQueue, _, _, mockUserRepo, ctx := newTestService(t)
 		req := &organizationv1.CreateOrganizationRequest{
 			Name:       "test-org",
 			Visibility: shared.Visibility_VISIBILITY_PUBLIC,
@@ -95,7 +96,6 @@ func TestCreateOrganization(t *testing.T) {
 			AddMember(ctx, gomock.Any()).
 			Return(nil)
 
-		// Both invite emails correspond to existing users
 		mockUserRepo.EXPECT().
 			GetUserByEmail(ctx, "friend1@example.com").
 			Return(&user.UserDTO{}, nil)
@@ -104,13 +104,10 @@ func TestCreateOrganization(t *testing.T) {
 			Return(&user.UserDTO{}, nil)
 
 		mockRepo.EXPECT().
-			CreateInvitesAndEnqueueEmailJobs(ctx, gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, invites []*OrganizationInviteDTO, jobs []*EmailJobDTO) error {
+			CreateInvites(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, invites []*OrganizationInviteDTO) error {
 				if len(invites) != 2 {
 					t.Errorf("expected 2 invites, got %d", len(invites))
-				}
-				if len(jobs) != 2 {
-					t.Errorf("expected 2 email jobs, got %d", len(jobs))
 				}
 				for _, invite := range invites {
 					if invite.Email != "friend1@example.com" && invite.Email != "friend2@example.com" {
@@ -119,6 +116,15 @@ func TestCreateOrganization(t *testing.T) {
 					if invite.Status != InviteStatusPending {
 						t.Errorf("expected status 'pending', got %s", invite.Status)
 					}
+				}
+				return nil
+			})
+
+		mockQueue.EXPECT().
+			EnqueueEmailJobs(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, jobs []*EmailJobDTO) error {
+				if len(jobs) != 2 {
+					t.Errorf("expected 2 email jobs, got %d", len(jobs))
 				}
 				for _, job := range jobs {
 					if job.Email != "friend1@example.com" && job.Email != "friend2@example.com" {
@@ -141,7 +147,7 @@ func TestCreateOrganization(t *testing.T) {
 	})
 
 	t.Run("already exists", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		req := &organizationv1.CreateOrganizationRequest{
 			Name:       "existing-org",
 			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
@@ -173,7 +179,7 @@ func TestCreateOrganization(t *testing.T) {
 	})
 
 	t.Run("repository error", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		req := &organizationv1.CreateOrganizationRequest{
 			Name:       "test-org",
 			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
@@ -204,7 +210,7 @@ func TestCreateOrganization(t *testing.T) {
 	})
 
 	t.Run("get by name error", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		req := &organizationv1.CreateOrganizationRequest{
 			Name:       "test-org",
 			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
@@ -222,7 +228,7 @@ func TestCreateOrganization(t *testing.T) {
 	})
 
 	t.Run("invite create error", func(t *testing.T) {
-		svc, mockRepo, _, _, mockUserRepo, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, mockUserRepo, ctx := newTestService(t)
 		req := &organizationv1.CreateOrganizationRequest{
 			Name:       "test-org",
 			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
@@ -249,7 +255,7 @@ func TestCreateOrganization(t *testing.T) {
 			Return(&user.UserDTO{}, nil)
 
 		mockRepo.EXPECT().
-			CreateInvitesAndEnqueueEmailJobs(ctx, gomock.Any(), gomock.Any()).
+			CreateInvites(ctx, gomock.Any()).
 			Return(connect.NewError(connect.CodeInternal, errors.New("invite creation failed")))
 
 		err := svc.CreateOrganization(ctx, req, createdBy)
@@ -259,7 +265,7 @@ func TestCreateOrganization(t *testing.T) {
 	})
 
 	t.Run("email send error", func(t *testing.T) {
-		svc, mockRepo, _, _, mockUserRepo, ctx := newTestService(t)
+		svc, mockRepo, mockQueue, _, _, mockUserRepo, ctx := newTestService(t)
 		req := &organizationv1.CreateOrganizationRequest{
 			Name:       "test-org",
 			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
@@ -286,7 +292,11 @@ func TestCreateOrganization(t *testing.T) {
 			Return(&user.UserDTO{}, nil)
 
 		mockRepo.EXPECT().
-			CreateInvitesAndEnqueueEmailJobs(ctx, gomock.Any(), gomock.Any()).
+			CreateInvites(ctx, gomock.Any()).
+			Return(nil)
+
+		mockQueue.EXPECT().
+			EnqueueEmailJobs(ctx, gomock.Any()).
 			Return(errors.New("queue error"))
 
 		err := svc.CreateOrganization(ctx, req, createdBy)
@@ -316,7 +326,7 @@ func TestCreateOrganization(t *testing.T) {
 		for _, tt := range tests {
 			tt := tt
 			t.Run(tt.name, func(t *testing.T) {
-				svc, mockRepo, _, _, _, ctx := newTestService(t)
+				svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 				req := &organizationv1.CreateOrganizationRequest{
 					Name:       "test-org",
 					Visibility: tt.protoVisibility,
@@ -351,7 +361,7 @@ func TestCreateOrganization(t *testing.T) {
 
 func TestInviteUser(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		svc, mockRepo, _, _, mockUserRepo, ctx := newTestService(t)
+		svc, mockRepo, mockQueue, _, _, mockUserRepo, ctx := newTestService(t)
 		req := &organizationv1.InviteMemberRequest{
 			Id:    "org-123",
 			Email: "friend1@example.com",
@@ -382,14 +392,20 @@ func TestInviteUser(t *testing.T) {
 			Return(MemberRole(""), ErrMemberNotFound)
 
 		mockRepo.EXPECT().
-			CreateInvitesAndEnqueueEmailJobs(ctx, gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, invites []*OrganizationInviteDTO, jobs []*EmailJobDTO) error {
+			CreateInvites(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, invites []*OrganizationInviteDTO) error {
 				if len(invites) != 1 {
 					t.Errorf("expected 1 invite, got %d", len(invites))
 				}
 				if invites[0].Email != "friend1@example.com" {
 					t.Errorf("expected email 'friend1@example.com', got %s", invites[0].Email)
 				}
+				return nil
+			})
+
+		mockQueue.EXPECT().
+			EnqueueEmailJobs(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, jobs []*EmailJobDTO) error {
 				if len(jobs) != 1 {
 					t.Errorf("expected 1 email job, got %d", len(jobs))
 				}
@@ -403,7 +419,7 @@ func TestInviteUser(t *testing.T) {
 	})
 
 	t.Run("permission denied when not creator", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		req := &organizationv1.InviteMemberRequest{
 			Id:    "org-123",
 			Email: "friend@example.com",
@@ -440,7 +456,7 @@ func TestInviteUser(t *testing.T) {
 	})
 
 	t.Run("user not found by email", func(t *testing.T) {
-		svc, mockRepo, _, _, mockUserRepo, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, mockUserRepo, ctx := newTestService(t)
 		req := &organizationv1.InviteMemberRequest{
 			Id:    "org-123",
 			Email: "unknown@example.com",
@@ -481,7 +497,7 @@ func TestInviteUser(t *testing.T) {
 	})
 
 	t.Run("user already a member", func(t *testing.T) {
-		svc, mockRepo, _, _, mockUserRepo, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, mockUserRepo, ctx := newTestService(t)
 		req := &organizationv1.InviteMemberRequest{
 			Id:    "org-123",
 			Email: "member@example.com",
@@ -549,7 +565,7 @@ func TestGenerateInviteToken(t *testing.T) {
 
 func TestRespondToInvitation(t *testing.T) {
 	t.Run("accept success", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "valid-token-123"
 		userId := "user-456"
 
@@ -595,7 +611,7 @@ func TestRespondToInvitation(t *testing.T) {
 	})
 
 	t.Run("reject success", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "valid-token-123"
 		userId := "user-456"
 
@@ -625,7 +641,7 @@ func TestRespondToInvitation(t *testing.T) {
 	})
 
 	t.Run("invite not found", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "invalid-token"
 		userId := "user-456"
 
@@ -644,7 +660,7 @@ func TestRespondToInvitation(t *testing.T) {
 	})
 
 	t.Run("invite already accepted", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "valid-token-123"
 		userId := "user-456"
 
@@ -681,7 +697,7 @@ func TestRespondToInvitation(t *testing.T) {
 	})
 
 	t.Run("invite expired", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "expired-token"
 		userId := "user-456"
 
@@ -720,7 +736,7 @@ func TestRespondToInvitation(t *testing.T) {
 	})
 
 	t.Run("member already exists", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "valid-token-123"
 		userId := "user-456"
 
@@ -754,7 +770,7 @@ func TestRespondToInvitation(t *testing.T) {
 	})
 
 	t.Run("update status error", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "valid-token-123"
 		userId := "user-456"
 
@@ -793,7 +809,7 @@ func TestRespondToInvitation(t *testing.T) {
 	})
 
 	t.Run("add member error", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "valid-token-123"
 		userId := "user-456"
 
@@ -836,7 +852,7 @@ func TestRespondToInvitation(t *testing.T) {
 	})
 
 	t.Run("invite cancelled", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "cancelled-token"
 		userId := "user-456"
 
@@ -873,7 +889,7 @@ func TestRespondToInvitation(t *testing.T) {
 
 func TestDeleteOrganization(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		svc, mockRepo, mockRegistry, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, mockRegistry, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		userID := "user-123"
 
@@ -896,7 +912,7 @@ func TestDeleteOrganization(t *testing.T) {
 	})
 
 	t.Run("organization not found", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "non-existent-org"
 		userID := "user-123"
 
@@ -920,7 +936,7 @@ func TestDeleteOrganization(t *testing.T) {
 	})
 
 	t.Run("permission denied", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		userID := "user-123"
 
@@ -944,7 +960,7 @@ func TestDeleteOrganization(t *testing.T) {
 	})
 
 	t.Run("repository error", func(t *testing.T) {
-		svc, mockRepo, mockRegistry, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, mockRegistry, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		userID := "user-123"
 
@@ -978,7 +994,7 @@ func TestDeleteOrganization(t *testing.T) {
 
 func TestUpdateOrganization(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		userID := "user-123"
 
@@ -1025,7 +1041,7 @@ func TestUpdateOrganization(t *testing.T) {
 	})
 
 	t.Run("permission denied when not creator", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		creatorID := "creator-123"
 		otherUserID := "user-456"
@@ -1066,7 +1082,7 @@ func TestUpdateOrganization(t *testing.T) {
 	})
 
 	t.Run("name already exists", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		userID := "user-123"
 
@@ -1112,7 +1128,7 @@ func TestUpdateOrganization(t *testing.T) {
 
 func TestUpdateMemberRole(t *testing.T) {
 	t.Run("success - owner updating another member's role", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		ownerID := "owner-123"
 		memberID := "member-456"
@@ -1152,7 +1168,7 @@ func TestUpdateMemberRole(t *testing.T) {
 	})
 
 	t.Run("permission denied - non-owner trying to update", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		authorID := "author-123"
 		memberID := "member-456"
@@ -1192,7 +1208,7 @@ func TestUpdateMemberRole(t *testing.T) {
 	})
 
 	t.Run("permission denied - owner trying to decrease their own role", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		ownerID := "owner-123"
 
@@ -1232,7 +1248,7 @@ func TestUpdateMemberRole(t *testing.T) {
 	})
 
 	t.Run("success - multiple owners can change another owner's role", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		ownerID := "owner-123"
 		otherOwnerID := "owner-456"
@@ -1280,7 +1296,7 @@ func TestUpdateMemberRole(t *testing.T) {
 	})
 
 	t.Run("failed precondition - trying to change only owner's role", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		ownerID := "owner-123"
 		onlyOwnerID := "only-owner-456"
@@ -1330,7 +1346,7 @@ func TestUpdateMemberRole(t *testing.T) {
 	})
 
 	t.Run("member not found", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		ownerID := "owner-123"
 		nonExistentMemberID := "non-existent-456"
@@ -1374,7 +1390,7 @@ func TestUpdateMemberRole(t *testing.T) {
 	})
 
 	t.Run("organization not found", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "non-existent-org"
 		ownerID := "owner-123"
 		memberID := "member-456"
@@ -1405,7 +1421,7 @@ func TestUpdateMemberRole(t *testing.T) {
 	})
 
 	t.Run("updater not a member", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		nonMemberID := "non-member-123"
 		memberID := "member-456"
@@ -1445,7 +1461,7 @@ func TestUpdateMemberRole(t *testing.T) {
 	})
 
 	t.Run("success - owner can promote another member to owner", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		ownerID := "owner-123"
 		memberID := "member-456"
@@ -1486,7 +1502,7 @@ func TestUpdateMemberRole(t *testing.T) {
 
 func TestDeleteMember(t *testing.T) {
 	t.Run("success - owner deleting non-owner member", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		ownerID := "owner-123"
 		memberID := "member-456"
@@ -1524,7 +1540,7 @@ func TestDeleteMember(t *testing.T) {
 	})
 
 	t.Run("success - owner deleting another owner when multiple owners exist", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		ownerID := "owner-123"
 		otherOwnerID := "owner-456"
@@ -1569,7 +1585,7 @@ func TestDeleteMember(t *testing.T) {
 	})
 
 	t.Run("permission denied - non-owner trying to delete", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		authorID := "author-123"
 		memberID := "member-456"
@@ -1608,7 +1624,7 @@ func TestDeleteMember(t *testing.T) {
 	})
 
 	t.Run("permission denied - user not a member", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		nonMemberID := "non-member-123"
 		memberID := "member-456"
@@ -1647,7 +1663,7 @@ func TestDeleteMember(t *testing.T) {
 	})
 
 	t.Run("failed precondition - trying to delete the last owner", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		ownerID := "owner-123"
 		lastOwnerID := "last-owner-456"
@@ -1696,7 +1712,7 @@ func TestDeleteMember(t *testing.T) {
 	})
 
 	t.Run("not found - member does not exist", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		ownerID := "owner-123"
 		nonExistentMemberID := "non-existent-456"
@@ -1739,7 +1755,7 @@ func TestDeleteMember(t *testing.T) {
 	})
 
 	t.Run("organization not found", func(t *testing.T) {
-		svc, mockRepo, _, _, _, ctx := newTestService(t)
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "non-existent-org"
 		ownerID := "owner-123"
 		memberID := "member-456"

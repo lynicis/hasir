@@ -5,8 +5,9 @@ generate-mocks:
 	mockgen -package=registry -destination=internal/registry/repository_mock.go hasir-api/internal/registry Repository
 	mockgen -package=organization -destination=internal/organization/service_mock.go hasir-api/internal/organization Service
 	mockgen -package=organization -destination=internal/organization/repository_mock.go hasir-api/internal/organization Repository
+	mockgen -package=organization -destination=internal/organization/queue_mock.go hasir-api/internal/organization Queue
 	mockgen -package=email -destination=pkg/email/email_mock.go hasir-api/pkg/email Service
-	mockgen -package=organization -destination=pkg/organization/authorization_mock.go hasir-api/pkg/organization MemberRoleChecker
+	mockgen -package=authorization -destination=pkg/authorization/authorization_mock.go hasir-api/pkg/authorization MemberRoleChecker
 
 dev:
 	MODE=development go run main.go

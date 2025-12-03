@@ -13,8 +13,8 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	"hasir-api/pkg/auth"
-	"hasir-api/pkg/organization"
+	"hasir-api/pkg/authentication"
+	"hasir-api/pkg/authorization"
 	"hasir-api/pkg/proto"
 )
 
@@ -30,10 +30,10 @@ type Service interface {
 type service struct {
 	rootPath   string
 	repository Repository
-	orgRepo    organization.MemberRoleChecker
+	orgRepo    authorization.MemberRoleChecker
 }
 
-func NewService(repository Repository, orgRepo organization.MemberRoleChecker) Service {
+func NewService(repository Repository, orgRepo authorization.MemberRoleChecker) Service {
 	return &service{
 		rootPath:   defaultReposPath,
 		repository: repository,
@@ -53,12 +53,12 @@ func (s *service) CreateRepository(
 		visibility = proto.VisibilityPrivate
 	}
 
-	createdBy, err := auth.MustGetUserID(ctx)
+	createdBy, err := authentication.MustGetUserID(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get repository owner from context: %w", err)
 	}
 
-	if err := organization.IsUserOwner(ctx, s.orgRepo, organizationId, createdBy); err != nil {
+	if err := authorization.IsUserOwner(ctx, s.orgRepo, organizationId, createdBy); err != nil {
 		return err
 	}
 
@@ -116,7 +116,7 @@ func (s *service) GetRepositories(
 	ctx context.Context,
 	page, pageSize int,
 ) (*registryv1.GetRepositoriesResponse, error) {
-	userId, err := auth.MustGetUserID(ctx)
+	userId, err := authentication.MustGetUserID(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user from context: %w", err)
 	}
@@ -167,12 +167,12 @@ func (s *service) DeleteRepository(
 		return fmt.Errorf("failed to get repository: %w", err)
 	}
 
-	userId, err := auth.MustGetUserID(ctx)
+	userId, err := authentication.MustGetUserID(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get user from context: %w", err)
 	}
 
-	if err := organization.IsUserOwner(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
+	if err := authorization.IsUserOwner(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
 		return err
 	}
 

@@ -4,13 +4,12 @@ import (
 	"context"
 	"net/http"
 
+	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
+	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"hasir-api/pkg/auth"
-
-	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
-	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
+	"hasir-api/pkg/authentication"
 )
 
 type handler struct {
@@ -89,7 +88,7 @@ func (h *handler) DeleteAccount(
 	ctx context.Context,
 	req *connect.Request[emptypb.Empty],
 ) (*connect.Response[emptypb.Empty], error) {
-	userID, err := auth.MustGetUserID(ctx)
+	userID, err := authentication.MustGetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}

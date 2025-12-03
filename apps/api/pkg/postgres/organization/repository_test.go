@@ -1,7 +1,6 @@
 package organization
 
 import (
-	"hasir-api/pkg/proto"
 	"testing"
 	"time"
 
@@ -13,6 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"go.opentelemetry.io/otel/trace/noop"
+
+	"hasir-api/internal/organization"
+	"hasir-api/pkg/proto"
 )
 
 const (
@@ -37,13 +39,13 @@ func setupPgContainer(t *testing.T) *postgres.PostgresContainer {
 	return postgresContainer
 }
 
-func setupTestRepository(t *testing.T, connString string) (*PgRepository, *pgxpool.Pool) {
+func setupTestRepository(t *testing.T, connString string) (*OrganizationRepository, *pgxpool.Pool) {
 	t.Helper()
 
 	pool, err := pgxpool.New(t.Context(), connString)
 	require.NoError(t, err)
 
-	repo := &PgRepository{
+	repo := &OrganizationRepository{
 		connectionPool: pool,
 		tracer:         noop.NewTracerProvider().Tracer("test"),
 	}
@@ -106,10 +108,10 @@ func createOrganizationsAndMembersTables(t *testing.T, connString string) {
 	require.NoError(t, err)
 }
 
-func createTestOrganization(t *testing.T, name string, visibility proto.Visibility) *OrganizationDTO {
+func createTestOrganization(t *testing.T, name string, visibility proto.Visibility) *organization.OrganizationDTO {
 	t.Helper()
 	now := time.Now().UTC()
-	return &OrganizationDTO{
+	return &organization.OrganizationDTO{
 		Id:         uuid.NewString(),
 		Name:       name,
 		Visibility: visibility,
@@ -215,7 +217,7 @@ func TestPgRepository_CreateOrganization(t *testing.T) {
 		require.NoError(t, err)
 
 		err = repo.CreateOrganization(t.Context(), testOrg2)
-		require.ErrorIs(t, err, ErrOrganizationAlreadyExists)
+		require.ErrorIs(t, err, organization.ErrOrganizationAlreadyExists)
 	})
 
 	t.Run("verify all fields are stored correctly", func(t *testing.T) {
@@ -304,7 +306,7 @@ func TestPgRepository_GetOrganizationByName(t *testing.T) {
 		defer pool.Close()
 
 		_, err = repo.GetOrganizationByName(t.Context(), "nonexistent-org-"+uuid.NewString())
-		require.ErrorIs(t, err, ErrOrganizationNotFound)
+		require.ErrorIs(t, err, organization.ErrOrganizationNotFound)
 	})
 
 	t.Run("deleted organization not found", func(t *testing.T) {
@@ -336,7 +338,7 @@ func TestPgRepository_GetOrganizationByName(t *testing.T) {
 		}()
 
 		_, err = repo.GetOrganizationByName(t.Context(), testOrg.Name)
-		require.ErrorIs(t, err, ErrOrganizationNotFound)
+		require.ErrorIs(t, err, organization.ErrOrganizationNotFound)
 	})
 
 	t.Run("verify all fields are retrieved correctly", func(t *testing.T) {
@@ -630,17 +632,17 @@ func createEmailJobsTable(t *testing.T, connString string) {
 	require.NoError(t, err)
 }
 
-func createTestEmailJob(t *testing.T, inviteId, orgId, email, orgName, token string) *EmailJobDTO {
+func createTestEmailJob(t *testing.T, inviteId, orgId, email, orgName, token string) *organization.EmailJobDTO {
 	t.Helper()
 	now := time.Now().UTC()
-	return &EmailJobDTO{
+	return &organization.EmailJobDTO{
 		Id:               uuid.NewString(),
 		InviteId:         inviteId,
 		OrganizationId:   orgId,
 		Email:            email,
 		OrganizationName: orgName,
 		InviteToken:      token,
-		Status:           EmailJobStatusPending,
+		Status:           organization.EmailJobStatusPending,
 		Attempts:         0,
 		MaxAttempts:      3,
 		CreatedAt:        now,
@@ -678,23 +680,23 @@ func createOrganizationInvitesTable(t *testing.T, connString string) {
 	require.NoError(t, err)
 }
 
-func createTestInvite(t *testing.T, orgId, email, token, invitedBy string, role MemberRole) *OrganizationInviteDTO {
+func createTestInvite(t *testing.T, orgId, email, token, invitedBy string, role organization.MemberRole) *organization.OrganizationInviteDTO {
 	t.Helper()
 	now := time.Now().UTC()
-	return &OrganizationInviteDTO{
+	return &organization.OrganizationInviteDTO{
 		Id:             uuid.NewString(),
 		OrganizationId: orgId,
 		Email:          email,
 		Token:          token,
 		InvitedBy:      invitedBy,
 		Role:           role,
-		Status:         InviteStatusPending,
+		Status:         organization.InviteStatusPending,
 		CreatedAt:      now,
 		ExpiresAt:      now.AddDate(0, 0, 7),
 	}
 }
 
-func TestPgRepository_CreateInvitesAndEnqueueEmailJobs(t *testing.T) {
+func TestPgRepository_CreateInvites(t *testing.T) {
 	t.Run("success with single invite and job", func(t *testing.T) {
 		container := setupPgContainer(t)
 		defer func() {
@@ -719,10 +721,9 @@ func TestPgRepository_CreateInvitesAndEnqueueEmailJobs(t *testing.T) {
 		user := createTestUser(t, "inviter", "inviter@example.com")
 		insertTestUser(t, connString, user)
 
-		invite := createTestInvite(t, org.Id, "invitee@example.com", "token123", user.Id, MemberRoleAuthor)
-		job := createTestEmailJob(t, invite.Id, org.Id, "invitee@example.com", org.Name, invite.Token)
+		invite := createTestInvite(t, org.Id, "invitee@example.com", "token123", user.Id, organization.MemberRoleAuthor)
 
-		err = repo.CreateInvitesAndEnqueueEmailJobs(t.Context(), []*OrganizationInviteDTO{invite}, []*EmailJobDTO{job})
+		err = repo.CreateInvites(t.Context(), []*organization.OrganizationInviteDTO{invite})
 		require.NoError(t, err)
 
 		conn, err := pgx.Connect(t.Context(), connString)
@@ -739,15 +740,6 @@ func TestPgRepository_CreateInvitesAndEnqueueEmailJobs(t *testing.T) {
 		assert.Equal(t, invite.Id, inviteId)
 		assert.Equal(t, invite.Email, inviteEmail)
 		assert.Equal(t, invite.Token, inviteToken)
-
-		var jobId, jobEmail, jobStatus string
-		err = conn.QueryRow(t.Context(),
-			"SELECT id, email, status FROM email_jobs WHERE id = $1", job.Id).
-			Scan(&jobId, &jobEmail, &jobStatus)
-		require.NoError(t, err)
-		assert.Equal(t, job.Id, jobId)
-		assert.Equal(t, job.Email, jobEmail)
-		assert.Equal(t, "pending", jobStatus)
 	})
 
 	t.Run("success with multiple invites and jobs", func(t *testing.T) {
@@ -774,17 +766,12 @@ func TestPgRepository_CreateInvitesAndEnqueueEmailJobs(t *testing.T) {
 		user := createTestUser(t, "inviter", "inviter@example.com")
 		insertTestUser(t, connString, user)
 
-		invites := []*OrganizationInviteDTO{
-			createTestInvite(t, org.Id, "user1@example.com", "token1", user.Id, MemberRoleAuthor),
-			createTestInvite(t, org.Id, "user2@example.com", "token2", user.Id, MemberRoleReader),
+		invites := []*organization.OrganizationInviteDTO{
+			createTestInvite(t, org.Id, "user1@example.com", "token1", user.Id, organization.MemberRoleAuthor),
+			createTestInvite(t, org.Id, "user2@example.com", "token2", user.Id, organization.MemberRoleReader),
 		}
 
-		jobs := []*EmailJobDTO{
-			createTestEmailJob(t, invites[0].Id, org.Id, "user1@example.com", org.Name, invites[0].Token),
-			createTestEmailJob(t, invites[1].Id, org.Id, "user2@example.com", org.Name, invites[1].Token),
-		}
-
-		err = repo.CreateInvitesAndEnqueueEmailJobs(t.Context(), invites, jobs)
+		err = repo.CreateInvites(t.Context(), invites)
 		require.NoError(t, err)
 
 		conn, err := pgx.Connect(t.Context(), connString)
@@ -797,14 +784,9 @@ func TestPgRepository_CreateInvitesAndEnqueueEmailJobs(t *testing.T) {
 		err = conn.QueryRow(t.Context(), "SELECT COUNT(*) FROM organization_invites").Scan(&inviteCount)
 		require.NoError(t, err)
 		assert.Equal(t, 2, inviteCount)
-
-		var jobCount int
-		err = conn.QueryRow(t.Context(), "SELECT COUNT(*) FROM email_jobs").Scan(&jobCount)
-		require.NoError(t, err)
-		assert.Equal(t, 2, jobCount)
 	})
 
-	t.Run("error when invites and jobs length mismatch", func(t *testing.T) {
+	t.Run("filters out invites for emails with existing pending invites", func(t *testing.T) {
 		container := setupPgContainer(t)
 		defer func() {
 			err := container.Terminate(t.Context())
@@ -828,13 +810,47 @@ func TestPgRepository_CreateInvitesAndEnqueueEmailJobs(t *testing.T) {
 		user := createTestUser(t, "inviter", "inviter@example.com")
 		insertTestUser(t, connString, user)
 
-		invite := createTestInvite(t, org.Id, "user@example.com", "token1", user.Id, MemberRoleAuthor)
-		job1 := createTestEmailJob(t, invite.Id, org.Id, "user@example.com", org.Name, invite.Token)
-		job2 := createTestEmailJob(t, invite.Id, org.Id, "user@example.com", org.Name, invite.Token)
+		// Create initial pending invite
+		existingInvite := createTestInvite(t, org.Id, "existing@example.com", "existing-token", user.Id, organization.MemberRoleAuthor)
+		err = repo.CreateInvites(t.Context(), []*organization.OrganizationInviteDTO{existingInvite})
+		require.NoError(t, err)
 
-		err = repo.CreateInvitesAndEnqueueEmailJobs(t.Context(), []*OrganizationInviteDTO{invite}, []*EmailJobDTO{job1, job2})
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "must have the same length")
+		// Try to create invites including one for an email that already has a pending invite
+		invites := []*organization.OrganizationInviteDTO{
+			createTestInvite(t, org.Id, "existing@example.com", "new-token", user.Id, organization.MemberRoleAuthor), // Duplicate email
+			createTestInvite(t, org.Id, "new@example.com", "new-token-2", user.Id, organization.MemberRoleReader),    // New email
+		}
+
+		err = repo.CreateInvites(t.Context(), invites)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		// Verify only the new invite was created (existing one should remain, new one should be added)
+		var inviteCount int
+		err = conn.QueryRow(t.Context(), "SELECT COUNT(*) FROM organization_invites WHERE organization_id = $1", org.Id).Scan(&inviteCount)
+		require.NoError(t, err)
+		assert.Equal(t, 2, inviteCount, "Should have original invite plus the new one")
+
+		// Verify the existing invite is still there
+		var existingEmail string
+		err = conn.QueryRow(t.Context(),
+			"SELECT email FROM organization_invites WHERE email = $1 AND organization_id = $2",
+			"existing@example.com", org.Id).Scan(&existingEmail)
+		require.NoError(t, err)
+		assert.Equal(t, "existing@example.com", existingEmail)
+
+		// Verify the new invite was created
+		var newEmail string
+		err = conn.QueryRow(t.Context(),
+			"SELECT email FROM organization_invites WHERE email = $1 AND organization_id = $2",
+			"new@example.com", org.Id).Scan(&newEmail)
+		require.NoError(t, err)
+		assert.Equal(t, "new@example.com", newEmail)
 	})
 
 	t.Run("error when invite token already exists", func(t *testing.T) {
@@ -861,16 +877,14 @@ func TestPgRepository_CreateInvitesAndEnqueueEmailJobs(t *testing.T) {
 		user := createTestUser(t, "inviter", "inviter@example.com")
 		insertTestUser(t, connString, user)
 
-		invite1 := createTestInvite(t, org.Id, "user1@example.com", "duplicate-token", user.Id, MemberRoleAuthor)
-		job1 := createTestEmailJob(t, invite1.Id, org.Id, "user1@example.com", org.Name, invite1.Token)
+		invite1 := createTestInvite(t, org.Id, "user1@example.com", "duplicate-token", user.Id, organization.MemberRoleAuthor)
 
-		err = repo.CreateInvitesAndEnqueueEmailJobs(t.Context(), []*OrganizationInviteDTO{invite1}, []*EmailJobDTO{job1})
+		err = repo.CreateInvites(t.Context(), []*organization.OrganizationInviteDTO{invite1})
 		require.NoError(t, err)
 
-		invite2 := createTestInvite(t, org.Id, "user2@example.com", "duplicate-token", user.Id, MemberRoleAuthor)
-		job2 := createTestEmailJob(t, invite2.Id, org.Id, "user2@example.com", org.Name, invite2.Token)
+		invite2 := createTestInvite(t, org.Id, "user2@example.com", "duplicate-token", user.Id, organization.MemberRoleAuthor)
 
-		err = repo.CreateInvitesAndEnqueueEmailJobs(t.Context(), []*OrganizationInviteDTO{invite2}, []*EmailJobDTO{job2})
+		err = repo.CreateInvites(t.Context(), []*organization.OrganizationInviteDTO{invite2})
 		require.Error(t, err)
 		var connectErr *connect.Error
 		require.ErrorAs(t, err, &connectErr)
@@ -894,363 +908,14 @@ func TestPgRepository_CreateInvitesAndEnqueueEmailJobs(t *testing.T) {
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		err = repo.CreateInvitesAndEnqueueEmailJobs(t.Context(), []*OrganizationInviteDTO{}, []*EmailJobDTO{})
+		err = repo.CreateInvites(t.Context(), []*organization.OrganizationInviteDTO{})
 		require.NoError(t, err)
 	})
 }
 
-func TestPgRepository_GetPendingEmailJobs(t *testing.T) {
-	t.Run("success returns pending jobs", func(t *testing.T) {
-		container := setupPgContainer(t)
-		defer func() {
-			err := container.Terminate(t.Context())
-			require.NoError(t, err)
-		}()
-
-		connString, err := container.ConnectionString(t.Context())
-		require.NoError(t, err)
-
-		createOrganizationsTable(t, connString)
-		createEmailJobsTable(t, connString)
-
-		repo, pool := setupTestRepository(t, connString)
-		defer pool.Close()
-
-		orgId := uuid.NewString()
-
-		pendingJob1 := createTestEmailJob(t, uuid.NewString(), orgId, "pending1@example.com", "Test Org", "token1")
-		pendingJob2 := createTestEmailJob(t, uuid.NewString(), orgId, "pending2@example.com", "Test Org", "token2")
-
-		completedJob := createTestEmailJob(t, uuid.NewString(), orgId, "completed@example.com", "Test Org", "token3")
-		completedJob.Status = EmailJobStatusCompleted
-
-		conn, err := pgx.Connect(t.Context(), connString)
-		require.NoError(t, err)
-		defer func() {
-			_ = conn.Close(t.Context())
-		}()
-
-		for _, job := range []*EmailJobDTO{pendingJob1, pendingJob2, completedJob} {
-			_, err = conn.Exec(t.Context(), `
-				INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, 0, 3, NOW())
-			`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken, job.Status)
-			require.NoError(t, err)
-		}
-
-		_, err = conn.Exec(t.Context(), "UPDATE email_jobs SET status = 'completed' WHERE id = $1", completedJob.Id)
-		require.NoError(t, err)
-
-		jobs, err := repo.GetPendingEmailJobs(t.Context(), 10)
-		require.NoError(t, err)
-		require.Len(t, jobs, 2)
-
-		for _, job := range jobs {
-			assert.Equal(t, EmailJobStatusProcessing, job.Status)
-			assert.NotNil(t, job.ProcessedAt)
-			assert.Equal(t, 1, job.Attempts)
-		}
-	})
-
-	t.Run("success with limit", func(t *testing.T) {
-		container := setupPgContainer(t)
-		defer func() {
-			err := container.Terminate(t.Context())
-			require.NoError(t, err)
-		}()
-
-		connString, err := container.ConnectionString(t.Context())
-		require.NoError(t, err)
-
-		createOrganizationsTable(t, connString)
-		createEmailJobsTable(t, connString)
-
-		repo, pool := setupTestRepository(t, connString)
-		defer pool.Close()
-
-		orgId := uuid.NewString()
-		jobs := make([]*EmailJobDTO, 5)
-		for i := 0; i < 5; i++ {
-			jobs[i] = createTestEmailJob(t, uuid.NewString(), orgId,
-				"user"+string(rune('0'+i))+"@example.com", "Test Org", "token"+string(rune('0'+i)))
-		}
-
-		conn, err := pgx.Connect(t.Context(), connString)
-		require.NoError(t, err)
-		defer func() {
-			_ = conn.Close(t.Context())
-		}()
-
-		for _, job := range jobs {
-			_, err = conn.Exec(t.Context(), `
-				INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
-				VALUES ($1, $2, $3, $4, $5, $6, 'pending', 0, 3, NOW())
-			`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken)
-			require.NoError(t, err)
-		}
-
-		retrievedJobs, err := repo.GetPendingEmailJobs(t.Context(), 2)
-		require.NoError(t, err)
-		require.Len(t, retrievedJobs, 2)
-	})
-
-	t.Run("success with no pending jobs", func(t *testing.T) {
-		container := setupPgContainer(t)
-		defer func() {
-			err := container.Terminate(t.Context())
-			require.NoError(t, err)
-		}()
-
-		connString, err := container.ConnectionString(t.Context())
-		require.NoError(t, err)
-
-		createOrganizationsTable(t, connString)
-		createEmailJobsTable(t, connString)
-
-		repo, pool := setupTestRepository(t, connString)
-		defer pool.Close()
-
-		jobs, err := repo.GetPendingEmailJobs(t.Context(), 10)
-		require.NoError(t, err)
-		require.Empty(t, jobs)
-	})
-
-	t.Run("jobs are atomically updated to processing", func(t *testing.T) {
-		container := setupPgContainer(t)
-		defer func() {
-			err := container.Terminate(t.Context())
-			require.NoError(t, err)
-		}()
-
-		connString, err := container.ConnectionString(t.Context())
-		require.NoError(t, err)
-
-		createOrganizationsTable(t, connString)
-		createEmailJobsTable(t, connString)
-
-		repo, pool := setupTestRepository(t, connString)
-		defer pool.Close()
-
-		orgId := uuid.NewString()
-		job := createTestEmailJob(t, uuid.NewString(), orgId, "test@example.com", "Test Org", "token1")
-
-		conn, err := pgx.Connect(t.Context(), connString)
-		require.NoError(t, err)
-		defer func() {
-			_ = conn.Close(t.Context())
-		}()
-
-		_, err = conn.Exec(t.Context(), `
-			INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, 'pending', 0, 3, NOW())
-		`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken)
-		require.NoError(t, err)
-
-		jobs, err := repo.GetPendingEmailJobs(t.Context(), 10)
-		require.NoError(t, err)
-		require.Len(t, jobs, 1)
-
-		assert.Equal(t, EmailJobStatusProcessing, jobs[0].Status)
-		assert.NotNil(t, jobs[0].ProcessedAt)
-		assert.Equal(t, 1, jobs[0].Attempts)
-
-		jobs2, err := repo.GetPendingEmailJobs(t.Context(), 10)
-		require.NoError(t, err)
-		require.Empty(t, jobs2)
-	})
-}
-
-func TestPgRepository_UpdateEmailJobStatus(t *testing.T) {
-	t.Run("success update to completed", func(t *testing.T) {
-		container := setupPgContainer(t)
-		defer func() {
-			err := container.Terminate(t.Context())
-			require.NoError(t, err)
-		}()
-
-		connString, err := container.ConnectionString(t.Context())
-		require.NoError(t, err)
-
-		createOrganizationsTable(t, connString)
-		createEmailJobsTable(t, connString)
-
-		repo, pool := setupTestRepository(t, connString)
-		defer pool.Close()
-
-		orgId := uuid.NewString()
-		job := createTestEmailJob(t, uuid.NewString(), orgId, "test@example.com", "Test Org", "token1")
-
-		conn, err := pgx.Connect(t.Context(), connString)
-		require.NoError(t, err)
-		defer func() {
-			_ = conn.Close(t.Context())
-		}()
-
-		_, err = conn.Exec(t.Context(), `
-			INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, 'processing', 0, 3, NOW())
-		`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken)
-		require.NoError(t, err)
-
-		err = repo.UpdateEmailJobStatus(t.Context(), job.Id, EmailJobStatusCompleted, nil)
-		require.NoError(t, err)
-
-		var dbStatus string
-		var dbCompletedAt *time.Time
-		err = conn.QueryRow(t.Context(),
-			"SELECT status, completed_at FROM email_jobs WHERE id = $1", job.Id).
-			Scan(&dbStatus, &dbCompletedAt)
-		require.NoError(t, err)
-
-		assert.Equal(t, "completed", dbStatus)
-		assert.NotNil(t, dbCompletedAt)
-	})
-
-	t.Run("success update to failed", func(t *testing.T) {
-		container := setupPgContainer(t)
-		defer func() {
-			err := container.Terminate(t.Context())
-			require.NoError(t, err)
-		}()
-
-		connString, err := container.ConnectionString(t.Context())
-		require.NoError(t, err)
-
-		createOrganizationsTable(t, connString)
-		createEmailJobsTable(t, connString)
-
-		repo, pool := setupTestRepository(t, connString)
-		defer pool.Close()
-
-		orgId := uuid.NewString()
-		job := createTestEmailJob(t, uuid.NewString(), orgId, "test@example.com", "Test Org", "token1")
-
-		conn, err := pgx.Connect(t.Context(), connString)
-		require.NoError(t, err)
-		defer func() {
-			_ = conn.Close(t.Context())
-		}()
-
-		_, err = conn.Exec(t.Context(), `
-			INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, 'processing', 0, 3, NOW())
-		`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken)
-		require.NoError(t, err)
-
-		errorMsg := "SMTP connection failed"
-		err = repo.UpdateEmailJobStatus(t.Context(), job.Id, EmailJobStatusFailed, &errorMsg)
-		require.NoError(t, err)
-
-		var dbStatus string
-		var dbErrorMessage *string
-		err = conn.QueryRow(t.Context(),
-			"SELECT status, error_message FROM email_jobs WHERE id = $1", job.Id).
-			Scan(&dbStatus, &dbErrorMessage)
-		require.NoError(t, err)
-
-		assert.Equal(t, "failed", dbStatus)
-		require.NotNil(t, dbErrorMessage)
-		assert.Equal(t, errorMsg, *dbErrorMessage)
-	})
-
-	t.Run("success update to pending for retry", func(t *testing.T) {
-		container := setupPgContainer(t)
-		defer func() {
-			err := container.Terminate(t.Context())
-			require.NoError(t, err)
-		}()
-
-		connString, err := container.ConnectionString(t.Context())
-		require.NoError(t, err)
-
-		createOrganizationsTable(t, connString)
-		createEmailJobsTable(t, connString)
-
-		repo, pool := setupTestRepository(t, connString)
-		defer pool.Close()
-
-		orgId := uuid.NewString()
-		job := createTestEmailJob(t, uuid.NewString(), orgId, "test@example.com", "Test Org", "token1")
-
-		conn, err := pgx.Connect(t.Context(), connString)
-		require.NoError(t, err)
-		defer func() {
-			_ = conn.Close(t.Context())
-		}()
-
-		_, err = conn.Exec(t.Context(), `
-			INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, 'processing', 0, 3, NOW())
-		`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken)
-		require.NoError(t, err)
-
-		err = repo.UpdateEmailJobStatus(t.Context(), job.Id, EmailJobStatusPending, nil)
-		require.NoError(t, err)
-
-		var dbStatus string
-		err = conn.QueryRow(t.Context(),
-			"SELECT status FROM email_jobs WHERE id = $1", job.Id).
-			Scan(&dbStatus)
-		require.NoError(t, err)
-
-		assert.Equal(t, "pending", dbStatus)
-	})
-
-	t.Run("fails when job not found", func(t *testing.T) {
-		container := setupPgContainer(t)
-		defer func() {
-			err := container.Terminate(t.Context())
-			require.NoError(t, err)
-		}()
-
-		connString, err := container.ConnectionString(t.Context())
-		require.NoError(t, err)
-
-		createOrganizationsTable(t, connString)
-		createEmailJobsTable(t, connString)
-
-		repo, pool := setupTestRepository(t, connString)
-		defer pool.Close()
-
-		err = repo.UpdateEmailJobStatus(t.Context(), "non-existent-id", EmailJobStatusCompleted, nil)
-		require.Error(t, err)
-	})
-
-	t.Run("fails when status mismatch (optimistic locking)", func(t *testing.T) {
-		container := setupPgContainer(t)
-		defer func() {
-			err := container.Terminate(t.Context())
-			require.NoError(t, err)
-		}()
-
-		connString, err := container.ConnectionString(t.Context())
-		require.NoError(t, err)
-
-		createOrganizationsTable(t, connString)
-		createEmailJobsTable(t, connString)
-
-		repo, pool := setupTestRepository(t, connString)
-		defer pool.Close()
-
-		orgId := uuid.NewString()
-		job := createTestEmailJob(t, uuid.NewString(), orgId, "test@example.com", "Test Org", "token1")
-
-		conn, err := pgx.Connect(t.Context(), connString)
-		require.NoError(t, err)
-		defer func() {
-			_ = conn.Close(t.Context())
-		}()
-
-		_, err = conn.Exec(t.Context(), `
-			INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, 'pending', 0, 3, NOW())
-		`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken)
-		require.NoError(t, err)
-
-		err = repo.UpdateEmailJobStatus(t.Context(), job.Id, EmailJobStatusCompleted, nil)
-		require.Error(t, err)
-	})
-}
+// Note: Tests for GetPendingEmailJobs and UpdateEmailJobStatus have been removed
+// as these methods were moved from the repository to the EmailJobQueue.
+// See pkg/postgres/organization/queue_test.go for queue-related tests.
 
 func TestPgRepository_DeleteOrganization(t *testing.T) {
 	t.Run("success - soft delete organization", func(t *testing.T) {
@@ -1293,7 +958,7 @@ func TestPgRepository_DeleteOrganization(t *testing.T) {
 
 		_, err = repo.GetOrganizationById(t.Context(), org.Id)
 		require.Error(t, err)
-		require.Equal(t, ErrOrganizationNotFound, err)
+		require.Equal(t, organization.ErrOrganizationNotFound, err)
 	})
 
 	t.Run("organization not found", func(t *testing.T) {
@@ -1314,7 +979,7 @@ func TestPgRepository_DeleteOrganization(t *testing.T) {
 		nonExistentID := uuid.NewString()
 		err = repo.DeleteOrganization(t.Context(), nonExistentID)
 		require.Error(t, err)
-		require.Equal(t, ErrOrganizationNotFound, err)
+		require.Equal(t, organization.ErrOrganizationNotFound, err)
 	})
 
 	t.Run("cannot delete already deleted organization", func(t *testing.T) {
@@ -1341,7 +1006,7 @@ func TestPgRepository_DeleteOrganization(t *testing.T) {
 
 		err = repo.DeleteOrganization(t.Context(), org.Id)
 		require.Error(t, err)
-		require.Equal(t, ErrOrganizationNotFound, err)
+		require.Equal(t, organization.ErrOrganizationNotFound, err)
 	})
 
 	t.Run("deleted organization excluded from GetOrganizations", func(t *testing.T) {
@@ -1542,10 +1207,10 @@ func insertTestUser(t *testing.T, connString string, user *struct {
 	require.NoError(t, err)
 }
 
-func createTestMember(t *testing.T, organizationId, userId string, role MemberRole) *OrganizationMemberDTO {
+func createTestMember(t *testing.T, organizationId, userId string, role organization.MemberRole) *organization.OrganizationMemberDTO {
 	t.Helper()
 	now := time.Now().UTC()
-	return &OrganizationMemberDTO{
+	return &organization.OrganizationMemberDTO{
 		Id:             uuid.NewString(),
 		OrganizationId: organizationId,
 		UserId:         userId,
@@ -1554,7 +1219,7 @@ func createTestMember(t *testing.T, organizationId, userId string, role MemberRo
 	}
 }
 
-func insertTestMember(t *testing.T, connString string, member *OrganizationMemberDTO) {
+func insertTestMember(t *testing.T, connString string, member *organization.OrganizationMemberDTO) {
 	t.Helper()
 
 	conn, err := pgx.Connect(t.Context(), connString)
@@ -1600,9 +1265,9 @@ func TestPgRepository_GetMembers(t *testing.T) {
 		insertTestUser(t, connString, user2)
 		insertTestUser(t, connString, user3)
 
-		member1 := createTestMember(t, org.Id, user1.Id, MemberRoleOwner)
-		member2 := createTestMember(t, org.Id, user2.Id, MemberRoleAuthor)
-		member3 := createTestMember(t, org.Id, user3.Id, MemberRoleReader)
+		member1 := createTestMember(t, org.Id, user1.Id, organization.MemberRoleOwner)
+		member2 := createTestMember(t, org.Id, user2.Id, organization.MemberRoleAuthor)
+		member3 := createTestMember(t, org.Id, user3.Id, organization.MemberRoleReader)
 
 		insertTestMember(t, connString, member1)
 		time.Sleep(10 * time.Millisecond)
@@ -1619,17 +1284,17 @@ func TestPgRepository_GetMembers(t *testing.T) {
 		assert.Equal(t, member1.Id, members[0].Id)
 		assert.Equal(t, user1.Username, usernames[0])
 		assert.Equal(t, user1.Email, emails[0])
-		assert.Equal(t, MemberRoleOwner, members[0].Role)
+		assert.Equal(t, organization.MemberRoleOwner, members[0].Role)
 
 		assert.Equal(t, member2.Id, members[1].Id)
 		assert.Equal(t, user2.Username, usernames[1])
 		assert.Equal(t, user2.Email, emails[1])
-		assert.Equal(t, MemberRoleAuthor, members[1].Role)
+		assert.Equal(t, organization.MemberRoleAuthor, members[1].Role)
 
 		assert.Equal(t, member3.Id, members[2].Id)
 		assert.Equal(t, user3.Username, usernames[2])
 		assert.Equal(t, user3.Email, emails[2])
-		assert.Equal(t, MemberRoleReader, members[2].Role)
+		assert.Equal(t, organization.MemberRoleReader, members[2].Role)
 	})
 
 	t.Run("success with empty result", func(t *testing.T) {
@@ -1686,7 +1351,7 @@ func TestPgRepository_GetMembers(t *testing.T) {
 		user := createTestUser(t, "singleuser", "single@example.com")
 		insertTestUser(t, connString, user)
 
-		member := createTestMember(t, org.Id, user.Id, MemberRoleOwner)
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleOwner)
 		insertTestMember(t, connString, member)
 
 		members, usernames, emails, err := repo.GetMembers(t.Context(), org.Id)
@@ -1731,8 +1396,8 @@ func TestPgRepository_GetMembers(t *testing.T) {
 		insertTestUser(t, connString, activeUser)
 		insertTestUser(t, connString, deletedUser)
 
-		activeMember := createTestMember(t, org.Id, activeUser.Id, MemberRoleOwner)
-		deletedMember := createTestMember(t, org.Id, deletedUser.Id, MemberRoleAuthor)
+		activeMember := createTestMember(t, org.Id, activeUser.Id, organization.MemberRoleOwner)
+		deletedMember := createTestMember(t, org.Id, deletedUser.Id, organization.MemberRoleAuthor)
 
 		insertTestMember(t, connString, activeMember)
 		insertTestMember(t, connString, deletedMember)
@@ -1786,17 +1451,17 @@ func TestPgRepository_GetMembers(t *testing.T) {
 		insertTestUser(t, connString, user2)
 		insertTestUser(t, connString, user3)
 
-		firstMember := createTestMember(t, org.Id, user1.Id, MemberRoleOwner)
+		firstMember := createTestMember(t, org.Id, user1.Id, organization.MemberRoleOwner)
 		insertTestMember(t, connString, firstMember)
 
 		time.Sleep(50 * time.Millisecond)
 
-		secondMember := createTestMember(t, org.Id, user2.Id, MemberRoleAuthor)
+		secondMember := createTestMember(t, org.Id, user2.Id, organization.MemberRoleAuthor)
 		insertTestMember(t, connString, secondMember)
 
 		time.Sleep(50 * time.Millisecond)
 
-		thirdMember := createTestMember(t, org.Id, user3.Id, MemberRoleReader)
+		thirdMember := createTestMember(t, org.Id, user3.Id, organization.MemberRoleReader)
 		insertTestMember(t, connString, thirdMember)
 
 		members, _, _, err := repo.GetMembers(t.Context(), org.Id)
@@ -1836,7 +1501,7 @@ func TestPgRepository_GetMembers(t *testing.T) {
 		user := createTestUser(t, "fulluser", "full@example.com")
 		insertTestUser(t, connString, user)
 
-		member := createTestMember(t, org.Id, user.Id, MemberRoleAuthor)
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleAuthor)
 		insertTestMember(t, connString, member)
 
 		members, usernames, emails, err := repo.GetMembers(t.Context(), org.Id)
@@ -1885,8 +1550,8 @@ func TestPgRepository_GetMembers(t *testing.T) {
 		insertTestUser(t, connString, user1)
 		insertTestUser(t, connString, user2)
 
-		member1 := createTestMember(t, org1.Id, user1.Id, MemberRoleOwner)
-		member2 := createTestMember(t, org2.Id, user2.Id, MemberRoleOwner)
+		member1 := createTestMember(t, org1.Id, user1.Id, organization.MemberRoleOwner)
+		member2 := createTestMember(t, org2.Id, user2.Id, organization.MemberRoleOwner)
 
 		insertTestMember(t, connString, member1)
 		insertTestMember(t, connString, member2)
@@ -1930,9 +1595,9 @@ func TestPgRepository_GetMembers(t *testing.T) {
 		insertTestUser(t, connString, authorUser)
 		insertTestUser(t, connString, readerUser)
 
-		ownerMember := createTestMember(t, org.Id, ownerUser.Id, MemberRoleOwner)
-		authorMember := createTestMember(t, org.Id, authorUser.Id, MemberRoleAuthor)
-		readerMember := createTestMember(t, org.Id, readerUser.Id, MemberRoleReader)
+		ownerMember := createTestMember(t, org.Id, ownerUser.Id, organization.MemberRoleOwner)
+		authorMember := createTestMember(t, org.Id, authorUser.Id, organization.MemberRoleAuthor)
+		readerMember := createTestMember(t, org.Id, readerUser.Id, organization.MemberRoleReader)
 
 		insertTestMember(t, connString, ownerMember)
 		insertTestMember(t, connString, authorMember)
@@ -1942,14 +1607,14 @@ func TestPgRepository_GetMembers(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, members, 3)
 
-		roleMap := make(map[MemberRole]bool)
+		roleMap := make(map[organization.MemberRole]bool)
 		for _, m := range members {
 			roleMap[m.Role] = true
 		}
 
-		assert.True(t, roleMap[MemberRoleOwner])
-		assert.True(t, roleMap[MemberRoleAuthor])
-		assert.True(t, roleMap[MemberRoleReader])
+		assert.True(t, roleMap[organization.MemberRoleOwner])
+		assert.True(t, roleMap[organization.MemberRoleAuthor])
+		assert.True(t, roleMap[organization.MemberRoleReader])
 	})
 }
 
@@ -1979,10 +1644,10 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 		user := createTestUser(t, "testuser", "test@example.com")
 		insertTestUser(t, connString, user)
 
-		member := createTestMember(t, org.Id, user.Id, MemberRoleReader)
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleReader)
 		insertTestMember(t, connString, member)
 
-		err = repo.UpdateMemberRole(t.Context(), org.Id, user.Id, MemberRoleAuthor)
+		err = repo.UpdateMemberRole(t.Context(), org.Id, user.Id, organization.MemberRoleAuthor)
 		require.NoError(t, err)
 
 		conn, err := pgx.Connect(t.Context(), connString)
@@ -1996,7 +1661,7 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 			"SELECT role FROM organization_members WHERE organization_id = $1 AND user_id = $2",
 			org.Id, user.Id).Scan(&dbRole)
 		require.NoError(t, err)
-		assert.Equal(t, string(MemberRoleAuthor), dbRole)
+		assert.Equal(t, string(organization.MemberRoleAuthor), dbRole)
 	})
 
 	t.Run("success - update author to owner", func(t *testing.T) {
@@ -2024,10 +1689,10 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 		user := createTestUser(t, "authoruser", "author@example.com")
 		insertTestUser(t, connString, user)
 
-		member := createTestMember(t, org.Id, user.Id, MemberRoleAuthor)
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleAuthor)
 		insertTestMember(t, connString, member)
 
-		err = repo.UpdateMemberRole(t.Context(), org.Id, user.Id, MemberRoleOwner)
+		err = repo.UpdateMemberRole(t.Context(), org.Id, user.Id, organization.MemberRoleOwner)
 		require.NoError(t, err)
 
 		conn, err := pgx.Connect(t.Context(), connString)
@@ -2041,7 +1706,7 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 			"SELECT role FROM organization_members WHERE organization_id = $1 AND user_id = $2",
 			org.Id, user.Id).Scan(&dbRole)
 		require.NoError(t, err)
-		assert.Equal(t, string(MemberRoleOwner), dbRole)
+		assert.Equal(t, string(organization.MemberRoleOwner), dbRole)
 	})
 
 	t.Run("success - update owner to reader", func(t *testing.T) {
@@ -2069,10 +1734,10 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 		user := createTestUser(t, "owneruser", "owner@example.com")
 		insertTestUser(t, connString, user)
 
-		member := createTestMember(t, org.Id, user.Id, MemberRoleOwner)
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleOwner)
 		insertTestMember(t, connString, member)
 
-		err = repo.UpdateMemberRole(t.Context(), org.Id, user.Id, MemberRoleReader)
+		err = repo.UpdateMemberRole(t.Context(), org.Id, user.Id, organization.MemberRoleReader)
 		require.NoError(t, err)
 
 		conn, err := pgx.Connect(t.Context(), connString)
@@ -2086,7 +1751,7 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 			"SELECT role FROM organization_members WHERE organization_id = $1 AND user_id = $2",
 			org.Id, user.Id).Scan(&dbRole)
 		require.NoError(t, err)
-		assert.Equal(t, string(MemberRoleReader), dbRole)
+		assert.Equal(t, string(organization.MemberRoleReader), dbRole)
 	})
 
 	t.Run("success - update role for specific member in multi-member organization", func(t *testing.T) {
@@ -2119,15 +1784,15 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 		insertTestUser(t, connString, user2)
 		insertTestUser(t, connString, user3)
 
-		member1 := createTestMember(t, org.Id, user1.Id, MemberRoleOwner)
-		member2 := createTestMember(t, org.Id, user2.Id, MemberRoleAuthor)
-		member3 := createTestMember(t, org.Id, user3.Id, MemberRoleReader)
+		member1 := createTestMember(t, org.Id, user1.Id, organization.MemberRoleOwner)
+		member2 := createTestMember(t, org.Id, user2.Id, organization.MemberRoleAuthor)
+		member3 := createTestMember(t, org.Id, user3.Id, organization.MemberRoleReader)
 
 		insertTestMember(t, connString, member1)
 		insertTestMember(t, connString, member2)
 		insertTestMember(t, connString, member3)
 
-		err = repo.UpdateMemberRole(t.Context(), org.Id, user2.Id, MemberRoleOwner)
+		err = repo.UpdateMemberRole(t.Context(), org.Id, user2.Id, organization.MemberRoleOwner)
 		require.NoError(t, err)
 
 		conn, err := pgx.Connect(t.Context(), connString)
@@ -2152,9 +1817,9 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 			org.Id, user3.Id).Scan(&role3)
 		require.NoError(t, err)
 
-		assert.Equal(t, string(MemberRoleOwner), role1)
-		assert.Equal(t, string(MemberRoleOwner), role2)
-		assert.Equal(t, string(MemberRoleReader), role3)
+		assert.Equal(t, string(organization.MemberRoleOwner), role1)
+		assert.Equal(t, string(organization.MemberRoleOwner), role2)
+		assert.Equal(t, string(organization.MemberRoleReader), role3)
 	})
 
 	t.Run("member not found - non-existent user", func(t *testing.T) {
@@ -2181,9 +1846,9 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 
 		nonExistentUserId := uuid.NewString()
 
-		err = repo.UpdateMemberRole(t.Context(), org.Id, nonExistentUserId, MemberRoleAuthor)
+		err = repo.UpdateMemberRole(t.Context(), org.Id, nonExistentUserId, organization.MemberRoleAuthor)
 		require.Error(t, err)
-		assert.Equal(t, ErrMemberNotFound, err)
+		assert.Equal(t, organization.ErrMemberNotFound, err)
 	})
 
 	t.Run("member not found - user not in organization", func(t *testing.T) {
@@ -2215,12 +1880,12 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 		user := createTestUser(t, "otherorguser", "other@example.com")
 		insertTestUser(t, connString, user)
 
-		member := createTestMember(t, org1.Id, user.Id, MemberRoleOwner)
+		member := createTestMember(t, org1.Id, user.Id, organization.MemberRoleOwner)
 		insertTestMember(t, connString, member)
 
-		err = repo.UpdateMemberRole(t.Context(), org2.Id, user.Id, MemberRoleAuthor)
+		err = repo.UpdateMemberRole(t.Context(), org2.Id, user.Id, organization.MemberRoleAuthor)
 		require.Error(t, err)
-		assert.Equal(t, ErrMemberNotFound, err)
+		assert.Equal(t, organization.ErrMemberNotFound, err)
 	})
 
 	t.Run("success - update to same role", func(t *testing.T) {
@@ -2248,10 +1913,10 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 		user := createTestUser(t, "sameuser", "same@example.com")
 		insertTestUser(t, connString, user)
 
-		member := createTestMember(t, org.Id, user.Id, MemberRoleAuthor)
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleAuthor)
 		insertTestMember(t, connString, member)
 
-		err = repo.UpdateMemberRole(t.Context(), org.Id, user.Id, MemberRoleAuthor)
+		err = repo.UpdateMemberRole(t.Context(), org.Id, user.Id, organization.MemberRoleAuthor)
 		require.NoError(t, err)
 
 		conn, err := pgx.Connect(t.Context(), connString)
@@ -2265,7 +1930,7 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 			"SELECT role FROM organization_members WHERE organization_id = $1 AND user_id = $2",
 			org.Id, user.Id).Scan(&dbRole)
 		require.NoError(t, err)
-		assert.Equal(t, string(MemberRoleAuthor), dbRole)
+		assert.Equal(t, string(organization.MemberRoleAuthor), dbRole)
 	})
 }
 
@@ -2295,7 +1960,7 @@ func TestPgRepository_DeleteMember(t *testing.T) {
 		user := createTestUser(t, "readeruser", "reader@example.com")
 		insertTestUser(t, connString, user)
 
-		member := createTestMember(t, org.Id, user.Id, MemberRoleReader)
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleReader)
 		insertTestMember(t, connString, member)
 
 		err = repo.DeleteMember(t.Context(), org.Id, user.Id)
@@ -2340,7 +2005,7 @@ func TestPgRepository_DeleteMember(t *testing.T) {
 		user := createTestUser(t, "authoruser", "author@example.com")
 		insertTestUser(t, connString, user)
 
-		member := createTestMember(t, org.Id, user.Id, MemberRoleAuthor)
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleAuthor)
 		insertTestMember(t, connString, member)
 
 		err = repo.DeleteMember(t.Context(), org.Id, user.Id)
@@ -2387,8 +2052,8 @@ func TestPgRepository_DeleteMember(t *testing.T) {
 		insertTestUser(t, connString, owner1)
 		insertTestUser(t, connString, owner2)
 
-		member1 := createTestMember(t, org.Id, owner1.Id, MemberRoleOwner)
-		member2 := createTestMember(t, org.Id, owner2.Id, MemberRoleOwner)
+		member1 := createTestMember(t, org.Id, owner1.Id, organization.MemberRoleOwner)
+		member2 := createTestMember(t, org.Id, owner2.Id, organization.MemberRoleOwner)
 		insertTestMember(t, connString, member1)
 		insertTestMember(t, connString, member2)
 
@@ -2446,9 +2111,9 @@ func TestPgRepository_DeleteMember(t *testing.T) {
 		insertTestUser(t, connString, user2)
 		insertTestUser(t, connString, user3)
 
-		member1 := createTestMember(t, org.Id, user1.Id, MemberRoleOwner)
-		member2 := createTestMember(t, org.Id, user2.Id, MemberRoleAuthor)
-		member3 := createTestMember(t, org.Id, user3.Id, MemberRoleReader)
+		member1 := createTestMember(t, org.Id, user1.Id, organization.MemberRoleOwner)
+		member2 := createTestMember(t, org.Id, user2.Id, organization.MemberRoleAuthor)
+		member3 := createTestMember(t, org.Id, user3.Id, organization.MemberRoleReader)
 
 		insertTestMember(t, connString, member1)
 		insertTestMember(t, connString, member2)
@@ -2504,7 +2169,7 @@ func TestPgRepository_DeleteMember(t *testing.T) {
 
 		err = repo.DeleteMember(t.Context(), org.Id, nonExistentUserId)
 		require.Error(t, err)
-		assert.Equal(t, ErrMemberNotFound, err)
+		assert.Equal(t, organization.ErrMemberNotFound, err)
 	})
 
 	t.Run("member not found - user not in organization", func(t *testing.T) {
@@ -2536,12 +2201,12 @@ func TestPgRepository_DeleteMember(t *testing.T) {
 		user := createTestUser(t, "otherorguser", "other@example.com")
 		insertTestUser(t, connString, user)
 
-		member := createTestMember(t, org1.Id, user.Id, MemberRoleOwner)
+		member := createTestMember(t, org1.Id, user.Id, organization.MemberRoleOwner)
 		insertTestMember(t, connString, member)
 
 		err = repo.DeleteMember(t.Context(), org2.Id, user.Id)
 		require.Error(t, err)
-		assert.Equal(t, ErrMemberNotFound, err)
+		assert.Equal(t, organization.ErrMemberNotFound, err)
 	})
 
 	t.Run("success - verify other members remain after deletion", func(t *testing.T) {
@@ -2574,9 +2239,9 @@ func TestPgRepository_DeleteMember(t *testing.T) {
 		insertTestUser(t, connString, user2)
 		insertTestUser(t, connString, user3)
 
-		member1 := createTestMember(t, org.Id, user1.Id, MemberRoleOwner)
-		member2 := createTestMember(t, org.Id, user2.Id, MemberRoleAuthor)
-		member3 := createTestMember(t, org.Id, user3.Id, MemberRoleReader)
+		member1 := createTestMember(t, org.Id, user1.Id, organization.MemberRoleOwner)
+		member2 := createTestMember(t, org.Id, user2.Id, organization.MemberRoleAuthor)
+		member3 := createTestMember(t, org.Id, user3.Id, organization.MemberRoleReader)
 
 		insertTestMember(t, connString, member1)
 		insertTestMember(t, connString, member2)

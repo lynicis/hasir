@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"hasir-api/pkg/auth"
+	"hasir-api/pkg/authentication"
 	"hasir-api/pkg/proto"
 )
 
@@ -38,7 +38,7 @@ func (h *handler) CreateOrganization(
 	ctx context.Context,
 	req *connect.Request[organizationv1.CreateOrganizationRequest],
 ) (*connect.Response[emptypb.Empty], error) {
-	createdBy, err := auth.MustGetUserID(ctx)
+	createdBy, err := authentication.MustGetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (h *handler) GetOrganizations(
 	ctx context.Context,
 	req *connect.Request[organizationv1.GetOrganizationsRequest],
 ) (*connect.Response[organizationv1.GetOrganizationsResponse], error) {
-	userId, err := auth.MustGetUserID(ctx)
+	userId, err := authentication.MustGetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (h *handler) UpdateOrganization(
 	ctx context.Context,
 	req *connect.Request[organizationv1.UpdateOrganizationRequest],
 ) (*connect.Response[emptypb.Empty], error) {
-	userId, err := auth.MustGetUserID(ctx)
+	userId, err := authentication.MustGetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (h *handler) DeleteOrganization(
 	ctx context.Context,
 	req *connect.Request[organizationv1.DeleteOrganizationRequest],
 ) (*connect.Response[emptypb.Empty], error) {
-	userId, err := auth.MustGetUserID(ctx)
+	userId, err := authentication.MustGetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func (h *handler) InviteMember(
 	ctx context.Context,
 	req *connect.Request[organizationv1.InviteMemberRequest],
 ) (*connect.Response[emptypb.Empty], error) {
-	userId, err := auth.MustGetUserID(ctx)
+	userId, err := authentication.MustGetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func (h *handler) RespondToInvitation(
 	ctx context.Context,
 	req *connect.Request[organizationv1.RespondToInvitationRequest],
 ) (*connect.Response[emptypb.Empty], error) {
-	userId, err := auth.MustGetUserID(ctx)
+	userId, err := authentication.MustGetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +243,7 @@ func (h *handler) UpdateMemberRole(
 	ctx context.Context,
 	req *connect.Request[organizationv1.UpdateMemberRoleRequest],
 ) (*connect.Response[emptypb.Empty], error) {
-	userId, err := auth.MustGetUserID(ctx)
+	userId, err := authentication.MustGetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +259,7 @@ func (h *handler) DeleteMember(
 	ctx context.Context,
 	req *connect.Request[organizationv1.DeleteMemberRequest],
 ) (*connect.Response[emptypb.Empty], error) {
-	userId, err := auth.MustGetUserID(ctx)
+	userId, err := authentication.MustGetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}

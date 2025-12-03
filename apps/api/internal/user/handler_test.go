@@ -16,7 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"hasir-api/internal"
-	"hasir-api/pkg/auth"
+	"hasir-api/pkg/authentication"
 
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
 	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
@@ -25,7 +25,7 @@ import (
 func testAuthInterceptor(userID string) connect.UnaryInterceptorFunc {
 	return func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			ctx = context.WithValue(ctx, auth.UserIDKey, userID)
+			ctx = context.WithValue(ctx, authentication.UserIDKey, userID)
 			return next(ctx, req)
 		}
 	}

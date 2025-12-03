@@ -8,6 +8,8 @@ import (
 	"html/template"
 	"net/smtp"
 
+	"go.uber.org/zap"
+
 	"hasir-api/pkg/config"
 )
 
@@ -27,7 +29,7 @@ type smtpService struct {
 func NewService(cfg *config.Config) Service {
 	tmpl, err := template.ParseFS(templateFS, "templates/*.html")
 	if err != nil {
-		panic(fmt.Sprintf("failed to parse email templates: %v", err))
+		zap.L().Error("failed to parse email templates", zap.Error(err))
 	}
 
 	return &smtpService{

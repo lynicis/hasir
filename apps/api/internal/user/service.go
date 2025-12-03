@@ -5,16 +5,14 @@ import (
 	"errors"
 	"time"
 
+	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 	"connectrpc.com/connect"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
+	"hasir-api/pkg/authentication"
 	"hasir-api/pkg/config"
-
-	"hasir-api/pkg/auth"
-
-	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 )
 
 type Service interface {
@@ -97,7 +95,7 @@ func (s *service) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.
 }
 
 func (s *service) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.TokenEnvelope, error) {
-	userID, err := auth.MustGetUserID(ctx)
+	userID, err := authentication.MustGetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +146,7 @@ func (s *service) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest)
 func (s *service) RenewTokens(ctx context.Context, req *userv1.RenewTokensRequest) (*userv1.RenewTokensResponse, error) {
 	refreshTokenString := req.GetRefreshToken()
 
-	token, err := jwt.ParseWithClaims(refreshTokenString, &auth.JwtClaims{}, func(token *jwt.Token) (any, error) {
+	token, err := jwt.ParseWithClaims(refreshTokenString, &authentication.JwtClaims{}, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
@@ -167,7 +165,7 @@ func (s *service) RenewTokens(ctx context.Context, req *userv1.RenewTokensReques
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token"))
 	}
 
-	claims, ok := token.Claims.(*auth.JwtClaims)
+	claims, ok := token.Claims.(*authentication.JwtClaims)
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token claims"))
 	}
@@ -217,7 +215,7 @@ func (s *service) RenewTokens(ctx context.Context, req *userv1.RenewTokensReques
 func (s *service) generateTokens(user *UserDTO) (*userv1.TokenEnvelope, string, error) {
 	now := time.Now().UTC()
 	accessTokenExpiresAt := now.Add(2 * time.Hour)
-	accessTokenClaims := auth.JwtClaims{
+	accessTokenClaims := authentication.JwtClaims{
 		Email:    user.Email,
 		Username: user.Username,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -238,7 +236,7 @@ func (s *service) generateTokens(user *UserDTO) (*userv1.TokenEnvelope, string, 
 	}
 
 	refreshTokenExpiresAt := now.AddDate(0, 0, 7)
-	refreshTokenClaims := auth.JwtClaims{
+	refreshTokenClaims := authentication.JwtClaims{
 		Email:    user.Email,
 		Username: user.Username,
 		RegisteredClaims: jwt.RegisteredClaims{

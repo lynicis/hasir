@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"hasir-api/pkg/auth"
-	"hasir-api/pkg/organization"
+	"hasir-api/pkg/authentication"
+	"hasir-api/pkg/authorization"
 	"hasir-api/pkg/proto"
 
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
@@ -22,7 +22,7 @@ func TestNewService(t *testing.T) {
 	t.Run("default root path", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
-		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
 
 		svc := NewService(mockRepo, mockOrgRepo)
 		concrete, ok := svc.(*service)
@@ -32,14 +32,14 @@ func TestNewService(t *testing.T) {
 }
 
 func testAuthInterceptor(userID string) context.Context {
-	return context.WithValue(context.Background(), auth.UserIDKey, userID)
+	return context.WithValue(context.Background(), authentication.UserIDKey, userID)
 }
 
 func TestService_CreateRepository(t *testing.T) {
 	t.Run("success with default visibility (private)", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
-		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
 		tmpDir := t.TempDir()
 
 		svc := &service{
@@ -55,7 +55,7 @@ func TestService_CreateRepository(t *testing.T) {
 
 		mockOrgRepo.EXPECT().
 			GetMemberRole(ctx, orgID, userID).
-			Return(organization.MemberRoleOwner, nil)
+			Return(authorization.MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
 			CreateRepository(ctx, gomock.Any()).
@@ -88,7 +88,7 @@ func TestService_CreateRepository(t *testing.T) {
 	t.Run("success with explicit public visibility", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
-		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
 		tmpDir := t.TempDir()
 
 		svc := &service{
@@ -104,7 +104,7 @@ func TestService_CreateRepository(t *testing.T) {
 
 		mockOrgRepo.EXPECT().
 			GetMemberRole(ctx, orgID, userID).
-			Return(organization.MemberRoleOwner, nil)
+			Return(authorization.MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
 			CreateRepository(ctx, gomock.Any()).
@@ -128,7 +128,7 @@ func TestService_CreateRepository(t *testing.T) {
 	t.Run("database save error rolls back git directory", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
-		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
 		tmpDir := t.TempDir()
 
 		svc := &service{
@@ -145,7 +145,7 @@ func TestService_CreateRepository(t *testing.T) {
 
 		mockOrgRepo.EXPECT().
 			GetMemberRole(ctx, orgID, userID).
-			Return(organization.MemberRoleOwner, nil)
+			Return(authorization.MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
 			CreateRepository(ctx, gomock.Any()).
@@ -167,7 +167,7 @@ func TestService_DeleteRepository(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
-		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
 		tmpDir := t.TempDir()
 
 		svc := &service{
@@ -196,7 +196,7 @@ func TestService_DeleteRepository(t *testing.T) {
 
 		mockOrgRepo.EXPECT().
 			GetMemberRole(ctx, orgID, userID).
-			Return(organization.MemberRoleOwner, nil)
+			Return(authorization.MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
 			DeleteRepository(ctx, repoId).
@@ -213,7 +213,7 @@ func TestService_DeleteRepository(t *testing.T) {
 	t.Run("repository not found", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
-		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
 
 		svc := &service{
 			rootPath:   t.TempDir(),
@@ -239,7 +239,7 @@ func TestService_DeleteRepository(t *testing.T) {
 	t.Run("database delete error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
-		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
 		tmpDir := t.TempDir()
 
 		svc := &service{
@@ -270,7 +270,7 @@ func TestService_DeleteRepository(t *testing.T) {
 
 		mockOrgRepo.EXPECT().
 			GetMemberRole(ctx, orgID, userID).
-			Return(organization.MemberRoleOwner, nil)
+			Return(authorization.MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
 			DeleteRepository(ctx, repoId).
@@ -289,7 +289,7 @@ func TestService_DeleteRepository(t *testing.T) {
 	t.Run("filesystem removal failure returns error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
-		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
 		tmpDir := t.TempDir()
 
 		svc := &service{
@@ -318,7 +318,7 @@ func TestService_DeleteRepository(t *testing.T) {
 
 		mockOrgRepo.EXPECT().
 			GetMemberRole(ctx, orgID, userID).
-			Return(organization.MemberRoleOwner, nil)
+			Return(authorization.MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
 			DeleteRepository(ctx, repoId).
@@ -343,7 +343,7 @@ func TestService_DeleteRepository(t *testing.T) {
 	t.Run("GetRepositories returns repositories for authenticated user", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
-		mockOrgRepo := organization.NewMockMemberRoleChecker(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
 
 		svc := &service{
 			rootPath:   t.TempDir(),

@@ -77,14 +77,16 @@ type inviteInfo struct {
 
 type service struct {
 	repository      Repository
+	queue           Queue
 	emailService    email.Service
 	registryService registry.Service
 	userRepository  user.Repository
 }
 
-func NewService(repository Repository, registryService registry.Service, emailService email.Service, userRepository user.Repository) Service {
+func NewService(repository Repository, queue Queue, registryService registry.Service, emailService email.Service, userRepository user.Repository) Service {
 	return &service{
 		repository:      repository,
+		queue:           queue,
 		emailService:    emailService,
 		registryService: registryService,
 		userRepository:  userRepository,
@@ -279,8 +281,13 @@ func (s *service) sendInvites(ctx context.Context, orgId, orgName, invitedBy str
 		emailJobs = append(emailJobs, emailJob)
 	}
 
-	if err := s.repository.CreateInvitesAndEnqueueEmailJobs(ctx, organizationInvites, emailJobs); err != nil {
-		zap.L().Error("failed to create invites and enqueue email jobs", zap.Error(err), zap.String("organizationId", orgId))
+	if err := s.repository.CreateInvites(ctx, organizationInvites); err != nil {
+		zap.L().Error("failed to create invites", zap.Error(err), zap.String("organizationId", orgId))
+		return err
+	}
+
+	if err := s.queue.EnqueueEmailJobs(ctx, emailJobs); err != nil {
+		zap.L().Error("failed to enqueue email jobs", zap.Error(err), zap.String("organizationId", orgId))
 		return err
 	}
 	zap.L().Info("enqueued email jobs for batch processing",

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -13,10 +14,8 @@ import (
 	"go.uber.org/mock/gomock"
 	"golang.org/x/crypto/bcrypt"
 
-	"hasir-api/pkg/auth"
+	"hasir-api/pkg/authentication"
 	"hasir-api/pkg/config"
-
-	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 )
 
 func TestNewService(t *testing.T) {
@@ -267,7 +266,7 @@ func TestService_UpdateUser(t *testing.T) {
 			Times(1)
 
 		s := NewService(cfg, mockUserRepository)
-		ctx := context.WithValue(t.Context(), auth.UserIDKey, userId)
+		ctx := context.WithValue(t.Context(), authentication.UserIDKey, userId)
 		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
 			Email:       &newEmail,
@@ -290,7 +289,7 @@ func TestService_UpdateUser(t *testing.T) {
 			Times(1)
 
 		s := NewService(cfg, mockUserRepository)
-		ctx := context.WithValue(t.Context(), auth.UserIDKey, userId)
+		ctx := context.WithValue(t.Context(), authentication.UserIDKey, userId)
 		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
 			Email:       &newEmail,
@@ -318,7 +317,7 @@ func TestService_UpdateUser(t *testing.T) {
 
 		s := NewService(cfg, mockUserRepository)
 		wrongPassword := "wrong-password"
-		ctx := context.WithValue(t.Context(), auth.UserIDKey, userId)
+		ctx := context.WithValue(t.Context(), authentication.UserIDKey, userId)
 		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
 			Email:       &newEmail,
@@ -351,7 +350,7 @@ func TestService_UpdateUser(t *testing.T) {
 			Times(1)
 
 		s := NewService(cfg, mockUserRepository)
-		ctx := context.WithValue(t.Context(), auth.UserIDKey, userId)
+		ctx := context.WithValue(t.Context(), authentication.UserIDKey, userId)
 		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
 			Email:       &newEmail,
@@ -389,7 +388,7 @@ func TestService_UpdateUser(t *testing.T) {
 			Times(1)
 
 		s := NewService(cfg, mockUserRepository)
-		ctx := context.WithValue(t.Context(), auth.UserIDKey, userId)
+		ctx := context.WithValue(t.Context(), authentication.UserIDKey, userId)
 		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
 			Email:       &newEmail,
@@ -420,7 +419,7 @@ func TestService_RenewTokens(t *testing.T) {
 		refreshTokenID := uuid.NewString()
 		now := time.Now().UTC()
 
-		claims := auth.JwtClaims{
+		claims := authentication.JwtClaims{
 			RegisteredClaims: jwt.RegisteredClaims{
 				ID:        refreshTokenID,
 				Issuer:    cfg.Server.PublicUrl,
@@ -472,7 +471,7 @@ func TestService_RenewTokens(t *testing.T) {
 		userId := uuid.NewString()
 		now := time.Now().UTC()
 
-		claims := auth.JwtClaims{
+		claims := authentication.JwtClaims{
 			RegisteredClaims: jwt.RegisteredClaims{
 				Issuer:    cfg.Server.PublicUrl,
 				Subject:   userId,
