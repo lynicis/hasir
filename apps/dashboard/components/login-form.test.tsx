@@ -4,21 +4,24 @@ import userEvent from "@testing-library/user-event";
 
 import { LoginForm } from "./login-form";
 
+const mockPush = vi.fn();
+const mockFetch = vi.fn();
+
+global.fetch = mockFetch;
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: mockPush,
     replace: vi.fn(),
     prefetch: vi.fn(),
     back: vi.fn(),
     forward: vi.fn(),
     refresh: vi.fn(),
   }),
+  useSearchParams: () => ({
+    get: () => null,
+  }),
 }));
-
-const mockPush = vi.fn();
-const mockFetch = vi.fn();
-
-global.fetch = mockFetch;
 
 describe("LoginForm", () => {
   beforeEach(() => {

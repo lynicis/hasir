@@ -22,6 +22,9 @@ interface MembersListProps {
   onPermissionChange: (memberId: string, newPermission: Permission) => void;
   onDelete: (member: OrganizationMember) => void;
   onInvite: () => void;
+  canInvite: boolean;
+  canEditPermissions: boolean;
+  canRemoveMembers: boolean;
   getInitials: (name: string) => string;
 }
 
@@ -30,6 +33,9 @@ export function MembersList({
   onPermissionChange,
   onDelete,
   onInvite,
+  canInvite,
+  canEditPermissions,
+  canRemoveMembers,
   getInitials,
 }: MembersListProps) {
   return (
@@ -42,7 +48,7 @@ export function MembersList({
               Manage organization members and their permissions
             </CardDescription>
           </div>
-          <Button onClick={onInvite}>
+          <Button onClick={onInvite} disabled={!canInvite}>
             <UserPlus className="size-4 mr-2" />
             Invite Member
           </Button>
@@ -56,6 +62,8 @@ export function MembersList({
               member={member}
               onPermissionChange={onPermissionChange}
               onDelete={onDelete}
+              canEditPermissions={canEditPermissions}
+              canRemove={canRemoveMembers}
               getInitials={getInitials}
             />
           ))}

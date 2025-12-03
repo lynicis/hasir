@@ -9,7 +9,7 @@ describe("MemberItem", () => {
     id: "1",
     email: "john.doe@example.com",
     name: "John Doe",
-    permission: "admin",
+    permission: "author",
   };
 
   const mockOnPermissionChange = vi.fn();
@@ -28,13 +28,15 @@ describe("MemberItem", () => {
         member={mockMember}
         onPermissionChange={mockOnPermissionChange}
         onDelete={mockOnDelete}
+        canEditPermissions={true}
+        canRemove={true}
         getInitials={mockGetInitials}
       />
     );
 
     expect(screen.getByText("John Doe")).toBeInTheDocument();
     expect(screen.getByText("john.doe@example.com")).toBeInTheDocument();
-    expect(screen.getByText("Admin")).toBeInTheDocument();
+    expect(screen.getByText("Author")).toBeInTheDocument();
   });
 
   it("displays member initials in avatar fallback", () => {
@@ -43,6 +45,8 @@ describe("MemberItem", () => {
         member={mockMember}
         onPermissionChange={mockOnPermissionChange}
         onDelete={mockOnDelete}
+        canEditPermissions={true}
+        canRemove={true}
         getInitials={mockGetInitials}
       />
     );
@@ -57,17 +61,19 @@ describe("MemberItem", () => {
         member={mockMember}
         onPermissionChange={mockOnPermissionChange}
         onDelete={mockOnDelete}
+        canEditPermissions={true}
+        canRemove={true}
         getInitials={mockGetInitials}
       />
     );
 
-    const permissionButton = screen.getByRole("button", { name: /admin/i });
+    const permissionButton = screen.getByRole("button", { name: /author/i });
     await user.click(permissionButton);
 
-    const memberOption = screen.getByRole("menuitem", { name: /member/i });
+    const memberOption = screen.getByRole("menuitem", { name: /reader/i });
     await user.click(memberOption);
 
-    expect(mockOnPermissionChange).toHaveBeenCalledWith("1", "member");
+    expect(mockOnPermissionChange).toHaveBeenCalledWith("1", "reader");
   });
 
   it("calls onDelete when delete is clicked", async () => {
@@ -77,6 +83,8 @@ describe("MemberItem", () => {
         member={mockMember}
         onPermissionChange={mockOnPermissionChange}
         onDelete={mockOnDelete}
+        canEditPermissions={true}
+        canRemove={true}
         getInitials={mockGetInitials}
       />
     );
@@ -103,6 +111,8 @@ describe("MemberItem", () => {
         member={ownerMember}
         onPermissionChange={mockOnPermissionChange}
         onDelete={mockOnDelete}
+        canEditPermissions={true}
+        canRemove={true}
         getInitials={mockGetInitials}
       />
     );
@@ -118,14 +128,16 @@ describe("MemberItem", () => {
         member={mockMember}
         onPermissionChange={mockOnPermissionChange}
         onDelete={mockOnDelete}
+        canEditPermissions={true}
+        canRemove={true}
         getInitials={mockGetInitials}
       />
     );
 
-    const permissionButton = screen.getByRole("button", { name: /admin/i });
+    const permissionButton = screen.getByRole("button", { name: /author/i });
     await user.click(permissionButton);
 
-    const adminOption = screen.getByRole("menuitem", { name: /admin/i });
-    expect(adminOption).toHaveClass("bg-accent");
+    const authorOption = screen.getByRole("menuitem", { name: /author/i });
+    expect(authorOption).toHaveClass("bg-accent");
   });
 });

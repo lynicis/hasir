@@ -7,20 +7,24 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import userEvent from "@testing-library/user-event";
 
 import { useRefreshStore } from "@/stores/refresh-store";
+import { useSession } from "@/lib/session-provider";
 import { useClient } from "@/lib/use-client";
 
 import { OrganizationSettingsForm } from "./organization-settings-form";
 
-const { toastSuccess, toastError } = vi.hoisted(() => ({
+const { toastSuccess, toastError, mockUseSession } = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  mockUseSession: vi.fn(),
 }));
 
 const mockPush = vi.fn();
+
 vi.mock("next/navigation", () => ({
   useParams: vi.fn(() => ({ id: "org-123" })),
   useRouter: vi.fn(() => ({
     push: mockPush,
+    replace: mockPush,
   })),
 }));
 
@@ -37,6 +41,10 @@ vi.mock("@/stores/refresh-store", () => ({
   useRefreshStore: vi.fn(),
 }));
 
+vi.mock("@/lib/session-provider", () => ({
+  useSession: mockUseSession,
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: toastSuccess,
@@ -48,6 +56,7 @@ const mockUpdateOrganization = vi.fn();
 const mockDeleteOrganization = vi.fn();
 const mockedUseClient = useClient as unknown as Mock;
 const mockedUseRefreshStore = useRefreshStore as unknown as Mock;
+const mockedUseSession = useSession as unknown as Mock;
 
 describe("OrganizationSettingsForm", () => {
   beforeEach(() => {
@@ -60,10 +69,14 @@ describe("OrganizationSettingsForm", () => {
     mockPush.mockReset();
     toastSuccess.mockReset();
     toastError.mockReset();
+    mockUseSession.mockReset();
     mockedUseRefreshStore.mockImplementation(
       (selector: (state: { organizationsRefreshKey: number }) => unknown) =>
         selector({ organizationsRefreshKey: 0 })
     );
+    mockedUseSession.mockReturnValue({
+      session: { user: { email: "owner@example.com" } },
+    });
   });
 
   it("shows loading state when fetching organization", () => {
@@ -280,6 +293,33 @@ describe("OrganizationSettingsForm", () => {
       expect(toastSuccess).toHaveBeenCalledWith(
         "Organization updated successfully."
       );
+    });
+  });
+
+  it("redirects non-owners away from settings", async () => {
+    mockedUseSession.mockReturnValue({
+      session: { user: { email: "author@example.com" } },
+    });
+    mockUseQuery.mockReturnValue({
+      data: {
+        organization: {
+          id: "org-123",
+          name: "Test Org",
+          visibility: Visibility.PUBLIC,
+        },
+        members: [
+          { id: "1", email: "owner@example.com", role: 2 },
+          { id: "2", email: "author@example.com", role: 1 },
+        ],
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<OrganizationSettingsForm />);
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/organization/org-123/users");
     });
   });
 

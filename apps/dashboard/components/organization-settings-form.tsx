@@ -1,16 +1,21 @@
 "use client";
 
 import { getOrganization } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
+import { getMembers } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
 import { OrganizationService } from "@buf/hasir_hasir.bufbuild_es/organization/v1/organization_pb";
 import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
+import { useQuery as useMembersQuery } from "@connectrpc/connect-query";
+import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useParams, useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@connectrpc/connect-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod/v4";
+
+import type { Permission } from "@/components/member-item";
 
 import {
   Card,
@@ -34,11 +39,18 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { InviteUserDialog } from "@/components/invite-user-dialog";
 import { useRefreshStore } from "@/stores/refresh-store";
 import { Separator } from "@/components/ui/separator";
+import { useSession } from "@/lib/session-provider";
 import { Button } from "@/components/ui/button";
 import { customRetry } from "@/lib/query-retry";
 import { Input } from "@/components/ui/input";
 import { isNotFoundError } from "@/lib/utils";
 import { useClient } from "@/lib/use-client";
+
+const memberRoleMapper = new Map<Role, Permission>([
+  [Role.OWNER, "owner"],
+  [Role.AUTHOR, "author"],
+  [Role.READER, "reader"],
+]);
 
 const organizationSchema = z.object({
   name: z
@@ -58,6 +70,7 @@ export function OrganizationSettingsForm() {
   const router = useRouter();
   const organizationId = params.id as string;
   const organizationApiClient = useClient(OrganizationService);
+  const { session } = useSession();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -80,6 +93,35 @@ export function OrganizationSettingsForm() {
   );
 
   const organization = data?.organization;
+
+  const { data: membersData } = useMembersQuery(
+    getMembers,
+    { id: organizationId },
+    { retry: customRetry }
+  );
+
+  const members =
+    membersData?.members ??
+    (data as { members?: { email: string; role: Role }[] } | undefined)
+      ?.members;
+
+  const currentMemberPermission = useMemo<Permission | null>(() => {
+    if (!members || members.length === 0 || !session?.user?.email) {
+      return null;
+    }
+
+    const currentMember = members.find(
+      (member) => member.email === session.user?.email
+    );
+
+    if (!currentMember) {
+      return null;
+    }
+
+    return memberRoleMapper.get(currentMember.role) as Permission;
+  }, [members, session]);
+
+  const isOwner = currentMemberPermission === "owner";
 
   const {
     control,
@@ -209,6 +251,11 @@ export function OrganizationSettingsForm() {
     );
   }
 
+  if (!isOwner && currentMemberPermission !== null) {
+    router.replace(`/organization/${organizationId}/users`);
+    return null;
+  }
+
   if (!organization) {
     return (
       <Card>
@@ -329,6 +376,7 @@ export function OrganizationSettingsForm() {
                 type="button"
                 variant="outline"
                 onClick={() => setIsInviteDialogOpen(true)}
+                disabled={!isOwner}
               >
                 Invite User
               </Button>

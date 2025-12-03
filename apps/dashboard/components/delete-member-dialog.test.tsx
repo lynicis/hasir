@@ -10,7 +10,7 @@ describe("DeleteMemberDialog", () => {
     id: "1",
     email: "john.doe@example.com",
     name: "John Doe",
-    permission: "admin",
+    permission: "author",
   };
 
   const mockOnOpenChange = vi.fn();

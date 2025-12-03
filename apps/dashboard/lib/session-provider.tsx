@@ -43,7 +43,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         } else {
           setSession(null);
 
-          const publicPaths = ["/login", "/register", "/invite"];
+          const publicPaths = ["/login", "/register"];
           const isRootPath = pathname === "/";
           if (
             !isRootPath &&

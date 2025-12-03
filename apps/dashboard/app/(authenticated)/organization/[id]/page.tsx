@@ -6,5 +6,5 @@ export default async function OrganizationPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  redirect(`/organization/${id}/settings`);
+  redirect(`/organization/${id}/users`);
 }

@@ -13,7 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
-export type Permission = "owner" | "admin" | "member" | "viewer";
+export type Permission = "owner" | "author" | "reader";
 
 export interface OrganizationMember {
   id: string;
@@ -25,15 +25,16 @@ export interface OrganizationMember {
 
 export const permissionLabels: Record<Permission, string> = {
   owner: "Owner",
-  admin: "Admin",
-  member: "Member",
-  viewer: "Viewer",
+  author: "Author",
+  reader: "Reader",
 };
 
 interface MemberItemProps {
   member: OrganizationMember;
   onPermissionChange: (memberId: string, newPermission: Permission) => void;
   onDelete: (member: OrganizationMember) => void;
+  canEditPermissions: boolean;
+  canRemove: boolean;
   getInitials: (name: string) => string;
 }
 
@@ -41,6 +42,8 @@ export function MemberItem({
   member,
   onPermissionChange,
   onDelete,
+  canEditPermissions,
+  canRemove,
   getInitials,
 }: MemberItemProps) {
   const isOwner = member.permission === "owner";
@@ -58,7 +61,7 @@ export function MemberItem({
         </div>
       </div>
       <div className="flex items-center gap-3">
-        {isOwner ? (
+        {isOwner || !canEditPermissions ? (
           <Button variant="outline" size="sm" disabled>
             {permissionLabels[member.permission]}
           </Button>
@@ -96,7 +99,7 @@ export function MemberItem({
             <DropdownMenuItem
               variant="destructive"
               onClick={() => onDelete(member)}
-              disabled={member.permission === "owner"}
+              disabled={member.permission === "owner" || !canRemove}
             >
               <Trash2 className="size-4 mr-2" />
               Remove from organization

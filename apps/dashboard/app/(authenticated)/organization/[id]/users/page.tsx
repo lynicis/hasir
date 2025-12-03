@@ -14,18 +14,20 @@ import {
 import { DeleteMemberDialog } from "@/components/delete-member-dialog";
 import { InviteUserDialog } from "@/components/invite-user-dialog";
 import { MembersList } from "@/components/members-list";
+import { useSession } from "@/lib/session-provider";
 import { customRetry } from "@/lib/query-retry";
 import { isNotFoundError } from "@/lib/utils";
 
 const memberRoleMapper = new Map<Role, Permission>([
   [Role.OWNER, "owner"],
-  [Role.AUTHOR, "admin"],
-  [Role.READER, "member"],
+  [Role.AUTHOR, "author"],
+  [Role.READER, "reader"],
 ]);
 
 export default function UsersPage() {
   const params = useParams();
   const organizationId = params.id as string;
+  const { session } = useSession();
 
   const { data: membersData, error: membersError } = useQuery(
     getMembers,
@@ -39,6 +41,27 @@ export default function UsersPage() {
     member: OrganizationMember | null;
   }>({ open: false, member: null });
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+
+  const currentMemberPermission = useMemo<Permission | null>(() => {
+    if (!membersData?.members || !session?.user?.email) {
+      return null;
+    }
+
+    const currentMember = membersData.members.find(
+      (member) => member.email === session.user?.email
+    );
+
+    if (!currentMember) {
+      return null;
+    }
+
+    return memberRoleMapper.get(currentMember.role) as Permission;
+  }, [membersData, session]);
+
+  const canInviteMembers =
+    currentMemberPermission === "owner" || currentMemberPermission === "author";
+  const canRemoveMembers = currentMemberPermission === "owner";
+  const canEditPermissions = currentMemberPermission === "owner";
 
   const fetchedMembers = useMemo<OrganizationMember[]>(() => {
     if (!membersData?.members) return [];
@@ -62,6 +85,11 @@ export default function UsersPage() {
   }, [membersError]);
 
   function handlePermissionChange(memberId: string, newPermission: Permission) {
+    if (!canEditPermissions) {
+      toast.error("You don't have permission to change member roles.");
+      return;
+    }
+
     setMembers((prev) =>
       prev.map((member) =>
         member.id === memberId
@@ -73,6 +101,11 @@ export default function UsersPage() {
   }
 
   function handleDeleteMember(member: OrganizationMember) {
+    if (!canRemoveMembers) {
+      toast.error("You don't have permission to remove members.");
+      return;
+    }
+
     setDeleteMemberDialog({ open: true, member });
   }
 
@@ -89,6 +122,11 @@ export default function UsersPage() {
   }
 
   function handleInviteMember() {
+    if (!canInviteMembers) {
+      toast.error("You don't have permission to invite members.");
+      return;
+    }
+
     setIsInviteDialogOpen(true);
   }
 
@@ -114,6 +152,9 @@ export default function UsersPage() {
         onPermissionChange={handlePermissionChange}
         onDelete={handleDeleteMember}
         onInvite={handleInviteMember}
+        canInvite={canInviteMembers}
+        canEditPermissions={canEditPermissions}
+        canRemoveMembers={canRemoveMembers}
         getInitials={getInitials}
       />
       <DeleteMemberDialog

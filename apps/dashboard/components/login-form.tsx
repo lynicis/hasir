@@ -1,8 +1,8 @@
 "use client";
 
-import { Controller, useForm } from "react-hook-form";
+import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import Link from "next/link";
 import { z } from "zod/v4";
@@ -33,6 +33,7 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     control,
     handleSubmit,
@@ -48,10 +49,10 @@ export function LoginForm({
 
   async function onSubmit({ email, password }: ISchema) {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password }),
       });
@@ -59,23 +60,31 @@ export function LoginForm({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+        throw new Error(data.error || "Login failed");
       }
+
+      const redirectParam = searchParams.get("redirect");
+      const hasValidRedirect =
+        redirectParam &&
+        redirectParam.startsWith("/") &&
+        !redirectParam.startsWith("//");
 
       toast.success("You have successfully logged in!");
       setTimeout(() => {
-        router.push("/dashboard");
+        router.push(hasValidRedirect ? redirectParam : "/dashboard");
         router.refresh();
       }, 600);
     } catch (error) {
       if (error instanceof Error) {
-        if (error.message.includes('Invalid')) {
+        if (error.message.includes("Invalid")) {
           setError("root", {
             message: "Invalid email or password.",
           });
         } else {
           setError("root", {
-            message: error.message || "Error occurred while logging into your account.",
+            message:
+              error.message ||
+              "Error occurred while logging into your account.",
           });
         }
       } else {

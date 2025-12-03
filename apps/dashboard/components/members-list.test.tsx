@@ -17,7 +17,7 @@ describe("MembersList", () => {
       id: "2",
       email: "jane.smith@example.com",
       name: "Jane Smith",
-      permission: "admin",
+      permission: "author",
     },
   ];
 
@@ -39,6 +39,9 @@ describe("MembersList", () => {
         onPermissionChange={mockOnPermissionChange}
         onDelete={mockOnDelete}
         onInvite={mockOnInvite}
+        canInvite={true}
+        canEditPermissions={true}
+        canRemoveMembers={true}
         getInitials={mockGetInitials}
       />
     );
@@ -57,6 +60,9 @@ describe("MembersList", () => {
         onPermissionChange={mockOnPermissionChange}
         onDelete={mockOnDelete}
         onInvite={mockOnInvite}
+        canInvite={true}
+        canEditPermissions={true}
+        canRemoveMembers={true}
         getInitials={mockGetInitials}
       />
     );
@@ -74,6 +80,9 @@ describe("MembersList", () => {
         onPermissionChange={mockOnPermissionChange}
         onDelete={mockOnDelete}
         onInvite={mockOnInvite}
+        canInvite={true}
+        canEditPermissions={true}
+        canRemoveMembers={true}
         getInitials={mockGetInitials}
       />
     );
@@ -91,6 +100,9 @@ describe("MembersList", () => {
         onPermissionChange={mockOnPermissionChange}
         onDelete={mockOnDelete}
         onInvite={mockOnInvite}
+        canInvite={true}
+        canEditPermissions={true}
+        canRemoveMembers={true}
         getInitials={mockGetInitials}
       />
     );
@@ -106,6 +118,9 @@ describe("MembersList", () => {
         onPermissionChange={mockOnPermissionChange}
         onDelete={mockOnDelete}
         onInvite={mockOnInvite}
+        canInvite={true}
+        canEditPermissions={true}
+        canRemoveMembers={true}
         getInitials={mockGetInitials}
       />
     );
