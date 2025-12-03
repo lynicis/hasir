@@ -6,8 +6,7 @@ function isPublicPage(): boolean {
   const pathname = window.location.pathname;
   return pathname === '/' ||
     pathname === '/login' ||
-    pathname === '/register' ||
-    pathname.startsWith('/invite');
+    pathname === '/register';
 }
 
 function isPublicMethod(req: { url?: string }): boolean {
