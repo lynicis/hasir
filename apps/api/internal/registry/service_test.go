@@ -331,7 +331,6 @@ func TestService_DeleteRepository(t *testing.T) {
 		require.Error(t, err)
 		require.ErrorContains(t, err, "failed to remove repository directory")
 
-		// Cleanup: restore permissions so temp dir can be cleaned up
 		if _, err := os.Stat(repoPath); err == nil {
 			require.NoError(t, os.Chmod(repoPath, 0o755))
 		}

@@ -56,32 +56,18 @@ func (mr *MockRepositoryMockRecorder) AddMember(ctx, member any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMember", reflect.TypeOf((*MockRepository)(nil).AddMember), ctx, member)
 }
 
-// CreateInvite mocks base method.
-func (m *MockRepository) CreateInvite(ctx context.Context, invite *OrganizationInviteDTO) error {
+// CreateInvitesAndEnqueueEmailJobs mocks base method.
+func (m *MockRepository) CreateInvitesAndEnqueueEmailJobs(ctx context.Context, invites []*OrganizationInviteDTO, jobs []*EmailJobDTO) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateInvite", ctx, invite)
+	ret := m.ctrl.Call(m, "CreateInvitesAndEnqueueEmailJobs", ctx, invites, jobs)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// CreateInvite indicates an expected call of CreateInvite.
-func (mr *MockRepositoryMockRecorder) CreateInvite(ctx, invite any) *gomock.Call {
+// CreateInvitesAndEnqueueEmailJobs indicates an expected call of CreateInvitesAndEnqueueEmailJobs.
+func (mr *MockRepositoryMockRecorder) CreateInvitesAndEnqueueEmailJobs(ctx, invites, jobs any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInvite", reflect.TypeOf((*MockRepository)(nil).CreateInvite), ctx, invite)
-}
-
-// CreateInvites mocks base method.
-func (m *MockRepository) CreateInvites(ctx context.Context, invites []*OrganizationInviteDTO) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateInvites", ctx, invites)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// CreateInvites indicates an expected call of CreateInvites.
-func (mr *MockRepositoryMockRecorder) CreateInvites(ctx, invites any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInvites", reflect.TypeOf((*MockRepository)(nil).CreateInvites), ctx, invites)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInvitesAndEnqueueEmailJobs", reflect.TypeOf((*MockRepository)(nil).CreateInvitesAndEnqueueEmailJobs), ctx, invites, jobs)
 }
 
 // CreateOrganization mocks base method.
@@ -124,20 +110,6 @@ func (m *MockRepository) DeleteOrganization(ctx context.Context, id string) erro
 func (mr *MockRepositoryMockRecorder) DeleteOrganization(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteOrganization", reflect.TypeOf((*MockRepository)(nil).DeleteOrganization), ctx, id)
-}
-
-// EnqueueEmailJobs mocks base method.
-func (m *MockRepository) EnqueueEmailJobs(ctx context.Context, jobs []*EmailJobDTO) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnqueueEmailJobs", ctx, jobs)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// EnqueueEmailJobs indicates an expected call of EnqueueEmailJobs.
-func (mr *MockRepositoryMockRecorder) EnqueueEmailJobs(ctx, jobs any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueEmailJobs", reflect.TypeOf((*MockRepository)(nil).EnqueueEmailJobs), ctx, jobs)
 }
 
 // GetInviteByToken mocks base method.

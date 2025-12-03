@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -571,8 +572,55 @@ func createTestEmailJob(t *testing.T, inviteId, orgId, email, orgName, token str
 	}
 }
 
-func TestPgRepository_EnqueueEmailJobs(t *testing.T) {
-	t.Run("success with single job", func(t *testing.T) {
+func createOrganizationInvitesTable(t *testing.T, connString string) {
+	t.Helper()
+
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		err = conn.Close(t.Context())
+		require.NoError(t, err)
+	}()
+
+	createUsersTable(t, connString)
+
+	sql := `CREATE TABLE IF NOT EXISTS organization_invites (
+		id VARCHAR(36) PRIMARY KEY,
+		organization_id VARCHAR(36) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+		email VARCHAR(255) NOT NULL,
+		token VARCHAR(64) NOT NULL UNIQUE,
+		invited_by VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		role VARCHAR(20) NOT NULL DEFAULT 'author',
+		status VARCHAR(20) NOT NULL DEFAULT 'pending',
+		created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+		expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+		accepted_at TIMESTAMP WITH TIME ZONE,
+		CONSTRAINT chk_invite_status CHECK (status IN ('pending', 'accepted', 'expired', 'cancelled')),
+		CONSTRAINT chk_invite_role CHECK (role IN ('reader', 'author', 'owner'))
+	)`
+
+	_, err = conn.Exec(t.Context(), sql)
+	require.NoError(t, err)
+}
+
+func createTestInvite(t *testing.T, orgId, email, token, invitedBy string, role MemberRole) *OrganizationInviteDTO {
+	t.Helper()
+	now := time.Now().UTC()
+	return &OrganizationInviteDTO{
+		Id:             uuid.NewString(),
+		OrganizationId: orgId,
+		Email:          email,
+		Token:          token,
+		InvitedBy:      invitedBy,
+		Role:           role,
+		Status:         InviteStatusPending,
+		CreatedAt:      now,
+		ExpiresAt:      now.AddDate(0, 0, 7),
+	}
+}
+
+func TestPgRepository_CreateInvitesAndEnqueueEmailJobs(t *testing.T) {
+	t.Run("success with single invite and job", func(t *testing.T) {
 		container := setupPgContainer(t)
 		defer func() {
 			err := container.Terminate(t.Context())
@@ -583,16 +631,23 @@ func TestPgRepository_EnqueueEmailJobs(t *testing.T) {
 		require.NoError(t, err)
 
 		createOrganizationsTable(t, connString)
+		createOrganizationInvitesTable(t, connString)
 		createEmailJobsTable(t, connString)
 
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		orgId := uuid.NewString()
-		inviteId := uuid.NewString()
-		job := createTestEmailJob(t, inviteId, orgId, "test@example.com", "Test Org", "token123")
+		org := createTestOrganization(t, "test-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
 
-		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{job})
+		user := createTestUser(t, "inviter", "inviter@example.com")
+		insertTestUser(t, connString, user)
+
+		invite := createTestInvite(t, org.Id, "invitee@example.com", "token123", user.Id, MemberRoleAuthor)
+		job := createTestEmailJob(t, invite.Id, org.Id, "invitee@example.com", org.Name, invite.Token)
+
+		err = repo.CreateInvitesAndEnqueueEmailJobs(t.Context(), []*OrganizationInviteDTO{invite}, []*EmailJobDTO{job})
 		require.NoError(t, err)
 
 		conn, err := pgx.Connect(t.Context(), connString)
@@ -601,21 +656,26 @@ func TestPgRepository_EnqueueEmailJobs(t *testing.T) {
 			_ = conn.Close(t.Context())
 		}()
 
-		var dbId, dbEmail, dbStatus string
-		var dbAttempts, dbMaxAttempts int
+		var inviteId, inviteEmail, inviteToken string
 		err = conn.QueryRow(t.Context(),
-			"SELECT id, email, status, attempts, max_attempts FROM email_jobs WHERE id = $1", job.Id).
-			Scan(&dbId, &dbEmail, &dbStatus, &dbAttempts, &dbMaxAttempts)
+			"SELECT id, email, token FROM organization_invites WHERE id = $1", invite.Id).
+			Scan(&inviteId, &inviteEmail, &inviteToken)
 		require.NoError(t, err)
+		assert.Equal(t, invite.Id, inviteId)
+		assert.Equal(t, invite.Email, inviteEmail)
+		assert.Equal(t, invite.Token, inviteToken)
 
-		assert.Equal(t, job.Id, dbId)
-		assert.Equal(t, job.Email, dbEmail)
-		assert.Equal(t, "pending", dbStatus)
-		assert.Equal(t, 0, dbAttempts)
-		assert.Equal(t, 3, dbMaxAttempts)
+		var jobId, jobEmail, jobStatus string
+		err = conn.QueryRow(t.Context(),
+			"SELECT id, email, status FROM email_jobs WHERE id = $1", job.Id).
+			Scan(&jobId, &jobEmail, &jobStatus)
+		require.NoError(t, err)
+		assert.Equal(t, job.Id, jobId)
+		assert.Equal(t, job.Email, jobEmail)
+		assert.Equal(t, "pending", jobStatus)
 	})
 
-	t.Run("success with multiple jobs", func(t *testing.T) {
+	t.Run("success with multiple invites and jobs", func(t *testing.T) {
 		container := setupPgContainer(t)
 		defer func() {
 			err := container.Terminate(t.Context())
@@ -626,19 +686,30 @@ func TestPgRepository_EnqueueEmailJobs(t *testing.T) {
 		require.NoError(t, err)
 
 		createOrganizationsTable(t, connString)
+		createOrganizationInvitesTable(t, connString)
 		createEmailJobsTable(t, connString)
 
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		orgId := uuid.NewString()
-		jobs := []*EmailJobDTO{
-			createTestEmailJob(t, uuid.NewString(), orgId, "user1@example.com", "Test Org", "token1"),
-			createTestEmailJob(t, uuid.NewString(), orgId, "user2@example.com", "Test Org", "token2"),
-			createTestEmailJob(t, uuid.NewString(), orgId, "user3@example.com", "Test Org", "token3"),
+		org := createTestOrganization(t, "test-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "inviter", "inviter@example.com")
+		insertTestUser(t, connString, user)
+
+		invites := []*OrganizationInviteDTO{
+			createTestInvite(t, org.Id, "user1@example.com", "token1", user.Id, MemberRoleAuthor),
+			createTestInvite(t, org.Id, "user2@example.com", "token2", user.Id, MemberRoleReader),
 		}
 
-		err = repo.EnqueueEmailJobs(t.Context(), jobs)
+		jobs := []*EmailJobDTO{
+			createTestEmailJob(t, invites[0].Id, org.Id, "user1@example.com", org.Name, invites[0].Token),
+			createTestEmailJob(t, invites[1].Id, org.Id, "user2@example.com", org.Name, invites[1].Token),
+		}
+
+		err = repo.CreateInvitesAndEnqueueEmailJobs(t.Context(), invites, jobs)
 		require.NoError(t, err)
 
 		conn, err := pgx.Connect(t.Context(), connString)
@@ -647,13 +718,18 @@ func TestPgRepository_EnqueueEmailJobs(t *testing.T) {
 			_ = conn.Close(t.Context())
 		}()
 
-		var count int
-		err = conn.QueryRow(t.Context(), "SELECT COUNT(*) FROM email_jobs").Scan(&count)
+		var inviteCount int
+		err = conn.QueryRow(t.Context(), "SELECT COUNT(*) FROM organization_invites").Scan(&inviteCount)
 		require.NoError(t, err)
-		assert.Equal(t, 3, count)
+		assert.Equal(t, 2, inviteCount)
+
+		var jobCount int
+		err = conn.QueryRow(t.Context(), "SELECT COUNT(*) FROM email_jobs").Scan(&jobCount)
+		require.NoError(t, err)
+		assert.Equal(t, 2, jobCount)
 	})
 
-	t.Run("success with empty jobs", func(t *testing.T) {
+	t.Run("error when invites and jobs length mismatch", func(t *testing.T) {
 		container := setupPgContainer(t)
 		defer func() {
 			err := container.Terminate(t.Context())
@@ -664,12 +740,86 @@ func TestPgRepository_EnqueueEmailJobs(t *testing.T) {
 		require.NoError(t, err)
 
 		createOrganizationsTable(t, connString)
+		createOrganizationInvitesTable(t, connString)
 		createEmailJobsTable(t, connString)
 
 		repo, pool := setupTestRepository(t, connString)
 		defer pool.Close()
 
-		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{})
+		org := createTestOrganization(t, "test-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "inviter", "inviter@example.com")
+		insertTestUser(t, connString, user)
+
+		invite := createTestInvite(t, org.Id, "user@example.com", "token1", user.Id, MemberRoleAuthor)
+		job1 := createTestEmailJob(t, invite.Id, org.Id, "user@example.com", org.Name, invite.Token)
+		job2 := createTestEmailJob(t, invite.Id, org.Id, "user@example.com", org.Name, invite.Token)
+
+		err = repo.CreateInvitesAndEnqueueEmailJobs(t.Context(), []*OrganizationInviteDTO{invite}, []*EmailJobDTO{job1, job2})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must have the same length")
+	})
+
+	t.Run("error when invite token already exists", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createOrganizationInvitesTable(t, connString)
+		createEmailJobsTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "test-org-"+uuid.NewString(), proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "inviter", "inviter@example.com")
+		insertTestUser(t, connString, user)
+
+		invite1 := createTestInvite(t, org.Id, "user1@example.com", "duplicate-token", user.Id, MemberRoleAuthor)
+		job1 := createTestEmailJob(t, invite1.Id, org.Id, "user1@example.com", org.Name, invite1.Token)
+
+		err = repo.CreateInvitesAndEnqueueEmailJobs(t.Context(), []*OrganizationInviteDTO{invite1}, []*EmailJobDTO{job1})
+		require.NoError(t, err)
+
+		invite2 := createTestInvite(t, org.Id, "user2@example.com", "duplicate-token", user.Id, MemberRoleAuthor)
+		job2 := createTestEmailJob(t, invite2.Id, org.Id, "user2@example.com", org.Name, invite2.Token)
+
+		err = repo.CreateInvitesAndEnqueueEmailJobs(t.Context(), []*OrganizationInviteDTO{invite2}, []*EmailJobDTO{job2})
+		require.Error(t, err)
+		var connectErr *connect.Error
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodeAlreadyExists, connectErr.Code())
+	})
+
+	t.Run("success with empty invites", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createOrganizationInvitesTable(t, connString)
+		createEmailJobsTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		err = repo.CreateInvitesAndEnqueueEmailJobs(t.Context(), []*OrganizationInviteDTO{}, []*EmailJobDTO{})
 		require.NoError(t, err)
 	})
 }
@@ -699,16 +849,22 @@ func TestPgRepository_GetPendingEmailJobs(t *testing.T) {
 		completedJob := createTestEmailJob(t, uuid.NewString(), orgId, "completed@example.com", "Test Org", "token3")
 		completedJob.Status = EmailJobStatusCompleted
 
-		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{pendingJob1, pendingJob2, completedJob})
-		require.NoError(t, err)
-
 		conn, err := pgx.Connect(t.Context(), connString)
-		require.NoError(t, err)
-		_, err = conn.Exec(t.Context(), "UPDATE email_jobs SET status = 'completed' WHERE id = $1", completedJob.Id)
 		require.NoError(t, err)
 		defer func() {
 			_ = conn.Close(t.Context())
 		}()
+
+		for _, job := range []*EmailJobDTO{pendingJob1, pendingJob2, completedJob} {
+			_, err = conn.Exec(t.Context(), `
+				INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, 0, 3, NOW())
+			`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken, job.Status)
+			require.NoError(t, err)
+		}
+
+		_, err = conn.Exec(t.Context(), "UPDATE email_jobs SET status = 'completed' WHERE id = $1", completedJob.Id)
+		require.NoError(t, err)
 
 		jobs, err := repo.GetPendingEmailJobs(t.Context(), 10)
 		require.NoError(t, err)
@@ -744,8 +900,19 @@ func TestPgRepository_GetPendingEmailJobs(t *testing.T) {
 				"user"+string(rune('0'+i))+"@example.com", "Test Org", "token"+string(rune('0'+i)))
 		}
 
-		err = repo.EnqueueEmailJobs(t.Context(), jobs)
+		conn, err := pgx.Connect(t.Context(), connString)
 		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		for _, job := range jobs {
+			_, err = conn.Exec(t.Context(), `
+				INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
+				VALUES ($1, $2, $3, $4, $5, $6, 'pending', 0, 3, NOW())
+			`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken)
+			require.NoError(t, err)
+		}
 
 		retrievedJobs, err := repo.GetPendingEmailJobs(t.Context(), 2)
 		require.NoError(t, err)
@@ -792,7 +959,16 @@ func TestPgRepository_GetPendingEmailJobs(t *testing.T) {
 		orgId := uuid.NewString()
 		job := createTestEmailJob(t, uuid.NewString(), orgId, "test@example.com", "Test Org", "token1")
 
-		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{job})
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		_, err = conn.Exec(t.Context(), `
+			INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, 'pending', 0, 3, NOW())
+		`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken)
 		require.NoError(t, err)
 
 		jobs, err := repo.GetPendingEmailJobs(t.Context(), 10)
@@ -828,18 +1004,18 @@ func TestPgRepository_UpdateEmailJobStatus(t *testing.T) {
 
 		orgId := uuid.NewString()
 		job := createTestEmailJob(t, uuid.NewString(), orgId, "test@example.com", "Test Org", "token1")
-		job.Status = EmailJobStatusProcessing
-
-		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{job})
-		require.NoError(t, err)
 
 		conn, err := pgx.Connect(t.Context(), connString)
-		require.NoError(t, err)
-		_, err = conn.Exec(t.Context(), "UPDATE email_jobs SET status = 'processing' WHERE id = $1", job.Id)
 		require.NoError(t, err)
 		defer func() {
 			_ = conn.Close(t.Context())
 		}()
+
+		_, err = conn.Exec(t.Context(), `
+			INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, 'processing', 0, 3, NOW())
+		`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken)
+		require.NoError(t, err)
 
 		err = repo.UpdateEmailJobStatus(t.Context(), job.Id, EmailJobStatusCompleted, nil)
 		require.NoError(t, err)
@@ -874,16 +1050,17 @@ func TestPgRepository_UpdateEmailJobStatus(t *testing.T) {
 		orgId := uuid.NewString()
 		job := createTestEmailJob(t, uuid.NewString(), orgId, "test@example.com", "Test Org", "token1")
 
-		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{job})
-		require.NoError(t, err)
-
 		conn, err := pgx.Connect(t.Context(), connString)
-		require.NoError(t, err)
-		_, err = conn.Exec(t.Context(), "UPDATE email_jobs SET status = 'processing' WHERE id = $1", job.Id)
 		require.NoError(t, err)
 		defer func() {
 			_ = conn.Close(t.Context())
 		}()
+
+		_, err = conn.Exec(t.Context(), `
+			INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, 'processing', 0, 3, NOW())
+		`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken)
+		require.NoError(t, err)
 
 		errorMsg := "SMTP connection failed"
 		err = repo.UpdateEmailJobStatus(t.Context(), job.Id, EmailJobStatusFailed, &errorMsg)
@@ -920,16 +1097,17 @@ func TestPgRepository_UpdateEmailJobStatus(t *testing.T) {
 		orgId := uuid.NewString()
 		job := createTestEmailJob(t, uuid.NewString(), orgId, "test@example.com", "Test Org", "token1")
 
-		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{job})
-		require.NoError(t, err)
-
 		conn, err := pgx.Connect(t.Context(), connString)
-		require.NoError(t, err)
-		_, err = conn.Exec(t.Context(), "UPDATE email_jobs SET status = 'processing' WHERE id = $1", job.Id)
 		require.NoError(t, err)
 		defer func() {
 			_ = conn.Close(t.Context())
 		}()
+
+		_, err = conn.Exec(t.Context(), `
+			INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, 'processing', 0, 3, NOW())
+		`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken)
+		require.NoError(t, err)
 
 		err = repo.UpdateEmailJobStatus(t.Context(), job.Id, EmailJobStatusPending, nil)
 		require.NoError(t, err)
@@ -982,7 +1160,16 @@ func TestPgRepository_UpdateEmailJobStatus(t *testing.T) {
 		orgId := uuid.NewString()
 		job := createTestEmailJob(t, uuid.NewString(), orgId, "test@example.com", "Test Org", "token1")
 
-		err = repo.EnqueueEmailJobs(t.Context(), []*EmailJobDTO{job})
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		_, err = conn.Exec(t.Context(), `
+			INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, 'pending', 0, 3, NOW())
+		`, job.Id, job.InviteId, job.OrganizationId, job.Email, job.OrganizationName, job.InviteToken)
 		require.NoError(t, err)
 
 		err = repo.UpdateEmailJobStatus(t.Context(), job.Id, EmailJobStatusCompleted, nil)

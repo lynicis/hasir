@@ -30,8 +30,7 @@ type Repository interface {
 	GetOrganizationById(ctx context.Context, id string) (*OrganizationDTO, error)
 	UpdateOrganization(ctx context.Context, org *OrganizationDTO) error
 	DeleteOrganization(ctx context.Context, id string) error
-	CreateInvite(ctx context.Context, invite *OrganizationInviteDTO) error
-	CreateInvites(ctx context.Context, invites []*OrganizationInviteDTO) error
+	CreateInvitesAndEnqueueEmailJobs(ctx context.Context, invites []*OrganizationInviteDTO, jobs []*EmailJobDTO) error
 	GetInviteByToken(ctx context.Context, token string) (*OrganizationInviteDTO, error)
 	UpdateInviteStatus(ctx context.Context, id string, status InviteStatus, acceptedAt *time.Time) error
 	AddMember(ctx context.Context, member *OrganizationMemberDTO) error
@@ -40,7 +39,6 @@ type Repository interface {
 	GetMemberRoleString(ctx context.Context, organizationId, userId string) (string, error)
 	UpdateMemberRole(ctx context.Context, organizationId, userId string, role MemberRole) error
 	DeleteMember(ctx context.Context, organizationId, userId string) error
-	EnqueueEmailJobs(ctx context.Context, jobs []*EmailJobDTO) error
 	GetPendingEmailJobs(ctx context.Context, limit int) ([]*EmailJobDTO, error)
 	UpdateEmailJobStatus(ctx context.Context, jobId string, status EmailJobStatus, errorMsg *string) error
 	StartEmailJobProcessor(ctx context.Context, emailService email.Service, batchSize int, pollInterval time.Duration)
@@ -118,6 +116,26 @@ func NewPgRepository(
 		tracer:         tracer,
 		stopChan:       make(chan struct{}),
 	}
+}
+
+func querySingleRow[T any](ctx context.Context, conn *pgxpool.Conn, span trace.Span, sql string, args []any, notFoundErr error) (*T, error) {
+	rows, err := conn.Query(ctx, sql, args...)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to execute query"))
+	}
+	defer rows.Close()
+
+	result, err := pgx.CollectOneRow[T](rows, pgx.RowToStructByName)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, notFoundErr
+		}
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect row"))
+	}
+
+	return &result, nil
 }
 
 func (r *PgRepository) CreateOrganization(ctx context.Context, org *OrganizationDTO) error {
@@ -241,25 +259,7 @@ func (r *PgRepository) GetOrganizationByName(ctx context.Context, name string) (
 	defer connection.Release()
 
 	sql := "SELECT * FROM organizations WHERE name = $1 AND deleted_at IS NULL"
-
-	var rows pgx.Rows
-	rows, err = connection.Query(ctx, sql, name)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
-	}
-	defer rows.Close()
-
-	var org OrganizationDTO
-	org, err = pgx.CollectOneRow[OrganizationDTO](rows, pgx.RowToStructByName)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrOrganizationNotFound
-		}
-
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect row"))
-	}
-
-	return &org, nil
+	return querySingleRow[OrganizationDTO](ctx, connection, span, sql, []any{name}, ErrOrganizationNotFound)
 }
 
 func (r *PgRepository) GetOrganizationById(ctx context.Context, id string) (*OrganizationDTO, error) {
@@ -279,25 +279,7 @@ func (r *PgRepository) GetOrganizationById(ctx context.Context, id string) (*Org
 	defer connection.Release()
 
 	sql := "SELECT * FROM organizations WHERE id = $1 AND deleted_at IS NULL"
-
-	var rows pgx.Rows
-	rows, err = connection.Query(ctx, sql, id)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
-	}
-	defer rows.Close()
-
-	var org OrganizationDTO
-	org, err = pgx.CollectOneRow[OrganizationDTO](rows, pgx.RowToStructByName)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrOrganizationNotFound
-		}
-
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect row"))
-	}
-
-	return &org, nil
+	return querySingleRow[OrganizationDTO](ctx, connection, span, sql, []any{id}, ErrOrganizationNotFound)
 }
 
 func (r *PgRepository) UpdateOrganization(ctx context.Context, org *OrganizationDTO) error {
@@ -384,63 +366,26 @@ func (r *PgRepository) DeleteOrganization(ctx context.Context, id string) error 
 	return nil
 }
 
-func (r *PgRepository) CreateInvite(ctx context.Context, invite *OrganizationInviteDTO) error {
+func (r *PgRepository) CreateInvitesAndEnqueueEmailJobs(ctx context.Context, invites []*OrganizationInviteDTO, jobs []*EmailJobDTO) error {
 	var span trace.Span
-	ctx, span = r.tracer.Start(ctx, "CreateInvite", trace.WithAttributes(attribute.KeyValue{
-		Key:   "invite",
-		Value: attribute.StringValue(fmt.Sprintf("%+v", invite)),
-	}))
-	defer span.End()
-
-	connection, err := r.connectionPool.Acquire(ctx)
-	if err != nil {
-		return ErrFailedAcquireConnection
-	}
-	defer connection.Release()
-
-	sql := `INSERT INTO organization_invites (id, organization_id, email, token, invited_by, role, status, created_at, expires_at)
-			VALUES (@Id, @OrganizationId, @Email, @Token, @InvitedBy, @Role, @Status, @CreatedAt, @ExpiresAt)`
-	sqlArgs := pgx.NamedArgs{
-		"Id":             invite.Id,
-		"OrganizationId": invite.OrganizationId,
-		"Email":          invite.Email,
-		"Token":          invite.Token,
-		"InvitedBy":      invite.InvitedBy,
-		"Role":           invite.Role,
-		"Status":         invite.Status,
-		"CreatedAt":      invite.CreatedAt,
-		"ExpiresAt":      invite.ExpiresAt,
-	}
-
-	if _, err = connection.Exec(ctx, sql, sqlArgs); err != nil {
-		span.RecordError(err)
-
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == ErrUniqueViolationCode {
-				return connect.NewError(connect.CodeAlreadyExists, errors.New("invite already exists"))
-			}
-			return err
-		}
-
-		return connect.NewError(connect.CodeInternal, errors.New("failed to execute insert invite query"))
-	}
-
-	return nil
-}
-
-func (r *PgRepository) CreateInvites(ctx context.Context, invites []*OrganizationInviteDTO) error {
-	var span trace.Span
-	ctx, span = r.tracer.Start(ctx, "CreateInvites", trace.WithAttributes(
+	ctx, span = r.tracer.Start(ctx, "CreateInvitesAndEnqueueEmailJobs", trace.WithAttributes(
 		attribute.KeyValue{
 			Key:   "inviteCount",
 			Value: attribute.IntValue(len(invites)),
+		},
+		attribute.KeyValue{
+			Key:   "jobCount",
+			Value: attribute.IntValue(len(jobs)),
 		},
 	))
 	defer span.End()
 
 	if len(invites) == 0 {
 		return nil
+	}
+
+	if len(invites) != len(jobs) {
+		return connect.NewError(connect.CodeInternal, errors.New("invites and jobs must have the same length"))
 	}
 
 	connection, err := r.connectionPool.Acquire(ctx)
@@ -461,10 +406,10 @@ func (r *PgRepository) CreateInvites(ctx context.Context, invites []*Organizatio
 		}
 	}()
 
-	sql := `INSERT INTO organization_invites (id, organization_id, email, token, invited_by, role, status, created_at, expires_at)
+	inviteSQL := `INSERT INTO organization_invites (id, organization_id, email, token, invited_by, role, status, created_at, expires_at)
 			VALUES (@Id, @OrganizationId, @Email, @Token, @InvitedBy, @Role, @Status, @CreatedAt, @ExpiresAt)`
 
-	batch := &pgx.Batch{}
+	inviteBatch := &pgx.Batch{}
 	for _, invite := range invites {
 		sqlArgs := pgx.NamedArgs{
 			"Id":             invite.Id,
@@ -477,19 +422,16 @@ func (r *PgRepository) CreateInvites(ctx context.Context, invites []*Organizatio
 			"CreatedAt":      invite.CreatedAt,
 			"ExpiresAt":      invite.ExpiresAt,
 		}
-		batch.Queue(sql, sqlArgs)
+		inviteBatch.Queue(inviteSQL, sqlArgs)
 	}
 
-	results := tx.SendBatch(ctx, batch)
-	defer func() {
-		_ = results.Close()
-	}()
+	inviteResults := tx.SendBatch(ctx, inviteBatch)
 
 	for i := 0; i < len(invites); i++ {
-		_, err := results.Exec()
+		_, err := inviteResults.Exec()
 		if err != nil {
 			span.RecordError(err)
-			_ = results.Close()
+			_ = inviteResults.Close()
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) {
 				if pgErr.Code == ErrUniqueViolationCode {
@@ -498,6 +440,47 @@ func (r *PgRepository) CreateInvites(ctx context.Context, invites []*Organizatio
 			}
 			return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to create invite %d: %w", i, err))
 		}
+	}
+
+	if err := inviteResults.Close(); err != nil {
+		span.RecordError(err)
+		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to close invite batch results: %w", err))
+	}
+
+	jobSQL := `INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
+			VALUES (@Id, @InviteId, @OrganizationId, @Email, @OrganizationName, @InviteToken, @Status, @Attempts, @MaxAttempts, @CreatedAt)`
+
+	jobBatch := &pgx.Batch{}
+	for _, job := range jobs {
+		sqlArgs := pgx.NamedArgs{
+			"Id":               job.Id,
+			"InviteId":         job.InviteId,
+			"OrganizationId":   job.OrganizationId,
+			"Email":            job.Email,
+			"OrganizationName": job.OrganizationName,
+			"InviteToken":      job.InviteToken,
+			"Status":           job.Status,
+			"Attempts":         job.Attempts,
+			"MaxAttempts":      job.MaxAttempts,
+			"CreatedAt":        job.CreatedAt,
+		}
+		jobBatch.Queue(jobSQL, sqlArgs)
+	}
+
+	jobResults := tx.SendBatch(ctx, jobBatch)
+
+	for i := 0; i < len(jobs); i++ {
+		_, err := jobResults.Exec()
+		if err != nil {
+			span.RecordError(err)
+			_ = jobResults.Close()
+			return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to enqueue email job %d: %w", i, err))
+		}
+	}
+
+	if err := jobResults.Close(); err != nil {
+		span.RecordError(err)
+		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to close job batch results: %w", err))
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -526,27 +509,7 @@ func (r *PgRepository) GetInviteByToken(ctx context.Context, token string) (*Org
 	defer connection.Release()
 
 	sql := "SELECT * FROM organization_invites WHERE token = $1"
-
-	var rows pgx.Rows
-	rows, err = connection.Query(ctx, sql, token)
-	if err != nil {
-		span.RecordError(err)
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to query invite"))
-	}
-	defer rows.Close()
-
-	var invite OrganizationInviteDTO
-	invite, err = pgx.CollectOneRow[OrganizationInviteDTO](rows, pgx.RowToStructByName)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrInviteNotFound
-		}
-
-		span.RecordError(err)
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect row"))
-	}
-
-	return &invite, nil
+	return querySingleRow[OrganizationInviteDTO](ctx, connection, span, sql, []any{token}, ErrInviteNotFound)
 }
 
 func (r *PgRepository) UpdateInviteStatus(ctx context.Context, id string, status InviteStatus, acceptedAt *time.Time) error {
@@ -800,63 +763,6 @@ func (r *PgRepository) DeleteMember(ctx context.Context, organizationId, userId 
 	return nil
 }
 
-func (r *PgRepository) EnqueueEmailJobs(ctx context.Context, jobs []*EmailJobDTO) error {
-	var span trace.Span
-	ctx, span = r.tracer.Start(ctx, "EnqueueEmailJobs", trace.WithAttributes(
-		attribute.KeyValue{
-			Key:   "jobCount",
-			Value: attribute.IntValue(len(jobs)),
-		},
-	))
-	defer span.End()
-
-	if len(jobs) == 0 {
-		return nil
-	}
-
-	connection, err := r.connectionPool.Acquire(ctx)
-	if err != nil {
-		return ErrFailedAcquireConnection
-	}
-	defer connection.Release()
-
-	batch := &pgx.Batch{}
-	for _, job := range jobs {
-		sql := `INSERT INTO email_jobs (id, invite_id, organization_id, email, organization_name, invite_token, status, attempts, max_attempts, created_at)
-				VALUES (@Id, @InviteId, @OrganizationId, @Email, @OrganizationName, @InviteToken, @Status, @Attempts, @MaxAttempts, @CreatedAt)`
-		sqlArgs := pgx.NamedArgs{
-			"Id":               job.Id,
-			"InviteId":         job.InviteId,
-			"OrganizationId":   job.OrganizationId,
-			"Email":            job.Email,
-			"OrganizationName": job.OrganizationName,
-			"InviteToken":      job.InviteToken,
-			"Status":           job.Status,
-			"Attempts":         job.Attempts,
-			"MaxAttempts":      job.MaxAttempts,
-			"CreatedAt":        job.CreatedAt,
-		}
-		batch.Queue(sql, sqlArgs)
-	}
-
-	results := connection.SendBatch(ctx, batch)
-	defer func() {
-		_ = results.Close()
-	}()
-
-	for i := 0; i < len(jobs); i++ {
-		_, err := results.Exec()
-		if err != nil {
-			span.RecordError(err)
-			_ = results.Close()
-			return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to enqueue email job %d: %w", i, err))
-		}
-	}
-
-	zap.L().Info("enqueued email jobs", zap.Int("count", len(jobs)))
-	return nil
-}
-
 func (r *PgRepository) GetPendingEmailJobs(ctx context.Context, limit int) ([]*EmailJobDTO, error) {
 	var span trace.Span
 	ctx, span = r.tracer.Start(ctx, "GetPendingEmailJobs", trace.WithAttributes(
@@ -1043,7 +949,6 @@ func (r *PgRepository) processEmailJobs(ctx context.Context, emailService email.
 	zap.L().Info("processing email jobs", zap.Int("count", len(jobs)))
 
 	for _, job := range jobs {
-
 		err := emailService.SendInvite(job.Email, job.OrganizationName, job.InviteToken)
 		if err != nil {
 			zap.L().Error("failed to send invite email",
@@ -1056,7 +961,6 @@ func (r *PgRepository) processEmailJobs(ctx context.Context, emailService email.
 					zap.L().Error("failed to reset job to pending", zap.Error(updateErr))
 				}
 			} else {
-
 				errorMsg := err.Error()
 				if updateErr := r.UpdateEmailJobStatus(ctx, job.Id, EmailJobStatusFailed, &errorMsg); updateErr != nil {
 					zap.L().Error("failed to mark job as failed", zap.Error(updateErr))

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 
+	"buf.build/gen/go/hasir/hasir/connectrpc/go/organization/v1/organizationv1connect"
+	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
 	"connectrpc.com/connect"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -32,9 +34,11 @@ func NewAuthInterceptor(jwtSecret []byte) *AuthInterceptor {
 	return &AuthInterceptor{
 		jwtSecret: jwtSecret,
 		publicMethods: map[string]bool{
-			"/user.v1.UserService/Register":   true,
-			"/user.v1.UserService/Login":      true,
-			"/user.v1.UserService/RenewTokens": true,
+			userv1connect.UserServiceRegisterProcedure:                            true,
+			userv1connect.UserServiceLoginProcedure:                               true,
+			userv1connect.UserServiceRenewTokensProcedure:                         true,
+			organizationv1connect.OrganizationServiceIsInvitationValidProcedure:   true,
+			organizationv1connect.OrganizationServiceRespondToInvitationProcedure: true,
 		},
 	}
 }

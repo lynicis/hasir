@@ -18,6 +18,19 @@ import (
 	"hasir-api/pkg/proto"
 )
 
+// Error messages
+const (
+	errNotMember             = "you are not a member of this organization"
+	errOnlyOwnersCanUpdate   = "only organization owners can update the organization"
+	errOnlyOwnersCanInvite   = "only organization owners can invite users"
+	errOnlyOwnersCanDelete   = "only organization owners can delete the organization"
+	errOnlyOwnersCanManage   = "only organization owners can update member roles"
+	errOnlyOwnersCanRemove   = "only organization owners can delete members"
+	errCannotModifyLastOwner = "cannot delete the last owner"
+	errCannotChangeLastOwner = "cannot change role of the last owner"
+	errOwnersCannotDemote    = "owners cannot decrease their own role"
+)
+
 type Service interface {
 	CreateOrganization(
 		ctx context.Context,
@@ -74,6 +87,46 @@ func NewService(repository Repository, registryService registry.Service, emailSe
 		emailService:    emailService,
 		registryService: registryService,
 	}
+}
+
+func (s *service) verifyOwnerRole(ctx context.Context, organizationId, userId, operation string) error {
+	role, err := s.repository.GetMemberRole(ctx, organizationId, userId)
+	if err != nil {
+		if errors.Is(err, ErrMemberNotFound) {
+			return connect.NewError(connect.CodePermissionDenied, errors.New(errNotMember))
+		}
+		return err
+	}
+
+	if role != MemberRoleOwner {
+		return connect.NewError(connect.CodePermissionDenied, errors.New(operation))
+	}
+
+	return nil
+}
+
+func (s *service) ensureNotLastOwner(ctx context.Context, organizationId, memberUserId string, currentRole MemberRole) error {
+	if currentRole != MemberRoleOwner {
+		return nil
+	}
+
+	members, _, _, err := s.repository.GetMembers(ctx, organizationId)
+	if err != nil {
+		return err
+	}
+
+	ownerCount := 0
+	for _, member := range members {
+		if member.Role == MemberRoleOwner {
+			ownerCount++
+		}
+	}
+
+	if ownerCount == 1 {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New(errCannotModifyLastOwner))
+	}
+
+	return nil
 }
 
 func (s *service) CreateOrganization(
@@ -141,16 +194,8 @@ func (s *service) InviteUser(
 		return err
 	}
 
-	role, err := s.repository.GetMemberRole(ctx, req.GetId(), invitedBy)
-	if err != nil {
-		if errors.Is(err, ErrMemberNotFound) {
-			return connect.NewError(connect.CodePermissionDenied, errors.New("you are not a member of this organization"))
-		}
+	if err := s.verifyOwnerRole(ctx, req.GetId(), invitedBy, errOnlyOwnersCanInvite); err != nil {
 		return err
-	}
-
-	if role != MemberRoleOwner {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can invite users"))
 	}
 
 	email := req.GetEmail()
@@ -209,13 +254,8 @@ func (s *service) sendInvites(ctx context.Context, orgId, orgName, invitedBy str
 		emailJobs = append(emailJobs, emailJob)
 	}
 
-	if err := s.repository.CreateInvites(ctx, organizationInvites); err != nil {
-		zap.L().Error("failed to create invites", zap.Error(err), zap.String("organizationId", orgId))
-		return err
-	}
-
-	if err := s.repository.EnqueueEmailJobs(ctx, emailJobs); err != nil {
-		zap.L().Error("failed to enqueue email jobs", zap.Error(err), zap.String("organizationId", orgId))
+	if err := s.repository.CreateInvitesAndEnqueueEmailJobs(ctx, organizationInvites, emailJobs); err != nil {
+		zap.L().Error("failed to create invites and enqueue email jobs", zap.Error(err), zap.String("organizationId", orgId))
 		return err
 	}
 	zap.L().Info("enqueued email jobs for batch processing",
@@ -235,16 +275,8 @@ func (s *service) UpdateOrganization(
 		return err
 	}
 
-	role, err := s.repository.GetMemberRole(ctx, req.GetId(), userId)
-	if err != nil {
-		if errors.Is(err, ErrMemberNotFound) {
-			return connect.NewError(connect.CodePermissionDenied, errors.New("you are not a member of this organization"))
-		}
+	if err := s.verifyOwnerRole(ctx, req.GetId(), userId, errOnlyOwnersCanUpdate); err != nil {
 		return err
-	}
-
-	if role != MemberRoleOwner {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can update the organization"))
 	}
 
 	org.Name = req.GetName()
@@ -261,16 +293,8 @@ func (s *service) DeleteOrganization(
 	organizationId string,
 	userId string,
 ) error {
-	role, err := s.repository.GetMemberRole(ctx, organizationId, userId)
-	if err != nil {
-		if errors.Is(err, ErrMemberNotFound) {
-			return connect.NewError(connect.CodePermissionDenied, errors.New("you are not a member of this organization"))
-		}
+	if err := s.verifyOwnerRole(ctx, organizationId, userId, errOnlyOwnersCanDelete); err != nil {
 		return err
-	}
-
-	if role != MemberRoleOwner {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can delete the organization"))
 	}
 
 	if err := s.registryService.DeleteRepositoriesByOrganization(ctx, organizationId); err != nil {
@@ -372,16 +396,8 @@ func (s *service) UpdateMemberRole(
 		return err
 	}
 
-	updaterRole, err := s.repository.GetMemberRole(ctx, organizationId, updatedBy)
-	if err != nil {
-		if errors.Is(err, ErrMemberNotFound) {
-			return connect.NewError(connect.CodePermissionDenied, errors.New("you are not a member of this organization"))
-		}
+	if err := s.verifyOwnerRole(ctx, organizationId, updatedBy, errOnlyOwnersCanManage); err != nil {
 		return err
-	}
-
-	if updaterRole != MemberRoleOwner {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can update member roles"))
 	}
 
 	currentMemberRole, err := s.repository.GetMemberRole(ctx, organizationId, memberUserId)
@@ -393,24 +409,15 @@ func (s *service) UpdateMemberRole(
 	}
 
 	if updatedBy == memberUserId && currentMemberRole == MemberRoleOwner && newRole != MemberRoleOwner {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("owners cannot decrease their own role"))
+		return connect.NewError(connect.CodePermissionDenied, errors.New(errOwnersCannotDemote))
 	}
 
-	if newRole != MemberRoleOwner {
-		members, _, _, err := s.repository.GetMembers(ctx, organizationId)
-		if err != nil {
-			return err
-		}
-
-		ownerCount := 0
-		for _, member := range members {
-			if member.Role == MemberRoleOwner {
-				ownerCount++
+	if currentMemberRole == MemberRoleOwner && newRole != MemberRoleOwner {
+		if err := s.ensureNotLastOwner(ctx, organizationId, memberUserId, currentMemberRole); err != nil {
+			if connect.CodeOf(err) == connect.CodeFailedPrecondition {
+				return connect.NewError(connect.CodeFailedPrecondition, errors.New(errCannotChangeLastOwner))
 			}
-		}
-
-		if currentMemberRole == MemberRoleOwner && ownerCount == 1 {
-			return connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot change role of the last owner"))
+			return err
 		}
 	}
 
@@ -441,16 +448,8 @@ func (s *service) DeleteMember(
 		return err
 	}
 
-	deleterRole, err := s.repository.GetMemberRole(ctx, organizationId, deletedBy)
-	if err != nil {
-		if errors.Is(err, ErrMemberNotFound) {
-			return connect.NewError(connect.CodePermissionDenied, errors.New("you are not a member of this organization"))
-		}
+	if err := s.verifyOwnerRole(ctx, organizationId, deletedBy, errOnlyOwnersCanRemove); err != nil {
 		return err
-	}
-
-	if deleterRole != MemberRoleOwner {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can delete members"))
 	}
 
 	memberRole, err := s.repository.GetMemberRole(ctx, organizationId, memberUserId)
@@ -461,23 +460,8 @@ func (s *service) DeleteMember(
 		return err
 	}
 
-	// Prevent deleting the last owner
-	if memberRole == MemberRoleOwner {
-		members, _, _, err := s.repository.GetMembers(ctx, organizationId)
-		if err != nil {
-			return err
-		}
-
-		ownerCount := 0
-		for _, member := range members {
-			if member.Role == MemberRoleOwner {
-				ownerCount++
-			}
-		}
-
-		if ownerCount == 1 {
-			return connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot delete the last owner"))
-		}
+	if err := s.ensureNotLastOwner(ctx, organizationId, memberUserId, memberRole); err != nil {
+		return err
 	}
 
 	if err := s.repository.DeleteMember(ctx, organizationId, memberUserId); err != nil {

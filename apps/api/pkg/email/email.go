@@ -74,11 +74,19 @@ func (s *smtpService) sendEmail(to, subject, body string, isHTML bool) error {
 
 	auth := smtp.PlainAuth("", s.config.Username, s.config.Password, s.config.Host)
 
+	if s.config.Port == 465 {
+		return s.sendWithTLS(addr, auth, from, to, []byte(msg))
+	}
+
+	if s.config.Port == 587 {
+		return s.sendWithSTARTTLS(addr, auth, from, to, []byte(msg))
+	}
+
 	if s.config.UseTLS {
 		return s.sendWithTLS(addr, auth, from, to, []byte(msg))
 	}
 
-	return smtp.SendMail(addr, auth, from, []string{to}, []byte(msg))
+	return s.sendWithSTARTTLS(addr, auth, from, to, []byte(msg))
 }
 
 func (s *smtpService) sendWithTLS(addr string, auth smtp.Auth, from, to string, msg []byte) error {
@@ -99,7 +107,7 @@ func (s *smtpService) sendWithTLS(addr string, auth smtp.Auth, from, to string, 
 		return fmt.Errorf("failed to create SMTP client: %w", err)
 	}
 	defer func() {
-		_ = conn.Close()
+		_ = client.Close()
 	}()
 
 	if err = client.Auth(auth); err != nil {
@@ -128,4 +136,50 @@ func (s *smtpService) sendWithTLS(addr string, auth smtp.Auth, from, to string, 
 	}
 
 	return client.Quit()
+}
+
+func (s *smtpService) sendWithSTARTTLS(addr string, auth smtp.Auth, from, to string, msg []byte) error {
+	conn, err := smtp.Dial(addr)
+	if err != nil {
+		return fmt.Errorf("failed to connect to SMTP server: %w", err)
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	if ok, _ := conn.Extension("STARTTLS"); ok {
+		tlsConfig := &tls.Config{
+			ServerName: s.config.Host,
+		}
+		if err = conn.StartTLS(tlsConfig); err != nil {
+			return fmt.Errorf("failed to start TLS: %w", err)
+		}
+	}
+
+	if err = conn.Auth(auth); err != nil {
+		return fmt.Errorf("SMTP authentication failed: %w", err)
+	}
+
+	if err = conn.Mail(from); err != nil {
+		return fmt.Errorf("failed to set sender: %w", err)
+	}
+
+	if err = conn.Rcpt(to); err != nil {
+		return fmt.Errorf("failed to set recipient: %w", err)
+	}
+
+	w, err := conn.Data()
+	if err != nil {
+		return fmt.Errorf("failed to get data writer: %w", err)
+	}
+
+	if _, err = w.Write(msg); err != nil {
+		return fmt.Errorf("failed to write message: %w", err)
+	}
+
+	if err = w.Close(); err != nil {
+		return fmt.Errorf("failed to close data writer: %w", err)
+	}
+
+	return conn.Quit()
 }

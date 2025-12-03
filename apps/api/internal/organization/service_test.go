@@ -94,10 +94,13 @@ func TestCreateOrganization(t *testing.T) {
 			Return(nil)
 
 		mockRepo.EXPECT().
-			CreateInvites(ctx, gomock.Any()).
-			DoAndReturn(func(_ context.Context, invites []*OrganizationInviteDTO) error {
+			CreateInvitesAndEnqueueEmailJobs(ctx, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, invites []*OrganizationInviteDTO, jobs []*EmailJobDTO) error {
 				if len(invites) != 2 {
 					t.Errorf("expected 2 invites, got %d", len(invites))
+				}
+				if len(jobs) != 2 {
+					t.Errorf("expected 2 email jobs, got %d", len(jobs))
 				}
 				for _, invite := range invites {
 					if invite.Email != "friend1@example.com" && invite.Email != "friend2@example.com" {
@@ -106,15 +109,6 @@ func TestCreateOrganization(t *testing.T) {
 					if invite.Status != InviteStatusPending {
 						t.Errorf("expected status 'pending', got %s", invite.Status)
 					}
-				}
-				return nil
-			})
-
-		mockRepo.EXPECT().
-			EnqueueEmailJobs(ctx, gomock.Any()).
-			DoAndReturn(func(_ context.Context, jobs []*EmailJobDTO) error {
-				if len(jobs) != 2 {
-					t.Errorf("expected 2 email jobs, got %d", len(jobs))
 				}
 				for _, job := range jobs {
 					if job.Email != "friend1@example.com" && job.Email != "friend2@example.com" {
@@ -241,7 +235,7 @@ func TestCreateOrganization(t *testing.T) {
 			Return(nil)
 
 		mockRepo.EXPECT().
-			CreateInvites(ctx, gomock.Any()).
+			CreateInvitesAndEnqueueEmailJobs(ctx, gomock.Any(), gomock.Any()).
 			Return(connect.NewError(connect.CodeInternal, errors.New("invite creation failed")))
 
 		err := svc.CreateOrganization(ctx, req, createdBy)
@@ -274,11 +268,7 @@ func TestCreateOrganization(t *testing.T) {
 			Return(nil)
 
 		mockRepo.EXPECT().
-			CreateInvites(ctx, gomock.Any()).
-			Return(nil)
-
-		mockRepo.EXPECT().
-			EnqueueEmailJobs(ctx, gomock.Any()).
+			CreateInvitesAndEnqueueEmailJobs(ctx, gomock.Any(), gomock.Any()).
 			Return(errors.New("queue error"))
 
 		err := svc.CreateOrganization(ctx, req, createdBy)
@@ -365,20 +355,19 @@ func TestInviteUser(t *testing.T) {
 			Return(MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
-			CreateInvites(ctx, gomock.Any()).
-			DoAndReturn(func(_ context.Context, invites []*OrganizationInviteDTO) error {
+			CreateInvitesAndEnqueueEmailJobs(ctx, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, invites []*OrganizationInviteDTO, jobs []*EmailJobDTO) error {
 				if len(invites) != 1 {
 					t.Errorf("expected 1 invite, got %d", len(invites))
 				}
 				if invites[0].Email != "friend1@example.com" {
 					t.Errorf("expected email 'friend1@example.com', got %s", invites[0].Email)
 				}
+				if len(jobs) != 1 {
+					t.Errorf("expected 1 email job, got %d", len(jobs))
+				}
 				return nil
 			})
-
-		mockRepo.EXPECT().
-			EnqueueEmailJobs(ctx, gomock.Any()).
-			Return(nil)
 
 		err := svc.InviteUser(ctx, req, invitedBy)
 		if err != nil {
@@ -1015,7 +1004,6 @@ func TestUpdateOrganization(t *testing.T) {
 			GetMemberRole(ctx, orgID, userID).
 			Return(MemberRoleOwner, nil)
 
-		// Simulate the repository enforcing name uniqueness at the database level.
 		mockRepo.EXPECT().
 			UpdateOrganization(ctx, gomock.Any()).
 			Return(ErrOrganizationAlreadyExists)
@@ -1066,13 +1054,7 @@ func TestUpdateMemberRole(t *testing.T) {
 			GetMemberRole(ctx, orgID, memberID).
 			Return(MemberRoleReader, nil)
 
-		mockRepo.EXPECT().
-			GetMembers(ctx, orgID).
-			Return([]*OrganizationMemberDTO{
-				{UserId: ownerID, Role: MemberRoleOwner},
-				{UserId: memberID, Role: MemberRoleReader},
-			}, []string{"owner", "member"}, []string{"owner@example.com", "member@example.com"}, nil)
-
+		// GetMembers is not needed when updating non-owner roles
 		mockRepo.EXPECT().
 			UpdateMemberRole(ctx, orgID, memberID, MemberRoleAuthor).
 			Return(nil)
@@ -1201,7 +1183,6 @@ func TestUpdateMemberRole(t *testing.T) {
 				{UserId: memberID, Role: MemberRoleOwner},
 			}, []string{"owner1", "owner2", "member"}, []string{"o1@example.com", "o2@example.com", "m@example.com"}, nil)
 
-		// This should pass since there are multiple owners
 		mockRepo.EXPECT().
 			UpdateMemberRole(ctx, orgID, memberID, MemberRoleReader).
 			Return(nil)
@@ -1241,7 +1222,6 @@ func TestUpdateMemberRole(t *testing.T) {
 			GetMemberRole(ctx, orgID, onlyOwnerID).
 			Return(MemberRoleOwner, nil)
 
-		// Only one owner in the organization - cannot change role
 		mockRepo.EXPECT().
 			GetMembers(ctx, orgID).
 			Return([]*OrganizationMemberDTO{
@@ -1608,7 +1588,6 @@ func TestDeleteMember(t *testing.T) {
 			GetMemberRole(ctx, orgID, lastOwnerID).
 			Return(MemberRoleOwner, nil)
 
-		// Only one owner in the organization - cannot delete
 		mockRepo.EXPECT().
 			GetMembers(ctx, orgID).
 			Return([]*OrganizationMemberDTO{

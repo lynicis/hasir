@@ -82,8 +82,8 @@ func TestTemplateRendering(t *testing.T) {
 		t.Error("expected rendered template to be HTML")
 	}
 
-	if !strings.Contains(rendered, "Accept Invitation") {
-		t.Error("expected rendered template to contain 'Accept Invitation' button text")
+	if !strings.Contains(rendered, "Accept invitation") {
+		t.Error("expected rendered template to contain 'Accept invitation' button text")
 	}
 }
 
