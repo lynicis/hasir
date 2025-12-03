@@ -77,8 +77,13 @@ func main() {
 	orgRepoAdapter := organization.NewOrgRepositoryAdapter(organizationPgRepository)
 
 	userService := user.NewService(cfg, userPgRepository)
-	gitRepositoryService := registry.NewService(repositoryPgRepository, orgRepoAdapter)
-	organizationService := internalOrganization.NewService(organizationPgRepository, gitRepositoryService, emailService)
+	registryService := registry.NewService(repositoryPgRepository, orgRepoAdapter)
+	organizationService := internalOrganization.NewService(
+		organizationPgRepository,
+		registryService,
+		emailService,
+		userPgRepository,
+	)
 
 	authInterceptor := auth.NewAuthInterceptor(cfg.JwtSecret)
 
@@ -94,7 +99,7 @@ func main() {
 	}
 
 	userHandler := user.NewHandler(userService, userPgRepository, interceptors...)
-	registryHandler := registry.NewHandler(gitRepositoryService, repositoryPgRepository, interceptors...)
+	registryHandler := registry.NewHandler(registryService, repositoryPgRepository, interceptors...)
 	organizationHandler := internalOrganization.NewHandler(organizationService, organizationPgRepository, interceptors...)
 	handlers := []internal.GlobalHandler{
 		userHandler,

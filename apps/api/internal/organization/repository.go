@@ -394,6 +394,58 @@ func (r *PgRepository) CreateInvitesAndEnqueueEmailJobs(ctx context.Context, inv
 	}
 	defer connection.Release()
 
+	orgID := invites[0].OrganizationId
+
+	emails := make([]string, 0, len(invites))
+	for _, invite := range invites {
+		emails = append(emails, invite.Email)
+	}
+
+	existingEmails := make(map[string]struct{}, len(emails))
+	rows, err := connection.Query(
+		ctx,
+		`SELECT email FROM organization_invites WHERE organization_id = $1 AND status = 'pending' AND email = ANY($2)`,
+		orgID,
+		emails,
+	)
+	if err != nil {
+		span.RecordError(err)
+		return connect.NewError(connect.CodeInternal, errors.New("failed to check existing pending invites"))
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var email string
+		if err := rows.Scan(&email); err != nil {
+			span.RecordError(err)
+			return connect.NewError(connect.CodeInternal, errors.New("failed to scan existing pending invites"))
+		}
+		existingEmails[email] = struct{}{}
+	}
+
+	if err := rows.Err(); err != nil {
+		span.RecordError(err)
+		return connect.NewError(connect.CodeInternal, errors.New("failed to iterate existing pending invites"))
+	}
+
+	filteredInvites := make([]*OrganizationInviteDTO, 0, len(invites))
+	filteredJobs := make([]*EmailJobDTO, 0, len(jobs))
+	for i, invite := range invites {
+		if _, found := existingEmails[invite.Email]; found {
+			continue
+		}
+
+		filteredInvites = append(filteredInvites, invite)
+		filteredJobs = append(filteredJobs, jobs[i])
+	}
+
+	invites = filteredInvites
+	jobs = filteredJobs
+
+	if len(invites) == 0 {
+		return nil
+	}
+
 	tx, err := connection.Begin(ctx)
 	if err != nil {
 		span.RecordError(err)

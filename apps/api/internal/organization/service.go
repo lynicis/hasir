@@ -14,11 +14,11 @@ import (
 	organizationv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/organization/v1"
 
 	"hasir-api/internal/registry"
+	"hasir-api/internal/user"
 	"hasir-api/pkg/email"
 	"hasir-api/pkg/proto"
 )
 
-// Error messages
 const (
 	errNotMember             = "you are not a member of this organization"
 	errOnlyOwnersCanUpdate   = "only organization owners can update the organization"
@@ -79,13 +79,15 @@ type service struct {
 	repository      Repository
 	emailService    email.Service
 	registryService registry.Service
+	userRepository  user.Repository
 }
 
-func NewService(repository Repository, registryService registry.Service, emailService email.Service) Service {
+func NewService(repository Repository, registryService registry.Service, emailService email.Service, userRepository user.Repository) Service {
 	return &service{
 		repository:      repository,
 		emailService:    emailService,
 		registryService: registryService,
+		userRepository:  userRepository,
 	}
 }
 
@@ -105,7 +107,7 @@ func (s *service) verifyOwnerRole(ctx context.Context, organizationId, userId, o
 	return nil
 }
 
-func (s *service) ensureNotLastOwner(ctx context.Context, organizationId, memberUserId string, currentRole MemberRole) error {
+func (s *service) ensureNotLastOwner(ctx context.Context, organizationId string, currentRole MemberRole) error {
 	if currentRole != MemberRoleOwner {
 		return nil
 	}
@@ -170,9 +172,20 @@ func (s *service) CreateOrganization(
 
 	var invites []inviteInfo
 	for _, member := range req.GetMembers() {
-		email := member.GetEmail()
+		emailAddress := member.GetEmail()
+		if emailAddress == "" {
+			continue
+		}
+
+		if _, err := s.userRepository.GetUserByEmail(ctx, emailAddress); err != nil {
+			if errors.Is(err, user.ErrNoRows) {
+				continue
+			}
+			return err
+		}
+
 		role := SharedRoleToMemberRoleMap[member.GetRole()]
-		invites = append(invites, inviteInfo{email: email, role: role})
+		invites = append(invites, inviteInfo{email: emailAddress, role: role})
 	}
 
 	if len(invites) > 0 {
@@ -198,17 +211,29 @@ func (s *service) InviteUser(
 		return err
 	}
 
-	email := req.GetEmail()
-	if email == "" {
-		return nil
+	emailAddress := req.GetEmail()
+
+	u, err := s.userRepository.GetUserByEmail(ctx, emailAddress)
+	if err != nil {
+		if errors.Is(err, user.ErrNoRows) {
+			return connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+		}
+		return err
+	}
+
+	if _, err := s.repository.GetMemberRole(ctx, org.Id, u.Id); err == nil {
+		return connect.NewError(connect.CodeAlreadyExists, errors.New("user is already a member of this organization"))
+	} else if !errors.Is(err, ErrMemberNotFound) {
+		return err
 	}
 
 	invites := []inviteInfo{
-		{email: email, role: MemberRoleAuthor},
+		{email: emailAddress, role: MemberRoleAuthor},
 	}
 
 	if err := s.sendInvites(ctx, org.Id, org.Name, invitedBy, invites); err != nil {
 		zap.L().Error("failed to send invites", zap.Error(err), zap.String("organizationId", org.Id))
+		return err
 	}
 
 	return nil
@@ -413,7 +438,7 @@ func (s *service) UpdateMemberRole(
 	}
 
 	if currentMemberRole == MemberRoleOwner && newRole != MemberRoleOwner {
-		if err := s.ensureNotLastOwner(ctx, organizationId, memberUserId, currentMemberRole); err != nil {
+		if err := s.ensureNotLastOwner(ctx, organizationId, currentMemberRole); err != nil {
 			if connect.CodeOf(err) == connect.CodeFailedPrecondition {
 				return connect.NewError(connect.CodeFailedPrecondition, errors.New(errCannotChangeLastOwner))
 			}
@@ -460,7 +485,7 @@ func (s *service) DeleteMember(
 		return err
 	}
 
-	if err := s.ensureNotLastOwner(ctx, organizationId, memberUserId, memberRole); err != nil {
+	if err := s.ensureNotLastOwner(ctx, organizationId, memberRole); err != nil {
 		return err
 	}
 

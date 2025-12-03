@@ -86,7 +86,7 @@ func (s *smtpService) sendEmail(to, subject, body string, isHTML bool) error {
 		return s.sendWithTLS(addr, auth, from, to, []byte(msg))
 	}
 
-	return s.sendWithSTARTTLS(addr, auth, from, to, []byte(msg))
+	return smtp.SendMail(addr, auth, from, []string{to}, []byte(msg))
 }
 
 func (s *smtpService) sendWithTLS(addr string, auth smtp.Auth, from, to string, msg []byte) error {
