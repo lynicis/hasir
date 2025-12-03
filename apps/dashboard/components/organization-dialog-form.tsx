@@ -5,6 +5,7 @@ import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
 import { ArrowLeftIcon, PlusIcon, XIcon } from "lucide-react";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -124,7 +125,16 @@ export function OrganizationDialogForm({
 
       toast.success("Organization created successfully.");
       handleClose();
-    } catch {
+    } catch (error) {
+      if (error instanceof ConnectError) {
+        if (error.code === Code.NotFound) {
+          toast.error(
+            "Some invitations could not be sent. Invitees may not be registered, may have already been invited, or are already members of this organization."
+          );
+          return;
+        }
+      }
+
       toast.error("Failed to create organization.");
     }
   }

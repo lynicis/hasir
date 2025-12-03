@@ -85,7 +85,9 @@ export function InviteUserDialog({
         }
 
         if (error.code === Code.NotFound) {
-          toast.error("Organization not found.");
+          toast.error(
+            "This user cannot be invited. They may not be registered, may have already received an invitation, or are already a member of this organization."
+          );
           return;
         }
 
