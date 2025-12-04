@@ -4,6 +4,7 @@ package user.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
+import "shared/filter.proto";
 
 message RegisterRequest {
   string email = 1 [(buf.validate.field).string.email = true];
@@ -51,12 +52,17 @@ message UpdateUserRequest {
   ];
 }
 
+message CreateApiKeyRequest {
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+}
+
 message CreateApiKeyResponse {
   string key = 1;
 }
 
 message CreateSshKeyRequest {
-  string public_key = 1 [
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+  string public_key = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 2048,
     (buf.validate.field).string.pattern = "^(ssh-rsa|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521|ssh-ed25519|sk-ecdsa-sha2-nistp256@openssh\\.com|sk-ssh-ed25519@openssh\\.com) "
@@ -70,6 +76,8 @@ message Key {
 
 message KeyResponse {
   repeated Key keys = 1;
+  int32 next_page = 2;
+  int32 total_page = 3;
 }
 
 message RevokeKeyRequest {
@@ -82,10 +90,10 @@ service UserService {
   rpc RenewTokens(RenewTokensRequest) returns (RenewTokensResponse);
   rpc UpdateUser(UpdateUserRequest) returns (TokenEnvelope);
   rpc DeleteAccount(google.protobuf.Empty) returns (google.protobuf.Empty);
-  rpc CreateApiKey(google.protobuf.Empty) returns (CreateApiKeyResponse);
-  rpc GetApiKeys(google.protobuf.Empty) returns (KeyResponse);
+  rpc CreateApiKey(CreateApiKeyRequest) returns (CreateApiKeyResponse);
+  rpc GetApiKeys(shared.Pagination) returns (KeyResponse);
   rpc RevokeApiKey(RevokeKeyRequest) returns (google.protobuf.Empty);
   rpc CreateSshKey(CreateSshKeyRequest) returns (google.protobuf.Empty);
-  rpc GetSshKeys(google.protobuf.Empty) returns (KeyResponse);
+  rpc GetSshKeys(shared.Pagination) returns (KeyResponse);
   rpc RevokeSshKey(RevokeKeyRequest) returns (google.protobuf.Empty);
 }
