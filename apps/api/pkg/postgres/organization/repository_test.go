@@ -792,13 +792,9 @@ func TestPgRepository_CreateInvites(t *testing.T) {
 
 		user := createTestUser(t, "inviter", "inviter@example.com")
 		insertTestUser(t, connString, user)
-
-		// Create initial pending invite
 		existingInvite := createTestInvite(t, org.Id, "existing@example.com", "existing-token", user.Id, organization.MemberRoleAuthor)
 		err = repo.CreateInvites(t.Context(), []*organization.OrganizationInviteDTO{existingInvite})
 		require.NoError(t, err)
-
-		// Try to create invites including one for an email that already has a pending invite
 		invites := []*organization.OrganizationInviteDTO{
 			createTestInvite(t, org.Id, "existing@example.com", "new-token", user.Id, organization.MemberRoleAuthor), // Duplicate email
 			createTestInvite(t, org.Id, "new@example.com", "new-token-2", user.Id, organization.MemberRoleReader),    // New email
@@ -812,22 +808,16 @@ func TestPgRepository_CreateInvites(t *testing.T) {
 		defer func() {
 			_ = conn.Close(t.Context())
 		}()
-
-		// Verify only the new invite was created (existing one should remain, new one should be added)
 		var inviteCount int
 		err = conn.QueryRow(t.Context(), "SELECT COUNT(*) FROM organization_invites WHERE organization_id = $1", org.Id).Scan(&inviteCount)
 		require.NoError(t, err)
 		assert.Equal(t, 2, inviteCount, "Should have original invite plus the new one")
-
-		// Verify the existing invite is still there
 		var existingEmail string
 		err = conn.QueryRow(t.Context(),
 			"SELECT email FROM organization_invites WHERE email = $1 AND organization_id = $2",
 			"existing@example.com", org.Id).Scan(&existingEmail)
 		require.NoError(t, err)
 		assert.Equal(t, "existing@example.com", existingEmail)
-
-		// Verify the new invite was created
 		var newEmail string
 		err = conn.QueryRow(t.Context(),
 			"SELECT email FROM organization_invites WHERE email = $1 AND organization_id = $2",
@@ -895,10 +885,6 @@ func TestPgRepository_CreateInvites(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
-
-// Note: Tests for GetPendingEmailJobs and UpdateEmailJobStatus have been removed
-// as these methods were moved from the repository to the EmailJobQueue.
-// See pkg/postgres/organization/queue_test.go for queue-related tests.
 
 func TestPgRepository_DeleteOrganization(t *testing.T) {
 	t.Run("success - soft delete organization", func(t *testing.T) {

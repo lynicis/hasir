@@ -1155,8 +1155,6 @@ func TestUpdateMemberRole(t *testing.T) {
 		mockRepo.EXPECT().
 			GetMemberRole(ctx, orgID, memberID).
 			Return(MemberRoleReader, nil)
-
-		// GetMembers is not needed when updating non-owner roles
 		mockRepo.EXPECT().
 			UpdateMemberRole(ctx, orgID, memberID, MemberRoleAuthor).
 			Return(nil)

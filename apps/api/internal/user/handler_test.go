@@ -19,6 +19,7 @@ import (
 	"hasir-api/pkg/authentication"
 
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
+	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
 	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 )
 
@@ -550,6 +551,528 @@ func TestHandler_DeleteAccount(t *testing.T) {
 
 		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
 		resp, err := client.DeleteAccount(context.Background(), connect.NewRequest(new(emptypb.Empty)))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+}
+
+func TestHandler_CreateApiKey(t *testing.T) {
+	validateInterceptor := validate.NewInterceptor()
+	otelInterceptor, err := otelconnect.NewInterceptor()
+	require.NoError(t, err)
+	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
+
+	t.Run("happy path", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-id"
+
+		mockUserRepository.
+			EXPECT().
+			CreateApiKey(gomock.Any(), testUserID, gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.CreateApiKey(context.Background(), connect.NewRequest(&userv1.CreateApiKeyRequest{
+			Name: "test-key",
+		}))
+
+		assert.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.Msg)
+		assert.NotEmpty(t, resp.Msg.Key)
+	})
+
+	t.Run("auth error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.CreateApiKey(context.Background(), connect.NewRequest(&userv1.CreateApiKeyRequest{
+			Name: "test-key",
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("repository error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-id"
+
+		mockUserRepository.
+			EXPECT().
+			CreateApiKey(gomock.Any(), testUserID, gomock.Any()).
+			Return(errors.New("something went wrong")).
+			Times(1)
+
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.CreateApiKey(context.Background(), connect.NewRequest(&userv1.CreateApiKeyRequest{
+			Name: "test-key",
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+}
+
+func TestHandler_GetApiKeys(t *testing.T) {
+	validateInterceptor := validate.NewInterceptor()
+	otelInterceptor, err := otelconnect.NewInterceptor()
+	require.NoError(t, err)
+	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
+
+	t.Run("happy path with pagination", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-id"
+
+		apiKeys := []ApiKeyDTO{
+			{Id: "id-1", Name: "key-1"},
+			{Id: "id-2", Name: "key-2"},
+		}
+
+		mockUserRepository.
+			EXPECT().
+			GetApiKeysCount(gomock.Any(), testUserID).
+			Return(5, nil).
+			Times(1)
+
+		mockUserRepository.
+			EXPECT().
+			GetApiKeys(gomock.Any(), testUserID, 1, 10).
+			Return(&apiKeys, nil).
+			Times(1)
+
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.GetApiKeys(context.Background(), connect.NewRequest(&shared.Pagination{
+			Page:      1,
+			PageLimit: 10,
+		}))
+
+		assert.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.Msg)
+		require.Len(t, resp.Msg.Keys, 2)
+		assert.Equal(t, int32(1), resp.Msg.TotalPage)
+		assert.Equal(t, int32(0), resp.Msg.NextPage)
+
+		var names []string
+		for _, k := range resp.Msg.Keys {
+			names = append(names, k.Name)
+		}
+		assert.ElementsMatch(t, []string{"key-1", "key-2"}, names)
+	})
+
+	t.Run("auth error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.GetApiKeys(context.Background(), connect.NewRequest(&shared.Pagination{
+			Page:      1,
+			PageLimit: 10,
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("count error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-id"
+
+		mockUserRepository.
+			EXPECT().
+			GetApiKeysCount(gomock.Any(), testUserID).
+			Return(0, errors.New("something went wrong")).
+			Times(1)
+
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.GetApiKeys(context.Background(), connect.NewRequest(&shared.Pagination{
+			Page:      1,
+			PageLimit: 10,
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("repository error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-id"
+
+		mockUserRepository.
+			EXPECT().
+			GetApiKeysCount(gomock.Any(), testUserID).
+			Return(5, nil).
+			Times(1)
+
+		mockUserRepository.
+			EXPECT().
+			GetApiKeys(gomock.Any(), testUserID, 1, 10).
+			Return(nil, errors.New("something went wrong")).
+			Times(1)
+
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.GetApiKeys(context.Background(), connect.NewRequest(&shared.Pagination{
+			Page:      1,
+			PageLimit: 10,
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+}
+
+func TestHandler_CreateSshKey(t *testing.T) {
+	validateInterceptor := validate.NewInterceptor()
+	otelInterceptor, err := otelconnect.NewInterceptor()
+	require.NoError(t, err)
+	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
+
+	t.Run("happy path", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-id"
+
+		publicKey := "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCs"
+
+		mockUserRepository.
+			EXPECT().
+			CreateSshKey(gomock.Any(), testUserID, publicKey).
+			Return(nil).
+			Times(1)
+
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.CreateSshKey(context.Background(), connect.NewRequest(&userv1.CreateSshKeyRequest{
+			PublicKey: publicKey,
+		}))
+
+		assert.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.Msg)
+	})
+
+	t.Run("auth error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		publicKey := "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCs"
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.CreateSshKey(context.Background(), connect.NewRequest(&userv1.CreateSshKeyRequest{
+			PublicKey: publicKey,
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("repository error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-id"
+
+		publicKey := "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCs"
+
+		mockUserRepository.
+			EXPECT().
+			CreateSshKey(gomock.Any(), testUserID, publicKey).
+			Return(errors.New("something went wrong")).
+			Times(1)
+
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.CreateSshKey(context.Background(), connect.NewRequest(&userv1.CreateSshKeyRequest{
+			PublicKey: publicKey,
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+}
+
+func TestHandler_RevokeApiKey(t *testing.T) {
+	validateInterceptor := validate.NewInterceptor()
+	otelInterceptor, err := otelconnect.NewInterceptor()
+	require.NoError(t, err)
+	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
+
+	t.Run("successful key revocation", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-id"
+		keyID := "test-key-id"
+
+		req := &userv1.RevokeKeyRequest{Id: keyID}
+
+		mockUserRepository.
+			EXPECT().
+			RevokeApiKey(gomock.Any(), testUserID, keyID).
+			Return(nil).
+			Times(1)
+
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		_, err := client.RevokeApiKey(context.Background(), connect.NewRequest(req))
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("unauthorized access", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.RevokeApiKey(context.Background(), connect.NewRequest(&userv1.RevokeKeyRequest{Id: "key-id"}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
+	})
+
+	t.Run("repository error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-id"
+		keyID := "test-key-id"
+
+		req := &userv1.RevokeKeyRequest{Id: keyID}
+
+		expectedErr := errors.New("database error")
+		mockUserRepository.
+			EXPECT().
+			RevokeApiKey(gomock.Any(), testUserID, keyID).
+			Return(expectedErr).
+			Times(1)
+
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.RevokeApiKey(context.Background(), connect.NewRequest(req))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), expectedErr.Error())
+	})
+}
+
+func TestHandler_GetSshKeys(t *testing.T) {
+	validateInterceptor := validate.NewInterceptor()
+	otelInterceptor, err := otelconnect.NewInterceptor()
+	require.NoError(t, err)
+	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
+
+	t.Run("happy path with pagination", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-id"
+
+		sshKeys := []SshKeyDTO{
+			{Id: "id-1", Name: "ssh-key-1"},
+			{Id: "id-2", Name: "ssh-key-2"},
+		}
+
+		mockUserRepository.
+			EXPECT().
+			GetSshKeysCount(gomock.Any(), testUserID).
+			Return(5, nil).
+			Times(1)
+
+		mockUserRepository.
+			EXPECT().
+			GetSshKeys(gomock.Any(), testUserID, 1, 10).
+			Return(&sshKeys, nil).
+			Times(1)
+
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.GetSshKeys(context.Background(), connect.NewRequest(&shared.Pagination{
+			Page:      1,
+			PageLimit: 10,
+		}))
+
+		assert.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.Msg)
+		require.Len(t, resp.Msg.Keys, 2)
+		assert.Equal(t, int32(1), resp.Msg.TotalPage)
+		assert.Equal(t, int32(0), resp.Msg.NextPage)
+
+		var names []string
+		for _, k := range resp.Msg.Keys {
+			names = append(names, k.Name)
+		}
+		assert.ElementsMatch(t, []string{"ssh-key-1", "ssh-key-2"}, names)
+	})
+
+	t.Run("auth error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.GetSshKeys(context.Background(), connect.NewRequest(&shared.Pagination{
+			Page:      1,
+			PageLimit: 10,
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("count error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-id"
+
+		mockUserRepository.
+			EXPECT().
+			GetSshKeysCount(gomock.Any(), testUserID).
+			Return(0, errors.New("something went wrong")).
+			Times(1)
+
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.GetSshKeys(context.Background(), connect.NewRequest(&shared.Pagination{
+			Page:      1,
+			PageLimit: 10,
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("repository error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		testUserID := "test-user-id"
+
+		mockUserRepository.
+			EXPECT().
+			GetSshKeysCount(gomock.Any(), testUserID).
+			Return(5, nil).
+			Times(1)
+
+		mockUserRepository.
+			EXPECT().
+			GetSshKeys(gomock.Any(), testUserID, 1, 10).
+			Return(nil, errors.New("something went wrong")).
+			Times(1)
+
+		allInterceptors := append(interceptors, testAuthInterceptor(testUserID))
+		h := NewHandler(mockUserService, mockUserRepository, allInterceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.GetSshKeys(context.Background(), connect.NewRequest(&shared.Pagination{
+			Page:      1,
+			PageLimit: 10,
+		}))
 
 		assert.Error(t, err)
 		assert.Nil(t, resp)

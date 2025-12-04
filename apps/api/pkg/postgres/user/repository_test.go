@@ -1132,6 +1132,367 @@ func TestPgRepository_DeleteRefreshToken(t *testing.T) {
 	})
 }
 
+func TestPgRepository_CreateApiKey(t *testing.T) {
+	t.Run("creates a new API key", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createApiKeysTable(t, connString)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		apiKey := "test-api-key-123"
+		err = pgRepository.CreateApiKey(t.Context(), fakeId, apiKey)
+
+		assert.NoError(t, err)
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var count int
+		err = conn.QueryRow(t.Context(),
+			"SELECT COUNT(*) FROM api_keys WHERE user_id = $1 AND key = $2 AND deleted_at IS NULL",
+			fakeId, apiKey).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+	})
+
+	t.Run("returns error for duplicate API key", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createApiKeysTable(t, connString)
+		apiKey := "duplicate-api-key"
+		keyId := uuid.NewString()
+		createFakeApiKey(t, connString, fakeId, keyId, apiKey)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+		err = pgRepository.CreateApiKey(t.Context(), fakeId, apiKey)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "already exists")
+	})
+}
+
+func TestPgRepository_GetApiKeys(t *testing.T) {
+	t.Run("returns all API keys for a user", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createApiKeysTable(t, connString)
+		key1Id := uuid.NewString()
+		key1Value := "test-key-1"
+		createFakeApiKey(t, connString, fakeId, key1Id, key1Value)
+
+		key2Id := uuid.NewString()
+		key2Value := "test-key-2"
+		createFakeApiKey(t, connString, fakeId, key2Id, key2Value)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		keys, err := pgRepository.GetApiKeys(t.Context(), fakeId, 1, 10)
+
+		assert.NoError(t, err)
+		require.NotNil(t, keys)
+		assert.Len(t, *keys, 2)
+		assert.Equal(t, key2Id, (*keys)[0].Id)
+		assert.Equal(t, key2Value, (*keys)[0].Key)
+		assert.Equal(t, key1Id, (*keys)[1].Id)
+		assert.Equal(t, key1Value, (*keys)[1].Key)
+	})
+
+	t.Run("returns empty slice when no API keys exist", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createApiKeysTable(t, connString)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		keys, err := pgRepository.GetApiKeys(t.Context(), fakeId, 1, 10)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, keys)
+		assert.Empty(t, *keys)
+	})
+}
+
+func TestPgRepository_RevokeApiKey(t *testing.T) {
+	t.Run("marks API key as deleted", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createApiKeysTable(t, connString)
+		keyId := uuid.NewString()
+		keyValue := "test-key-to-revoke"
+		createFakeApiKey(t, connString, fakeId, keyId, keyValue)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+		err = pgRepository.RevokeApiKey(t.Context(), fakeId, keyId)
+		assert.NoError(t, err)
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var deletedAt *time.Time
+		err = conn.QueryRow(t.Context(),
+			"SELECT deleted_at FROM api_keys WHERE id = $1",
+			keyId).Scan(&deletedAt)
+		require.NoError(t, err)
+		assert.NotNil(t, deletedAt)
+	})
+
+	t.Run("returns error for non-existent key", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createApiKeysTable(t, connString)
+
+		nonExistentKeyId := uuid.NewString()
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		err = pgRepository.RevokeApiKey(t.Context(), fakeId, nonExistentKeyId)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
+}
+
+func TestPgRepository_CreateSshKey(t *testing.T) {
+	t.Run("creates a new SSH key", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createSshKeysTable(t, connString)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		publicKey := "ssh-rsa AAAAB3NzaC1yc2E..."
+		err = pgRepository.CreateSshKey(t.Context(), fakeId, publicKey)
+
+		assert.NoError(t, err)
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var count int
+		err = conn.QueryRow(t.Context(),
+			"SELECT COUNT(*) FROM ssh_keys WHERE user_id = $1 AND public_key = $2 AND deleted_at IS NULL",
+			fakeId, publicKey).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+	})
+}
+
+func TestPgRepository_GetSshKeys(t *testing.T) {
+	t.Run("returns all SSH keys for a user", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createSshKeysTable(t, connString)
+		key1Id := uuid.NewString()
+		key1Value := "ssh-rsa key1..."
+		createFakeSshKey(t, connString, fakeId, key1Id, key1Value)
+
+		key2Id := uuid.NewString()
+		key2Value := "ssh-rsa key2..."
+		createFakeSshKey(t, connString, fakeId, key2Id, key2Value)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		keys, err := pgRepository.GetSshKeys(t.Context(), fakeId, 1, 10)
+
+		assert.NoError(t, err)
+		require.NotNil(t, keys)
+		assert.Len(t, *keys, 2)
+		assert.Equal(t, key2Id, (*keys)[0].Id)
+		assert.Equal(t, key2Value, (*keys)[0].PublicKey)
+		assert.Equal(t, key1Id, (*keys)[1].Id)
+		assert.Equal(t, key1Value, (*keys)[1].PublicKey)
+	})
+}
+
+func TestPgRepository_RevokeSshKey(t *testing.T) {
+	t.Run("marks SSH key as deleted", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createSshKeysTable(t, connString)
+		keyId := uuid.NewString()
+		keyValue := "ssh-rsa key-to-revoke..."
+		createFakeSshKey(t, connString, fakeId, keyId, keyValue)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+		err = pgRepository.RevokeSshKey(t.Context(), fakeId, keyId)
+		assert.NoError(t, err)
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var deletedAt *time.Time
+		err = conn.QueryRow(t.Context(),
+			"SELECT deleted_at FROM ssh_keys WHERE id = $1",
+			keyId).Scan(&deletedAt)
+		require.NoError(t, err)
+		assert.NotNil(t, deletedAt)
+	})
+
+	t.Run("returns error for non-existent key", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createSshKeysTable(t, connString)
+
+		nonExistentKeyId := uuid.NewString()
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		err = pgRepository.RevokeSshKey(t.Context(), fakeId, nonExistentKeyId)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
+}
+
 func createUserTable(t *testing.T, connString string) {
 	conn, err := pgx.Connect(t.Context(), connString)
 	require.NoError(t, err)
@@ -1157,6 +1518,99 @@ func createRefreshTokensTable(t *testing.T, connString string) {
 	sql := "CREATE TABLE refresh_tokens (user_id varchar not null, jti varchar not null, expires_at timestamp not null, created_at timestamp not null, PRIMARY KEY (user_id, jti))"
 
 	_, err = conn.Exec(t.Context(), sql)
+	require.NoError(t, err)
+}
+
+func createApiKeysTable(t *testing.T, connString string) {
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		err = conn.Close(t.Context())
+		require.NoError(t, err)
+	}()
+
+	sql := `
+		CREATE TABLE api_keys (
+			id varchar PRIMARY KEY,
+			user_id varchar NOT NULL,
+			name varchar NOT NULL,
+			key varchar NOT NULL,
+			created_at timestamp NOT NULL,
+			deleted_at timestamp
+		);
+		CREATE UNIQUE INDEX idx_api_keys_key ON api_keys(key) WHERE deleted_at IS NULL;
+	`
+
+	_, err = conn.Exec(t.Context(), sql)
+	require.NoError(t, err)
+}
+
+func createSshKeysTable(t *testing.T, connString string) {
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		err = conn.Close(t.Context())
+		require.NoError(t, err)
+	}()
+
+	sql := `
+		CREATE TABLE ssh_keys (
+			id varchar PRIMARY KEY,
+			user_id varchar NOT NULL,
+			name varchar NOT NULL,
+			public_key text NOT NULL,
+			created_at timestamp NOT NULL,
+			deleted_at timestamp
+		);
+	`
+
+	_, err = conn.Exec(t.Context(), sql)
+	require.NoError(t, err)
+}
+
+func createFakeApiKey(t *testing.T, connString, userId, keyId, keyValue string) {
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		err = conn.Close(t.Context())
+		require.NoError(t, err)
+	}()
+
+	sql := `
+		INSERT INTO api_keys (id, user_id, name, key, created_at)
+		VALUES ($1, $2, $3, $4, $5)
+	`
+
+	_, err = conn.Exec(t.Context(), sql,
+		keyId,
+		userId,
+		"test-key",
+		keyValue,
+		time.Now().UTC().Add(-24*time.Hour),
+	)
+	require.NoError(t, err)
+}
+
+func createFakeSshKey(t *testing.T, connString, userId, keyId, publicKey string) {
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		err = conn.Close(t.Context())
+		require.NoError(t, err)
+	}()
+
+	sql := `
+		INSERT INTO ssh_keys (id, user_id, name, public_key, created_at)
+		VALUES ($1, $2, $3, $4, $5)
+	`
+
+	_, err = conn.Exec(t.Context(), sql,
+		keyId,
+		userId,
+		"test-key",
+		publicKey,
+		time.Now().UTC().Add(-24*time.Hour),
+	)
 	require.NoError(t, err)
 }
 

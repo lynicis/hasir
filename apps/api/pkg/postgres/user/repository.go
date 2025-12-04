@@ -418,3 +418,311 @@ func (r *PgRepository) DeleteUser(ctx context.Context, userId string) error {
 
 	return nil
 }
+
+func (r *PgRepository) CreateApiKey(ctx context.Context, userId, apiKey string) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "CreateApiKey")
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `
+		INSERT INTO api_keys (id, user_id, name, key, created_at)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4)
+	`
+
+	_, err = connection.Exec(
+		ctx,
+		sql,
+		userId,
+		"default", // Default name for the API key
+		apiKey,
+		time.Now().UTC(),
+	)
+
+	if err != nil {
+		span.RecordError(err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == ErrUniqueViolationCode {
+			return connect.NewError(connect.CodeAlreadyExists, errors.New("api key already exists"))
+		}
+		return ErrInternalServer
+	}
+
+	return nil
+}
+
+func (r *PgRepository) GetApiKeys(ctx context.Context, userId string, page, pageSize int) (*[]user.ApiKeyDTO, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetApiKeys")
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	offset := (page - 1) * pageSize
+
+	sql := `
+		SELECT id, user_id, name, key, created_at
+		FROM api_keys
+		WHERE user_id = $1 AND deleted_at IS NULL
+		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	rows, err := connection.Query(ctx, sql, userId, pageSize, offset)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrInternalServer
+	}
+	defer rows.Close()
+
+	var apiKeys []user.ApiKeyDTO
+	for rows.Next() {
+		var key user.ApiKeyDTO
+		err = rows.Scan(
+			&key.Id,
+			&key.UserId,
+			&key.Name,
+			&key.Key,
+			&key.CreatedAt,
+		)
+		if err != nil {
+			span.RecordError(err)
+			return nil, ErrInternalServer
+		}
+		apiKeys = append(apiKeys, key)
+	}
+
+	if err = rows.Err(); err != nil {
+		span.RecordError(err)
+		return nil, ErrInternalServer
+	}
+
+	return &apiKeys, nil
+}
+
+func (r *PgRepository) GetApiKeysCount(ctx context.Context, userId string) (int, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetApiKeysCount")
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return 0, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `
+		SELECT COUNT(*)
+		FROM api_keys
+		WHERE user_id = $1 AND deleted_at IS NULL
+	`
+
+	var count int
+	err = connection.QueryRow(ctx, sql, userId).Scan(&count)
+	if err != nil {
+		span.RecordError(err)
+		return 0, ErrInternalServer
+	}
+
+	return count, nil
+}
+
+func (r *PgRepository) RevokeApiKey(ctx context.Context, userId, keyId string) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "RevokeApiKey")
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `
+		UPDATE api_keys 
+		SET deleted_at = $1 
+		WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL
+	`
+
+	result, err := connection.Exec(
+		ctx,
+		sql,
+		time.Now().UTC(),
+		keyId,
+		userId,
+	)
+
+	if err != nil {
+		span.RecordError(err)
+		return ErrInternalServer
+	}
+
+	if result.RowsAffected() == 0 {
+		return connect.NewError(connect.CodeNotFound, errors.New("api key not found or already revoked"))
+	}
+
+	return nil
+}
+
+func (r *PgRepository) CreateSshKey(ctx context.Context, userId, publicKey string) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "CreateSshKey")
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `
+		INSERT INTO ssh_keys (id, user_id, name, public_key, created_at)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4)
+	`
+
+	_, err = connection.Exec(
+		ctx,
+		sql,
+		userId,
+		"default", // Default name for the SSH key
+		publicKey,
+		time.Now().UTC(),
+	)
+
+	if err != nil {
+		span.RecordError(err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == ErrUniqueViolationCode {
+			return connect.NewError(connect.CodeAlreadyExists, errors.New("ssh key already exists"))
+		}
+		return ErrInternalServer
+	}
+
+	return nil
+}
+
+func (r *PgRepository) GetSshKeys(ctx context.Context, userId string, page, pageSize int) (*[]user.SshKeyDTO, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetSshKeys")
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	offset := (page - 1) * pageSize
+
+	sql := `
+		SELECT id, user_id, name, public_key, created_at
+		FROM ssh_keys
+		WHERE user_id = $1 AND deleted_at IS NULL
+		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	rows, err := connection.Query(ctx, sql, userId, pageSize, offset)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrInternalServer
+	}
+	defer rows.Close()
+
+	var sshKeys []user.SshKeyDTO
+	for rows.Next() {
+		var key user.SshKeyDTO
+		err = rows.Scan(
+			&key.Id,
+			&key.UserId,
+			&key.Name,
+			&key.PublicKey,
+			&key.CreatedAt,
+		)
+		if err != nil {
+			span.RecordError(err)
+			return nil, ErrInternalServer
+		}
+		sshKeys = append(sshKeys, key)
+	}
+
+	if err = rows.Err(); err != nil {
+		span.RecordError(err)
+		return nil, ErrInternalServer
+	}
+
+	return &sshKeys, nil
+}
+
+func (r *PgRepository) GetSshKeysCount(ctx context.Context, userId string) (int, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetSshKeysCount")
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return 0, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `
+		SELECT COUNT(*)
+		FROM ssh_keys
+		WHERE user_id = $1 AND deleted_at IS NULL
+	`
+
+	var count int
+	err = connection.QueryRow(ctx, sql, userId).Scan(&count)
+	if err != nil {
+		span.RecordError(err)
+		return 0, ErrInternalServer
+	}
+
+	return count, nil
+}
+
+func (r *PgRepository) RevokeSshKey(ctx context.Context, userId, keyId string) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "RevokeSshKey")
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `
+		UPDATE ssh_keys 
+		SET deleted_at = $1 
+		WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL
+	`
+
+	result, err := connection.Exec(
+		ctx,
+		sql,
+		time.Now().UTC(),
+		keyId,
+		userId,
+	)
+
+	if err != nil {
+		span.RecordError(err)
+		return ErrInternalServer
+	}
+
+	if result.RowsAffected() == 0 {
+		return connect.NewError(connect.CodeNotFound, errors.New("ssh key not found or already revoked"))
+	}
+
+	return nil
+}

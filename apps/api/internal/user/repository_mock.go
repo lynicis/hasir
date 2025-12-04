@@ -41,6 +41,20 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
+// CreateApiKey mocks base method.
+func (m *MockRepository) CreateApiKey(ctx context.Context, userId, apiKey string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateApiKey", ctx, userId, apiKey)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateApiKey indicates an expected call of CreateApiKey.
+func (mr *MockRepositoryMockRecorder) CreateApiKey(ctx, userId, apiKey any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateApiKey", reflect.TypeOf((*MockRepository)(nil).CreateApiKey), ctx, userId, apiKey)
+}
+
 // CreateRefreshToken mocks base method.
 func (m *MockRepository) CreateRefreshToken(ctx context.Context, id, token string, expiresAt time.Time) error {
 	m.ctrl.T.Helper()
@@ -53,6 +67,20 @@ func (m *MockRepository) CreateRefreshToken(ctx context.Context, id, token strin
 func (mr *MockRepositoryMockRecorder) CreateRefreshToken(ctx, id, token, expiresAt any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRefreshToken", reflect.TypeOf((*MockRepository)(nil).CreateRefreshToken), ctx, id, token, expiresAt)
+}
+
+// CreateSshKey mocks base method.
+func (m *MockRepository) CreateSshKey(ctx context.Context, userId, publicKey string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSshKey", ctx, userId, publicKey)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateSshKey indicates an expected call of CreateSshKey.
+func (mr *MockRepositoryMockRecorder) CreateSshKey(ctx, userId, publicKey any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSshKey", reflect.TypeOf((*MockRepository)(nil).CreateSshKey), ctx, userId, publicKey)
 }
 
 // CreateUser mocks base method.
@@ -97,6 +125,36 @@ func (mr *MockRepositoryMockRecorder) DeleteUser(ctx, userId any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockRepository)(nil).DeleteUser), ctx, userId)
 }
 
+// GetApiKeys mocks base method.
+func (m *MockRepository) GetApiKeys(ctx context.Context, userId string, page, pageSize int) (*[]ApiKeyDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetApiKeys", ctx, userId, page, pageSize)
+	ret0, _ := ret[0].(*[]ApiKeyDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetApiKeys indicates an expected call of GetApiKeys.
+func (mr *MockRepositoryMockRecorder) GetApiKeys(ctx, userId, page, pageSize any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApiKeys", reflect.TypeOf((*MockRepository)(nil).GetApiKeys), ctx, userId, page, pageSize)
+}
+
+// GetApiKeysCount mocks base method.
+func (m *MockRepository) GetApiKeysCount(ctx context.Context, userId string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetApiKeysCount", ctx, userId)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetApiKeysCount indicates an expected call of GetApiKeysCount.
+func (mr *MockRepositoryMockRecorder) GetApiKeysCount(ctx, userId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApiKeysCount", reflect.TypeOf((*MockRepository)(nil).GetApiKeysCount), ctx, userId)
+}
+
 // GetRefreshTokenByTokenId mocks base method.
 func (m *MockRepository) GetRefreshTokenByTokenId(ctx context.Context, token string) (*RefreshTokensDTO, error) {
 	m.ctrl.T.Helper()
@@ -110,6 +168,36 @@ func (m *MockRepository) GetRefreshTokenByTokenId(ctx context.Context, token str
 func (mr *MockRepositoryMockRecorder) GetRefreshTokenByTokenId(ctx, token any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRefreshTokenByTokenId", reflect.TypeOf((*MockRepository)(nil).GetRefreshTokenByTokenId), ctx, token)
+}
+
+// GetSshKeys mocks base method.
+func (m *MockRepository) GetSshKeys(ctx context.Context, userId string, page, pageSize int) (*[]SshKeyDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSshKeys", ctx, userId, page, pageSize)
+	ret0, _ := ret[0].(*[]SshKeyDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSshKeys indicates an expected call of GetSshKeys.
+func (mr *MockRepositoryMockRecorder) GetSshKeys(ctx, userId, page, pageSize any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSshKeys", reflect.TypeOf((*MockRepository)(nil).GetSshKeys), ctx, userId, page, pageSize)
+}
+
+// GetSshKeysCount mocks base method.
+func (m *MockRepository) GetSshKeysCount(ctx context.Context, userId string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSshKeysCount", ctx, userId)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSshKeysCount indicates an expected call of GetSshKeysCount.
+func (mr *MockRepositoryMockRecorder) GetSshKeysCount(ctx, userId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSshKeysCount", reflect.TypeOf((*MockRepository)(nil).GetSshKeysCount), ctx, userId)
 }
 
 // GetUserByEmail mocks base method.
@@ -140,6 +228,34 @@ func (m *MockRepository) GetUserById(ctx context.Context, id string) (*UserDTO, 
 func (mr *MockRepositoryMockRecorder) GetUserById(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserById", reflect.TypeOf((*MockRepository)(nil).GetUserById), ctx, id)
+}
+
+// RevokeApiKey mocks base method.
+func (m *MockRepository) RevokeApiKey(ctx context.Context, userId, keyId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RevokeApiKey", ctx, userId, keyId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RevokeApiKey indicates an expected call of RevokeApiKey.
+func (mr *MockRepositoryMockRecorder) RevokeApiKey(ctx, userId, keyId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevokeApiKey", reflect.TypeOf((*MockRepository)(nil).RevokeApiKey), ctx, userId, keyId)
+}
+
+// RevokeSshKey mocks base method.
+func (m *MockRepository) RevokeSshKey(ctx context.Context, userId, keyId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RevokeSshKey", ctx, userId, keyId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RevokeSshKey indicates an expected call of RevokeSshKey.
+func (mr *MockRepositoryMockRecorder) RevokeSshKey(ctx, userId, keyId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevokeSshKey", reflect.TypeOf((*MockRepository)(nil).RevokeSshKey), ctx, userId, keyId)
 }
 
 // UpdateUserById mocks base method.
