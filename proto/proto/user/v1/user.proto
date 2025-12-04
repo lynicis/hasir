@@ -63,8 +63,17 @@ message CreateSshKeyRequest {
   ];
 }
 
+message Key {
+  string id = 1;
+  string name = 2;
+}
+
 message KeyResponse {
-  repeated string key_names = 1;
+  repeated Key keys = 1;
+}
+
+message RevokeKeyRequest {
+  string id = 1 [(buf.validate.field).required = true];
 }
 
 service UserService {
@@ -75,6 +84,8 @@ service UserService {
   rpc DeleteAccount(google.protobuf.Empty) returns (google.protobuf.Empty);
   rpc CreateApiKey(google.protobuf.Empty) returns (CreateApiKeyResponse);
   rpc GetApiKeys(google.protobuf.Empty) returns (KeyResponse);
+  rpc RevokeApiKey(RevokeKeyRequest) returns (google.protobuf.Empty);
   rpc CreateSshKey(CreateSshKeyRequest) returns (google.protobuf.Empty);
   rpc GetSshKeys(google.protobuf.Empty) returns (KeyResponse);
+  rpc RevokeSshKey(RevokeKeyRequest) returns (google.protobuf.Empty);
 }
