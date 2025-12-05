@@ -32,10 +32,10 @@ vi.mock("@connectrpc/connect-query", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
 
-const mockUseRefreshStore = vi.fn();
+const mockUseRegistryStore = vi.fn();
 
-vi.mock("@/stores/refresh-store", () => ({
-  useRefreshStore: (...args: unknown[]) => mockUseRefreshStore(...args),
+vi.mock("@/stores/registry-store", () => ({
+  useRegistryStore: (...args: unknown[]) => mockUseRegistryStore(...args),
 }));
 
 vi.mock(
@@ -64,7 +64,7 @@ describe("RepositoryDialogForm", () => {
     toastError.mockReset();
     mockUseQuery.mockReset();
 
-    mockUseRefreshStore.mockReset();
+    mockUseRegistryStore.mockReset();
 
     mockUseQuery.mockImplementation((schema: { name: string }) => {
       if (schema.name === "getOrganizations") {
@@ -77,13 +77,13 @@ describe("RepositoryDialogForm", () => {
       return { data: null, isLoading: false, error: null };
     });
 
-    mockUseRefreshStore.mockImplementation(
+    mockUseRegistryStore.mockImplementation(
       (selector: (state: unknown) => unknown) =>
         selector({
-          organizationsRefreshKey: 0,
-          repositoriesRefreshKey: 0,
-          refreshOrganizations: vi.fn(),
-          refreshRepositories: vi.fn(),
+          organizationsVersion: 0,
+          repositoriesVersion: 0,
+          invalidateOrganizations: vi.fn(),
+          invalidateRepositories: vi.fn(),
         })
     );
   });
@@ -302,7 +302,7 @@ describe("RepositoryDialogForm", () => {
     expect(organizationSelect).toBeDisabled();
   });
 
-  it("refetches organizations when organizationsRefreshKey changes", async () => {
+  it("refetches organizations when organizationsVersion changes", async () => {
     const refetchOrganizations = vi.fn();
 
     mockUseQuery.mockImplementation((schema: { name: string }) => {
@@ -317,13 +317,13 @@ describe("RepositoryDialogForm", () => {
       return { data: null, isLoading: false, error: null };
     });
 
-    mockUseRefreshStore.mockImplementation(
+    mockUseRegistryStore.mockImplementation(
       (selector: (state: unknown) => unknown) =>
         selector({
-          organizationsRefreshKey: 1,
-          repositoriesRefreshKey: 0,
-          refreshOrganizations: vi.fn(),
-          refreshRepositories: vi.fn(),
+          organizationsVersion: 1,
+          repositoriesVersion: 0,
+          invalidateOrganizations: vi.fn(),
+          invalidateRepositories: vi.fn(),
         })
     );
 

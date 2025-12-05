@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Code, ConnectError } from "@connectrpc/connect";
 import userEvent from "@testing-library/user-event";
 
-import { useRefreshStore } from "@/stores/refresh-store";
+import { useRegistryStore } from "@/stores/registry-store";
 import { useSession } from "@/lib/session-provider";
 import { useClient } from "@/lib/use-client";
 
@@ -37,8 +37,8 @@ vi.mock("@/lib/use-client", () => ({
   useClient: vi.fn(),
 }));
 
-vi.mock("@/stores/refresh-store", () => ({
-  useRefreshStore: vi.fn(),
+vi.mock("@/stores/registry-store", () => ({
+  useRegistryStore: vi.fn(),
 }));
 
 vi.mock("@/lib/session-provider", () => ({
@@ -55,7 +55,7 @@ vi.mock("sonner", () => ({
 const mockUpdateOrganization = vi.fn();
 const mockDeleteOrganization = vi.fn();
 const mockedUseClient = useClient as unknown as Mock;
-const mockedUseRefreshStore = useRefreshStore as unknown as Mock;
+const mockedUseRegistryStore = useRegistryStore as unknown as Mock;
 const mockedUseSession = useSession as unknown as Mock;
 
 describe("OrganizationSettingsForm", () => {
@@ -70,9 +70,9 @@ describe("OrganizationSettingsForm", () => {
     toastSuccess.mockReset();
     toastError.mockReset();
     mockUseSession.mockReset();
-    mockedUseRefreshStore.mockImplementation(
-      (selector: (state: { organizationsRefreshKey: number }) => unknown) =>
-        selector({ organizationsRefreshKey: 0 })
+    mockedUseRegistryStore.mockImplementation(
+      (selector: (state: { organizationsVersion: number }) => unknown) =>
+        selector({ organizationsVersion: 0 })
     );
     mockedUseSession.mockReturnValue({
       session: { user: { email: "owner@example.com" } },
@@ -557,12 +557,12 @@ describe("OrganizationSettingsForm", () => {
     });
   });
 
-  it("refetches organization when organizationsRefreshKey is greater than zero", async () => {
+  it("refetches organization when organizationsVersion is greater than zero", async () => {
     const mockRefetch = vi.fn();
 
-    mockedUseRefreshStore.mockImplementation(
-      (selector: (state: { organizationsRefreshKey: number }) => unknown) =>
-        selector({ organizationsRefreshKey: 1 })
+    mockedUseRegistryStore.mockImplementation(
+      (selector: (state: { organizationsVersion: number }) => unknown) =>
+        selector({ organizationsVersion: 1 })
     );
 
     mockUseQuery.mockReturnValue({

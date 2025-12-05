@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { visibilityMapper } from "@/lib/visibility-mapper";
-import { useRefreshStore } from "@/stores/refresh-store";
+import { useRegistryStore } from "@/stores/registry-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useClient } from "@/lib/use-client";
@@ -72,8 +72,8 @@ export function OrganizationDialogForm({
   onCancel,
 }: OrganizationDialogFormProps) {
   const organizationApiClient = useClient(OrganizationService);
-  const refreshOrganizations = useRefreshStore(
-    (state) => state.refreshOrganizations
+  const invalidateOrganizations = useRegistryStore(
+    (state) => state.invalidateOrganizations
   );
   const [step, setStep] = useState<1 | 2>(1);
 
@@ -121,7 +121,7 @@ export function OrganizationDialogForm({
         members,
       });
 
-      refreshOrganizations();
+      invalidateOrganizations();
 
       toast.success("Organization created successfully.");
       handleClose();

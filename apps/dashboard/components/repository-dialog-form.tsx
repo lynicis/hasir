@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { visibilityMapper } from "@/lib/visibility-mapper";
-import { useRefreshStore } from "@/stores/refresh-store";
+import { useRegistryStore } from "@/stores/registry-store";
 import { Button } from "@/components/ui/button";
 import { customRetry } from "@/lib/query-retry";
 import { Input } from "@/components/ui/input";
@@ -66,11 +66,11 @@ export function RepositoryDialogForm({
   onCancel,
 }: RepositoryDialogFormProps) {
   const registryApiClient = useClient(RegistryService);
-  const refreshRepositories = useRefreshStore(
-    (state) => state.refreshRepositories
+  const invalidateRepositories = useRegistryStore(
+    (state) => state.invalidateRepositories
   );
-  const organizationsRefreshKey = useRefreshStore(
-    (state) => state.organizationsRefreshKey
+  const organizationsVersion = useRegistryStore(
+    (state) => state.organizationsVersion
   );
 
   const {
@@ -91,10 +91,10 @@ export function RepositoryDialogForm({
   const organizations = organizationsData?.organizations ?? [];
 
   useEffect(() => {
-    if (organizationsRefreshKey > 0) {
+    if (organizationsVersion > 0) {
       refetchOrganizations();
     }
-  }, [organizationsRefreshKey, refetchOrganizations]);
+  }, [organizationsVersion, refetchOrganizations]);
 
   const {
     control,
@@ -119,7 +119,7 @@ export function RepositoryDialogForm({
           visibilityMapper.get(values.visibility) || Visibility.PRIVATE,
       });
 
-      refreshRepositories();
+      invalidateRepositories();
 
       toast.success("Repository created successfully.");
       reset();

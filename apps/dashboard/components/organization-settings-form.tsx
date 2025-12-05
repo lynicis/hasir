@@ -37,7 +37,7 @@ import {
 import { DeleteOrganizationDialog } from "@/components/delete-organization-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { InviteUserDialog } from "@/components/invite-user-dialog";
-import { useRefreshStore } from "@/stores/refresh-store";
+import { useRegistryStore } from "@/stores/registry-store";
 import { Separator } from "@/components/ui/separator";
 import { useSession } from "@/lib/session-provider";
 import { Button } from "@/components/ui/button";
@@ -88,8 +88,8 @@ export function OrganizationSettingsForm() {
     { retry: customRetry }
   );
 
-  const organizationsRefreshKey = useRefreshStore(
-    (state) => state.organizationsRefreshKey
+  const organizationsVersion = useRegistryStore(
+    (state) => state.organizationsVersion
   );
 
   const organization = data?.organization;
@@ -153,10 +153,10 @@ export function OrganizationSettingsForm() {
   }, [organizationError]);
 
   useEffect(() => {
-    if (organizationsRefreshKey > 0) {
+    if (organizationsVersion > 0) {
       refetch();
     }
-  }, [organizationsRefreshKey, refetch]);
+  }, [organizationsVersion, refetch]);
 
   async function handleFormSubmit(values: OrganizationFormValues) {
     try {

@@ -10,7 +10,7 @@ import Link from "next/link";
 
 import { OrganizationDialogForm } from "@/components/organization-dialog-form";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { useRefreshStore } from "@/stores/refresh-store";
+import { useRegistryStore } from "@/stores/registry-store";
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { customRetry } from "@/lib/query-retry";
@@ -27,11 +27,11 @@ export function Dashboard() {
   const [orgPage, setOrgPage] = useState(1);
   const [repoPage, setRepoPage] = useState(1);
 
-  const organizationsRefreshKey = useRefreshStore(
-    (state) => state.organizationsRefreshKey
+  const organizationsVersion = useRegistryStore(
+    (state) => state.organizationsVersion
   );
-  const repositoriesRefreshKey = useRefreshStore(
-    (state) => state.repositoriesRefreshKey
+  const repositoriesVersion = useRegistryStore(
+    (state) => state.repositoriesVersion
   );
 
   const organizationsQueryParams = useMemo(
@@ -103,16 +103,16 @@ export function Dashboard() {
   }, [repositoriesError]);
 
   useEffect(() => {
-    if (organizationsRefreshKey > 0) {
+    if (organizationsVersion > 0) {
       refetchOrganizations();
     }
-  }, [organizationsRefreshKey, refetchOrganizations]);
+  }, [organizationsVersion, refetchOrganizations]);
 
   useEffect(() => {
-    if (repositoriesRefreshKey > 0) {
+    if (repositoriesVersion > 0) {
       refetchRepositories();
     }
-  }, [repositoriesRefreshKey, refetchRepositories]);
+  }, [repositoriesVersion, refetchRepositories]);
 
   return (
     <div className="h-[calc(100vh-4.5rem)] bg-background px-6 py-6">

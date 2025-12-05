@@ -13,7 +13,7 @@ import { type OrganizationRepository } from "@/components/repository-item";
 import { RepositoryDialogForm } from "@/components/repository-dialog-form";
 import { RepositoriesList } from "@/components/repositories-list";
 import { reverseVisibilityMapper } from "@/lib/visibility-mapper";
-import { useRefreshStore } from "@/stores/refresh-store";
+import { useRegistryStore } from "@/stores/registry-store";
 import { customRetry } from "@/lib/query-retry";
 import { isNotFoundError } from "@/lib/utils";
 import { useClient } from "@/lib/use-client";
@@ -26,8 +26,11 @@ export default function RepositoriesPage() {
   const router = useRouter();
   const organizationId = params.id as string;
   const registryApiClient = useClient(RegistryService);
-  const refreshRepositories = useRefreshStore(
-    (state) => state.refreshRepositories
+  const invalidateRepositories = useRegistryStore(
+    (state) => state.invalidateRepositories
+  );
+  const repositoriesVersion = useRegistryStore(
+    (state) => state.repositoriesVersion
   );
 
   const currentPage = useMemo(() => {
@@ -87,6 +90,12 @@ export default function RepositoriesPage() {
     }
   }, [error]);
 
+  useEffect(() => {
+    if (repositoriesVersion > 0) {
+      refetch();
+    }
+  }, [repositoriesVersion, refetch]);
+
   function handleDeleteRepository(repo: OrganizationRepository) {
     setDeleteRepoDialog({ open: true, repo });
   }
@@ -104,7 +113,7 @@ export default function RepositoriesPage() {
       );
 
       await refetch();
-      refreshRepositories();
+      invalidateRepositories();
 
       setDeleteRepoDialog({ open: false, repo: null });
     } catch (err) {

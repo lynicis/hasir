@@ -181,11 +181,6 @@ export function SshApiKeyPanel() {
       }
 
       apiKeyForm.reset();
-
-      toast.success("API key generated", {
-        description: `Your new API key: ${response.key}. Copy it now - you won't be able to see it again!`,
-        duration: 10000,
-      });
     } catch (error) {
       if (error instanceof ConnectError) {
         if (error.code === Code.Unauthenticated) {

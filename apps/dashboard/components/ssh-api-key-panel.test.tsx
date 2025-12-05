@@ -365,13 +365,6 @@ describe("SshApiKeyPanel", () => {
       await waitFor(() => {
         expect(mockApiKeys.refetch).toHaveBeenCalled();
       });
-
-      await waitFor(() => {
-        expect(toastSuccess).toHaveBeenCalledWith(
-          "API key generated",
-          expect.any(Object)
-        );
-      });
     });
 
     it("displays API keys from query", () => {
