@@ -114,18 +114,22 @@ func (s *service) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest)
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
 
-	var hashedNewPassword []byte
-	hashedNewPassword, err = bcrypt.GenerateFromPassword([]byte(req.GetNewPassword()), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, ErrInternalServer
-	}
-
 	updatedUser := &UserDTO{
 		Id:       user.Id,
 		Username: req.GetUsername(),
 		Email:    req.GetEmail(),
-		Password: string(hashedNewPassword),
+		Password: user.Password,
 	}
+
+	if req.GetNewPassword() != "" {
+		var hashedNewPassword []byte
+		hashedNewPassword, err = bcrypt.GenerateFromPassword([]byte(req.GetNewPassword()), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, ErrInternalServer
+		}
+		updatedUser.Password = string(hashedNewPassword)
+	}
+
 	if err = s.userRepository.UpdateUserById(ctx, updatedUser.Id, updatedUser); err != nil {
 		return nil, err
 	}

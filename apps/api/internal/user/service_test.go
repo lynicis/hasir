@@ -403,6 +403,51 @@ func TestService_UpdateUser(t *testing.T) {
 		assert.Contains(t, err.Error(), "something went wrong")
 		assert.Nil(t, tokens)
 	})
+
+	t.Run("update without changing password", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+		mockUserRepository.
+			EXPECT().
+			GetUserById(gomock.Any(), userId).
+			Return(&UserDTO{
+				Id:        userId,
+				Username:  "old-username",
+				Email:     "old@mail.com",
+				Password:  string(hashedOldPwd),
+				CreatedAt: time.Now().UTC(),
+			}, nil).
+			Times(1)
+		mockUserRepository.
+			EXPECT().
+			UpdateUserById(gomock.Any(), userId, gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, updatedUser *UserDTO) error {
+				assert.Equal(t, string(hashedOldPwd), updatedUser.Password)
+				assert.Equal(t, newUsername, updatedUser.Username)
+				assert.Equal(t, newEmail, updatedUser.Email)
+				return nil
+			}).
+			Times(1)
+		mockUserRepository.
+			EXPECT().
+			CreateRefreshToken(gomock.Any(), userId, gomock.Any(), gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		s := NewService(cfg, mockUserRepository)
+		ctx := context.WithValue(t.Context(), authentication.UserIDKey, userId)
+		emptyPassword := ""
+		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
+			Username:    &newUsername,
+			Email:       &newEmail,
+			Password:    oldPassword,
+			NewPassword: &emptyPassword,
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, tokens)
+		assert.NotEmpty(t, tokens.AccessToken)
+		assert.NotEmpty(t, tokens.RefreshToken)
+	})
 }
 
 func TestService_RenewTokens(t *testing.T) {
