@@ -1,11 +1,17 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { TransportProvider } from "@connectrpc/connect-query";
 import userEvent from "@testing-library/user-event";
 
 import { SshApiKeyPanel } from "./ssh-api-key-panel";
+
+// Type definitions for mock data
+type MockKey = {
+  id: string;
+  name: string;
+};
 
 const { toastSuccess, toastError } = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
@@ -21,13 +27,13 @@ vi.mock("sonner", () => ({
 
 // Mock the query hooks
 const mockSshKeys = vi.hoisted(() => ({
-  data: { keys: [], totalPage: 1 },
+  data: { keys: [] as MockKey[], totalPage: 1 },
   isLoading: false,
   refetch: vi.fn(),
 }));
 
 const mockApiKeys = vi.hoisted(() => ({
-  data: { keys: [], totalPage: 1 },
+  data: { keys: [] as MockKey[], totalPage: 1 },
   isLoading: false,
   refetch: vi.fn(),
 }));
@@ -38,10 +44,16 @@ vi.mock("@connectrpc/connect-query", async () => {
     ...actual,
     useQuery: vi.fn((queryFn) => {
       // Determine which query is being called based on the query function
-      if (queryFn.name === "getSshKeys" || queryFn.toString().includes("SshKey")) {
+      if (
+        queryFn.name === "getSshKeys" ||
+        queryFn.toString().includes("SshKey")
+      ) {
         return mockSshKeys;
       }
-      if (queryFn.name === "getApiKeys" || queryFn.toString().includes("ApiKey")) {
+      if (
+        queryFn.name === "getApiKeys" ||
+        queryFn.toString().includes("ApiKey")
+      ) {
         return mockApiKeys;
       }
       return mockSshKeys;
@@ -85,11 +97,11 @@ describe("SshApiKeyPanel", () => {
     });
 
     // Reset mock data
-    mockSshKeys.data = { keys: [], totalPage: 1 };
+    mockSshKeys.data = { keys: [] as MockKey[], totalPage: 1 };
     mockSshKeys.isLoading = false;
     mockSshKeys.refetch = vi.fn();
 
-    mockApiKeys.data = { keys: [], totalPage: 1 };
+    mockApiKeys.data = { keys: [] as MockKey[], totalPage: 1 };
     mockApiKeys.isLoading = false;
     mockApiKeys.refetch = vi.fn();
 
@@ -296,7 +308,9 @@ describe("SshApiKeyPanel", () => {
       await user.type(keyInput, "ssh-ed25519 AAAAC3 user@example.com");
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /add ssh key/i })).toBeEnabled();
+        expect(
+          screen.getByRole("button", { name: /add ssh key/i })
+        ).toBeEnabled();
       });
 
       await user.click(screen.getByRole("button", { name: /add ssh key/i }));
@@ -403,7 +417,48 @@ describe("SshApiKeyPanel", () => {
       });
     });
 
-    it("copies API key to clipboard", async () => {
+    it("shows full key for newly created API keys with copy button", async () => {
+      const user = userEvent.setup({ delay: null });
+
+      mockUserClient.createApiKey.mockResolvedValueOnce({
+        key: "full-api-key-token-123",
+      });
+
+      mockApiKeys.refetch.mockImplementationOnce(async () => {
+        mockApiKeys.data = {
+          keys: [{ id: "api-1", name: "Production API" }],
+          totalPage: 1,
+        };
+        return {
+          data: mockApiKeys.data,
+        };
+      });
+
+      render(<SshApiKeyPanel />, { wrapper });
+
+      const keyNameInput = screen.getByLabelText(/^key name$/i);
+      const generateButton = screen.getByRole("button", {
+        name: /generate key/i,
+      });
+
+      await user.type(keyNameInput, "Production API");
+      await user.click(generateButton);
+
+      // Wait for the newly created key to appear with the full key visible
+      await waitFor(() => {
+        expect(screen.getByText("Production API")).toBeInTheDocument();
+        expect(screen.getByText("full-api-key-token-123")).toBeInTheDocument();
+      });
+
+      const copyButton = await screen.findByRole("button", {
+        name: /copy api key/i,
+      });
+      expect(copyButton).toBeInTheDocument();
+
+      expect(screen.getByText("New")).toBeInTheDocument();
+    });
+
+    it("hides API key after it is no longer newly created", async () => {
       mockApiKeys.data = {
         keys: [{ id: "api-1", name: "Production API" }],
         totalPage: 1,
@@ -411,21 +466,18 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
-      // Verify the API key is displayed
+      // Verify the API key name is displayed
       expect(screen.getByText("Production API")).toBeInTheDocument();
 
-      const copyButton = screen.getByRole("button", { name: /copy api key/i });
+      // Verify the key is hidden with a security message
+      expect(
+        screen.getByText("Key is hidden for security")
+      ).toBeInTheDocument();
 
-      fireEvent.click(copyButton);
-
-      await waitFor(() => {
-        expect(clipboardWriteTextSpy).toHaveBeenCalledWith("api-1");
-      });
-
-      expect(toastSuccess).toHaveBeenCalledWith(
-        "Copied to clipboard",
-        expect.any(Object)
-      );
+      // Verify there is no copy button for existing keys
+      expect(
+        screen.queryByRole("button", { name: /copy api key/i })
+      ).not.toBeInTheDocument();
     });
   });
 

@@ -5,6 +5,7 @@ import { ConnectError, Code } from "@connectrpc/connect";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { z } from "zod/v4";
@@ -26,7 +27,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useClient } from "@/lib/use-client";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
 
 const schema = z
   .object({

@@ -226,20 +226,14 @@ export function SshApiKeyPanel() {
       navigator.clipboard.writeText(newlyCreatedKey.fullKey);
       setCopiedId(key.id);
       toast.success("Copied to clipboard", {
-        description: `${key.name} full key has been copied.`,
+        description: `${key.name} has been copied.`,
       });
       setNewlyCreatedKey(null);
-    } else {
-      navigator.clipboard.writeText(key.id);
-      setCopiedId(key.id);
-      toast.success("Copied to clipboard", {
-        description: `Key ID for ${key.name} has been copied.`,
-      });
-    }
 
-    setTimeout(() => {
-      setCopiedId(null);
-    }, 2000);
+      setTimeout(() => {
+        setCopiedId(null);
+      }, 2000);
+    }
   }
 
   async function handleDeleteApiKey(keyId: string) {
@@ -468,16 +462,13 @@ export function SshApiKeyPanel() {
             <div className="space-y-2">
               {apiKeys.map((key) => {
                 const isNewlyCreated = newlyCreatedKey?.id === key.id;
-                const displayKey = isNewlyCreated
-                  ? newlyCreatedKey.fullKey
-                  : key.id; // Show key ID for existing keys
 
                 return (
                   <div
                     key={key.id}
                     className="group flex items-center justify-between gap-4 rounded-lg border bg-card px-4 py-3 shadow-sm transition-all hover:shadow-md"
                   >
-                    <div className="min-w-0 flex-1 space-y-1">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{key.name}</p>
                         {isNewlyCreated && (
@@ -486,28 +477,33 @@ export function SshApiKeyPanel() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Key ID: {key.id}
-                      </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <code className="rounded-md bg-muted px-3 py-1.5 font-mono text-xs font-medium">
-                        {displayKey}
-                      </code>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => handleCopyApiKey(key)}
-                        className="opacity-0 transition-opacity group-hover:opacity-100"
-                      >
-                        {copiedId === key.id ? (
-                          <Check className="text-green-600" />
-                        ) : (
-                          <Copy />
-                        )}
-                        <span className="sr-only">Copy API key</span>
-                      </Button>
+                      {isNewlyCreated ? (
+                        <>
+                          <code className="rounded-md bg-muted px-3 py-1.5 font-mono text-xs font-medium">
+                            {newlyCreatedKey.fullKey}
+                          </code>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => handleCopyApiKey(key)}
+                            className="opacity-0 transition-opacity group-hover:opacity-100"
+                          >
+                            {copiedId === key.id ? (
+                              <Check className="text-green-600" />
+                            ) : (
+                              <Copy />
+                            )}
+                            <span className="sr-only">Copy API key</span>
+                          </Button>
+                        </>
+                      ) : (
+                        <p className="text-xs italic text-muted-foreground">
+                          Key is hidden for security
+                        </p>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"
