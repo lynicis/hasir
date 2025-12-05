@@ -7,6 +7,7 @@ import (
 	"time"
 
 	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
+	"connectrpc.com/connect"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -17,6 +18,8 @@ import (
 	"hasir-api/pkg/authentication"
 	"hasir-api/pkg/config"
 )
+
+var ErrNoRows = connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 
 func TestNewService(t *testing.T) {
 	s := NewService(nil, nil)

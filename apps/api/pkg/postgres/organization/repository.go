@@ -22,8 +22,13 @@ import (
 )
 
 var (
-	ErrFailedAcquireConnection = connect.NewError(connect.CodeInternal, errors.New("failed to acquire connection"))
-	ErrUniqueViolationCode     = "23505"
+	ErrOrganizationAlreadyExists = connect.NewError(connect.CodeAlreadyExists, errors.New("organization already exists"))
+	ErrInviteNotFound            = connect.NewError(connect.CodeNotFound, errors.New("invite not found"))
+	ErrOrganizationNotFound      = connect.NewError(connect.CodeNotFound, errors.New("organization not found"))
+	ErrMemberAlreadyExists       = connect.NewError(connect.CodeAlreadyExists, errors.New("member already exists"))
+	ErrMemberNotFound            = connect.NewError(connect.CodeNotFound, errors.New("member not found"))
+	ErrFailedAcquireConnection   = connect.NewError(connect.CodeInternal, errors.New("failed to acquire connection"))
+	ErrUniqueViolationCode       = "23505"
 )
 
 type OrganizationRepository struct {
@@ -143,7 +148,7 @@ func (r *OrganizationRepository) CreateOrganization(ctx context.Context, org *or
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == ErrUniqueViolationCode {
-				return organization.ErrOrganizationAlreadyExists
+				return ErrOrganizationAlreadyExists
 			}
 			return err
 		}
@@ -315,7 +320,7 @@ func (r *OrganizationRepository) GetOrganizationByName(ctx context.Context, name
 	defer connection.Release()
 
 	sql := "SELECT * FROM organizations WHERE name = $1 AND deleted_at IS NULL"
-	return querySingleRow[organization.OrganizationDTO](ctx, connection, span, sql, []any{name}, organization.ErrOrganizationNotFound)
+	return querySingleRow[organization.OrganizationDTO](ctx, connection, span, sql, []any{name}, ErrOrganizationNotFound)
 }
 
 func (r *OrganizationRepository) GetOrganizationById(ctx context.Context, id string) (*organization.OrganizationDTO, error) {
@@ -335,7 +340,7 @@ func (r *OrganizationRepository) GetOrganizationById(ctx context.Context, id str
 	defer connection.Release()
 
 	sql := "SELECT * FROM organizations WHERE id = $1 AND deleted_at IS NULL"
-	return querySingleRow[organization.OrganizationDTO](ctx, connection, span, sql, []any{id}, organization.ErrOrganizationNotFound)
+	return querySingleRow[organization.OrganizationDTO](ctx, connection, span, sql, []any{id}, ErrOrganizationNotFound)
 }
 
 func (r *OrganizationRepository) UpdateOrganization(ctx context.Context, org *organization.OrganizationDTO) error {
@@ -371,7 +376,7 @@ func (r *OrganizationRepository) UpdateOrganization(ctx context.Context, org *or
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == ErrUniqueViolationCode {
-				return organization.ErrOrganizationAlreadyExists
+				return ErrOrganizationAlreadyExists
 			}
 			return err
 		}
@@ -380,7 +385,7 @@ func (r *OrganizationRepository) UpdateOrganization(ctx context.Context, org *or
 	}
 
 	if result.RowsAffected() == 0 {
-		return organization.ErrOrganizationNotFound
+		return ErrOrganizationNotFound
 	}
 
 	return nil
@@ -416,7 +421,7 @@ func (r *OrganizationRepository) DeleteOrganization(ctx context.Context, id stri
 	}
 
 	if result.RowsAffected() == 0 {
-		return organization.ErrOrganizationNotFound
+		return ErrOrganizationNotFound
 	}
 
 	return nil
@@ -570,7 +575,7 @@ func (r *OrganizationRepository) GetInviteByToken(ctx context.Context, token str
 	defer connection.Release()
 
 	sql := "SELECT * FROM organization_invites WHERE token = $1"
-	return querySingleRow[organization.OrganizationInviteDTO](ctx, connection, span, sql, []any{token}, organization.ErrInviteNotFound)
+	return querySingleRow[organization.OrganizationInviteDTO](ctx, connection, span, sql, []any{token}, ErrInviteNotFound)
 }
 
 func (r *OrganizationRepository) UpdateInviteStatus(ctx context.Context, id string, status organization.InviteStatus, acceptedAt *time.Time) error {
@@ -607,7 +612,7 @@ func (r *OrganizationRepository) UpdateInviteStatus(ctx context.Context, id stri
 	}
 
 	if result.RowsAffected() == 0 {
-		return organization.ErrInviteNotFound
+		return ErrInviteNotFound
 	}
 
 	return nil
@@ -643,7 +648,7 @@ func (r *OrganizationRepository) AddMember(ctx context.Context, member *organiza
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == ErrUniqueViolationCode {
-				return organization.ErrMemberAlreadyExists
+				return ErrMemberAlreadyExists
 			}
 			return err
 		}
@@ -733,7 +738,7 @@ func (r *OrganizationRepository) GetMemberRole(ctx context.Context, organization
 	err = connection.QueryRow(ctx, sql, organizationId, userId).Scan(&role)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", organization.ErrMemberNotFound
+			return "", ErrMemberNotFound
 		}
 		span.RecordError(err)
 		return "", connect.NewError(connect.CodeInternal, errors.New("failed to query member role"))
@@ -785,7 +790,7 @@ func (r *OrganizationRepository) UpdateMemberRole(ctx context.Context, organizat
 	}
 
 	if result.RowsAffected() == 0 {
-		return organization.ErrMemberNotFound
+		return ErrMemberNotFound
 	}
 
 	return nil
@@ -824,7 +829,7 @@ func (r *OrganizationRepository) DeleteMember(ctx context.Context, organizationI
 	}
 
 	if result.RowsAffected() == 0 {
-		return organization.ErrMemberNotFound
+		return ErrMemberNotFound
 	}
 
 	return nil

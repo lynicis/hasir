@@ -217,7 +217,7 @@ func TestPgRepository_CreateOrganization(t *testing.T) {
 		require.NoError(t, err)
 
 		err = repo.CreateOrganization(t.Context(), testOrg2)
-		require.ErrorIs(t, err, organization.ErrOrganizationAlreadyExists)
+		require.ErrorIs(t, err, ErrOrganizationAlreadyExists)
 	})
 
 	t.Run("verify all fields are stored correctly", func(t *testing.T) {
@@ -306,7 +306,7 @@ func TestPgRepository_GetOrganizationByName(t *testing.T) {
 		defer pool.Close()
 
 		_, err = repo.GetOrganizationByName(t.Context(), "nonexistent-org-"+uuid.NewString())
-		require.ErrorIs(t, err, organization.ErrOrganizationNotFound)
+		require.ErrorIs(t, err, ErrOrganizationNotFound)
 	})
 
 	t.Run("deleted organization not found", func(t *testing.T) {
@@ -338,7 +338,7 @@ func TestPgRepository_GetOrganizationByName(t *testing.T) {
 		}()
 
 		_, err = repo.GetOrganizationByName(t.Context(), testOrg.Name)
-		require.ErrorIs(t, err, organization.ErrOrganizationNotFound)
+		require.ErrorIs(t, err, ErrOrganizationNotFound)
 	})
 
 	t.Run("verify all fields are retrieved correctly", func(t *testing.T) {
@@ -927,7 +927,7 @@ func TestPgRepository_DeleteOrganization(t *testing.T) {
 
 		_, err = repo.GetOrganizationById(t.Context(), org.Id)
 		require.Error(t, err)
-		require.Equal(t, organization.ErrOrganizationNotFound, err)
+		require.Equal(t, ErrOrganizationNotFound, err)
 	})
 
 	t.Run("organization not found", func(t *testing.T) {
@@ -948,7 +948,7 @@ func TestPgRepository_DeleteOrganization(t *testing.T) {
 		nonExistentID := uuid.NewString()
 		err = repo.DeleteOrganization(t.Context(), nonExistentID)
 		require.Error(t, err)
-		require.Equal(t, organization.ErrOrganizationNotFound, err)
+		require.Equal(t, ErrOrganizationNotFound, err)
 	})
 
 	t.Run("cannot delete already deleted organization", func(t *testing.T) {
@@ -975,7 +975,7 @@ func TestPgRepository_DeleteOrganization(t *testing.T) {
 
 		err = repo.DeleteOrganization(t.Context(), org.Id)
 		require.Error(t, err)
-		require.Equal(t, organization.ErrOrganizationNotFound, err)
+		require.Equal(t, ErrOrganizationNotFound, err)
 	})
 
 	t.Run("deleted organization excluded from GetOrganizations", func(t *testing.T) {
@@ -1817,7 +1817,7 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 
 		err = repo.UpdateMemberRole(t.Context(), org.Id, nonExistentUserId, organization.MemberRoleAuthor)
 		require.Error(t, err)
-		assert.Equal(t, organization.ErrMemberNotFound, err)
+		assert.Equal(t, ErrMemberNotFound, err)
 	})
 
 	t.Run("member not found - user not in organization", func(t *testing.T) {
@@ -1854,7 +1854,7 @@ func TestPgRepository_UpdateMemberRole(t *testing.T) {
 
 		err = repo.UpdateMemberRole(t.Context(), org2.Id, user.Id, organization.MemberRoleAuthor)
 		require.Error(t, err)
-		assert.Equal(t, organization.ErrMemberNotFound, err)
+		assert.Equal(t, ErrMemberNotFound, err)
 	})
 
 	t.Run("success - update to same role", func(t *testing.T) {
@@ -2138,7 +2138,7 @@ func TestPgRepository_DeleteMember(t *testing.T) {
 
 		err = repo.DeleteMember(t.Context(), org.Id, nonExistentUserId)
 		require.Error(t, err)
-		assert.Equal(t, organization.ErrMemberNotFound, err)
+		assert.Equal(t, ErrMemberNotFound, err)
 	})
 
 	t.Run("member not found - user not in organization", func(t *testing.T) {
@@ -2175,7 +2175,7 @@ func TestPgRepository_DeleteMember(t *testing.T) {
 
 		err = repo.DeleteMember(t.Context(), org2.Id, user.Id)
 		require.Error(t, err)
-		assert.Equal(t, organization.ErrMemberNotFound, err)
+		assert.Equal(t, ErrMemberNotFound, err)
 	})
 
 	t.Run("success - verify other members remain after deletion", func(t *testing.T) {

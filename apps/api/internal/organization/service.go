@@ -96,7 +96,8 @@ func NewService(repository Repository, queue Queue, registryService registry.Ser
 func (s *service) verifyOwnerRole(ctx context.Context, organizationId, userId, operation string) error {
 	role, err := s.repository.GetMemberRole(ctx, organizationId, userId)
 	if err != nil {
-		if errors.Is(err, ErrMemberNotFound) {
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeNotFound {
 			return connect.NewError(connect.CodePermissionDenied, errors.New(errNotMember))
 		}
 		return err
@@ -139,7 +140,8 @@ func (s *service) CreateOrganization(
 	createdBy string,
 ) error {
 	existingOrg, err := s.repository.GetOrganizationByName(ctx, req.GetName())
-	if err != nil && !errors.Is(err, ErrOrganizationNotFound) {
+	var connectErr *connect.Error
+	if err != nil && (errors.As(err, &connectErr) && connectErr.Code() != connect.CodeNotFound) {
 		return err
 	}
 
@@ -180,7 +182,7 @@ func (s *service) CreateOrganization(
 		}
 
 		if _, err := s.userRepository.GetUserByEmail(ctx, emailAddress); err != nil {
-			if errors.Is(err, user.ErrNoRows) {
+			if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeNotFound {
 				continue
 			}
 			return err
@@ -217,15 +219,17 @@ func (s *service) InviteUser(
 
 	u, err := s.userRepository.GetUserByEmail(ctx, emailAddress)
 	if err != nil {
-		if errors.Is(err, user.ErrNoRows) {
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeNotFound {
 			return connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 		}
 		return err
 	}
 
+	var connectErr *connect.Error
 	if _, err := s.repository.GetMemberRole(ctx, org.Id, u.Id); err == nil {
 		return connect.NewError(connect.CodeAlreadyExists, errors.New("user is already a member of this organization"))
-	} else if !errors.Is(err, ErrMemberNotFound) {
+	} else if !errors.As(err, &connectErr) || connectErr.Code() != connect.CodeNotFound {
 		return err
 	}
 
@@ -398,7 +402,8 @@ func (s *service) RespondToInvitation(
 	}
 
 	if err := s.repository.AddMember(ctx, member); err != nil {
-		if errors.Is(err, ErrMemberAlreadyExists) {
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeAlreadyExists {
 			zap.L().Warn("user is already a member", zap.String("userId", userId), zap.String("organizationId", invite.OrganizationId))
 			return nil
 		}
@@ -434,7 +439,8 @@ func (s *service) UpdateMemberRole(
 
 	currentMemberRole, err := s.repository.GetMemberRole(ctx, organizationId, memberUserId)
 	if err != nil {
-		if errors.Is(err, ErrMemberNotFound) {
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeNotFound {
 			return connect.NewError(connect.CodeNotFound, errors.New("member not found"))
 		}
 		return err
@@ -486,7 +492,8 @@ func (s *service) DeleteMember(
 
 	memberRole, err := s.repository.GetMemberRole(ctx, organizationId, memberUserId)
 	if err != nil {
-		if errors.Is(err, ErrMemberNotFound) {
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeNotFound {
 			return connect.NewError(connect.CodeNotFound, errors.New("member not found"))
 		}
 		return err

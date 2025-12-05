@@ -252,7 +252,7 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 		defer pool.Close()
 
 		_, err = repo.GetRepositoryByName(t.Context(), "nonexistent-repo-"+uuid.NewString())
-		require.ErrorIs(t, err, registry.ErrRepositoryNotFound)
+		require.ErrorIs(t, err, ErrRepositoryNotFound)
 	})
 
 	t.Run("deleted repository not found", func(t *testing.T) {
@@ -284,7 +284,7 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 		}()
 
 		_, err = repo.GetRepositoryByName(t.Context(), testRepo.Name)
-		require.ErrorIs(t, err, registry.ErrRepositoryNotFound)
+		require.ErrorIs(t, err, ErrRepositoryNotFound)
 	})
 
 	t.Run("verify all fields are retrieved correctly", func(t *testing.T) {

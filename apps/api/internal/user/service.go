@@ -15,6 +15,8 @@ import (
 	"hasir-api/pkg/config"
 )
 
+var ErrInternalServer = connect.NewError(connect.CodeInternal, errors.New("something went wrong"))
+
 type Service interface {
 	Register(ctx context.Context, req *userv1.RegisterRequest) error
 	Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.TokenEnvelope, error)
@@ -36,8 +38,11 @@ func NewService(config *config.Config, userRepository Repository) *service {
 
 func (s *service) Register(ctx context.Context, req *userv1.RegisterRequest) error {
 	isUserExists, err := s.userRepository.GetUserByEmail(ctx, req.Email)
-	if err != nil && !errors.Is(err, ErrNoRows) {
-		return err
+	if err != nil {
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) || connectErr.Code() != connect.CodeNotFound {
+			return err
+		}
 	}
 
 	if isUserExists != nil {
@@ -181,7 +186,8 @@ func (s *service) RenewTokens(ctx context.Context, req *userv1.RenewTokensReques
 
 	refreshTokenRecord, err := s.userRepository.GetRefreshTokenByTokenId(ctx, claims.ID)
 	if err != nil {
-		if errors.Is(err, ErrRefreshTokenNotFound) {
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeNotFound {
 			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token"))
 		}
 

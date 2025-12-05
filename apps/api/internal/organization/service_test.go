@@ -17,6 +17,14 @@ import (
 	"hasir-api/pkg/proto"
 )
 
+var (
+	ErrOrganizationAlreadyExists = connect.NewError(connect.CodeAlreadyExists, errors.New("organization already exists"))
+	ErrOrganizationNotFound      = connect.NewError(connect.CodeNotFound, errors.New("organization not found"))
+	ErrInviteNotFound            = connect.NewError(connect.CodeNotFound, errors.New("invite not found"))
+	ErrMemberAlreadyExists       = connect.NewError(connect.CodeAlreadyExists, errors.New("member already exists"))
+	ErrMemberNotFound            = connect.NewError(connect.CodeNotFound, errors.New("member not found"))
+)
+
 func newTestService(t *testing.T) (Service, *MockRepository, *MockQueue, *registry.MockService, *email.MockService, *user.MockRepository, context.Context) {
 	t.Helper()
 
@@ -479,7 +487,7 @@ func TestInviteUser(t *testing.T) {
 
 		mockUserRepo.EXPECT().
 			GetUserByEmail(ctx, "unknown@example.com").
-			Return(nil, user.ErrNoRows)
+			Return(nil, connect.NewError(connect.CodeNotFound, errors.New("user not found")))
 
 		err := svc.InviteUser(ctx, req, invitedBy)
 		if err == nil {

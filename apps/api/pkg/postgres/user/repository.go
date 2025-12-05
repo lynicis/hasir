@@ -548,8 +548,8 @@ func (r *PgRepository) RevokeApiKey(ctx context.Context, userId, keyId string) e
 	defer connection.Release()
 
 	sql := `
-		UPDATE api_keys 
-		SET deleted_at = $1 
+		UPDATE api_keys
+		SET deleted_at = $1
 		WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL
 	`
 
@@ -702,8 +702,8 @@ func (r *PgRepository) RevokeSshKey(ctx context.Context, userId, keyId string) e
 	defer connection.Release()
 
 	sql := `
-		UPDATE ssh_keys 
-		SET deleted_at = $1 
+		UPDATE ssh_keys
+		SET deleted_at = $1
 		WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL
 	`
 

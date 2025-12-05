@@ -22,6 +22,8 @@ import (
 )
 
 var (
+	ErrRepositoryAlreadyExists = connect.NewError(connect.CodeAlreadyExists, errors.New("repository already exists"))
+	ErrRepositoryNotFound      = connect.NewError(connect.CodeNotFound, errors.New("repository not found"))
 	ErrFailedAcquireConnection = connect.NewError(connect.CodeInternal, errors.New("failed to acquire connection"))
 	ErrUniqueViolationCode     = "23505"
 )
@@ -116,7 +118,7 @@ func (r *PgRepository) CreateRepository(ctx context.Context, repo *registry.Repo
 
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == ErrUniqueViolationCode {
-			return registry.ErrRepositoryAlreadyExists
+			return ErrRepositoryAlreadyExists
 		}
 
 		return connect.NewError(
@@ -158,7 +160,7 @@ func (r *PgRepository) GetRepositoryByName(ctx context.Context, name string) (*r
 	repo, err = pgx.CollectOneRow[registry.RepositoryDTO](rows, pgx.RowToStructByName)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, registry.ErrRepositoryNotFound
+			return nil, ErrRepositoryNotFound
 		}
 
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect row"))
@@ -375,7 +377,7 @@ func (r *PgRepository) GetRepositoryById(ctx context.Context, id string) (*regis
 	repo, err = pgx.CollectOneRow[registry.RepositoryDTO](rows, pgx.RowToStructByName)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, registry.ErrRepositoryNotFound
+			return nil, ErrRepositoryNotFound
 		}
 
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect row"))
@@ -410,7 +412,7 @@ func (r *PgRepository) UpdateRepository(ctx context.Context, repo *registry.Repo
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == ErrUniqueViolationCode {
-				return registry.ErrRepositoryAlreadyExists
+				return ErrRepositoryAlreadyExists
 			}
 			return connect.NewError(connect.CodeInternal, err)
 		}
@@ -419,7 +421,7 @@ func (r *PgRepository) UpdateRepository(ctx context.Context, repo *registry.Repo
 	}
 
 	if result.RowsAffected() == 0 {
-		return registry.ErrRepositoryNotFound
+		return ErrRepositoryNotFound
 	}
 
 	return nil
@@ -456,9 +458,8 @@ func (r *PgRepository) DeleteRepository(ctx context.Context, id string) error {
 	}
 
 	if result.RowsAffected() == 0 {
-		return registry.ErrRepositoryNotFound
+		return ErrRepositoryNotFound
 	}
 
 	return nil
 }
-

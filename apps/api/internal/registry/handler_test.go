@@ -15,6 +15,8 @@ import (
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 )
 
+var ErrRepositoryNotFound = connect.NewError(connect.CodeNotFound, errors.New("repository not found"))
+
 func TestNewHandler(t *testing.T) {
 	t.Run("creates handler with service and repository", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
