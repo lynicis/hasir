@@ -5,9 +5,12 @@ import { getSshKeys } from "@buf/hasir_hasir.connectrpc_query-es/user/v1/user-Us
 import { UserService } from "@buf/hasir_hasir.bufbuild_es/user/v1/user_pb";
 import { Check, Copy, Key, Plus, Trash2 } from "lucide-react";
 import { Code, ConnectError } from "@connectrpc/connect";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@connectrpc/connect-query";
-import { useState, type FormEvent } from "react";
+import { useForm } from "react-hook-form";
+import { useState } from "react";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import {
   Card,
@@ -36,12 +39,35 @@ type NewApiKey = {
   fullKey: string;
 };
 
+const sshKeyFormSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Key name is required")
+    .max(50, "Key name must be 50 characters or less"),
+  publicKey: z
+    .string()
+    .min(1, "Public key is required")
+    .refine(
+      (key) => key.startsWith("ssh-") || key.startsWith("ecdsa-"),
+      "Must be a valid SSH public key (should start with ssh- or ecdsa-)"
+    ),
+});
+
+const apiKeyFormSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Key name is required")
+    .max(50, "Key name must be 50 characters or less"),
+});
+
+type SshKeyFormData = z.infer<typeof sshKeyFormSchema>;
+type ApiKeyFormData = z.infer<typeof apiKeyFormSchema>;
+
 const PAGE_SIZE = 10;
 
 export function SshApiKeyPanel() {
   const userApiClient = useClient(UserService);
 
-  // Pagination state
   const [sshKeyPage, setSshKeyPage] = useState(1);
   const [apiKeyPage, setApiKeyPage] = useState(1);
 
@@ -65,10 +91,23 @@ export function SshApiKeyPanel() {
     { retry: customRetry }
   );
 
-  const [sshKeyInput, setSshKeyInput] = useState<string>("");
-  const [apiKeyName, setApiKeyName] = useState<string>("");
-  const [isSavingSsh, setIsSavingSsh] = useState(false);
-  const [isCreatingKey, setIsCreatingKey] = useState(false);
+  const sshKeyForm = useForm<SshKeyFormData>({
+    resolver: zodResolver(sshKeyFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      publicKey: "",
+    },
+  });
+
+  const apiKeyForm = useForm<ApiKeyFormData>({
+    resolver: zodResolver(apiKeyFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+    },
+  });
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<NewApiKey | null>(
     null
@@ -80,28 +119,22 @@ export function SshApiKeyPanel() {
   const totalSshPages = sshKeysData?.totalPage ?? 1;
   const totalApiPages = apiKeysData?.totalPage ?? 1;
 
-  async function handleAddSshKey(event: FormEvent) {
-    event.preventDefault();
-    setIsSavingSsh(true);
-
-    const trimmedKey = sshKeyInput.trim();
-
+  async function handleAddSshKey(data: SshKeyFormData) {
     try {
       await userApiClient.createSshKey({
-        publicKey: trimmedKey,
+        name: data.name,
+        publicKey: data.publicKey,
       });
 
       setSshKeyPage(1);
       await refetchSshKeys();
 
-      setSshKeyInput("");
-      setIsSavingSsh(false);
+      sshKeyForm.reset();
 
       toast.success("SSH key added successfully", {
         description: "Your SSH key has been saved.",
       });
     } catch (error) {
-      setIsSavingSsh(false);
       if (error instanceof ConnectError) {
         if (error.code === Code.Unauthenticated) {
           toast.error("You are not authenticated. Please log in again.");
@@ -125,15 +158,10 @@ export function SshApiKeyPanel() {
     }
   }
 
-  async function handleGenerateApiKey(event?: FormEvent) {
-    event?.preventDefault();
-    setIsCreatingKey(true);
-
-    const keyName = apiKeyName.trim() || `API Key ${apiKeys.length + 1}`;
-
+  async function handleGenerateApiKey(data: ApiKeyFormData) {
     try {
       const response = await userApiClient.createApiKey({
-        name: keyName,
+        name: data.name,
       });
 
       if (!response.key) {
@@ -143,7 +171,7 @@ export function SshApiKeyPanel() {
       setApiKeyPage(1);
       const updatedData = await refetchApiKeys();
 
-      const newKey = updatedData.data?.keys?.find((k) => k.name === keyName);
+      const newKey = updatedData.data?.keys?.find((k) => k.name === data.name);
       if (newKey) {
         setNewlyCreatedKey({
           id: newKey.id,
@@ -152,15 +180,13 @@ export function SshApiKeyPanel() {
         });
       }
 
-      setApiKeyName("");
-      setIsCreatingKey(false);
+      apiKeyForm.reset();
 
       toast.success("API key generated", {
         description: `Your new API key: ${response.key}. Copy it now - you won't be able to see it again!`,
         duration: 10000,
       });
     } catch (error) {
-      setIsCreatingKey(false);
       if (error instanceof ConnectError) {
         if (error.code === Code.Unauthenticated) {
           toast.error("You are not authenticated. Please log in again.");
@@ -304,19 +330,45 @@ export function SshApiKeyPanel() {
             </p>
           </div>
 
-          <form onSubmit={handleAddSshKey} className="space-y-4">
+          <form
+            onSubmit={sshKeyForm.handleSubmit(handleAddSshKey)}
+            className="space-y-4"
+          >
             <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="ssh-key-name">Key name</FieldLabel>
+                <Input
+                  id="ssh-key-name"
+                  placeholder="e.g., Work Laptop, Personal MacBook"
+                  maxLength={50}
+                  disabled={sshKeyForm.formState.isSubmitting}
+                  {...sshKeyForm.register("name")}
+                />
+                {sshKeyForm.formState.errors.name && (
+                  <p className="text-sm text-destructive">
+                    {sshKeyForm.formState.errors.name.message}
+                  </p>
+                )}
+                <FieldDescription>
+                  A friendly name to identify this SSH key.
+                </FieldDescription>
+              </Field>
               <Field>
                 <FieldLabel htmlFor="ssh-public-key">Public key</FieldLabel>
                 <Textarea
                   id="ssh-public-key"
-                  value={sshKeyInput}
-                  onChange={(event) => setSshKeyInput(event.target.value)}
                   placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user@example.com"
                   rows={4}
                   spellCheck={false}
                   className="font-mono text-xs"
+                  disabled={sshKeyForm.formState.isSubmitting}
+                  {...sshKeyForm.register("publicKey")}
                 />
+                {sshKeyForm.formState.errors.publicKey && (
+                  <p className="text-sm text-destructive">
+                    {sshKeyForm.formState.errors.publicKey.message}
+                  </p>
+                )}
                 <FieldDescription>
                   Paste your SSH <strong>public</strong> key (never your private
                   key).
@@ -325,8 +377,11 @@ export function SshApiKeyPanel() {
               <Field>
                 <Button
                   type="submit"
-                  isLoading={isSavingSsh}
-                  disabled={!sshKeyInput.trim()}
+                  disabled={
+                    !sshKeyForm.formState.isValid ||
+                    sshKeyForm.formState.isSubmitting
+                  }
+                  isLoading={sshKeyForm.formState.isSubmitting}
                 >
                   <Plus />
                   Add SSH key
@@ -410,18 +465,25 @@ export function SshApiKeyPanel() {
             </p>
           </div>
 
-          <form onSubmit={handleGenerateApiKey} className="space-y-4">
+          <form
+            onSubmit={apiKeyForm.handleSubmit(handleGenerateApiKey)}
+            className="space-y-4"
+          >
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="api-key-name">Key name</FieldLabel>
                 <Input
                   id="api-key-name"
-                  value={apiKeyName}
-                  onChange={(event) => setApiKeyName(event.target.value)}
                   placeholder="e.g., Production API, Development Key"
                   maxLength={50}
-                  disabled={isCreatingKey}
+                  disabled={apiKeyForm.formState.isSubmitting}
+                  {...apiKeyForm.register("name")}
                 />
+                {apiKeyForm.formState.errors.name && (
+                  <p className="text-sm text-destructive">
+                    {apiKeyForm.formState.errors.name.message}
+                  </p>
+                )}
                 <FieldDescription>
                   A friendly name to identify this API key.
                 </FieldDescription>
@@ -431,7 +493,11 @@ export function SshApiKeyPanel() {
                   type="submit"
                   variant="outline"
                   size="sm"
-                  isLoading={isCreatingKey}
+                  disabled={
+                    !apiKeyForm.formState.isValid ||
+                    apiKeyForm.formState.isSubmitting
+                  }
+                  isLoading={apiKeyForm.formState.isSubmitting}
                 >
                   <Plus />
                   Generate key

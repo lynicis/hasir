@@ -29,6 +29,7 @@ export default function ProfilePage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<ProfileFormData | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [resetTrigger, setResetTrigger] = useState(0);
 
   async function handleProfileSubmit(data: ProfileFormData) {
     setFormData(data);
@@ -85,6 +86,7 @@ export default function ProfilePage() {
       setIsDialogOpen(false);
       toast.success("Profile updated successfully!");
       setFormData(null);
+      setResetTrigger((prev) => prev + 1);
     } catch (error) {
       if (error instanceof ConnectError) {
         if (error.code === Code.Unauthenticated) {
@@ -174,7 +176,10 @@ export default function ProfilePage() {
         </div>
 
         {activeTab === "profile" ? (
-          <ProfileForm onSubmit={handleProfileSubmit} />
+          <ProfileForm
+            onSubmit={handleProfileSubmit}
+            resetTrigger={resetTrigger}
+          />
         ) : (
           <SshApiKeyPanel />
         )}

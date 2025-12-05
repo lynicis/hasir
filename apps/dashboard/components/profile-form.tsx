@@ -68,9 +68,10 @@ type ISchema = z.infer<typeof schema>;
 
 interface ProfileFormProps {
   onSubmit: (data: ISchema) => void;
+  resetTrigger?: number;
 }
 
-export function ProfileForm({ onSubmit }: ProfileFormProps) {
+export function ProfileForm({ onSubmit, resetTrigger }: ProfileFormProps) {
   const { session } = useSession();
   const {
     control,
@@ -92,7 +93,7 @@ export function ProfileForm({ onSubmit }: ProfileFormProps) {
       password: "",
       confirmPassword: "",
     });
-  }, [session?.user?.email, reset]);
+  }, [session?.user?.email, reset, resetTrigger]);
 
   return (
     <Card>

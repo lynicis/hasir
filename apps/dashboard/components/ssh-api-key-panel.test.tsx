@@ -7,7 +7,6 @@ import userEvent from "@testing-library/user-event";
 
 import { SshApiKeyPanel } from "./ssh-api-key-panel";
 
-// Type definitions for mock data
 type MockKey = {
   id: string;
   name: string;
@@ -205,9 +204,13 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
+      const nameInput = screen.getByLabelText(/^key name$/i, {
+        selector: "#ssh-key-name",
+      });
       const keyInput = screen.getByLabelText(/^public key$/i);
       const addButton = screen.getByRole("button", { name: /add ssh key/i });
 
+      await user.type(nameInput, "SSH Key 1");
       await user.type(
         keyInput,
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGq user@example.com"
@@ -221,6 +224,7 @@ describe("SshApiKeyPanel", () => {
 
       await waitFor(() => {
         expect(mockUserClient.createSshKey).toHaveBeenCalledWith({
+          name: "SSH Key 1",
           publicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGq user@example.com",
         });
       });
@@ -303,8 +307,12 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
+      const nameInput = screen.getByLabelText(/^key name$/i, {
+        selector: "#ssh-key-name",
+      });
       const keyInput = screen.getByLabelText(/^public key$/i);
 
+      await user.type(nameInput, "Test Key");
       await user.type(keyInput, "ssh-ed25519 AAAAC3 user@example.com");
 
       await waitFor(() => {
@@ -316,6 +324,7 @@ describe("SshApiKeyPanel", () => {
       await user.click(screen.getByRole("button", { name: /add ssh key/i }));
 
       await waitFor(() => {
+        expect(nameInput).toHaveValue("");
         expect(keyInput).toHaveValue("");
       });
     });
@@ -337,7 +346,9 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
-      const nameInput = screen.getByLabelText(/key name/i);
+      const nameInput = screen.getByLabelText(/key name/i, {
+        selector: "#api-key-name",
+      });
       const generateButton = screen.getByRole("button", {
         name: /generate key/i,
       });
@@ -436,7 +447,9 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
-      const keyNameInput = screen.getByLabelText(/^key name$/i);
+      const keyNameInput = screen.getByLabelText(/^key name$/i, {
+        selector: "#api-key-name",
+      });
       const generateButton = screen.getByRole("button", {
         name: /generate key/i,
       });
@@ -487,11 +500,15 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
+      const nameInput = screen.getByLabelText(/^key name$/i, {
+        selector: "#ssh-key-name",
+      });
       const keyInput = screen.getByLabelText(/^public key$/i);
       const addButton = screen.getByRole("button", { name: /add ssh key/i });
 
       expect(addButton).toBeDisabled();
 
+      await user.type(nameInput, "Test Key");
       await user.type(keyInput, "ssh-ed25519 AAAAC3");
 
       await waitFor(() => {
@@ -574,7 +591,6 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
-      // Pagination should not be visible when loading
       const paginationButtons = screen.queryAllByRole("button", {
         name: /^[0-9]+$/,
       });
@@ -621,7 +637,6 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
-      // Pagination should not be visible when there are no items
       expect(screen.getByText(/no api keys yet/i)).toBeInTheDocument();
       const paginationButtons = screen.queryAllByRole("button", {
         name: /^[0-9]+$/,
