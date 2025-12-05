@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useClient } from "@/lib/use-client";
 import { cn } from "@/lib/utils";
+import { useEffect } from "react";
 
 const schema = z
   .object({
@@ -93,9 +94,11 @@ export function RegisterForm({
     }
   }
 
-  if (errors.root) {
-    toast.error(errors.root.message);
-  }
+  useEffect(() => {
+    if (errors.root) {
+      toast.error(errors.root.message);
+    }
+  }, [errors.root]);
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>

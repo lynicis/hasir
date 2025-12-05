@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { z } from "zod/v4";
@@ -37,7 +38,7 @@ export function LoginForm({
   const {
     control,
     handleSubmit,
-    formState: { isLoading },
+    formState: { isLoading, errors },
     setError,
   } = useForm<ISchema>({
     resolver: zodResolver(schema),
@@ -94,6 +95,12 @@ export function LoginForm({
       }
     }
   }
+
+  useEffect(() => {
+    if (errors.root) {
+      toast.error(errors.root.message);
+    }
+  }, [errors.root]);
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
