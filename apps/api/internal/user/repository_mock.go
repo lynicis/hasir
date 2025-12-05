@@ -42,17 +42,17 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 }
 
 // CreateApiKey mocks base method.
-func (m *MockRepository) CreateApiKey(ctx context.Context, userId, apiKey string) error {
+func (m *MockRepository) CreateApiKey(ctx context.Context, userId, name, apiKey string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateApiKey", ctx, userId, apiKey)
+	ret := m.ctrl.Call(m, "CreateApiKey", ctx, userId, name, apiKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateApiKey indicates an expected call of CreateApiKey.
-func (mr *MockRepositoryMockRecorder) CreateApiKey(ctx, userId, apiKey any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) CreateApiKey(ctx, userId, name, apiKey any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateApiKey", reflect.TypeOf((*MockRepository)(nil).CreateApiKey), ctx, userId, apiKey)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateApiKey", reflect.TypeOf((*MockRepository)(nil).CreateApiKey), ctx, userId, name, apiKey)
 }
 
 // CreateRefreshToken mocks base method.
@@ -70,17 +70,17 @@ func (mr *MockRepositoryMockRecorder) CreateRefreshToken(ctx, id, token, expires
 }
 
 // CreateSshKey mocks base method.
-func (m *MockRepository) CreateSshKey(ctx context.Context, userId, publicKey string) error {
+func (m *MockRepository) CreateSshKey(ctx context.Context, userId, name, publicKey string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateSshKey", ctx, userId, publicKey)
+	ret := m.ctrl.Call(m, "CreateSshKey", ctx, userId, name, publicKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateSshKey indicates an expected call of CreateSshKey.
-func (mr *MockRepositoryMockRecorder) CreateSshKey(ctx, userId, publicKey any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) CreateSshKey(ctx, userId, name, publicKey any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSshKey", reflect.TypeOf((*MockRepository)(nil).CreateSshKey), ctx, userId, publicKey)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSshKey", reflect.TypeOf((*MockRepository)(nil).CreateSshKey), ctx, userId, name, publicKey)
 }
 
 // CreateUser mocks base method.

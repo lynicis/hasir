@@ -572,7 +572,7 @@ func TestHandler_CreateApiKey(t *testing.T) {
 
 		mockUserRepository.
 			EXPECT().
-			CreateApiKey(gomock.Any(), testUserID, gomock.Any()).
+			CreateApiKey(gomock.Any(), testUserID, gomock.Any(), gomock.Any()).
 			Return(nil).
 			Times(1)
 
@@ -619,7 +619,7 @@ func TestHandler_CreateApiKey(t *testing.T) {
 
 		mockUserRepository.
 			EXPECT().
-			CreateApiKey(gomock.Any(), testUserID, gomock.Any()).
+			CreateApiKey(gomock.Any(), testUserID, gomock.Any(), gomock.Any()).
 			Return(errors.New("something went wrong")).
 			Times(1)
 
@@ -792,7 +792,7 @@ func TestHandler_CreateSshKey(t *testing.T) {
 
 		mockUserRepository.
 			EXPECT().
-			CreateSshKey(gomock.Any(), testUserID, publicKey).
+			CreateSshKey(gomock.Any(), testUserID, gomock.Any(), publicKey).
 			Return(nil).
 			Times(1)
 
@@ -803,6 +803,7 @@ func TestHandler_CreateSshKey(t *testing.T) {
 
 		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
 		resp, err := client.CreateSshKey(context.Background(), connect.NewRequest(&userv1.CreateSshKeyRequest{
+			Name:      "test-ssh-key",
 			PublicKey: publicKey,
 		}))
 
@@ -824,6 +825,7 @@ func TestHandler_CreateSshKey(t *testing.T) {
 
 		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
 		resp, err := client.CreateSshKey(context.Background(), connect.NewRequest(&userv1.CreateSshKeyRequest{
+			Name:      "test-ssh-key",
 			PublicKey: publicKey,
 		}))
 
@@ -842,7 +844,7 @@ func TestHandler_CreateSshKey(t *testing.T) {
 
 		mockUserRepository.
 			EXPECT().
-			CreateSshKey(gomock.Any(), testUserID, publicKey).
+			CreateSshKey(gomock.Any(), testUserID, gomock.Any(), publicKey).
 			Return(errors.New("something went wrong")).
 			Times(1)
 
@@ -853,6 +855,7 @@ func TestHandler_CreateSshKey(t *testing.T) {
 
 		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
 		resp, err := client.CreateSshKey(context.Background(), connect.NewRequest(&userv1.CreateSshKeyRequest{
+			Name:      "test-ssh-key",
 			PublicKey: publicKey,
 		}))
 

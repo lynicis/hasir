@@ -1155,7 +1155,7 @@ func TestPgRepository_CreateApiKey(t *testing.T) {
 		}, traceProvider)
 
 		apiKey := "test-api-key-123"
-		err = pgRepository.CreateApiKey(t.Context(), fakeId, apiKey)
+		err = pgRepository.CreateApiKey(t.Context(), fakeId, "test-api-key", apiKey)
 
 		assert.NoError(t, err)
 		conn, err := pgx.Connect(t.Context(), connString)
@@ -1195,7 +1195,7 @@ func TestPgRepository_CreateApiKey(t *testing.T) {
 				ConnectionString: connString,
 			},
 		}, traceProvider)
-		err = pgRepository.CreateApiKey(t.Context(), fakeId, apiKey)
+		err = pgRepository.CreateApiKey(t.Context(), fakeId, "duplicate-api-key-name", apiKey)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "already exists")
@@ -1364,7 +1364,7 @@ func TestPgRepository_CreateSshKey(t *testing.T) {
 		}, traceProvider)
 
 		publicKey := "ssh-rsa AAAAB3NzaC1yc2E..."
-		err = pgRepository.CreateSshKey(t.Context(), fakeId, publicKey)
+		err = pgRepository.CreateSshKey(t.Context(), fakeId, "test-ssh-key", publicKey)
 
 		assert.NoError(t, err)
 		conn, err := pgx.Connect(t.Context(), connString)

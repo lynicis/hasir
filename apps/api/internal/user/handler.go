@@ -112,7 +112,7 @@ func (h *handler) CreateApiKey(
 	}
 
 	apiKey := uuid.NewString()
-	if err = h.userRepository.CreateApiKey(ctx, userId, apiKey); err != nil {
+	if err = h.userRepository.CreateApiKey(ctx, userId, req.Msg.GetName(), apiKey); err != nil {
 		return nil, err
 	}
 
@@ -193,7 +193,7 @@ func (h *handler) CreateSshKey(
 		return nil, err
 	}
 
-	if err = h.userRepository.CreateSshKey(ctx, userId, req.Msg.PublicKey); err != nil {
+	if err = h.userRepository.CreateSshKey(ctx, userId, req.Msg.GetName(), req.Msg.GetPublicKey()); err != nil {
 		return nil, err
 	}
 

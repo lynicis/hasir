@@ -14,11 +14,11 @@ type Repository interface {
 	DeleteRefreshToken(ctx context.Context, userId, token string) error
 	UpdateUserById(ctx context.Context, id string, user *UserDTO) error
 	DeleteUser(ctx context.Context, userId string) error
-	CreateApiKey(ctx context.Context, userId, apiKey string) error
+	CreateApiKey(ctx context.Context, userId, name, apiKey string) error
 	GetApiKeys(ctx context.Context, userId string, page, pageSize int) (*[]ApiKeyDTO, error)
 	GetApiKeysCount(ctx context.Context, userId string) (int, error)
 	RevokeApiKey(ctx context.Context, userId, keyId string) error
-	CreateSshKey(ctx context.Context, userId, publicKey string) error
+	CreateSshKey(ctx context.Context, userId, name, publicKey string) error
 	GetSshKeys(ctx context.Context, userId string, page, pageSize int) (*[]SshKeyDTO, error)
 	GetSshKeysCount(ctx context.Context, userId string) (int, error)
 	RevokeSshKey(ctx context.Context, userId, keyId string) error

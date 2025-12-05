@@ -419,7 +419,7 @@ func (r *PgRepository) DeleteUser(ctx context.Context, userId string) error {
 	return nil
 }
 
-func (r *PgRepository) CreateApiKey(ctx context.Context, userId, apiKey string) error {
+func (r *PgRepository) CreateApiKey(ctx context.Context, userId, name, apiKey string) error {
 	var span trace.Span
 	ctx, span = r.tracer.Start(ctx, "CreateApiKey")
 	defer span.End()
@@ -439,11 +439,10 @@ func (r *PgRepository) CreateApiKey(ctx context.Context, userId, apiKey string) 
 		ctx,
 		sql,
 		userId,
-		"default", // Default name for the API key
+		name,
 		apiKey,
 		time.Now().UTC(),
 	)
-
 	if err != nil {
 		span.RecordError(err)
 		var pgErr *pgconn.PgError
@@ -573,7 +572,7 @@ func (r *PgRepository) RevokeApiKey(ctx context.Context, userId, keyId string) e
 	return nil
 }
 
-func (r *PgRepository) CreateSshKey(ctx context.Context, userId, publicKey string) error {
+func (r *PgRepository) CreateSshKey(ctx context.Context, userId, name, publicKey string) error {
 	var span trace.Span
 	ctx, span = r.tracer.Start(ctx, "CreateSshKey")
 	defer span.End()
@@ -593,7 +592,7 @@ func (r *PgRepository) CreateSshKey(ctx context.Context, userId, publicKey strin
 		ctx,
 		sql,
 		userId,
-		"default", // Default name for the SSH key
+		name,
 		publicKey,
 		time.Now().UTC(),
 	)
