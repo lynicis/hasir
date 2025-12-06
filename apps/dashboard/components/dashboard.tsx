@@ -79,11 +79,8 @@ export function Dashboard() {
 
   const organizationsList = organizations?.organizations ?? [];
   const repositoriesList = repositoriesData?.repositories ?? [];
-
-  const orgTotalPages =
-    (organizations as { totalPage?: number })?.totalPage ?? 1;
-  const repoTotalPages =
-    (repositoriesData as { totalPage?: number })?.totalPage ?? 1;
+  const orgTotalPages = organizations?.totalPage ?? 1;
+  const repoTotalPages = repositoriesData?.totalPage ?? 1;
 
   const handleOrgChange = (orgId: string | "all") => {
     setActiveOrgId(orgId);
@@ -238,14 +235,15 @@ export function Dashboard() {
                   </div>
                 ) : (
                   repositoriesList.map((repo) => (
-                    <div
+                    <Link
+                      href={`/repository/${repo.id}`}
                       key={repo.id}
                       className="hover:bg-accent/60 flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 text-sm transition-colors"
                     >
                       <div className="flex flex-col">
                         <span className="font-medium">{repo.name}</span>
                       </div>
-                    </div>
+                    </Link>
                   ))
                 )}
               </div>

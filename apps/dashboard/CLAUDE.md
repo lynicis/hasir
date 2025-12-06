@@ -74,6 +74,9 @@ The application uses Connect-RPC (gRPC-web) to communicate with backend services
 - Test setup in `vitest.setup.ts`
 - Coverage reports with @vitest/coverage-v8
 
+### Time/Date Handling
+- **Use Luxon** for all time and date manipulations
+
 ### Environment Variables
 - `NEXT_PUBLIC_API_URL` - Backend API base URL
 - `NEXT_PUBLIC_BASE_URL` - Frontend base URL (used in useClient hook)

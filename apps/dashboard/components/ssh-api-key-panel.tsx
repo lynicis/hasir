@@ -10,7 +10,7 @@ import { useQuery } from "@connectrpc/connect-query";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
 import { toast } from "sonner";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 import {
   Card,

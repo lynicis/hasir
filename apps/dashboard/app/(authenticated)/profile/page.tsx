@@ -1,17 +1,22 @@
 "use client";
 
 import { UserService } from "@buf/hasir_hasir.bufbuild_es/user/v1/user_pb";
-import { ConnectError, Code } from "@connectrpc/connect";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { PasswordConfirmationDialog } from "@/components/password-confirmation-dialog";
 import { SshApiKeyPanel } from "@/components/ssh-api-key-panel";
 import { ProfileForm } from "@/components/profile-form";
 import { DangerZone } from "@/components/danger-zone";
 import { useSession } from "@/lib/session-provider";
-import { Button } from "@/components/ui/button";
 import { useClient } from "@/lib/use-client";
 
 type ProfileFormData = {
@@ -25,7 +30,6 @@ export default function ProfilePage() {
   const userApiClient = useClient(UserService);
   const { session, refreshSession } = useSession();
   const userId = session?.user?.id;
-  const [activeTab, setActiveTab] = useState<"profile" | "access">("profile");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<ProfileFormData | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -62,25 +66,29 @@ export default function ProfilePage() {
     }
 
     try {
-      const updatePayload: {
-        password: string;
-        userId: string;
-        email?: string;
-        newPassword?: string;
-      } = {
+      const tokenResponse = await userApiClient.updateUser({
         password: data.currentPassword,
-        userId,
-      };
+        email: hasEmailUpdate ? formData.email : undefined,
+        newPassword: hasPasswordUpdate ? formData.password : undefined,
+      });
 
-      if (hasEmailUpdate) {
-        updatePayload.email = formData.email;
+      const sessionUpdateResponse = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accessToken: session?.accessToken,
+          newTokens: {
+            accessToken: tokenResponse.accessToken,
+            refreshToken: tokenResponse.refreshToken,
+          },
+        }),
+      });
+
+      if (!sessionUpdateResponse.ok) {
+        const errorData = await sessionUpdateResponse.json();
+        toast.error(errorData.error || "Failed to update session");
+        return;
       }
-
-      if (hasPasswordUpdate) {
-        updatePayload.newPassword = formData.password;
-      }
-
-      await userApiClient.updateUser(updatePayload);
 
       await refreshSession();
       setIsDialogOpen(false);
@@ -147,43 +155,23 @@ export default function ProfilePage() {
 
   return (
     <div className="container mx-auto max-w-2xl min-h-screen flex flex-col justify-center gap-6 py-8 px-4">
-      <div>
-        <div className="flex items-center gap-2 border-b border-border pb-2 mb-4">
-          <Button
-            type="button"
-            onClick={() => setActiveTab("profile")}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              activeTab === "profile"
-                ? "bg-background text-foreground border border-border border-b-transparent -mb-px"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            aria-selected={activeTab === "profile"}
-          >
-            Profile
-          </Button>
-          <Button
-            type="button"
-            onClick={() => setActiveTab("access")}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              activeTab === "access"
-                ? "bg-background text-foreground border border-border border-b-transparent -mb-px"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            aria-selected={activeTab === "access"}
-          >
-            SSH / API key
-          </Button>
-        </div>
+      <Tabs defaultValue="profile">
+        <TabsList>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="access">SSH / API key</TabsTrigger>
+        </TabsList>
 
-        {activeTab === "profile" ? (
+        <TabsContent value="profile">
           <ProfileForm
             onSubmit={handleProfileSubmit}
             resetTrigger={resetTrigger}
           />
-        ) : (
+        </TabsContent>
+
+        <TabsContent value="access">
           <SshApiKeyPanel />
-        )}
-      </div>
+        </TabsContent>
+      </Tabs>
 
       <PasswordConfirmationDialog
         open={isDialogOpen}
@@ -191,6 +179,7 @@ export default function ProfilePage() {
         onConfirm={handlePasswordConfirm}
         onCancel={handleDialogCancel}
       />
+
       <DangerZone onDelete={handleDeleteAccount} isDeleting={isDeleting} />
     </div>
   );

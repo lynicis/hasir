@@ -30,15 +30,12 @@ export async function POST(request: NextRequest) {
 
     const refreshTokenPayload = decodeJwt(response.refreshToken) as JWTPayload;
 
-    const accessTokenExpiryMs = (accessTokenPayload.exp ?? 0) * 1000;
-    const refreshTokenExpiryMs = (refreshTokenPayload.exp ?? 0) * 1000;
-
     await saveSession({
       user: userInfo,
       accessToken: response.accessToken,
       refreshToken: response.refreshToken,
-      expiresAt: refreshTokenExpiryMs,
-      refreshAt: accessTokenExpiryMs,
+      expiresAt: (refreshTokenPayload.exp ?? 0) * 1000,
+      refreshAt: (accessTokenPayload.exp ?? 0) * 1000,
     });
 
     return NextResponse.json({
