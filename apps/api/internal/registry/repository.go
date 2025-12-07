@@ -13,4 +13,6 @@ type Repository interface {
 	GetRepositoriesByUserCount(ctx context.Context, userId string) (int, error)
 	UpdateRepository(ctx context.Context, repo *RepositoryDTO) error
 	DeleteRepository(ctx context.Context, id string) error
+	UpdateSdkPreferences(ctx context.Context, repositoryId string, preferences []SdkPreferencesDTO) error
+	GetSdkPreferences(ctx context.Context, repositoryId string) ([]SdkPreferencesDTO, error)
 }

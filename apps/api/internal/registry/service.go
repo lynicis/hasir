@@ -22,9 +22,11 @@ const defaultReposPath = "./repos"
 
 type Service interface {
 	CreateRepository(ctx context.Context, req *registryv1.CreateRepositoryRequest) error
+	GetRepository(ctx context.Context, req *registryv1.GetRepositoryRequest) (*registryv1.Repository, error)
 	GetRepositories(ctx context.Context, page, pageSize int) (*registryv1.GetRepositoriesResponse, error)
 	DeleteRepository(ctx context.Context, req *registryv1.DeleteRepositoryRequest) error
 	DeleteRepositoriesByOrganization(ctx context.Context, organizationId string) error
+	UpdateSdkPreferences(ctx context.Context, req *registryv1.UpdateSdkPreferencesRequest) error
 }
 
 type service struct {
@@ -110,6 +112,47 @@ func (s *service) CreateRepository(
 	)
 
 	return nil
+}
+
+func (s *service) GetRepository(
+	ctx context.Context,
+	req *registryv1.GetRepositoryRequest,
+) (*registryv1.Repository, error) {
+	repoId := req.GetId()
+
+	repo, err := s.repository.GetRepositoryById(ctx, repoId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repository: %w", err)
+	}
+
+	userId, err := authentication.MustGetUserID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user from context: %w", err)
+	}
+
+	if err := authorization.IsUserMember(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
+		return nil, err
+	}
+
+	sdkPreferences, err := s.repository.GetSdkPreferences(ctx, repoId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sdk preferences: %w", err)
+	}
+
+	var protoSdkPreferences []*registryv1.SdkPreference
+	for _, pref := range sdkPreferences {
+		protoSdkPreferences = append(protoSdkPreferences, &registryv1.SdkPreference{
+			Sdk:    SdkDbToProtoEnum[pref.Sdk],
+			Status: pref.Status,
+		})
+	}
+
+	return &registryv1.Repository{
+		Id:             repo.Id,
+		Name:           repo.Name,
+		Visibility:     proto.ReverseVisibilityMap[repo.Visibility],
+		SdkPreferences: protoSdkPreferences,
+	}, nil
 }
 
 func (s *service) GetRepositories(
@@ -230,6 +273,48 @@ func (s *service) DeleteRepositoriesByOrganization(
 			zap.String("organizationId", organizationId),
 		)
 	}
+
+	return nil
+}
+
+func (s *service) UpdateSdkPreferences(
+	ctx context.Context,
+	req *registryv1.UpdateSdkPreferencesRequest,
+) error {
+	repositoryId := req.GetId()
+
+	repo, err := s.repository.GetRepositoryById(ctx, repositoryId)
+	if err != nil {
+		return fmt.Errorf("failed to get repository: %w", err)
+	}
+
+	userId, err := authentication.MustGetUserID(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get user from context: %w", err)
+	}
+
+	if err := authorization.IsUserOwner(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
+		return err
+	}
+
+	preferences := make([]SdkPreferencesDTO, 0, len(req.GetSdkPreferences()))
+	for _, pref := range req.GetSdkPreferences() {
+		preferences = append(preferences, SdkPreferencesDTO{
+			Id:           uuid.NewString(),
+			RepositoryId: repositoryId,
+			Sdk:          SdkProtoToDbEnum[pref.GetSdk()],
+			Status:       pref.GetStatus(),
+		})
+	}
+
+	if err := s.repository.UpdateSdkPreferences(ctx, repositoryId, preferences); err != nil {
+		return fmt.Errorf("failed to update sdk preferences: %w", err)
+	}
+
+	zap.L().Info("sdk preferences updated",
+		zap.String("repositoryId", repositoryId),
+		zap.Int("count", len(preferences)),
+	)
 
 	return nil
 }

@@ -173,6 +173,21 @@ func (mr *MockRepositoryMockRecorder) GetRepositoryByName(ctx, name any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositoryByName", reflect.TypeOf((*MockRepository)(nil).GetRepositoryByName), ctx, name)
 }
 
+// GetSdkPreferences mocks base method.
+func (m *MockRepository) GetSdkPreferences(ctx context.Context, repositoryId string) ([]SdkPreferencesDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSdkPreferences", ctx, repositoryId)
+	ret0, _ := ret[0].([]SdkPreferencesDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSdkPreferences indicates an expected call of GetSdkPreferences.
+func (mr *MockRepositoryMockRecorder) GetSdkPreferences(ctx, repositoryId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSdkPreferences", reflect.TypeOf((*MockRepository)(nil).GetSdkPreferences), ctx, repositoryId)
+}
+
 // UpdateRepository mocks base method.
 func (m *MockRepository) UpdateRepository(ctx context.Context, repo *RepositoryDTO) error {
 	m.ctrl.T.Helper()
@@ -185,4 +200,18 @@ func (m *MockRepository) UpdateRepository(ctx context.Context, repo *RepositoryD
 func (mr *MockRepositoryMockRecorder) UpdateRepository(ctx, repo any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRepository", reflect.TypeOf((*MockRepository)(nil).UpdateRepository), ctx, repo)
+}
+
+// UpdateSdkPreferences mocks base method.
+func (m *MockRepository) UpdateSdkPreferences(ctx context.Context, repositoryId string, preferences []SdkPreferencesDTO) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSdkPreferences", ctx, repositoryId, preferences)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSdkPreferences indicates an expected call of UpdateSdkPreferences.
+func (mr *MockRepositoryMockRecorder) UpdateSdkPreferences(ctx, repositoryId, preferences any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSdkPreferences", reflect.TypeOf((*MockRepository)(nil).UpdateSdkPreferences), ctx, repositoryId, preferences)
 }

@@ -129,6 +129,109 @@ func TestHandler_CreateRepository(t *testing.T) {
 	})
 }
 
+func TestHandler_GetRepository(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			GetRepository(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, req *registryv1.GetRepositoryRequest) (*registryv1.Repository, error) {
+				require.Equal(t, "test-repo-id", req.GetId())
+				return &registryv1.Repository{
+					Id:   "test-repo-id",
+					Name: "test-repo",
+				}, nil
+			})
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.GetRepository(context.Background(), connect.NewRequest(&registryv1.GetRepositoryRequest{
+			Id: "test-repo-id",
+		}))
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, "test-repo-id", resp.Msg.GetId())
+		require.Equal(t, "test-repo", resp.Msg.GetName())
+	})
+
+	t.Run("service error - repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			GetRepository(gomock.Any(), gomock.Any()).
+			Return(nil, ErrRepositoryNotFound)
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.GetRepository(context.Background(), connect.NewRequest(&registryv1.GetRepositoryRequest{
+			Id: "nonexistent-repo-id",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+
+	t.Run("service error - permission denied", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			GetRepository(gomock.Any(), gomock.Any()).
+			Return(nil, connect.NewError(connect.CodePermissionDenied, errors.New("you are not a member of this organization")))
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.GetRepository(context.Background(), connect.NewRequest(&registryv1.GetRepositoryRequest{
+			Id: "test-repo-id",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+	})
+}
+
 func TestHandler_GetRepositories(t *testing.T) {
 	t.Run("success with repositories", func(t *testing.T) {
 		ctrl := gomock.NewController(t)

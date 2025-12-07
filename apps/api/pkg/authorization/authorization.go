@@ -36,3 +36,15 @@ func IsUserOwner(ctx context.Context, checker MemberRoleChecker, organizationId,
 
 	return nil
 }
+
+func IsUserMember(ctx context.Context, checker MemberRoleChecker, organizationId, userId string) error {
+	_, err := checker.GetMemberRole(ctx, organizationId, userId)
+	if err != nil {
+		if errors.Is(err, ErrMemberNotFound) {
+			return connect.NewError(connect.CodePermissionDenied, errors.New("you are not a member of this organization"))
+		}
+		return err
+	}
+
+	return nil
+}

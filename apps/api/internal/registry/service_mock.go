@@ -97,3 +97,32 @@ func (mr *MockServiceMockRecorder) GetRepositories(ctx, page, pageSize any) *gom
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositories", reflect.TypeOf((*MockService)(nil).GetRepositories), ctx, page, pageSize)
 }
+
+// GetRepository mocks base method.
+func (m *MockService) GetRepository(ctx context.Context, req *registryv1.GetRepositoryRequest) (*registryv1.Repository, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRepository", ctx, req)
+	ret0, _ := ret[0].(*registryv1.Repository)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRepository indicates an expected call of GetRepository.
+func (mr *MockServiceMockRecorder) GetRepository(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepository", reflect.TypeOf((*MockService)(nil).GetRepository), ctx, req)
+}
+
+// UpdateSdkPreferences mocks base method.
+func (m *MockService) UpdateSdkPreferences(ctx context.Context, req *registryv1.UpdateSdkPreferencesRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSdkPreferences", ctx, req)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSdkPreferences indicates an expected call of UpdateSdkPreferences.
+func (mr *MockServiceMockRecorder) UpdateSdkPreferences(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSdkPreferences", reflect.TypeOf((*MockService)(nil).UpdateSdkPreferences), ctx, req)
+}

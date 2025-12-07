@@ -163,6 +163,159 @@ func TestService_CreateRepository(t *testing.T) {
 	})
 }
 
+func TestService_GetRepository(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   t.TempDir(),
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const repoID = "repo-123"
+		const orgID = "org-123"
+		const userID = "user-123"
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Visibility:     proto.VisibilityPrivate,
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(authorization.MemberRoleReader, nil)
+
+		sdkPrefs := []SdkPreferencesDTO{
+			{
+				Id:           "pref-1",
+				RepositoryId: repoID,
+				Sdk:          SdkGoConnectRpc,
+				Status:       true,
+			},
+		}
+
+		mockRepo.EXPECT().
+			GetSdkPreferences(ctx, repoID).
+			Return(sdkPrefs, nil)
+
+		repo, err := svc.GetRepository(ctx, &registryv1.GetRepositoryRequest{
+			Id: repoID,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, repo)
+		require.Equal(t, repoID, repo.GetId())
+		require.Equal(t, "test-repo", repo.GetName())
+		require.Equal(t, shared.Visibility_VISIBILITY_PRIVATE, repo.GetVisibility())
+		require.Len(t, repo.GetSdkPreferences(), 1)
+		require.Equal(t, registryv1.SDK_SDK_GO_CONNECTRPC, repo.GetSdkPreferences()[0].GetSdk())
+		require.True(t, repo.GetSdkPreferences()[0].GetStatus())
+	})
+
+	t.Run("repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   t.TempDir(),
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const repoID = "nonexistent-repo"
+		const userID = "user-123"
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(nil, ErrRepositoryNotFound)
+
+		repo, err := svc.GetRepository(ctx, &registryv1.GetRepositoryRequest{
+			Id: repoID,
+		})
+		require.Error(t, err)
+		require.Nil(t, repo)
+		require.ErrorContains(t, err, "failed to get repository")
+	})
+
+	t.Run("user not member of organization", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   t.TempDir(),
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const repoID = "repo-123"
+		const orgID = "org-123"
+		const userID = "user-123"
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Visibility:     proto.VisibilityPrivate,
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return("", authorization.ErrMemberNotFound)
+
+		repo, err := svc.GetRepository(ctx, &registryv1.GetRepositoryRequest{
+			Id: repoID,
+		})
+		require.Error(t, err)
+		require.Nil(t, repo)
+		require.ErrorContains(t, err, "you are not a member of this organization")
+	})
+
+	t.Run("missing user ID in context", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   t.TempDir(),
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const repoID = "repo-123"
+		const orgID = "org-123"
+		ctx := context.Background()
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Visibility:     proto.VisibilityPrivate,
+			}, nil)
+
+		repo, err := svc.GetRepository(ctx, &registryv1.GetRepositoryRequest{
+			Id: repoID,
+		})
+		require.Error(t, err)
+		require.Nil(t, repo)
+		require.ErrorContains(t, err, "failed to get user from context")
+	})
+}
+
 func TestService_DeleteRepository(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)

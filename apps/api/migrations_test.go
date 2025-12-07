@@ -39,11 +39,10 @@ func TestMigrations(t *testing.T) {
 		err = m.Up()
 		assert.NoError(t, err)
 
-		// Verify migration version
 		version, dirty, err := m.Version()
 		assert.NoError(t, err)
 		assert.False(t, dirty)
-		assert.Equal(t, uint(11), version, "Expected migration version to be 11")
+		assert.Equal(t, uint(12), version, "Expected migration version to be 12")
 	})
 
 	t.Run("idempotent - running migrations twice should not fail", func(t *testing.T) {
@@ -55,14 +54,10 @@ func TestMigrations(t *testing.T) {
 
 		connString, err := container.ConnectionString(context.Background())
 		require.NoError(t, err)
-
-		// First migration
 		m := setupMigration(t, connString)
 		err = m.Up()
 		assert.NoError(t, err)
 		_, _ = m.Close()
-
-		// Second migration (should return ErrNoChange)
 		m = setupMigration(t, connString)
 		defer func() {
 			_, _ = m.Close()
@@ -107,6 +102,7 @@ func TestMigrations(t *testing.T) {
 			"email_jobs",
 			"api_keys",
 			"ssh_keys",
+			"sdk_preferences",
 		}
 
 		for _, tableName := range expectedTables {
@@ -180,8 +176,6 @@ func TestMigrations(t *testing.T) {
 		defer func() {
 			_ = conn.Close(context.Background())
 		}()
-
-		// Verify columns
 		expectedColumns := map[string]string{
 			"id":         "character varying",
 			"username":   "character varying",
@@ -201,8 +195,6 @@ func TestMigrations(t *testing.T) {
 			require.NoError(t, err, "Column %s should exist", columnName)
 			assert.Equal(t, expectedType, dataType, "Column %s should have type %s", columnName, expectedType)
 		}
-
-		// Verify primary key
 		var constraintType string
 		err = conn.QueryRow(context.Background(),
 			`SELECT constraint_type
@@ -236,8 +228,6 @@ func TestMigrations(t *testing.T) {
 		defer func() {
 			_ = conn.Close(context.Background())
 		}()
-
-		// Verify table exists
 		var exists bool
 		err = conn.QueryRow(context.Background(),
 			`SELECT EXISTS (
@@ -247,8 +237,6 @@ func TestMigrations(t *testing.T) {
 			)`).Scan(&exists)
 		require.NoError(t, err)
 		assert.True(t, exists, "Table api_keys should exist")
-
-		// Verify foreign key to users
 		var fkExists bool
 		err = conn.QueryRow(context.Background(),
 			`SELECT EXISTS (
@@ -262,8 +250,6 @@ func TestMigrations(t *testing.T) {
 			)`).Scan(&fkExists)
 		require.NoError(t, err)
 		assert.True(t, fkExists, "Foreign key on user_id should exist")
-
-		// Verify indexes
 		expectedIndexes := []string{
 			"idx_api_keys_user_id",
 			"idx_api_keys_key",
@@ -307,8 +293,6 @@ func TestMigrations(t *testing.T) {
 		defer func() {
 			_ = conn.Close(context.Background())
 		}()
-
-		// Verify table exists
 		var exists bool
 		err = conn.QueryRow(context.Background(),
 			`SELECT EXISTS (
@@ -318,8 +302,6 @@ func TestMigrations(t *testing.T) {
 			)`).Scan(&exists)
 		require.NoError(t, err)
 		assert.True(t, exists, "Table ssh_keys should exist")
-
-		// Verify foreign key to users
 		var fkExists bool
 		err = conn.QueryRow(context.Background(),
 			`SELECT EXISTS (
@@ -333,8 +315,6 @@ func TestMigrations(t *testing.T) {
 			)`).Scan(&fkExists)
 		require.NoError(t, err)
 		assert.True(t, fkExists, "Foreign key on user_id should exist")
-
-		// Verify indexes
 		expectedIndexes := []string{
 			"idx_ssh_keys_user_id",
 			"idx_ssh_keys_deleted_at",
@@ -352,8 +332,6 @@ func TestMigrations(t *testing.T) {
 			require.NoError(t, err)
 			assert.True(t, indexExists, "Index %s should exist", indexName)
 		}
-
-		// Verify unique constraint on public_key
 		var uniqueExists bool
 		err = conn.QueryRow(context.Background(),
 			`SELECT EXISTS (
@@ -365,6 +343,122 @@ func TestMigrations(t *testing.T) {
 			)`).Scan(&uniqueExists)
 		require.NoError(t, err)
 		assert.True(t, uniqueExists, "Unique constraint on public_key should exist")
+	})
+
+	t.Run("verify sdk_preferences table schema and indexes", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+
+		var exists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT FROM information_schema.tables
+				WHERE table_schema = 'public'
+				AND table_name = 'sdk_preferences'
+			)`).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists, "Table sdk_preferences should exist")
+
+		expectedColumns := map[string]string{
+			"id":            "character varying",
+			"repository_id": "character varying",
+			"sdk":           "USER-DEFINED",
+			"status":        "boolean",
+			"created_at":    "timestamp with time zone",
+			"updated_at":    "timestamp with time zone",
+		}
+
+		for columnName, expectedType := range expectedColumns {
+			var dataType string
+			err = conn.QueryRow(context.Background(),
+				`SELECT data_type
+				FROM information_schema.columns
+				WHERE table_name = 'sdk_preferences'
+				AND column_name = $1`, columnName).Scan(&dataType)
+			require.NoError(t, err, "Column %s should exist", columnName)
+			assert.Equal(t, expectedType, dataType, "Column %s should have type %s", columnName, expectedType)
+		}
+
+		var fkExists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT 1
+				FROM information_schema.table_constraints tc
+				JOIN information_schema.key_column_usage kcu
+				ON tc.constraint_name = kcu.constraint_name
+				WHERE tc.table_name = 'sdk_preferences'
+				AND tc.constraint_type = 'FOREIGN KEY'
+				AND kcu.column_name = 'repository_id'
+			)`).Scan(&fkExists)
+		require.NoError(t, err)
+		assert.True(t, fkExists, "Foreign key on repository_id should exist")
+
+		expectedIndexes := []string{
+			"idx_sdk_preferences_repository_id",
+			"idx_sdk_preferences_sdk",
+		}
+
+		for _, indexName := range expectedIndexes {
+			var indexExists bool
+			err = conn.QueryRow(context.Background(),
+				`SELECT EXISTS (
+					SELECT 1
+					FROM pg_indexes
+					WHERE tablename = 'sdk_preferences'
+					AND indexname = $1
+				)`, indexName).Scan(&indexExists)
+			require.NoError(t, err)
+			assert.True(t, indexExists, "Index %s should exist", indexName)
+		}
+
+		var uniqueExists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT 1
+				FROM pg_indexes
+				WHERE tablename = 'sdk_preferences'
+				AND indexdef LIKE '%UNIQUE%'
+				AND indexdef LIKE '%repository_id%'
+				AND indexdef LIKE '%sdk%'
+			)`).Scan(&uniqueExists)
+		require.NoError(t, err)
+		assert.True(t, uniqueExists, "Unique constraint on (repository_id, sdk) should exist")
+
+		var cascadeExists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT 1
+				FROM information_schema.referential_constraints rc
+				WHERE rc.constraint_name IN (
+					SELECT constraint_name
+					FROM information_schema.key_column_usage
+					WHERE table_name = 'sdk_preferences'
+					AND column_name = 'repository_id'
+				)
+				AND rc.delete_rule = 'CASCADE'
+			)`).Scan(&cascadeExists)
+		require.NoError(t, err)
+		assert.True(t, cascadeExists, "ON DELETE CASCADE should be set for repository_id foreign key")
 	})
 
 	t.Run("rollback all migrations successfully", func(t *testing.T) {
@@ -382,11 +476,9 @@ func TestMigrations(t *testing.T) {
 			_, _ = m.Close()
 		}()
 
-		// Apply all migrations
 		err = m.Up()
 		require.NoError(t, err)
 
-		// Verify tables exist
 		conn, err := pgx.Connect(context.Background(), connString)
 		require.NoError(t, err)
 		defer func() {
@@ -403,11 +495,9 @@ func TestMigrations(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, exists, "Users table should exist before rollback")
 
-		// Rollback all migrations
 		err = m.Down()
 		assert.NoError(t, err)
 
-		// Verify tables don't exist
 		expectedTables := []string{
 			"users",
 			"organizations",
@@ -418,6 +508,7 @@ func TestMigrations(t *testing.T) {
 			"email_jobs",
 			"api_keys",
 			"ssh_keys",
+			"sdk_preferences",
 		}
 
 		for _, tableName := range expectedTables {
@@ -430,8 +521,6 @@ func TestMigrations(t *testing.T) {
 			require.NoError(t, err)
 			assert.False(t, exists, "Table %s should not exist after rollback", tableName)
 		}
-
-		// Verify view doesn't exist
 		err = conn.QueryRow(context.Background(),
 			`SELECT EXISTS (
 				SELECT FROM information_schema.views
@@ -462,8 +551,6 @@ func TestMigrations(t *testing.T) {
 		defer func() {
 			_ = conn.Close(context.Background())
 		}()
-
-		// Step 1: Apply first migration (users table)
 		err = m.Steps(1)
 		require.NoError(t, err)
 
@@ -480,8 +567,6 @@ func TestMigrations(t *testing.T) {
 			)`).Scan(&exists)
 		require.NoError(t, err)
 		assert.True(t, exists, "Users table should exist after first migration")
-
-		// Step 2: Apply second migration (organizations table)
 		err = m.Steps(1)
 		require.NoError(t, err)
 
@@ -497,8 +582,6 @@ func TestMigrations(t *testing.T) {
 			)`).Scan(&exists)
 		require.NoError(t, err)
 		assert.True(t, exists, "Organizations table should exist after second migration")
-
-		// Step down one migration
 		err = m.Steps(-1)
 		require.NoError(t, err)
 
@@ -539,8 +622,6 @@ func TestMigrations(t *testing.T) {
 		defer func() {
 			_ = conn.Close(context.Background())
 		}()
-
-		// Try to insert an API key with a non-existent user_id (should fail)
 		_, err = conn.Exec(context.Background(),
 			`INSERT INTO api_keys (user_id, name, key, created_at)
 			VALUES ('non-existent-user-id', 'test-key', 'test-key-value', NOW())`)
@@ -571,33 +652,23 @@ func TestMigrations(t *testing.T) {
 		defer func() {
 			_ = conn.Close(context.Background())
 		}()
-
-		// Insert a user
 		userId := "test-user-id"
 		_, err = conn.Exec(context.Background(),
 			`INSERT INTO users (id, username, email, password, created_at)
 			VALUES ($1, 'testuser', 'test@example.com', 'password', NOW())`, userId)
 		require.NoError(t, err)
-
-		// Insert an API key for the user
 		_, err = conn.Exec(context.Background(),
 			`INSERT INTO api_keys (user_id, name, key, created_at)
 			VALUES ($1, 'test-key', 'test-key-value', NOW())`, userId)
 		require.NoError(t, err)
-
-		// Verify API key exists
 		var count int
 		err = conn.QueryRow(context.Background(),
 			`SELECT COUNT(*) FROM api_keys WHERE user_id = $1`, userId).Scan(&count)
 		require.NoError(t, err)
 		assert.Equal(t, 1, count)
-
-		// Delete the user
 		_, err = conn.Exec(context.Background(),
 			`DELETE FROM users WHERE id = $1`, userId)
 		require.NoError(t, err)
-
-		// Verify API key was cascade deleted
 		err = conn.QueryRow(context.Background(),
 			`SELECT COUNT(*) FROM api_keys WHERE user_id = $1`, userId).Scan(&count)
 		require.NoError(t, err)
@@ -627,33 +698,23 @@ func TestMigrations(t *testing.T) {
 		defer func() {
 			_ = conn.Close(context.Background())
 		}()
-
-		// Insert a user
 		userId := "test-user-id"
 		_, err = conn.Exec(context.Background(),
 			`INSERT INTO users (id, username, email, password, created_at)
 			VALUES ($1, 'testuser', 'test@example.com', 'password', NOW())`, userId)
 		require.NoError(t, err)
-
-		// Insert an SSH key for the user
 		_, err = conn.Exec(context.Background(),
 			`INSERT INTO ssh_keys (user_id, name, public_key, created_at)
 			VALUES ($1, 'test-key', 'ssh-rsa AAAAB3NzaC1...', NOW())`, userId)
 		require.NoError(t, err)
-
-		// Verify SSH key exists
 		var count int
 		err = conn.QueryRow(context.Background(),
 			`SELECT COUNT(*) FROM ssh_keys WHERE user_id = $1`, userId).Scan(&count)
 		require.NoError(t, err)
 		assert.Equal(t, 1, count)
-
-		// Delete the user
 		_, err = conn.Exec(context.Background(),
 			`DELETE FROM users WHERE id = $1`, userId)
 		require.NoError(t, err)
-
-		// Verify SSH key was cascade deleted
 		err = conn.QueryRow(context.Background(),
 			`SELECT COUNT(*) FROM ssh_keys WHERE user_id = $1`, userId).Scan(&count)
 		require.NoError(t, err)

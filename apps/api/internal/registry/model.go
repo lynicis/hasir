@@ -3,16 +3,56 @@ package registry
 import (
 	"hasir-api/pkg/proto"
 	"time"
+
+	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 )
 
 type RepositoryDTO struct {
-	Id             string           `json:"id" db:"id"`
-	Name           string           `json:"name" db:"name"`
-	CreatedBy      string           `json:"created_by" db:"created_by"`
-	OrganizationId string           `json:"organization_id" db:"organization_id"`
-	Path           string           `json:"path" db:"path"`
-	Visibility     proto.Visibility `json:"visibility" db:"visibility"`
-	CreatedAt      time.Time        `json:"created_at" db:"created_at"`
-	UpdatedAt      *time.Time       `json:"updated_at" db:"updated_at"`
-	DeletedAt      *time.Time       `json:"deleted_at,omitempty" db:"deleted_at"`
+	Id             string           `db:"id"`
+	Name           string           `db:"name"`
+	CreatedBy      string           `db:"created_by"`
+	OrganizationId string           `db:"organization_id"`
+	Path           string           `db:"path"`
+	Visibility     proto.Visibility `db:"visibility"`
+	CreatedAt      time.Time        `db:"created_at"`
+	UpdatedAt      *time.Time       `db:"updated_at"`
+	DeletedAt      *time.Time       `db:"deleted_at"`
+}
+
+type SDK string
+
+const (
+	SdkGoProtobuf   SDK = "GO_PROTOBUF"
+	SdkGoConnectRpc SDK = "GO_CONNECTRPC"
+	SdkGoGrpc       SDK = "GO_GRPC"
+	SdkJsBufbuildEs SDK = "JS_BUFBUILD_ES"
+	SdkJsProtobuf   SDK = "JS_PROTOBUF"
+	SdkJsConnectrpc SDK = "JS_CONNECTRPC"
+)
+
+var SdkProtoToDbEnum = map[registryv1.SDK]SDK{
+	registryv1.SDK_SDK_GO_PROTOBUF:    SdkGoProtobuf,
+	registryv1.SDK_SDK_GO_CONNECTRPC:  SdkGoConnectRpc,
+	registryv1.SDK_SDK_GO_GRPC:        SdkGoGrpc,
+	registryv1.SDK_SDK_JS_BUFBUILD_ES: SdkJsBufbuildEs,
+	registryv1.SDK_SDK_JS_PROTOBUF:    SdkJsProtobuf,
+	registryv1.SDK_SDK_JS_CONNECTRPC:  SdkJsConnectrpc,
+}
+
+var SdkDbToProtoEnum = map[SDK]registryv1.SDK{
+	SdkGoProtobuf:   registryv1.SDK_SDK_GO_PROTOBUF,
+	SdkGoConnectRpc: registryv1.SDK_SDK_GO_CONNECTRPC,
+	SdkGoGrpc:       registryv1.SDK_SDK_GO_GRPC,
+	SdkJsBufbuildEs: registryv1.SDK_SDK_JS_BUFBUILD_ES,
+	SdkJsProtobuf:   registryv1.SDK_SDK_JS_PROTOBUF,
+	SdkJsConnectrpc: registryv1.SDK_SDK_JS_CONNECTRPC,
+}
+
+type SdkPreferencesDTO struct {
+	Id           string     `db:"id"`
+	RepositoryId string     `db:"repository_id"`
+	Sdk          SDK        `db:"sdk"`
+	Status       bool       `db:"status"`
+	CreatedAt    time.Time  `db:"created_at"`
+	UpdatedAt    *time.Time `db:"updated_at"`
 }

@@ -42,6 +42,18 @@ func (h *handler) CreateRepository(
 	return connect.NewResponse(new(emptypb.Empty)), nil
 }
 
+func (h *handler) GetRepository(
+	ctx context.Context,
+	req *connect.Request[registryv1.GetRepositoryRequest],
+) (*connect.Response[registryv1.Repository], error) {
+	repo, err := h.service.GetRepository(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(repo), nil
+}
+
 func (h *handler) GetRepositories(
 	ctx context.Context,
 	req *connect.Request[registryv1.GetRepositoriesRequest],
@@ -79,6 +91,17 @@ func (h *handler) DeleteRepository(
 	req *connect.Request[registryv1.DeleteRepositoryRequest],
 ) (*connect.Response[emptypb.Empty], error) {
 	if err := h.service.DeleteRepository(ctx, req.Msg); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(new(emptypb.Empty)), nil
+}
+
+func (h *handler) UpdateSdkPreferences(
+	ctx context.Context,
+	req *connect.Request[registryv1.UpdateSdkPreferencesRequest],
+) (*connect.Response[emptypb.Empty], error) {
+	if err := h.service.UpdateSdkPreferences(ctx, req.Msg); err != nil {
 		return nil, err
 	}
 

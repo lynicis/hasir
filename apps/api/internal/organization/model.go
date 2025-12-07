@@ -9,12 +9,12 @@ import (
 )
 
 type OrganizationDTO struct {
-	Id         string           `json:"id" db:"id"`
-	Name       string           `json:"name" db:"name"`
-	Visibility proto.Visibility `json:"visibility" db:"visibility"`
-	CreatedBy  string           `json:"created_by" db:"created_by"`
-	CreatedAt  time.Time        `json:"created_at" db:"created_at"`
-	DeletedAt  *time.Time       `json:"deleted_at,omitempty" db:"deleted_at"`
+	Id         string           `db:"id"`
+	Name       string           `db:"name"`
+	Visibility proto.Visibility `db:"visibility"`
+	CreatedBy  string           `db:"created_by"`
+	CreatedAt  time.Time        `db:"created_at"`
+	DeletedAt  *time.Time       `db:"deleted_at"`
 }
 
 type InviteStatus string
@@ -27,16 +27,16 @@ const (
 )
 
 type OrganizationInviteDTO struct {
-	Id             string       `json:"id" db:"id"`
-	OrganizationId string       `json:"organization_id" db:"organization_id"`
-	Email          string       `json:"email" db:"email"`
-	Token          string       `json:"token" db:"token"`
-	InvitedBy      string       `json:"invited_by" db:"invited_by"`
-	Role           MemberRole   `json:"role" db:"role"`
-	Status         InviteStatus `json:"status" db:"status"`
-	CreatedAt      time.Time    `json:"created_at" db:"created_at"`
-	ExpiresAt      time.Time    `json:"expires_at" db:"expires_at"`
-	AcceptedAt     *time.Time   `json:"accepted_at,omitempty" db:"accepted_at"`
+	Id             string       `db:"id"`
+	OrganizationId string       `db:"organization_id"`
+	Email          string       `db:"email"`
+	Token          string       `db:"token"`
+	InvitedBy      string       `db:"invited_by"`
+	Role           MemberRole   `db:"role"`
+	Status         InviteStatus `db:"status"`
+	CreatedAt      time.Time    `db:"created_at"`
+	ExpiresAt      time.Time    `db:"expires_at"`
+	AcceptedAt     *time.Time   `db:"accepted_at"`
 }
 
 type MemberRole string
@@ -77,17 +77,17 @@ var MemberRoleToSharedRoleMap = map[MemberRole]shared.Role{
 }
 
 type EmailJobDTO struct {
-	Id               string         `json:"id" db:"id"`
-	InviteId         string         `json:"invite_id" db:"invite_id"`
-	OrganizationId   string         `json:"organization_id" db:"organization_id"`
-	Email            string         `json:"email" db:"email"`
-	OrganizationName string         `json:"organization_name" db:"organization_name"`
-	InviteToken      string         `json:"invite_token" db:"invite_token"`
-	Status           EmailJobStatus `json:"status" db:"status"`
-	Attempts         int            `json:"attempts" db:"attempts"`
-	MaxAttempts      int            `json:"max_attempts" db:"max_attempts"`
-	CreatedAt        time.Time      `json:"created_at" db:"created_at"`
-	ProcessedAt      *time.Time     `json:"processed_at,omitempty" db:"processed_at"`
-	CompletedAt      *time.Time     `json:"completed_at,omitempty" db:"completed_at"`
-	ErrorMessage     *string        `json:"error_message,omitempty" db:"error_message"`
+	Id               string         `db:"id"`
+	InviteId         string         `db:"invite_id"`
+	OrganizationId   string         `db:"organization_id"`
+	Email            string         `db:"email"`
+	OrganizationName string         `db:"organization_name"`
+	InviteToken      string         `db:"invite_token"`
+	Status           EmailJobStatus `db:"status"`
+	Attempts         int            `db:"attempts"`
+	MaxAttempts      int            `db:"max_attempts"`
+	CreatedAt        time.Time      `db:"created_at"`
+	ProcessedAt      *time.Time     `db:"processed_at"`
+	CompletedAt      *time.Time     `db:"completed_at"`
+	ErrorMessage     *string        `db:"error_message"`
 }

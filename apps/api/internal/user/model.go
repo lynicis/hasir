@@ -3,35 +3,35 @@ package user
 import "time"
 
 type UserDTO struct {
-	Id        string     `json:"id" db:"id"`
-	Username  string     `json:"username" db:"username"`
-	Email     string     `json:"email" db:"email"`
-	Password  string     `json:"password" db:"password"`
-	CreatedAt time.Time  `json:"created_at" db:"created_at"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+	Id        string     `db:"id"`
+	Username  string     `db:"username"`
+	Email     string     `db:"email"`
+	Password  string     `db:"password"`
+	CreatedAt time.Time  `db:"created_at"`
+	DeletedAt *time.Time `db:"deleted_at"`
 }
 
 type RefreshTokensDTO struct {
-	UserId    string    `json:"id" db:"id"`
-	Jti       string    `json:"jti" db:"jti"`
-	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	UserId    string    `db:"id"`
+	Jti       string    `db:"jti"`
+	ExpiresAt time.Time `db:"expires_at"`
+	CreatedAt time.Time `db:"created_at"`
 }
 
 type ApiKeyDTO struct {
-	Id        string     `json:"id" db:"id"`
-	UserId    string     `json:"user_id" db:"user_id"`
-	Name      string     `json:"name" db:"name"`
-	Key       string     `json:"key" db:"key"`
-	CreatedAt time.Time  `json:"created_at" db:"created_at"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+	Id        string     `db:"id"`
+	UserId    string     `db:"user_id"`
+	Name      string     `db:"name"`
+	Key       string     `db:"key"`
+	CreatedAt time.Time  `db:"created_at"`
+	DeletedAt *time.Time `db:"deleted_at"`
 }
 
 type SshKeyDTO struct {
-	Id        string     `json:"id" db:"id"`
-	UserId    string     `json:"user_id" db:"user_id"`
-	Name      string     `json:"name" db:"name"`
-	PublicKey string     `json:"public_key" db:"public_key"`
-	CreatedAt time.Time  `json:"created_at" db:"created_at"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+	Id        string     `db:"id"`
+	UserId    string     `db:"user_id"`
+	Name      string     `db:"name"`
+	PublicKey string     `db:"public_key"`
+	CreatedAt time.Time  `db:"created_at"`
+	DeletedAt *time.Time `db:"deleted_at"`
 }

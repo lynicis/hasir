@@ -17,3 +17,6 @@ lint:
 
 lint-fix:
 	golangci-lint run --fix ./...
+
+run-postgres:
+	docker run -p 5432:5432 --name postgres -d -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test postgres:alpine
