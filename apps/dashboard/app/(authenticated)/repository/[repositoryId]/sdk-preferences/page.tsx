@@ -1,12 +1,11 @@
 "use client";
 
-import { updateSdkPreferences } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
 import { SDK } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { useContext, useEffect, useMemo, useState } from "react";
-import { useMutation } from "@connectrpc/connect-query";
 import { useParams } from "next/navigation";
 import { Wrench } from "lucide-react";
 import { toast } from "sonner";
+import { useSession } from "@/lib/session-provider";
 
 import {
   Card,
@@ -148,15 +147,15 @@ export default function SdkPreferencesPage() {
 
   const [config, setConfig] = useState<SdkConfig>(serverConfig);
   const [prevServerConfig, setPrevServerConfig] = useState(serverConfig);
-
-  const updateMutation = useMutation(updateSdkPreferences);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const { session } = useSession();
 
   if (serverConfig !== prevServerConfig) {
     setPrevServerConfig(serverConfig);
     setConfig(serverConfig);
   }
 
-  // Only show error toast if there's an actual fetch error (not empty preferences)
   useEffect(() => {
     if (error && !repository) {
       toast.error("Failed to load repository data");
@@ -198,34 +197,63 @@ export default function SdkPreferencesPage() {
   };
 
   const getSdkPreferences = () => {
-    const preferences: Array<{ sdk: SDK; status: boolean }> = [];
-
+    const enabledSdkValues = new Set<SDK>();
     Object.entries(SDK_LANGUAGES).forEach(([langKey, langConfig]) => {
       langConfig.options.forEach((option) => {
-        const isEnabled = config[langKey]?.[option.key] === true;
-        preferences.push({
-          sdk: option.sdkValue,
-          status: isEnabled,
-        });
+        if (config[langKey]?.[option.key]) {
+          enabledSdkValues.add(option.sdkValue);
+        }
       });
     });
+
+    const preferences: Array<{ sdk: SDK; status: boolean }> = [];
+
+    Object.values(SDK)
+      .filter((val): val is SDK => typeof val === "number" && val !== SDK.SDK_UNSPECIFIED)
+      .forEach((sdkVal) => {
+        preferences.push({
+          sdk: sdkVal,
+          status: enabledSdkValues.has(sdkVal) ?? false,
+        });
+      });
 
     return preferences;
   };
 
   const handleSave = async () => {
+    if (!session?.accessToken) {
+        toast.error("You must be logged in to save preferences");
+        return;
+    }
+
+    setIsSaving(true);
     try {
       const sdkPreferences = getSdkPreferences();
-
-      await updateMutation.mutateAsync({
-        id: repositoryId,
-        sdkPreferences,
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/registry.v1.RegistryService/UpdateSdkPreferences`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.accessToken}`,
+        },
+        body: JSON.stringify({
+            id: repositoryId,
+            sdkPreferences,
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Save failed", errorData);
+        throw new Error(errorData.message || "Failed to save preferences");
+      }
 
       toast.success("SDK preferences saved successfully");
     } catch (error) {
       console.error("Failed to save SDK preferences:", error);
-      toast.error("Failed to save SDK preferences");
+      toast.error(error instanceof Error ? error.message : "Failed to save SDK preferences");
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -292,7 +320,7 @@ export default function SdkPreferencesPage() {
                 <Switch
                   checked={config[langKey]?.enabled || false}
                   onCheckedChange={() => handleLanguageToggle(langKey)}
-                  disabled={isLoading || updateMutation.isPending}
+                  disabled={isLoading || isSaving}
                 />
               </CardTitle>
               <CardDescription>{langConfig.description}</CardDescription>
@@ -323,7 +351,7 @@ export default function SdkPreferencesPage() {
                       disabled={
                         !config[langKey]?.enabled ||
                         isLoading ||
-                        updateMutation.isPending
+                        isSaving
                       }
                     />
                   </div>
@@ -337,15 +365,15 @@ export default function SdkPreferencesPage() {
       <div className="flex items-center gap-3">
         <Button
           onClick={handleSave}
-          isLoading={updateMutation.isPending}
-          disabled={updateMutation.isPending}
+          isLoading={isSaving}
+          disabled={isSaving}
         >
           Save Configuration
         </Button>
         <Button
           variant="outline"
           onClick={handleReset}
-          disabled={updateMutation.isPending}
+          disabled={isSaving}
         >
           Reset to Defaults
         </Button>

@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Invalid new access token issuer" }, { status: 400 });
     }
 
-    const userId = newAccessTokenPayload.sub;
+    const userId = newAccessTokenPayload.sub as string;
     const email = newAccessTokenPayload.email as string;
 
     let refreshTokenPayload: JWTPayload;
