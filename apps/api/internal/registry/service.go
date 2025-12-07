@@ -12,6 +12,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
 	"hasir-api/pkg/authentication"
 	"hasir-api/pkg/authorization"
@@ -251,27 +252,37 @@ func (s *service) DeleteRepositoriesByOrganization(
 		return fmt.Errorf("failed to get repositories for organization: %w", err)
 	}
 
-	for _, repo := range *repos {
-		if err := s.repository.DeleteRepository(ctx, repo.Id); err != nil {
-			return fmt.Errorf("failed to delete repository %s from database: %w", repo.Id, err)
-		}
+	errGroup, ctx := errgroup.WithContext(ctx)
 
-		if err := os.RemoveAll(repo.Path); err != nil {
-			zap.L().Error("failed to remove repository directory after database deletion",
+	for _, repo := range *repos {
+		errGroup.Go(func() error {
+			if err := s.repository.DeleteRepository(ctx, repo.Id); err != nil {
+				return fmt.Errorf("failed to delete repository %s from database: %w", repo.Id, err)
+			}
+
+			if err := os.RemoveAll(repo.Path); err != nil {
+				zap.L().Error("failed to remove repository directory after database deletion",
+					zap.String("id", repo.Id),
+					zap.String("path", repo.Path),
+					zap.Error(err),
+				)
+
+				return fmt.Errorf("failed to remove repository directory for %s: %w", repo.Id, err)
+			}
+
+			zap.L().Info("repository deleted as part of organization deletion",
 				zap.String("id", repo.Id),
+				zap.String("name", repo.Name),
 				zap.String("path", repo.Path),
-				zap.Error(err),
+				zap.String("organizationId", organizationId),
 			)
 
-			return fmt.Errorf("failed to remove repository directory for %s: %w", repo.Id, err)
-		}
+			return nil
+		})
+	}
 
-		zap.L().Info("repository deleted as part of organization deletion",
-			zap.String("id", repo.Id),
-			zap.String("name", repo.Name),
-			zap.String("path", repo.Path),
-			zap.String("organizationId", organizationId),
-		)
+	if err := errGroup.Wait(); err != nil {
+		return err
 	}
 
 	return nil
