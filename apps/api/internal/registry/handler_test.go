@@ -571,7 +571,9 @@ func TestGitHttpHandler_ServeHTTP(t *testing.T) {
 
 		tempDir, err := os.MkdirTemp("", "git-test")
 		require.NoError(t, err)
-		defer os.RemoveAll(tempDir)
+		defer func() {
+			_ = os.RemoveAll(tempDir)
+		}()
 
 		repoName := "test-repo"
 		repoPath := filepath.Join(tempDir, repoName)

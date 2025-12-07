@@ -275,8 +275,8 @@ func (h *GitHttpHandler) handleInfoRefs(w http.ResponseWriter, r *http.Request, 
 	w.Header().Set("Cache-Control", "no-cache")
 
 	pktLine := fmt.Sprintf("# service=%s\n", serviceName)
-	fmt.Fprintf(w, "%04x%s", len(pktLine)+4, pktLine)
-	fmt.Fprint(w, "0000")
+	_, _ = fmt.Fprintf(w, "%04x%s", len(pktLine)+4, pktLine)
+	_, _ = fmt.Fprint(w, "0000")
 
 	cmd := exec.Command(serviceName, "--stateless-rpc", "--advertise-refs", repoPath)
 	cmd.Stdout = w

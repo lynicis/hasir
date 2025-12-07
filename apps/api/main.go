@@ -247,16 +247,16 @@ func startSshServer(cfg *config.Config, userRepo user.Repository, sshHandler *re
 		Handler: func(session ssh.Session) {
 			userId, ok := session.Context().Value("userId").(string)
 			if !ok || userId == "" {
-				fmt.Fprintln(session.Stderr(), "Authentication required")
-				session.Exit(1)
+				_, _ = fmt.Fprintln(session.Stderr(), "Authentication required")
+				_ = session.Exit(1)
 				return
 			}
 			if err := sshHandler.HandleSession(session, userId); err != nil {
-				fmt.Fprintln(session.Stderr(), err.Error())
-				session.Exit(1)
+				_, _ = fmt.Fprintln(session.Stderr(), err.Error())
+				_ = session.Exit(1)
 				return
 			}
-			session.Exit(0)
+			_ = session.Exit(0)
 		},
 	}
 	sshServer.AddHostKey(hostKey)

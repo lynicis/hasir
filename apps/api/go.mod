@@ -3,10 +3,11 @@ module hasir-api
 go 1.25.4
 
 require (
-	buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251207075947-cc335a838c83.2
-	buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251207075947-cc335a838c83.1
+	buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251207192920-cf9aa052e265.2
+	buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251207192920-cf9aa052e265.1
 	connectrpc.com/connect v1.19.1
 	github.com/exaring/otelpgx v0.9.3
+	github.com/gliderlabs/ssh v0.3.8
 	github.com/go-git/go-git/v5 v5.16.4
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
@@ -54,7 +55,6 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
-	github.com/gliderlabs/ssh v0.3.8 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.7.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
