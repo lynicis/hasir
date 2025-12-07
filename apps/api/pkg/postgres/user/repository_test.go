@@ -1635,3 +1635,106 @@ func createFakeUser(t *testing.T, connString string) {
 	)
 	require.NoError(t, err)
 }
+
+func TestPgRepository_GetUserBySshPublicKey(t *testing.T) {
+	t.Run("returns user for valid SSH key", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createSshKeysTable(t, connString)
+
+		keyId := uuid.NewString()
+		publicKey := "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABtest"
+		createFakeSshKey(t, connString, fakeId, keyId, publicKey)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		user, err := pgRepository.GetUserBySshPublicKey(t.Context(), publicKey)
+
+		assert.NoError(t, err)
+		require.NotNil(t, user)
+		assert.Equal(t, fakeId, user.Id)
+		assert.Equal(t, fakeEmail, user.Email)
+		assert.Equal(t, fakeUsername, user.Username)
+	})
+
+	t.Run("returns error for non-existent SSH key", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createSshKeysTable(t, connString)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		user, err := pgRepository.GetUserBySshPublicKey(t.Context(), "ssh-rsa nonexistent")
+
+		assert.Error(t, err)
+		assert.Nil(t, user)
+		assert.Contains(t, err.Error(), "ssh key not found")
+	})
+
+	t.Run("returns error for revoked SSH key", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createSshKeysTable(t, connString)
+
+		keyId := uuid.NewString()
+		publicKey := "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABrevoked"
+		createFakeSshKey(t, connString, fakeId, keyId, publicKey)
+
+		// Revoke the SSH key
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		_, err = conn.Exec(t.Context(), "UPDATE ssh_keys SET deleted_at = $1 WHERE id = $2", time.Now().UTC(), keyId)
+		require.NoError(t, err)
+		_ = conn.Close(t.Context())
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		user, err := pgRepository.GetUserBySshPublicKey(t.Context(), publicKey)
+
+		assert.Error(t, err)
+		assert.Nil(t, user)
+		assert.Contains(t, err.Error(), "ssh key not found")
+	})
+}

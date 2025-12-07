@@ -126,3 +126,18 @@ func (mr *MockServiceMockRecorder) UpdateSdkPreferences(ctx, req any) *gomock.Ca
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSdkPreferences", reflect.TypeOf((*MockService)(nil).UpdateSdkPreferences), ctx, req)
 }
+
+// ValidateSshAccess mocks base method.
+func (m *MockService) ValidateSshAccess(ctx context.Context, userId, repoPath string, operation SshOperation) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ValidateSshAccess", ctx, userId, repoPath, operation)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ValidateSshAccess indicates an expected call of ValidateSshAccess.
+func (mr *MockServiceMockRecorder) ValidateSshAccess(ctx, userId, repoPath, operation any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateSshAccess", reflect.TypeOf((*MockService)(nil).ValidateSshAccess), ctx, userId, repoPath, operation)
+}

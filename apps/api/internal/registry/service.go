@@ -28,6 +28,7 @@ type Service interface {
 	DeleteRepository(ctx context.Context, req *registryv1.DeleteRepositoryRequest) error
 	DeleteRepositoriesByOrganization(ctx context.Context, organizationId string) error
 	UpdateSdkPreferences(ctx context.Context, req *registryv1.UpdateSdkPreferencesRequest) error
+	ValidateSshAccess(ctx context.Context, userId, repoPath string, operation SshOperation) (bool, error)
 }
 
 type service struct {
@@ -352,4 +353,52 @@ func (s *service) UpdateSdkPreferences(
 	)
 
 	return nil
+}
+
+func (s *service) ValidateSshAccess(
+	ctx context.Context,
+	userId, repoPath string,
+	operation SshOperation,
+) (bool, error) {
+	repo, err := s.repository.GetRepositoryByPath(ctx, repoPath)
+	if err != nil {
+		return false, fmt.Errorf("failed to get repository by path: %w", err)
+	}
+
+	role, err := s.orgRepo.GetMemberRole(ctx, repo.OrganizationId, userId)
+	if err != nil {
+		zap.L().Warn("SSH access denied: user not member of organization",
+			zap.String("userId", userId),
+			zap.String("repoPath", repoPath),
+			zap.String("organizationId", repo.OrganizationId),
+		)
+		return false, nil
+	}
+
+	switch operation {
+	case SshOperationWrite:
+		if role == authorization.MemberRoleOwner || role == authorization.MemberRoleAuthor {
+			zap.L().Info("SSH write access granted",
+				zap.String("userId", userId),
+				zap.String("repoPath", repoPath),
+				zap.String("role", string(role)),
+			)
+			return true, nil
+		}
+		zap.L().Warn("SSH write access denied: insufficient role",
+			zap.String("userId", userId),
+			zap.String("repoPath", repoPath),
+			zap.String("role", string(role)),
+		)
+		return false, nil
+	case SshOperationRead:
+		zap.L().Info("SSH read access granted",
+			zap.String("userId", userId),
+			zap.String("repoPath", repoPath),
+			zap.String("role", string(role)),
+		)
+		return true, nil
+	default:
+		return false, fmt.Errorf("unknown SSH operation: %s", operation)
+	}
 }

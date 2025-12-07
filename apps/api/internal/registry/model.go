@@ -56,3 +56,11 @@ type SdkPreferencesDTO struct {
 	CreatedAt    time.Time  `db:"created_at"`
 	UpdatedAt    *time.Time `db:"updated_at"`
 }
+
+type SshOperation string
+
+const (
+	SshOperationRead  SshOperation = "read"
+	SshOperationWrite SshOperation = "write"
+)
+

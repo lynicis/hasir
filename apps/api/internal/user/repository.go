@@ -23,4 +23,5 @@ type Repository interface {
 	GetSshKeys(ctx context.Context, userId string, page, pageSize int) (*[]SshKeyDTO, error)
 	GetSshKeysCount(ctx context.Context, userId string) (int, error)
 	RevokeSshKey(ctx context.Context, userId, keyId string) error
+	GetUserBySshPublicKey(ctx context.Context, publicKey string) (*UserDTO, error)
 }

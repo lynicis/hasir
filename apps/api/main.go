@@ -2,17 +2,23 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
 	"connectrpc.com/validate"
+	"github.com/gliderlabs/ssh"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -24,6 +30,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.uber.org/zap"
+	gossh "golang.org/x/crypto/ssh"
 
 	"hasir-api/internal"
 	internalOrganization "hasir-api/internal/organization"
@@ -138,10 +145,16 @@ func main() {
 	}()
 	zap.L().Info("Server started on port", zap.String("port", cfg.Server.Port))
 
-	gracefulShutdown(server, traceProvider, emailJobQueue)
+	var sshServer *ssh.Server
+	if cfg.Ssh.Enabled {
+		sshHandler := registry.NewSshHandler(registryService, "./repos")
+		sshServer = startSshServer(cfg, userPgRepository, sshHandler)
+	}
+
+	gracefulShutdown(server, sshServer, traceProvider, emailJobQueue)
 }
 
-func gracefulShutdown(server *http.Server, traceProvider *sdktrace.TracerProvider, emailJobQueue internalOrganization.Queue) {
+func gracefulShutdown(server *http.Server, sshServer *ssh.Server, traceProvider *sdktrace.TracerProvider, emailJobQueue internalOrganization.Queue) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
@@ -155,6 +168,12 @@ func gracefulShutdown(server *http.Server, traceProvider *sdktrace.TracerProvide
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		zap.L().Error("HTTP shutdown error", zap.Error(err))
+	}
+
+	if sshServer != nil {
+		if err := sshServer.Shutdown(shutdownCtx); err != nil {
+			zap.L().Error("SSH shutdown error", zap.Error(err))
+		}
 	}
 
 	if traceProvider != nil {
@@ -201,4 +220,78 @@ func initTracer(cfg *config.Config) *sdktrace.TracerProvider {
 
 	zap.L().Info("OpenTelemetry tracing enabled", zap.String("endpoint", cfg.Otel.TraceEndpoint))
 	return tracerProvider
+}
+
+func startSshServer(cfg *config.Config, userRepo user.Repository, sshHandler *registry.SshHandler) *ssh.Server {
+	hostKey, err := loadOrGenerateHostKey(cfg.Ssh.HostKeyPath)
+	if err != nil {
+		zap.L().Fatal("failed to load SSH host key", zap.Error(err))
+	}
+
+	sshServer := &ssh.Server{
+		Addr: ":" + cfg.Ssh.Port,
+		PublicKeyHandler: func(ctx ssh.Context, key ssh.PublicKey) bool {
+			publicKeyStr := strings.TrimSpace(string(gossh.MarshalAuthorizedKey(key)))
+			userDTO, err := userRepo.GetUserBySshPublicKey(context.Background(), publicKeyStr)
+			if err != nil {
+				zap.L().Debug("SSH auth failed", zap.Error(err))
+				return false
+			}
+			ctx.SetValue("userId", userDTO.Id)
+			zap.L().Info("SSH auth success", zap.String("userId", userDTO.Id))
+			return true
+		},
+		Handler: func(session ssh.Session) {
+			userId, ok := session.Context().Value("userId").(string)
+			if !ok || userId == "" {
+				fmt.Fprintln(session.Stderr(), "Authentication required")
+				session.Exit(1)
+				return
+			}
+			if err := sshHandler.HandleSession(session, userId); err != nil {
+				fmt.Fprintln(session.Stderr(), err.Error())
+				session.Exit(1)
+				return
+			}
+			session.Exit(0)
+		},
+	}
+	sshServer.AddHostKey(hostKey)
+
+	go func() {
+		zap.L().Info("SSH server starting", zap.String("port", cfg.Ssh.Port))
+		if err := sshServer.ListenAndServe(); err != nil && !errors.Is(err, ssh.ErrServerClosed) {
+			zap.L().Fatal("SSH server error", zap.Error(err))
+		}
+	}()
+
+	return sshServer
+}
+
+func loadOrGenerateHostKey(path string) (gossh.Signer, error) {
+	keyBytes, err := os.ReadFile(path)
+	if err == nil {
+		signer, err := gossh.ParsePrivateKey(keyBytes)
+		if err == nil {
+			zap.L().Info("Loaded SSH host key", zap.String("path", path))
+			return signer, nil
+		}
+	}
+
+	zap.L().Info("Generating SSH host key", zap.String("path", path))
+	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		return nil, err
+	}
+
+	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	})
+
+	if err := os.WriteFile(path, privateKeyPEM, 0600); err != nil {
+		return nil, err
+	}
+
+	return gossh.NewSignerFromKey(privateKey)
 }

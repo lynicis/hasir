@@ -39,6 +39,7 @@ func (pgc *PostgresConfig) GetPostgresDsn() string {
 
 type ServerConfig struct {
 	PublicUrl string `koanf:"publicUrl"`
+	SshHost   string `koanf:"sshHost"`
 	Ip        string `koanf:"ip"`
 	Port      string `koanf:"port"`
 }
@@ -65,11 +66,18 @@ type SmtpConfig struct {
 	UseTLS   bool   `koanf:"useTLS"`
 }
 
+type SshConfig struct {
+	Enabled     bool   `koanf:"enabled"`
+	Port        string `koanf:"port"`
+	HostKeyPath string `koanf:"hostKeyPath"`
+}
+
 type Config struct {
 	Server         ServerConfig   `koanf:"server"`
 	Otel           OtelConfig     `koanf:"otel"`
 	PostgresConfig PostgresConfig `koanf:"postgresql"`
 	Smtp           SmtpConfig     `koanf:"smtp"`
+	Ssh            SshConfig      `koanf:"ssh"`
 	JwtSecret      []byte         `koanf:"jwtSecret"`
 	DashboardUrl   string         `koanf:"dashboardUrl"`
 }

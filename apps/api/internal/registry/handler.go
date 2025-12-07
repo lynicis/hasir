@@ -2,11 +2,16 @@ package registry
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"os/exec"
+	"strings"
 
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/registry/v1/registryv1connect"
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	"connectrpc.com/connect"
+	"github.com/gliderlabs/ssh"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -106,4 +111,68 @@ func (h *handler) UpdateSdkPreferences(
 	}
 
 	return connect.NewResponse(new(emptypb.Empty)), nil
+}
+
+type SshHandler struct {
+	service   Service
+	reposPath string
+}
+func NewSshHandler(service Service, reposPath string) *SshHandler {
+	return &SshHandler{
+		service:   service,
+		reposPath: reposPath,
+	}
+}
+
+func (h *SshHandler) HandleSession(session ssh.Session, userId string) error {
+	cmd := session.RawCommand()
+	if cmd == "" {
+		return fmt.Errorf("interactive shell access is not supported, use git commands")
+	}
+
+	parts := strings.SplitN(cmd, " ", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid command format: %s", cmd)
+	}
+
+	gitCmd := parts[0]
+	repoPath := strings.Trim(parts[1], "'\"")
+	repoPath = strings.TrimPrefix(repoPath, "/")
+
+	var operation SshOperation
+	switch gitCmd {
+	case "git-upload-pack":
+		operation = SshOperationRead
+	case "git-receive-pack":
+		operation = SshOperationWrite
+	default:
+		return fmt.Errorf("unsupported git command: %s", gitCmd)
+	}
+
+	fullRepoPath := h.reposPath + "/" + strings.TrimSuffix(repoPath, ".git")
+
+	hasAccess, err := h.service.ValidateSshAccess(context.Background(), userId, fullRepoPath, operation)
+	if err != nil {
+		zap.L().Error("Access validation failed", zap.String("userId", userId), zap.Error(err))
+		return fmt.Errorf("access validation failed: %w", err)
+	}
+
+	if !hasAccess {
+		zap.L().Warn("SSH access denied", zap.String("userId", userId), zap.String("operation", string(operation)))
+		return fmt.Errorf("permission denied")
+	}
+
+	zap.L().Info("Executing Git command", zap.String("userId", userId), zap.String("command", gitCmd))
+
+	execCmd := exec.Command(gitCmd, fullRepoPath)
+	execCmd.Dir = fullRepoPath
+	execCmd.Stdin = session
+	execCmd.Stdout = session
+	execCmd.Stderr = session.Stderr()
+
+	if err := execCmd.Start(); err != nil {
+		return fmt.Errorf("failed to start %s: %w", gitCmd, err)
+	}
+
+	return execCmd.Wait()
 }

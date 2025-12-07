@@ -386,6 +386,45 @@ func (r *PgRepository) GetRepositoryById(ctx context.Context, id string) (*regis
 	return &repo, nil
 }
 
+func (r *PgRepository) GetRepositoryByPath(ctx context.Context, path string) (*registry.RepositoryDTO, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetRepositoryByPath", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "path",
+			Value: attribute.StringValue(path),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := "SELECT * FROM repositories WHERE path = $1 AND deleted_at IS NULL"
+
+	var rows pgx.Rows
+	rows, err = connection.Query(ctx, sql, path)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to query repository by path"))
+	}
+	defer rows.Close()
+
+	var repo registry.RepositoryDTO
+	repo, err = pgx.CollectOneRow[registry.RepositoryDTO](rows, pgx.RowToStructByName)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrRepositoryNotFound
+		}
+
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect row"))
+	}
+
+	return &repo, nil
+}
+
 func (r *PgRepository) UpdateRepository(ctx context.Context, repo *registry.RepositoryDTO) error {
 	var span trace.Span
 	ctx, span = r.tracer.Start(ctx, "UpdateRepository", trace.WithAttributes(attribute.KeyValue{

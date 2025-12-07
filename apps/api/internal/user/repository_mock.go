@@ -230,6 +230,21 @@ func (mr *MockRepositoryMockRecorder) GetUserById(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserById", reflect.TypeOf((*MockRepository)(nil).GetUserById), ctx, id)
 }
 
+// GetUserBySshPublicKey mocks base method.
+func (m *MockRepository) GetUserBySshPublicKey(ctx context.Context, publicKey string) (*UserDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserBySshPublicKey", ctx, publicKey)
+	ret0, _ := ret[0].(*UserDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserBySshPublicKey indicates an expected call of GetUserBySshPublicKey.
+func (mr *MockRepositoryMockRecorder) GetUserBySshPublicKey(ctx, publicKey any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserBySshPublicKey", reflect.TypeOf((*MockRepository)(nil).GetUserBySshPublicKey), ctx, publicKey)
+}
+
 // GetUsersByEmails mocks base method.
 func (m *MockRepository) GetUsersByEmails(ctx context.Context, emails []string) (map[string]*UserDTO, error) {
 	m.ctrl.T.Helper()
