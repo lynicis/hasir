@@ -5,7 +5,6 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Wrench } from "lucide-react";
 import { toast } from "sonner";
-import { useSession } from "@/lib/session-provider";
 
 import {
   Card,
@@ -14,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useSession } from "@/lib/session-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";

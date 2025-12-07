@@ -2,10 +2,7 @@
 
 import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 
-import {
-  getRepository,
-  getRepositories,
-} from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
+import { getRepository } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
 import { ArrowLeft, Book, Files, Settings, Wrench } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { createContext, useEffect, useMemo } from "react";

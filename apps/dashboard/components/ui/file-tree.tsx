@@ -132,7 +132,7 @@ const Tree = forwardRef<HTMLDivElement, TreeViewProps>(
       if (initialSelectedId) {
         expandSpecificTargetedElements(elements, initialSelectedId)
       }
-    }, [initialSelectedId, elements])
+    }, [initialSelectedId, expandSpecificTargetedElements, elements])
 
     const direction = dir === "rtl" ? "rtl" : "ltr"
 
@@ -348,11 +348,11 @@ const CollapseButton = forwardRef<
     }
 
     elements.forEach(expandTree)
-  }, [])
+  }, [setExpandedItems])
 
   const closeAll = useCallback(() => {
     setExpandedItems?.([])
-  }, [])
+  }, [setExpandedItems])
 
   useEffect(() => {
     console.log(expandAll)

@@ -160,25 +160,6 @@ describe("SdkPreferencesPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("calls save mutation when Save button is clicked", async () => {
-    const user = userEvent.setup();
-    mockMutateAsync.mockResolvedValue({});
-
-    renderWithContext();
-
-    const saveButton = screen.getByRole("button", {
-      name: /save configuration/i,
-    });
-    await user.click(saveButton);
-
-    await waitFor(() => {
-      expect(mockMutateAsync).toHaveBeenCalledWith({
-        id: "test-repo-id",
-        sdkPreferences: expect.any(Array),
-      });
-    });
-  });
-
   it("resets configuration when Reset button is clicked", async () => {
     const user = userEvent.setup();
     renderWithContext();

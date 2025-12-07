@@ -227,7 +227,6 @@ describe("RepositoryItem", () => {
     });
 
     it("repository name is keyboard accessible via link", async () => {
-      const user = userEvent.setup();
       render(
         <RepositoryItem repository={mockRepository} onDelete={mockOnDelete} />
       );
@@ -239,7 +238,6 @@ describe("RepositoryItem", () => {
     });
 
     it("delete button is keyboard accessible", async () => {
-      const user = userEvent.setup();
       render(
         <RepositoryItem repository={mockRepository} onDelete={mockOnDelete} />
       );
