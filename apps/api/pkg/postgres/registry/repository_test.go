@@ -559,3 +559,333 @@ func TestPgRepository_GetRepositoriesByUser(t *testing.T) {
 		require.Len(t, *repos, 2)
 	})
 }
+
+func TestPgRepository_DeleteRepository(t *testing.T) {
+	t.Run("successfully deletes repository by setting deleted_at", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		testRepo := createTestRepository(t, "test-repo")
+		err = repo.CreateRepository(t.Context(), testRepo)
+		require.NoError(t, err)
+
+		err = repo.DeleteRepository(t.Context(), testRepo.Id)
+		assert.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var deletedAt *time.Time
+		err = conn.QueryRow(t.Context(),
+			"SELECT deleted_at FROM repositories WHERE id = $1",
+			testRepo.Id,
+		).Scan(&deletedAt)
+		require.NoError(t, err)
+		assert.NotNil(t, deletedAt, "deleted_at should be set")
+	})
+
+	t.Run("returns error when repository not found", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		nonExistentID := uuid.NewString()
+		err = repo.DeleteRepository(t.Context(), nonExistentID)
+		assert.Error(t, err)
+		assert.Equal(t, ErrRepositoryNotFound, err)
+	})
+
+	t.Run("returns error when trying to delete already deleted repository", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		testRepo := createTestRepository(t, "test-repo")
+		err = repo.CreateRepository(t.Context(), testRepo)
+		require.NoError(t, err)
+
+		err = repo.DeleteRepository(t.Context(), testRepo.Id)
+		require.NoError(t, err)
+
+		err = repo.DeleteRepository(t.Context(), testRepo.Id)
+		assert.Error(t, err)
+		assert.Equal(t, ErrRepositoryNotFound, err)
+	})
+}
+
+func TestPgRepository_DeleteRepositoriesByOrganizationId(t *testing.T) {
+	t.Run("successfully deletes all repositories for organization", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		orgID := uuid.NewString()
+
+		repo1 := createTestRepository(t, "repo1")
+		repo1.OrganizationId = orgID
+		err = repo.CreateRepository(t.Context(), repo1)
+		require.NoError(t, err)
+
+		repo2 := createTestRepository(t, "repo2")
+		repo2.OrganizationId = orgID
+		err = repo.CreateRepository(t.Context(), repo2)
+		require.NoError(t, err)
+
+		repo3 := createTestRepository(t, "repo3")
+		repo3.OrganizationId = orgID
+		err = repo.CreateRepository(t.Context(), repo3)
+		require.NoError(t, err)
+
+		err = repo.DeleteRepositoriesByOrganizationId(t.Context(), orgID)
+		assert.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var count int
+		err = conn.QueryRow(t.Context(),
+			"SELECT COUNT(*) FROM repositories WHERE organization_id = $1 AND deleted_at IS NOT NULL",
+			orgID,
+		).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 3, count, "all 3 repositories should be marked as deleted")
+
+		err = conn.QueryRow(t.Context(),
+			"SELECT COUNT(*) FROM repositories WHERE organization_id = $1 AND deleted_at IS NULL",
+			orgID,
+		).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 0, count, "no repositories should remain active")
+	})
+
+	t.Run("does not delete repositories from other organizations", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		orgID1 := uuid.NewString()
+		orgID2 := uuid.NewString()
+
+		repo1 := createTestRepository(t, "org1-repo1")
+		repo1.OrganizationId = orgID1
+		err = repo.CreateRepository(t.Context(), repo1)
+		require.NoError(t, err)
+
+		repo2 := createTestRepository(t, "org1-repo2")
+		repo2.OrganizationId = orgID1
+		err = repo.CreateRepository(t.Context(), repo2)
+		require.NoError(t, err)
+
+		repo3 := createTestRepository(t, "org2-repo1")
+		repo3.OrganizationId = orgID2
+		err = repo.CreateRepository(t.Context(), repo3)
+		require.NoError(t, err)
+
+		err = repo.DeleteRepositoriesByOrganizationId(t.Context(), orgID1)
+		assert.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var deletedCount int
+		err = conn.QueryRow(t.Context(),
+			"SELECT COUNT(*) FROM repositories WHERE organization_id = $1 AND deleted_at IS NOT NULL",
+			orgID1,
+		).Scan(&deletedCount)
+		require.NoError(t, err)
+		assert.Equal(t, 2, deletedCount, "both org1 repositories should be deleted")
+
+		var activeCount int
+		err = conn.QueryRow(t.Context(),
+			"SELECT COUNT(*) FROM repositories WHERE organization_id = $1 AND deleted_at IS NULL",
+			orgID2,
+		).Scan(&activeCount)
+		require.NoError(t, err)
+		assert.Equal(t, 1, activeCount, "org2 repository should still be active")
+	})
+
+	t.Run("handles empty organization gracefully", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		nonExistentOrgID := uuid.NewString()
+		err = repo.DeleteRepositoriesByOrganizationId(t.Context(), nonExistentOrgID)
+		assert.NoError(t, err, "deleting from empty organization should not error")
+	})
+
+	t.Run("does not re-delete already deleted repositories", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		orgID := uuid.NewString()
+
+		repo1 := createTestRepository(t, "repo1")
+		repo1.OrganizationId = orgID
+		err = repo.CreateRepository(t.Context(), repo1)
+		require.NoError(t, err)
+
+		repo2 := createTestRepository(t, "repo2")
+		repo2.OrganizationId = orgID
+		err = repo.CreateRepository(t.Context(), repo2)
+		require.NoError(t, err)
+
+		err = repo.DeleteRepositoriesByOrganizationId(t.Context(), orgID)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var firstDeletedAt time.Time
+		err = conn.QueryRow(t.Context(),
+			"SELECT deleted_at FROM repositories WHERE id = $1",
+			repo1.Id,
+		).Scan(&firstDeletedAt)
+		require.NoError(t, err)
+
+		time.Sleep(100 * time.Millisecond)
+
+		err = repo.DeleteRepositoriesByOrganizationId(t.Context(), orgID)
+		assert.NoError(t, err, "second delete should succeed but not change anything")
+
+		var secondDeletedAt time.Time
+		err = conn.QueryRow(t.Context(),
+			"SELECT deleted_at FROM repositories WHERE id = $1",
+			repo1.Id,
+		).Scan(&secondDeletedAt)
+		require.NoError(t, err)
+		assert.Equal(t, firstDeletedAt, secondDeletedAt, "deleted_at should not change on second delete")
+	})
+
+	t.Run("batch delete is atomic", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		orgID := uuid.NewString()
+
+		repo1 := createTestRepository(t, "repo1")
+		repo1.OrganizationId = orgID
+		err = repo.CreateRepository(t.Context(), repo1)
+		require.NoError(t, err)
+
+		repo2 := createTestRepository(t, "repo2")
+		repo2.OrganizationId = orgID
+		err = repo.CreateRepository(t.Context(), repo2)
+		require.NoError(t, err)
+
+		err = repo.DeleteRepositoriesByOrganizationId(t.Context(), orgID)
+		assert.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var deletedAt1, deletedAt2 time.Time
+		err = conn.QueryRow(t.Context(),
+			"SELECT deleted_at FROM repositories WHERE id = $1",
+			repo1.Id,
+		).Scan(&deletedAt1)
+		require.NoError(t, err)
+
+		err = conn.QueryRow(t.Context(),
+			"SELECT deleted_at FROM repositories WHERE id = $1",
+			repo2.Id,
+		).Scan(&deletedAt2)
+		require.NoError(t, err)
+
+		timeDiff := deletedAt1.Sub(deletedAt2)
+		if timeDiff < 0 {
+			timeDiff = -timeDiff
+		}
+		assert.Less(t, timeDiff, 1*time.Second, "all repositories should be deleted with same timestamp (atomic operation)")
+	})
+}

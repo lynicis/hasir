@@ -752,6 +752,34 @@ func (r *OrganizationRepository) GetMemberRoleString(ctx context.Context, organi
 	return string(role), err
 }
 
+func (r *OrganizationRepository) GetOwnerCount(ctx context.Context, organizationId string) (int, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetOwnerCount", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "organizationId",
+			Value: attribute.StringValue(organizationId),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return 0, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `SELECT COUNT(*) FROM organization_members WHERE organization_id = $1 AND role = $2`
+
+	var count int
+	err = connection.QueryRow(ctx, sql, organizationId, organization.MemberRoleOwner).Scan(&count)
+	if err != nil {
+		span.RecordError(err)
+		return 0, connect.NewError(connect.CodeInternal, errors.New("failed to query owner count"))
+	}
+
+	return count, nil
+}
+
 func (r *OrganizationRepository) UpdateMemberRole(ctx context.Context, organizationId, userId string, role organization.MemberRole) error {
 	var span trace.Span
 	ctx, span = r.tracer.Start(ctx, "UpdateMemberRole", trace.WithAttributes(

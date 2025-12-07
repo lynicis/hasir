@@ -233,6 +233,21 @@ func (mr *MockRepositoryMockRecorder) GetOrganizationsCount(ctx any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrganizationsCount", reflect.TypeOf((*MockRepository)(nil).GetOrganizationsCount), ctx)
 }
 
+// GetOwnerCount mocks base method.
+func (m *MockRepository) GetOwnerCount(ctx context.Context, organizationId string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOwnerCount", ctx, organizationId)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOwnerCount indicates an expected call of GetOwnerCount.
+func (mr *MockRepositoryMockRecorder) GetOwnerCount(ctx, organizationId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOwnerCount", reflect.TypeOf((*MockRepository)(nil).GetOwnerCount), ctx, organizationId)
+}
+
 // GetUserOrganizations mocks base method.
 func (m *MockRepository) GetUserOrganizations(ctx context.Context, userId string, page, pageSize int) (*[]OrganizationDTO, error) {
 	m.ctrl.T.Helper()

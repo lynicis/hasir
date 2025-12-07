@@ -54,6 +54,20 @@ func (mr *MockRepositoryMockRecorder) CreateRepository(ctx, repo any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRepository", reflect.TypeOf((*MockRepository)(nil).CreateRepository), ctx, repo)
 }
 
+// DeleteRepositoriesByOrganizationId mocks base method.
+func (m *MockRepository) DeleteRepositoriesByOrganizationId(ctx context.Context, organizationId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRepositoriesByOrganizationId", ctx, organizationId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRepositoriesByOrganizationId indicates an expected call of DeleteRepositoriesByOrganizationId.
+func (mr *MockRepositoryMockRecorder) DeleteRepositoriesByOrganizationId(ctx, organizationId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRepositoriesByOrganizationId", reflect.TypeOf((*MockRepository)(nil).DeleteRepositoriesByOrganizationId), ctx, organizationId)
+}
+
 // DeleteRepository mocks base method.
 func (m *MockRepository) DeleteRepository(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
@@ -186,6 +200,21 @@ func (m *MockRepository) GetSdkPreferences(ctx context.Context, repositoryId str
 func (mr *MockRepositoryMockRecorder) GetSdkPreferences(ctx, repositoryId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSdkPreferences", reflect.TypeOf((*MockRepository)(nil).GetSdkPreferences), ctx, repositoryId)
+}
+
+// GetSdkPreferencesByRepositoryIds mocks base method.
+func (m *MockRepository) GetSdkPreferencesByRepositoryIds(ctx context.Context, repositoryIds []string) (map[string][]SdkPreferencesDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSdkPreferencesByRepositoryIds", ctx, repositoryIds)
+	ret0, _ := ret[0].(map[string][]SdkPreferencesDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSdkPreferencesByRepositoryIds indicates an expected call of GetSdkPreferencesByRepositoryIds.
+func (mr *MockRepositoryMockRecorder) GetSdkPreferencesByRepositoryIds(ctx, repositoryIds any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSdkPreferencesByRepositoryIds", reflect.TypeOf((*MockRepository)(nil).GetSdkPreferencesByRepositoryIds), ctx, repositoryIds)
 }
 
 // UpdateRepository mocks base method.

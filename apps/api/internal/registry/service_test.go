@@ -520,12 +520,29 @@ func TestService_DeleteRepository(t *testing.T) {
 			GetRepositoriesByUser(ctx, userID, 1, 10).
 			Return(repos, nil)
 
+		sdkPrefsMap := map[string][]SdkPreferencesDTO{
+			"repo-1": {
+				{
+					Id:           "pref-1",
+					RepositoryId: "repo-1",
+					Sdk:          SdkGoConnectRpc,
+					Status:       true,
+				},
+			},
+		}
+
+		mockRepo.EXPECT().
+			GetSdkPreferencesByRepositoryIds(ctx, []string{"repo-1", "repo-2"}).
+			Return(sdkPrefsMap, nil)
+
 		resp, err := svc.GetRepositories(ctx, 1, 10)
 		require.NoError(t, err)
 		require.Len(t, resp.GetRepositories(), 2)
 		require.Equal(t, "repo-1", resp.GetRepositories()[0].GetId())
 		require.Equal(t, "first-repo", resp.GetRepositories()[0].GetName())
+		require.Len(t, resp.GetRepositories()[0].GetSdkPreferences(), 1)
 		require.Equal(t, "repo-2", resp.GetRepositories()[1].GetId())
 		require.Equal(t, "second-repo", resp.GetRepositories()[1].GetName())
+		require.Len(t, resp.GetRepositories()[1].GetSdkPreferences(), 0)
 	})
 }

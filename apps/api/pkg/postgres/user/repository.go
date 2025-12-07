@@ -166,6 +166,50 @@ func (r *PgRepository) GetUserByEmail(ctx context.Context, email string) (*user.
 	return &userDTO, nil
 }
 
+func (r *PgRepository) GetUsersByEmails(ctx context.Context, emails []string) (map[string]*user.UserDTO, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetUsersByEmails", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "emailCount",
+			Value: attribute.IntValue(len(emails)),
+		},
+	))
+	defer span.End()
+
+	if len(emails) == 0 {
+		return make(map[string]*user.UserDTO), nil
+	}
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := "select * from users where email = ANY($1)"
+
+	var rows pgx.Rows
+	rows, err = connection.Query(ctx, sql, emails)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrInternalServer
+	}
+	defer rows.Close()
+
+	users, err := pgx.CollectRows[user.UserDTO](rows, pgx.RowToStructByName)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect rows"))
+	}
+
+	userMap := make(map[string]*user.UserDTO, len(users))
+	for i := range users {
+		userMap[users[i].Email] = &users[i]
+	}
+
+	return userMap, nil
+}
+
 func (r *PgRepository) GetUserById(ctx context.Context, id string) (*user.UserDTO, error) {
 	var span trace.Span
 	ctx, span = r.tracer.Start(ctx, "GetUserById", trace.WithAttributes(

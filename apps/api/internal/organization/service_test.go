@@ -105,11 +105,11 @@ func TestCreateOrganization(t *testing.T) {
 			Return(nil)
 
 		mockUserRepo.EXPECT().
-			GetUserByEmail(ctx, "friend1@example.com").
-			Return(&user.UserDTO{}, nil)
-		mockUserRepo.EXPECT().
-			GetUserByEmail(ctx, "friend2@example.com").
-			Return(&user.UserDTO{}, nil)
+			GetUsersByEmails(ctx, []string{"friend1@example.com", "friend2@example.com"}).
+			Return(map[string]*user.UserDTO{
+				"friend1@example.com": {},
+				"friend2@example.com": {},
+			}, nil)
 
 		mockRepo.EXPECT().
 			CreateInvites(ctx, gomock.Any()).
@@ -259,8 +259,10 @@ func TestCreateOrganization(t *testing.T) {
 			Return(nil)
 
 		mockUserRepo.EXPECT().
-			GetUserByEmail(ctx, "friend@example.com").
-			Return(&user.UserDTO{}, nil)
+			GetUsersByEmails(ctx, []string{"friend@example.com"}).
+			Return(map[string]*user.UserDTO{
+				"friend@example.com": {},
+			}, nil)
 
 		mockRepo.EXPECT().
 			CreateInvites(ctx, gomock.Any()).
@@ -296,8 +298,10 @@ func TestCreateOrganization(t *testing.T) {
 			Return(nil)
 
 		mockUserRepo.EXPECT().
-			GetUserByEmail(ctx, "friend@example.com").
-			Return(&user.UserDTO{}, nil)
+			GetUsersByEmails(ctx, []string{"friend@example.com"}).
+			Return(map[string]*user.UserDTO{
+				"friend@example.com": {},
+			}, nil)
 
 		mockRepo.EXPECT().
 			CreateInvites(ctx, gomock.Any()).
@@ -1257,7 +1261,6 @@ func TestUpdateMemberRole(t *testing.T) {
 		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		ownerID := "owner-123"
-		otherOwnerID := "owner-456"
 		memberID := "member-789"
 
 		existingOrg := &OrganizationDTO{
@@ -1284,12 +1287,8 @@ func TestUpdateMemberRole(t *testing.T) {
 			Return(MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
-			GetMembers(ctx, orgID).
-			Return([]*OrganizationMemberDTO{
-				{UserId: ownerID, Role: MemberRoleOwner},
-				{UserId: otherOwnerID, Role: MemberRoleOwner},
-				{UserId: memberID, Role: MemberRoleOwner},
-			}, []string{"owner1", "owner2", "member"}, []string{"o1@example.com", "o2@example.com", "m@example.com"}, nil)
+			GetOwnerCount(ctx, orgID).
+			Return(3, nil)
 
 		mockRepo.EXPECT().
 			UpdateMemberRole(ctx, orgID, memberID, MemberRoleReader).
@@ -1331,10 +1330,8 @@ func TestUpdateMemberRole(t *testing.T) {
 			Return(MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
-			GetMembers(ctx, orgID).
-			Return([]*OrganizationMemberDTO{
-				{UserId: onlyOwnerID, Role: MemberRoleOwner},
-			}, []string{"only-owner"}, []string{"only-owner@example.com"}, nil)
+			GetOwnerCount(ctx, orgID).
+			Return(1, nil)
 
 		err := svc.UpdateMemberRole(ctx, req, ownerID)
 		if err == nil {
@@ -1574,11 +1571,8 @@ func TestDeleteMember(t *testing.T) {
 			Return(MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
-			GetMembers(ctx, orgID).
-			Return([]*OrganizationMemberDTO{
-				{UserId: ownerID, Role: MemberRoleOwner},
-				{UserId: otherOwnerID, Role: MemberRoleOwner},
-			}, []string{"owner1", "owner2"}, []string{"o1@example.com", "o2@example.com"}, nil)
+			GetOwnerCount(ctx, orgID).
+			Return(2, nil)
 
 		mockRepo.EXPECT().
 			DeleteMember(ctx, orgID, otherOwnerID).
@@ -1697,10 +1691,8 @@ func TestDeleteMember(t *testing.T) {
 			Return(MemberRoleOwner, nil)
 
 		mockRepo.EXPECT().
-			GetMembers(ctx, orgID).
-			Return([]*OrganizationMemberDTO{
-				{UserId: lastOwnerID, Role: MemberRoleOwner},
-			}, []string{"last-owner"}, []string{"last-owner@example.com"}, nil)
+			GetOwnerCount(ctx, orgID).
+			Return(1, nil)
 
 		err := svc.DeleteMember(ctx, req, ownerID)
 		if err == nil {

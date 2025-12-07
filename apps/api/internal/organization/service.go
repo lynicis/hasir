@@ -115,16 +115,9 @@ func (s *service) ensureNotLastOwner(ctx context.Context, organizationId string,
 		return nil
 	}
 
-	members, _, _, err := s.repository.GetMembers(ctx, organizationId)
+	ownerCount, err := s.repository.GetOwnerCount(ctx, organizationId)
 	if err != nil {
 		return err
-	}
-
-	ownerCount := 0
-	for _, member := range members {
-		if member.Role == MemberRoleOwner {
-			ownerCount++
-		}
 	}
 
 	if ownerCount == 1 {
@@ -174,6 +167,22 @@ func (s *service) CreateOrganization(
 		return err
 	}
 
+	var emails []string
+	for _, member := range req.GetMembers() {
+		emailAddress := member.GetEmail()
+		if emailAddress != "" {
+			emails = append(emails, emailAddress)
+		}
+	}
+
+	var existingUsers map[string]*user.UserDTO
+	if len(emails) > 0 {
+		existingUsers, err = s.userRepository.GetUsersByEmails(ctx, emails)
+		if err != nil {
+			return err
+		}
+	}
+
 	var invites []inviteInfo
 	for _, member := range req.GetMembers() {
 		emailAddress := member.GetEmail()
@@ -181,15 +190,15 @@ func (s *service) CreateOrganization(
 			continue
 		}
 
-		if _, err := s.userRepository.GetUserByEmail(ctx, emailAddress); err != nil {
-			if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeNotFound {
-				continue
-			}
-			return err
+		if _, exists := existingUsers[emailAddress]; !exists {
+			continue
 		}
 
 		role := SharedRoleToMemberRoleMap[member.GetRole()]
-		invites = append(invites, inviteInfo{email: emailAddress, role: role})
+		invites = append(invites, inviteInfo{
+			email: emailAddress,
+			role:  role,
+		})
 	}
 
 	if len(invites) > 0 {

@@ -230,6 +230,21 @@ func (mr *MockRepositoryMockRecorder) GetUserById(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserById", reflect.TypeOf((*MockRepository)(nil).GetUserById), ctx, id)
 }
 
+// GetUsersByEmails mocks base method.
+func (m *MockRepository) GetUsersByEmails(ctx context.Context, emails []string) (map[string]*UserDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUsersByEmails", ctx, emails)
+	ret0, _ := ret[0].(map[string]*UserDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUsersByEmails indicates an expected call of GetUsersByEmails.
+func (mr *MockRepositoryMockRecorder) GetUsersByEmails(ctx, emails any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUsersByEmails", reflect.TypeOf((*MockRepository)(nil).GetUsersByEmails), ctx, emails)
+}
+
 // RevokeApiKey mocks base method.
 func (m *MockRepository) RevokeApiKey(ctx context.Context, userId, keyId string) error {
 	m.ctrl.T.Helper()

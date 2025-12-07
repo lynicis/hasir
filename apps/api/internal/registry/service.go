@@ -175,12 +175,36 @@ func (s *service) GetRepositories(
 		return nil, err
 	}
 
+	var repoIds []string
+	for _, repo := range *repositories {
+		repoIds = append(repoIds, repo.Id)
+	}
+
+	var sdkPrefsMap map[string][]SdkPreferencesDTO
+	if len(repoIds) > 0 {
+		sdkPrefsMap, err = s.repository.GetSdkPreferencesByRepositoryIds(ctx, repoIds)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var resp []*registryv1.Repository
 	for _, repository := range *repositories {
+		var protoSdkPreferences []*registryv1.SdkPreference
+		if sdkPrefs, exists := sdkPrefsMap[repository.Id]; exists {
+			for _, pref := range sdkPrefs {
+				protoSdkPreferences = append(protoSdkPreferences, &registryv1.SdkPreference{
+					Sdk:    SdkDbToProtoEnum[pref.Sdk],
+					Status: pref.Status,
+				})
+			}
+		}
+
 		resp = append(resp, &registryv1.Repository{
-			Id:         repository.Id,
-			Name:       repository.Name,
-			Visibility: proto.ReverseVisibilityMap[repository.Visibility],
+			Id:             repository.Id,
+			Name:           repository.Name,
+			Visibility:     proto.ReverseVisibilityMap[repository.Visibility],
+			SdkPreferences: protoSdkPreferences,
 		})
 	}
 
@@ -252,14 +276,14 @@ func (s *service) DeleteRepositoriesByOrganization(
 		return fmt.Errorf("failed to get repositories for organization: %w", err)
 	}
 
-	errGroup, ctx := errgroup.WithContext(ctx)
+	if err := s.repository.DeleteRepositoriesByOrganizationId(ctx, organizationId); err != nil {
+		return fmt.Errorf("failed to batch delete repositories from database: %w", err)
+	}
+
+	errGroup := &errgroup.Group{}
 
 	for _, repo := range *repos {
 		errGroup.Go(func() error {
-			if err := s.repository.DeleteRepository(ctx, repo.Id); err != nil {
-				return fmt.Errorf("failed to delete repository %s from database: %w", repo.Id, err)
-			}
-
 			if err := os.RemoveAll(repo.Path); err != nil {
 				zap.L().Error("failed to remove repository directory after database deletion",
 					zap.String("id", repo.Id),

@@ -8,6 +8,7 @@ import (
 type Repository interface {
 	CreateUser(ctx context.Context, user *UserDTO) error
 	GetUserByEmail(ctx context.Context, email string) (*UserDTO, error)
+	GetUsersByEmails(ctx context.Context, emails []string) (map[string]*UserDTO, error)
 	GetUserById(ctx context.Context, id string) (*UserDTO, error)
 	CreateRefreshToken(ctx context.Context, id, token string, expiresAt time.Time) error
 	GetRefreshTokenByTokenId(ctx context.Context, token string) (*RefreshTokensDTO, error)

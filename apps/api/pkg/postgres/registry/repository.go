@@ -464,6 +464,39 @@ func (r *PgRepository) DeleteRepository(ctx context.Context, id string) error {
 	return nil
 }
 
+func (r *PgRepository) DeleteRepositoriesByOrganizationId(ctx context.Context, organizationId string) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "DeleteRepositoriesByOrganizationId", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "organizationId",
+			Value: attribute.StringValue(organizationId),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	now := time.Now().UTC()
+	sql := `UPDATE repositories
+			SET deleted_at = $1
+			WHERE organization_id = $2 AND deleted_at IS NULL`
+
+	_, err = connection.Exec(ctx, sql, &now, organizationId)
+	if err != nil {
+		span.RecordError(err)
+		return connect.NewError(
+			connect.CodeInternal,
+			errors.New("failed to execute batch delete repositories query"),
+		)
+	}
+
+	return nil
+}
+
 func (r *PgRepository) UpdateSdkPreferences(
 	ctx context.Context,
 	repositoryId string,
@@ -575,4 +608,56 @@ func (r *PgRepository) GetSdkPreferences(
 	}
 
 	return preferences, nil
+}
+
+func (r *PgRepository) GetSdkPreferencesByRepositoryIds(
+	ctx context.Context,
+	repositoryIds []string,
+) (map[string][]registry.SdkPreferencesDTO, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetSdkPreferencesByRepositoryIds", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "repositoryCount",
+			Value: attribute.IntValue(len(repositoryIds)),
+		},
+	))
+	defer span.End()
+
+	if len(repositoryIds) == 0 {
+		return make(map[string][]registry.SdkPreferencesDTO), nil
+	}
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := "SELECT * FROM sdk_preferences WHERE repository_id = ANY($1)"
+
+	rows, err := connection.Query(ctx, sql, repositoryIds)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(
+			connect.CodeInternal,
+			errors.New("failed to query sdk preferences"),
+		)
+	}
+	defer rows.Close()
+
+	preferences, err := pgx.CollectRows[registry.SdkPreferencesDTO](rows, pgx.RowToStructByName)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(
+			connect.CodeInternal,
+			errors.New("failed to collect sdk preferences rows"),
+		)
+	}
+
+	preferencesMap := make(map[string][]registry.SdkPreferencesDTO)
+	for _, pref := range preferences {
+		preferencesMap[pref.RepositoryId] = append(preferencesMap[pref.RepositoryId], pref)
+	}
+
+	return preferencesMap, nil
 }
