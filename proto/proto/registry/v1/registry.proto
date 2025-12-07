@@ -7,10 +7,26 @@ import "google/protobuf/empty.proto";
 import "shared/filter.proto";
 import "shared/visibility.proto";
 
+enum SDK {
+  SDK_UNSPECIFIED = 0;
+  SDK_GO_PROTOBUF = 1;
+  SDK_GO_CONNECTRPC = 2;
+  SDK_GO_GRPC = 3;
+  SDK_JS_BUFBUILD_ES = 4;
+  SDK_JS_PROTOBUF = 5;
+  SDK_JS_CONNECTRPC = 6;
+}
+
+message SdkPreference {
+  SDK sdk = 1;
+  bool status = 2;
+}
+
 message Repository {
   string id = 1;
   string name = 2;
   shared.Visibility visibility = 3;
+  repeated SdkPreference sdk_preferences = 4;
 }
 
 message CreateRepositoryRequest {
@@ -36,8 +52,22 @@ message DeleteRepositoryRequest {
   string repository_id = 1 [(buf.validate.field).required = true];
 }
 
+message GetRepositoryRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+
+message UpdateSdkPreferencesRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  repeated SdkPreference sdk_preferences = 2 [
+    (buf.validate.field).repeated.min_items = 6,
+    (buf.validate.field).repeated.max_items = 6
+  ];
+}
+
 service RegistryService {
   rpc CreateRepository(CreateRepositoryRequest) returns (google.protobuf.Empty);
   rpc GetRepositories(GetRepositoriesRequest) returns (GetRepositoriesResponse);
   rpc DeleteRepository(DeleteRepositoryRequest) returns (google.protobuf.Empty);
+  rpc GetRepository(GetRepositoryRequest) returns (Repository);
+  rpc UpdateSdkPreferences(UpdateSdkPreferencesRequest) returns (google.protobuf.Empty);
 }
