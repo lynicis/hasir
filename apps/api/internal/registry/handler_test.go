@@ -3,8 +3,12 @@ package registry
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -13,6 +17,8 @@ import (
 
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/registry/v1/registryv1connect"
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
+
+	"hasir-api/internal/user"
 )
 
 var ErrRepositoryNotFound = connect.NewError(connect.CodeNotFound, errors.New("repository not found"))
@@ -429,3 +435,172 @@ func TestHandler_DeleteRepository(t *testing.T) {
 		require.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
 }
+
+func TestNewGitSshHandler(t *testing.T) {
+	t.Run("creates handler with service and repos path", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+
+		h := NewGitSshHandler(mockService, DefaultReposPath)
+
+		require.NotNil(t, h)
+		require.Equal(t, mockService, h.service)
+		require.Equal(t, DefaultReposPath, h.reposPath)
+	})
+}
+
+func TestNewGitHttpHandler(t *testing.T) {
+	t.Run("creates handler with service user repo and repos path", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+
+		h := NewGitHttpHandler(mockService, nil, DefaultReposPath)
+
+		require.NotNil(t, h)
+		require.Equal(t, mockService, h.service)
+		require.Equal(t, DefaultReposPath, h.reposPath)
+	})
+}
+
+func TestGitHttpHandler_ServeHTTP(t *testing.T) {
+	t.Run("returns 404 for empty repo path", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+
+		h := NewGitHttpHandler(mockService, nil, DefaultReposPath)
+
+		req := httptest.NewRequest(http.MethodGet, "/git/", nil)
+		w := httptest.NewRecorder()
+
+		h.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("returns 401 when no auth provided", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+
+		h := NewGitHttpHandler(mockService, nil, DefaultReposPath)
+
+		req := httptest.NewRequest(http.MethodGet, "/git/repo-uuid/info/refs?service=git-upload-pack", nil)
+		w := httptest.NewRecorder()
+
+		h.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+		require.Contains(t, w.Header().Get("WWW-Authenticate"), "Basic")
+	})
+
+	t.Run("returns 401 for invalid API key", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockUserRepo := user.NewMockRepository(ctrl)
+
+		mockUserRepo.EXPECT().
+			GetUserByApiKey(gomock.Any(), "invalid-key").
+			Return(nil, connect.NewError(connect.CodeNotFound, errors.New("api key not found")))
+
+		h := NewGitHttpHandler(mockService, mockUserRepo, DefaultReposPath)
+
+		req := httptest.NewRequest(http.MethodGet, "/git/repo-uuid/info/refs?service=git-upload-pack", nil)
+		req.SetBasicAuth("user", "invalid-key")
+		w := httptest.NewRecorder()
+
+		h.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("returns 403 when access denied", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockUserRepo := user.NewMockRepository(ctrl)
+
+		mockUserRepo.EXPECT().
+			GetUserByApiKey(gomock.Any(), "valid-key").
+			Return(&user.UserDTO{Id: "user-123"}, nil)
+
+		mockService.EXPECT().
+			ValidateSshAccess(gomock.Any(), "user-123", "./repos/repo-uuid", SshOperationRead).
+			Return(false, nil)
+
+		h := NewGitHttpHandler(mockService, mockUserRepo, DefaultReposPath)
+
+		req := httptest.NewRequest(http.MethodGet, "/git/repo-uuid/info/refs?service=git-upload-pack", nil)
+		req.SetBasicAuth("user", "valid-key")
+		w := httptest.NewRecorder()
+
+		h.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("returns 404 for unknown subpath after auth", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockUserRepo := user.NewMockRepository(ctrl)
+
+		mockUserRepo.EXPECT().
+			GetUserByApiKey(gomock.Any(), "valid-key").
+			Return(&user.UserDTO{Id: "user-123"}, nil)
+
+		mockService.EXPECT().
+			ValidateSshAccess(gomock.Any(), "user-123", "./repos/repo-uuid", SshOperationRead).
+			Return(true, nil)
+
+		h := NewGitHttpHandler(mockService, mockUserRepo, DefaultReposPath)
+
+		req := httptest.NewRequest(http.MethodGet, "/git/repo-uuid/unknown", nil)
+		req.SetBasicAuth("user", "valid-key")
+		w := httptest.NewRecorder()
+
+		h.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("successfully handles info/refs", func(t *testing.T) {
+		if _, err := exec.LookPath("git"); err != nil {
+			t.Skip("git not installed")
+		}
+
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockUserRepo := user.NewMockRepository(ctrl)
+
+		tempDir, err := os.MkdirTemp("", "git-test")
+		require.NoError(t, err)
+		defer os.RemoveAll(tempDir)
+
+		repoName := "test-repo"
+		repoPath := filepath.Join(tempDir, repoName)
+		err = os.MkdirAll(repoPath, 0755)
+		require.NoError(t, err)
+
+		cmd := exec.Command("git", "init", "--bare", repoPath)
+		err = cmd.Run()
+		require.NoError(t, err)
+
+		mockUserRepo.EXPECT().
+			GetUserByApiKey(gomock.Any(), "valid-key").
+			Return(&user.UserDTO{Id: "user-123"}, nil)
+
+		mockService.EXPECT().
+			ValidateSshAccess(gomock.Any(), "user-123", repoPath, SshOperationRead).
+			Return(true, nil)
+
+		h := NewGitHttpHandler(mockService, mockUserRepo, tempDir)
+
+		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/git/%s/info/refs?service=git-upload-pack", repoName), nil)
+		req.SetBasicAuth("user", "valid-key")
+		w := httptest.NewRecorder()
+
+		h.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Contains(t, w.Header().Get("Content-Type"), "application/x-git-upload-pack-advertisement")
+		require.Contains(t, w.Body.String(), "# service=git-upload-pack")
+	})
+}
+

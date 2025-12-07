@@ -19,7 +19,7 @@ import (
 	"hasir-api/pkg/proto"
 )
 
-const defaultReposPath = "./repos"
+const DefaultReposPath = "./repos"
 
 type Service interface {
 	CreateRepository(ctx context.Context, req *registryv1.CreateRepositoryRequest) error
@@ -39,7 +39,7 @@ type service struct {
 
 func NewService(repository Repository, orgRepo authorization.MemberRoleChecker) Service {
 	return &service{
-		rootPath:   defaultReposPath,
+		rootPath:   DefaultReposPath,
 		repository: repository,
 		orgRepo:    orgRepo,
 	}

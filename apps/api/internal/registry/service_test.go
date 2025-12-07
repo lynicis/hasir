@@ -27,7 +27,7 @@ func TestNewService(t *testing.T) {
 		svc := NewService(mockRepo, mockOrgRepo)
 		concrete, ok := svc.(*service)
 		require.True(t, ok, "NewService should return *service")
-		require.Equal(t, defaultReposPath, concrete.rootPath)
+		require.Equal(t, DefaultReposPath, concrete.rootPath)
 	})
 }
 

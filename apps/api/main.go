@@ -129,6 +129,9 @@ func main() {
 		mux.Handle(path, h)
 	}
 
+	gitHttpHandler := registry.NewGitHttpHandler(registryService, userPgRepository, registry.DefaultReposPath)
+	mux.Handle("/git/", gitHttpHandler)
+
 	protocols := new(http.Protocols)
 	protocols.SetHTTP1(true)
 	protocols.SetUnencryptedHTTP2(true)
@@ -147,7 +150,7 @@ func main() {
 
 	var sshServer *ssh.Server
 	if cfg.Ssh.Enabled {
-		sshHandler := registry.NewSshHandler(registryService, "./repos")
+		sshHandler := registry.NewGitSshHandler(registryService, registry.DefaultReposPath)
 		sshServer = startSshServer(cfg, userPgRepository, sshHandler)
 	}
 
@@ -222,7 +225,7 @@ func initTracer(cfg *config.Config) *sdktrace.TracerProvider {
 	return tracerProvider
 }
 
-func startSshServer(cfg *config.Config, userRepo user.Repository, sshHandler *registry.SshHandler) *ssh.Server {
+func startSshServer(cfg *config.Config, userRepo user.Repository, sshHandler *registry.GitSshHandler) *ssh.Server {
 	hostKey, err := loadOrGenerateHostKey(cfg.Ssh.HostKeyPath)
 	if err != nil {
 		zap.L().Fatal("failed to load SSH host key", zap.Error(err))

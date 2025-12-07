@@ -13,6 +13,8 @@ import (
 	"github.com/gliderlabs/ssh"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	"hasir-api/internal/user"
 )
 
 type handler struct {
@@ -113,18 +115,18 @@ func (h *handler) UpdateSdkPreferences(
 	return connect.NewResponse(new(emptypb.Empty)), nil
 }
 
-type SshHandler struct {
+type GitSshHandler struct {
 	service   Service
 	reposPath string
 }
-func NewSshHandler(service Service, reposPath string) *SshHandler {
-	return &SshHandler{
+func NewGitSshHandler(service Service, reposPath string) *GitSshHandler {
+	return &GitSshHandler{
 		service:   service,
 		reposPath: reposPath,
 	}
 }
 
-func (h *SshHandler) HandleSession(session ssh.Session, userId string) error {
+func (h *GitSshHandler) HandleSession(session ssh.Session, userId string) error {
 	cmd := session.RawCommand()
 	if cmd == "" {
 		return fmt.Errorf("interactive shell access is not supported, use git commands")
@@ -175,4 +177,140 @@ func (h *SshHandler) HandleSession(session ssh.Session, userId string) error {
 	}
 
 	return execCmd.Wait()
+}
+
+type GitHttpHandler struct {
+	service   Service
+	userRepo  user.Repository
+	reposPath string
+}
+
+func NewGitHttpHandler(service Service, userRepo user.Repository, reposPath string) *GitHttpHandler {
+	return &GitHttpHandler{
+		service:   service,
+		userRepo:  userRepo,
+		reposPath: reposPath,
+	}
+}
+
+func (h *GitHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/git/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) < 1 || parts[0] == "" {
+		http.Error(w, "Repository not found", http.StatusNotFound)
+		return
+	}
+
+	repoUUID := parts[0]
+	repoPath := h.reposPath + "/" + repoUUID
+	subPath := ""
+	if len(parts) > 1 {
+		subPath = parts[1]
+	}
+
+	var operation SshOperation
+	serviceName := r.URL.Query().Get("service")
+	if serviceName == "git-receive-pack" || subPath == "git-receive-pack" {
+		operation = SshOperationWrite
+	} else {
+		operation = SshOperationRead
+	}
+
+	userId, err := h.authenticate(r)
+	if err != nil {
+		h.requireAuth(w)
+		return
+	}
+
+	hasAccess, err := h.service.ValidateSshAccess(r.Context(), userId, repoPath, operation)
+	if err != nil {
+		zap.L().Error("Access validation failed", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if !hasAccess {
+		http.Error(w, "Permission denied", http.StatusForbidden)
+		return
+	}
+
+	switch {
+	case subPath == "info/refs":
+		h.handleInfoRefs(w, r, repoPath)
+	case subPath == "git-upload-pack" && r.Method == http.MethodPost:
+		h.handleUploadPack(w, r, repoPath)
+	case subPath == "git-receive-pack" && r.Method == http.MethodPost:
+		h.handleReceivePack(w, r, repoPath)
+	default:
+		http.Error(w, "Not found", http.StatusNotFound)
+	}
+}
+
+func (h *GitHttpHandler) requireAuth(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", `Basic realm="Git Repository"`)
+	http.Error(w, "Authentication required", http.StatusUnauthorized)
+}
+
+func (h *GitHttpHandler) authenticate(r *http.Request) (string, error) {
+	_, password, ok := r.BasicAuth()
+	if !ok || password == "" {
+		return "", fmt.Errorf("missing credentials")
+	}
+
+	userDTO, err := h.userRepo.GetUserByApiKey(r.Context(), password)
+	if err != nil {
+		return "", err
+	}
+
+	return userDTO.Id, nil
+}
+
+func (h *GitHttpHandler) handleInfoRefs(w http.ResponseWriter, r *http.Request, repoPath string) {
+	serviceName := r.URL.Query().Get("service")
+	if serviceName != "git-upload-pack" && serviceName != "git-receive-pack" {
+		http.Error(w, "Invalid service", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-advertisement", serviceName))
+	w.Header().Set("Cache-Control", "no-cache")
+
+	pktLine := fmt.Sprintf("# service=%s\n", serviceName)
+	fmt.Fprintf(w, "%04x%s", len(pktLine)+4, pktLine)
+	fmt.Fprint(w, "0000")
+
+	cmd := exec.Command(serviceName, "--stateless-rpc", "--advertise-refs", repoPath)
+	cmd.Stdout = w
+	cmd.Stderr = w
+
+	if err := cmd.Run(); err != nil {
+		zap.L().Error("Failed to run git command", zap.String("service", serviceName), zap.Error(err))
+	}
+}
+
+func (h *GitHttpHandler) handleUploadPack(w http.ResponseWriter, r *http.Request, repoPath string) {
+	w.Header().Set("Content-Type", "application/x-git-upload-pack-result")
+	w.Header().Set("Cache-Control", "no-cache")
+
+	cmd := exec.Command("git-upload-pack", "--stateless-rpc", repoPath)
+	cmd.Stdin = r.Body
+	cmd.Stdout = w
+	cmd.Stderr = w
+
+	if err := cmd.Run(); err != nil {
+		zap.L().Error("git-upload-pack failed", zap.Error(err))
+	}
+}
+
+func (h *GitHttpHandler) handleReceivePack(w http.ResponseWriter, r *http.Request, repoPath string) {
+	w.Header().Set("Content-Type", "application/x-git-receive-pack-result")
+	w.Header().Set("Cache-Control", "no-cache")
+
+	cmd := exec.Command("git-receive-pack", "--stateless-rpc", repoPath)
+	cmd.Stdin = r.Body
+	cmd.Stdout = w
+	cmd.Stderr = w
+
+	if err := cmd.Run(); err != nil {
+		zap.L().Error("git-receive-pack failed", zap.Error(err))
+	}
 }

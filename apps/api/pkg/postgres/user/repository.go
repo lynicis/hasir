@@ -806,3 +806,40 @@ func (r *PgRepository) GetUserBySshPublicKey(ctx context.Context, publicKey stri
 
 	return &userDTO, nil
 }
+
+func (r *PgRepository) GetUserByApiKey(ctx context.Context, apiKey string) (*user.UserDTO, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetUserByApiKey")
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `
+		SELECT u.id, u.username, u.email, u.password, u.created_at, u.deleted_at
+		FROM users u
+		INNER JOIN api_keys ak ON ak.user_id = u.id
+		WHERE ak.key = $1 AND ak.deleted_at IS NULL AND u.deleted_at IS NULL
+	`
+
+	rows, err := connection.Query(ctx, sql, apiKey)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrInternalServer
+	}
+	defer rows.Close()
+
+	var userDTO user.UserDTO
+	userDTO, err = pgx.CollectOneRow[user.UserDTO](rows, pgx.RowToStructByName)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("api key not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect row"))
+	}
+
+	return &userDTO, nil
+}
