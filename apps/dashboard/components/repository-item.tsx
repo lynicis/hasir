@@ -1,6 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 
@@ -16,12 +17,16 @@ interface RepositoryItemProps {
 }
 
 export function RepositoryItem({ repository, onDelete }: RepositoryItemProps) {
+  const detailUrl = `/repository/${repository.id}`;
+
   return (
     <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card px-4 py-3 hover:bg-accent/50 transition-colors">
-      <div className="flex items-center gap-3 flex-1">
+      <Link href={detailUrl} className="flex items-center gap-3 flex-1">
         <div className="flex flex-col flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-sm">{repository.name}</span>
+            <span className="font-medium text-sm hover:underline">
+              {repository.name}
+            </span>
             <span
               className={`text-xs px-2 py-0.5 rounded-full ${
                 repository.visibility === "public"
@@ -33,12 +38,15 @@ export function RepositoryItem({ repository, onDelete }: RepositoryItemProps) {
             </span>
           </div>
         </div>
-      </div>
+      </Link>
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => onDelete(repository)}
+          onClick={(e) => {
+            e.preventDefault();
+            onDelete(repository);
+          }}
         >
           <Trash2 className="size-4" />
         </Button>
