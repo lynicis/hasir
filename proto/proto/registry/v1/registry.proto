@@ -64,10 +64,17 @@ message UpdateSdkPreferencesRequest {
   ];
 }
 
+message UpdateRepositoryRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  string name = 2 [(buf.validate.field).required = true];
+  shared.Visibility visibility = 3 [(buf.validate.field).required = true];
+}
+
 service RegistryService {
   rpc CreateRepository(CreateRepositoryRequest) returns (google.protobuf.Empty);
   rpc GetRepositories(GetRepositoriesRequest) returns (GetRepositoriesResponse);
   rpc DeleteRepository(DeleteRepositoryRequest) returns (google.protobuf.Empty);
+  rpc UpdateRepository(UpdateRepositoryRequest) returns (google.protobuf.Empty);
   rpc GetRepository(GetRepositoryRequest) returns (Repository);
   rpc UpdateSdkPreferences(UpdateSdkPreferencesRequest) returns (google.protobuf.Empty);
 }
