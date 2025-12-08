@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type OrganizationRepository } from "@/components/repository-item";
+import { CloneUrls } from "@/components/clone-urls";
 import { reverseVisibilityMapper } from "@/lib/visibility-mapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -208,6 +209,9 @@ export default function RepositoryLayout({
               <p className="text-muted-foreground mt-1 text-sm">
                 Repository details and configuration
               </p>
+            </div>
+            <div className="ml-auto">
+              {repository && <CloneUrls repositoryName={repository.name} />}
             </div>
           </div>
 
