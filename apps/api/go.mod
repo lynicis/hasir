@@ -1,6 +1,6 @@
 module hasir-api
 
-go 1.25.4
+go 1.25.5
 
 require (
 	buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251208173919-15188e89d452.2
