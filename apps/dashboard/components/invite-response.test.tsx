@@ -38,7 +38,7 @@ describe("InviteResponse", () => {
   describe("token validation", () => {
     it("shows loading state initially", () => {
       mockIsInvitationValid.mockImplementation(
-        () => new Promise(() => {}) // Never resolves
+        () => new Promise(() => {})
       );
 
       render(<InviteResponse invitationToken="test-token" />);

@@ -1,6 +1,6 @@
 "use client";
 
-import { SDK } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import { RegistryService, SDK } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Wrench } from "lucide-react";
@@ -13,11 +13,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useSession } from "@/lib/session-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useClient } from "@/lib/use-client";
 
 import { RepositoryContext } from "../layout";
 
@@ -129,6 +129,7 @@ export default function SdkPreferencesPage() {
   const params = useParams();
   const repositoryId = params.repositoryId as string;
   const context = useContext(RepositoryContext);
+  const registryApiClient = useClient(RegistryService);
 
   if (!context) {
     throw new Error(
@@ -148,8 +149,6 @@ export default function SdkPreferencesPage() {
   const [config, setConfig] = useState<SdkConfig>(serverConfig);
   const [prevServerConfig, setPrevServerConfig] = useState(serverConfig);
   const [isSaving, setIsSaving] = useState(false);
-  
-  const { session } = useSession();
 
   if (serverConfig !== prevServerConfig) {
     setPrevServerConfig(serverConfig);
@@ -221,36 +220,17 @@ export default function SdkPreferencesPage() {
   };
 
   const handleSave = async () => {
-    if (!session?.accessToken) {
-        toast.error("You must be logged in to save preferences");
-        return;
-    }
-
     setIsSaving(true);
     try {
       const sdkPreferences = getSdkPreferences();
-      
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/registry.v1.RegistryService/UpdateSdkPreferences`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.accessToken}`,
-        },
-        body: JSON.stringify({
-            id: repositoryId,
-            sdkPreferences,
-        }),
-      });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Save failed", errorData);
-        throw new Error(errorData.message || "Failed to save preferences");
-      }
+      await registryApiClient.updateSdkPreferences({
+        id: repositoryId,
+        sdkPreferences,
+      });
 
       toast.success("SDK preferences saved successfully");
     } catch (error) {
-      console.error("Failed to save SDK preferences:", error);
       toast.error(error instanceof Error ? error.message : "Failed to save SDK preferences");
     } finally {
         setIsSaving(false);

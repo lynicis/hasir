@@ -1,9 +1,9 @@
 "use client";
-
 import { UserService } from "@buf/hasir_hasir.bufbuild_es/user/v1/user_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Metadata } from "next";
 import { toast } from "sonner";
 
 import {
@@ -23,6 +23,10 @@ type ProfileFormData = {
   email?: string;
   password?: string;
   confirmPassword?: string;
+};
+
+export const metadata: Metadata = {
+  title: "Hasir | Profile"
 };
 
 export default function ProfilePage() {

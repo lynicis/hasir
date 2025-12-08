@@ -199,7 +199,6 @@ describe("InviteUserDialog", () => {
 
     await waitFor(() => expect(mockInviteMember).toHaveBeenCalled());
 
-    // Reopen dialog
     rerender(
       <InviteUserDialog
         open={false}

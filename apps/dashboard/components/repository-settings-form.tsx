@@ -39,7 +39,7 @@ const schema = z.object({
       /^[a-zA-Z0-9-_]+$/,
       "Repository name can only contain letters, numbers, hyphens and underscores"
     ),
-  visibility: z.enum(["private", "public", "internal"]),
+  visibility: z.enum(["private", "public"]),
 });
 
 type RepositorySettingsFormData = z.infer<typeof schema>;
@@ -125,7 +125,6 @@ export function RepositorySettingsForm({
                     <SelectContent>
                       <SelectItem value="private">Private</SelectItem>
                       <SelectItem value="public">Public</SelectItem>
-                      <SelectItem value="internal">Internal</SelectItem>
                     </SelectContent>
                   </Select>
                   <FieldDescription>

@@ -2,6 +2,7 @@
 
 import { Database, LayoutDashboard, LogIn, User, UserPlus } from "lucide-react";
 import { motion, Variants } from "framer-motion";
+import { Metadata } from "next";
 import Link from "next/link";
 
 import { useSession } from "@/lib/session-provider";
@@ -28,6 +29,10 @@ const itemVariants: Variants = {
       ease: "easeOut",
     },
   },
+};
+
+export const metadata: Metadata = {
+  title: "Hasir | Homepage",
 };
 
 export default function HomePage() {

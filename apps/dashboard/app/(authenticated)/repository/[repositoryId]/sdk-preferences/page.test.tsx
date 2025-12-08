@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -182,15 +182,12 @@ describe("SdkPreferencesPage", () => {
 
     const allSwitches = screen.getAllByRole("switch");
 
-    // First 2 switches are language-level (Go and JavaScript)
     const goSwitch = allSwitches[0];
     const jsSwitch = allSwitches[1];
 
-    // All switches should be unchecked (disabled state)
     expect(goSwitch.getAttribute("data-state")).toBe("unchecked");
     expect(jsSwitch.getAttribute("data-state")).toBe("unchecked");
 
-    // Sub-options should also be unchecked
     const protocolBuffersSwitch = screen.getByLabelText("Protocol Buffers");
     expect(protocolBuffersSwitch.getAttribute("data-state")).toBe("unchecked");
   });

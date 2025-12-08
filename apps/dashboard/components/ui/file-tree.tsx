@@ -355,11 +355,10 @@ const CollapseButton = forwardRef<
   }, [setExpandedItems])
 
   useEffect(() => {
-    console.log(expandAll)
     if (expandAll) {
       expendAllTree(elements)
     }
-  }, [expandAll])
+  }, [expandAll, expendAllTree, elements])
 
   return (
     <Button

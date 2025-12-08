@@ -48,8 +48,8 @@ describe("UsersPage", () => {
     mockUseQuery.mockReturnValue({
       data: {
         members: [
-          { id: "1", email: "owner@example.com", role: 2 }, // OWNER
-          { id: "2", email: "author@example.com", role: 1 }, // AUTHOR
+          { id: "1", email: "owner@example.com", role: 2 },
+          { id: "2", email: "author@example.com", role: 1 },
         ],
       },
       error: null,
@@ -57,13 +57,11 @@ describe("UsersPage", () => {
 
     render(<UsersPage />);
 
-    // Invite button enabled for owner
     const inviteButton = await screen.findByRole("button", {
       name: /invite member/i,
     });
     expect(inviteButton).toBeEnabled();
 
-    // Owner can invite members
     await user.click(inviteButton);
   });
 
@@ -75,8 +73,8 @@ describe("UsersPage", () => {
     mockUseQuery.mockReturnValue({
       data: {
         members: [
-          { id: "1", email: "owner@example.com", role: 2 }, // OWNER
-          { id: "2", email: "author@example.com", role: 1 }, // AUTHOR
+          { id: "1", email: "owner@example.com", role: 2 },
+          { id: "2", email: "author@example.com", role: 1 },
         ],
       },
       error: null,
@@ -87,7 +85,7 @@ describe("UsersPage", () => {
     const inviteButton = await screen.findByRole("button", {
       name: /invite member/i,
     });
-    // Authors currently cannot invite members in the UI
+
     expect(inviteButton).toBeDisabled();
   });
 
@@ -99,8 +97,8 @@ describe("UsersPage", () => {
     mockUseQuery.mockReturnValue({
       data: {
         members: [
-          { id: "1", email: "owner@example.com", role: 2 }, // OWNER
-          { id: "2", email: "reader@example.com", role: 0 }, // READER
+          { id: "1", email: "owner@example.com", role: 2 },
+          { id: "2", email: "reader@example.com", role: 0 },
         ],
       },
       error: null,
@@ -111,8 +109,7 @@ describe("UsersPage", () => {
     const inviteButton = await screen.findByRole("button", {
       name: /invite member/i,
     });
-    expect(inviteButton).toBeDisabled();
 
-    // Reader cannot invite members (already asserted by invite button disabled)
+    expect(inviteButton).toBeDisabled();
   });
 });

@@ -3,7 +3,6 @@ import { NextRequest } from "next/server";
 
 import { GET, POST } from "./route";
 
-// Set environment variable for tests
 process.env.NEXT_PUBLIC_API_URL = "http://localhost:8080";
 
 const mockGetSession = vi.fn();

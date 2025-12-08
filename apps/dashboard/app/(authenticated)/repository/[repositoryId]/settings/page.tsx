@@ -77,11 +77,10 @@ export default function SettingsPage() {
 
   const handleFormSubmit = async (data: {
     name: string;
-    visibility: "private" | "public" | "internal";
+    visibility: "private" | "public";
     description?: string;
   }) => {
     try {
-      // TODO: Implement update API call when available
       console.log("Update repository:", data);
       await new Promise((resolve) => setTimeout(resolve, 1000));
       await refetch();

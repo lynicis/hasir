@@ -1,8 +1,14 @@
+import { Metadata } from "next";
+
 import { InviteResponse } from "@/components/invite-response";
 
 type InvitePageProps = {
   params: Promise<{ token: string }>;
 };
+
+export const metadata: Metadata = {
+  title: "Hasir | Organization Invitation",
+}
 
 export default async function InvitePage({ params }: InvitePageProps) {
   const { token } = await params;

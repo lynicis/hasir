@@ -24,7 +24,6 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Mock the query hooks
 const mockSshKeys = vi.hoisted(() => ({
   data: { keys: [] as MockKey[], totalPage: 1 },
   isLoading: false,
@@ -42,7 +41,6 @@ vi.mock("@connectrpc/connect-query", async () => {
   return {
     ...actual,
     useQuery: vi.fn((queryFn) => {
-      // Determine which query is being called based on the query function
       if (
         queryFn.name === "getSshKeys" ||
         queryFn.toString().includes("SshKey")
@@ -60,7 +58,6 @@ vi.mock("@connectrpc/connect-query", async () => {
   };
 });
 
-// Mock the user client
 const mockUserClient = {
   createSshKey: vi.fn(),
   revokeSshKey: vi.fn(),
@@ -95,7 +92,6 @@ describe("SshApiKeyPanel", () => {
       },
     });
 
-    // Reset mock data
     mockSshKeys.data = { keys: [] as MockKey[], totalPage: 1 };
     mockSshKeys.isLoading = false;
     mockSshKeys.refetch = vi.fn();
@@ -104,13 +100,11 @@ describe("SshApiKeyPanel", () => {
     mockApiKeys.isLoading = false;
     mockApiKeys.refetch = vi.fn();
 
-    // Reset mock clients
     mockUserClient.createSshKey.mockReset();
     mockUserClient.revokeSshKey.mockReset();
     mockUserClient.createApiKey.mockReset();
     mockUserClient.revokeApiKey.mockReset();
 
-    // Mock clipboard API
     clipboardWriteTextSpy = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       value: {
@@ -450,7 +444,6 @@ describe("SshApiKeyPanel", () => {
       await user.type(keyNameInput, "Production API");
       await user.click(generateButton);
 
-      // Wait for the newly created key to appear with the full key visible
       await waitFor(() => {
         expect(screen.getByText("Production API")).toBeInTheDocument();
         expect(screen.getByText("full-api-key-token-123")).toBeInTheDocument();
@@ -472,15 +465,12 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
-      // Verify the API key name is displayed
       expect(screen.getByText("Production API")).toBeInTheDocument();
 
-      // Verify the key is hidden with a security message
       expect(
         screen.getByText("Key is hidden for security")
       ).toBeInTheDocument();
 
-      // Verify there is no copy button for existing keys
       expect(
         screen.queryByRole("button", { name: /copy api key/i })
       ).not.toBeInTheDocument();
@@ -538,7 +528,6 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
-      // Pagination should not be visible when totalPage is 1
       const paginationButtons = screen.queryAllByRole("button", {
         name: /^[0-9]+$/,
       });
@@ -556,7 +545,6 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
-      // Should show page 1 button (current page)
       expect(screen.getByRole("button", { name: "1" })).toBeInTheDocument();
     });
 
@@ -571,7 +559,6 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
-      // Should show page 1 button (current page)
       expect(screen.getByRole("button", { name: "1" })).toBeInTheDocument();
     });
 
@@ -599,7 +586,6 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
-      // Pagination should not be visible when loading
       const paginationButtons = screen.queryAllByRole("button", {
         name: /^[0-9]+$/,
       });
@@ -614,7 +600,6 @@ describe("SshApiKeyPanel", () => {
 
       render(<SshApiKeyPanel />, { wrapper });
 
-      // Pagination should not be visible when there are no items
       expect(screen.getByText(/no ssh keys yet/i)).toBeInTheDocument();
       const paginationButtons = screen.queryAllByRole("button", {
         name: /^[0-9]+$/,

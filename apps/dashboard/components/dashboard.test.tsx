@@ -527,7 +527,7 @@ describe("Dashboard", () => {
         if (schema.name === "getOrganizations") {
           return {
             data: mockOrganizationsMultiPage,
-            isLoading: true, // Set loading to true
+            isLoading: true,
             error: null,
             refetch: vi.fn(),
           };

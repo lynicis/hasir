@@ -188,7 +188,6 @@ describe("RepositoryItem", () => {
 
       await user.click(deleteButton);
 
-      // Verify preventDefault was called by checking onDelete was still called
       expect(mockOnDelete).toHaveBeenCalled();
     });
 

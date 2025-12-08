@@ -65,11 +65,11 @@ describe("Pagination", () => {
     );
 
     const buttons = screen.getAllByRole("button");
-    const nextButton = buttons[buttons.length - 1]; // Last button should be next
+    const nextButton = buttons[buttons.length - 1];
     await user.click(nextButton);
     expect(onPageChange).toHaveBeenCalledWith(3);
 
-    const prevButton = buttons[0]; // First button should be previous
+    const prevButton = buttons[0];
     await user.click(prevButton);
     expect(onPageChange).toHaveBeenCalledWith(1);
   });
@@ -82,7 +82,7 @@ describe("Pagination", () => {
     );
 
     const buttons = screen.getAllByRole("button");
-    const prevButton = buttons[0]; // First button should be previous
+    const prevButton = buttons[0];
     expect(prevButton).toBeDisabled();
   });
 
@@ -94,7 +94,7 @@ describe("Pagination", () => {
     );
 
     const buttons = screen.getAllByRole("button");
-    const nextButton = buttons[buttons.length - 1]; // Last button should be next
+    const nextButton = buttons[buttons.length - 1];
     expect(nextButton).toBeDisabled();
   });
 

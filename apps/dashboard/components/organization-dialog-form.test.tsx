@@ -277,7 +277,6 @@ describe("OrganizationDialogForm", () => {
       "friend@test.com"
     );
 
-    // Select role
     const roleSelects = screen.getAllByRole("combobox");
     const roleSelect =
       roleSelects.find((select) =>

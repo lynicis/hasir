@@ -1,6 +1,12 @@
 import { Suspense } from "react";
+import { Metadata } from "next";
+
 import { LoginForm, LoginFormSkeleton } from "@/components/login-form";
 import { BrandLink } from "@/components/brand-link";
+
+export const metadata: Metadata = {
+  title: "Hasir | Login"
+};
 
 export default function LoginPage() {
   return (

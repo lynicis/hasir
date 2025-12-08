@@ -1,5 +1,11 @@
+import { Metadata } from "next";
+
 import { RegisterForm } from "@/components/register-form";
 import { BrandLink } from "@/components/brand-link";
+
+export const metadata: Metadata = {
+  title: "Hasir | Register",
+};
 
 export default function RegisterPage() {
   return (

@@ -292,7 +292,7 @@ describe("RepositorySettingsForm", () => {
 
       const initialData = {
         name: "existing-repo",
-        visibility: "internal" as const,
+        visibility: "private" as const,
       };
 
       render(
@@ -306,7 +306,7 @@ describe("RepositorySettingsForm", () => {
         expect(mockOnSubmit).toHaveBeenCalled();
         expect(mockOnSubmit.mock.calls[0][0]).toEqual({
           name: "existing-repo",
-          visibility: "internal",
+          visibility: "private",
         });
       });
     });
@@ -469,7 +469,6 @@ describe("RepositorySettingsForm", () => {
       await waitFor(() => {
         expect(screen.getByRole("option", { name: /private/i })).toBeInTheDocument();
         expect(screen.getByRole("option", { name: /public/i })).toBeInTheDocument();
-        expect(screen.getByRole("option", { name: /internal/i })).toBeInTheDocument();
       });
     });
 
@@ -482,14 +481,13 @@ describe("RepositorySettingsForm", () => {
       const nameInput = screen.getByLabelText("Repository Name");
       await user.type(nameInput, "test-repo");
 
-      // Select Internal
       const visibilityTrigger = screen.getByRole("combobox", {
         name: /visibility/i,
       });
       await user.click(visibilityTrigger);
 
       const internalOption = await screen.findByRole("option", {
-        name: /internal/i,
+        name: /private/i,
       });
       await user.click(internalOption);
 
@@ -500,7 +498,7 @@ describe("RepositorySettingsForm", () => {
         expect(mockOnSubmit).toHaveBeenCalled();
         expect(mockOnSubmit.mock.calls[0][0]).toEqual({
           name: "test-repo",
-          visibility: "internal",
+          visibility: "private",
         });
       });
     });
@@ -541,7 +539,6 @@ describe("RepositorySettingsForm", () => {
       const user = userEvent.setup();
       const errorMessage = "Network error";
 
-      // Catch the unhandled rejection since react-hook-form handles errors internally
       const rejectionHandler = vi.fn();
       const originalHandler = process.on("unhandledRejection", rejectionHandler);
 
@@ -559,12 +556,10 @@ describe("RepositorySettingsForm", () => {
         expect(mockOnSubmit).toHaveBeenCalled();
       });
 
-      // Wait for the error to be handled by react-hook-form
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
       });
 
-      // Remove the handler
       if (originalHandler) {
         process.removeListener("unhandledRejection", rejectionHandler);
       }
@@ -604,7 +599,6 @@ describe("RepositorySettingsForm", () => {
       const submitButton = screen.getByRole("button", { name: /save changes/i });
       await user.click(submitButton);
 
-      // The form should fail validation because spaces are not allowed
       await waitFor(() => {
         expect(
           screen.getByText(
