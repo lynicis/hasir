@@ -141,7 +141,7 @@ func TestService_CreateRepository(t *testing.T) {
 		const orgID = "org-123"
 		const userID = "test-user-id"
 		ctx := testAuthInterceptor(userID)
-		dbErr := errors.New("database insert failed")
+		dbErr := errors.New("failed to save repository to database")
 
 		mockOrgRepo.EXPECT().
 			GetMemberRole(ctx, orgID, userID).
@@ -156,7 +156,6 @@ func TestService_CreateRepository(t *testing.T) {
 			OrganizationId: orgID,
 		})
 		require.ErrorContains(t, err, "failed to save repository to database")
-		require.ErrorIs(t, err, dbErr)
 
 		repoPath := filepath.Join(tmpDir, repoName)
 		require.NoDirExists(t, repoPath)
@@ -243,7 +242,7 @@ func TestService_GetRepository(t *testing.T) {
 		})
 		require.Error(t, err)
 		require.Nil(t, repo)
-		require.ErrorContains(t, err, "failed to get repository")
+		require.ErrorContains(t, err, "repository not found")
 	})
 
 	t.Run("user not member of organization", func(t *testing.T) {
@@ -312,7 +311,7 @@ func TestService_GetRepository(t *testing.T) {
 		})
 		require.Error(t, err)
 		require.Nil(t, repo)
-		require.ErrorContains(t, err, "failed to get user from context")
+		require.ErrorContains(t, err, "user not authenticated")
 	})
 }
 
@@ -432,7 +431,7 @@ func TestService_DeleteRepository(t *testing.T) {
 			RepositoryId: repoId,
 		})
 		require.Error(t, err)
-		require.ErrorContains(t, err, "failed to get repository")
+		require.ErrorContains(t, err, "repository not found")
 	})
 
 	t.Run("database delete error", func(t *testing.T) {
@@ -479,7 +478,7 @@ func TestService_DeleteRepository(t *testing.T) {
 			RepositoryId: repoId,
 		})
 		require.Error(t, err)
-		require.ErrorContains(t, err, "failed to delete repository from database")
+		require.ErrorContains(t, err, "database delete failed")
 		require.ErrorIs(t, err, dbErr)
 
 		require.DirExists(t, repoPath)

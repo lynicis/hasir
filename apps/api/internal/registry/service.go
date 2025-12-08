@@ -3,12 +3,12 @@ package registry
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
+	"connectrpc.com/connect"
 	"github.com/go-git/go-git/v5"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -60,7 +60,7 @@ func (s *service) CreateRepository(
 
 	createdBy, err := authentication.MustGetUserID(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get repository owner from context: %w", err)
+		return err
 	}
 
 	if err := authorization.IsUserOwner(ctx, s.orgRepo, organizationId, createdBy); err != nil {
@@ -71,17 +71,17 @@ func (s *service) CreateRepository(
 	repoPath := filepath.Join(s.rootPath, repoId)
 
 	if err := os.MkdirAll(repoPath, 0o755); err != nil {
-		return fmt.Errorf("failed to create repository directory: %w", err)
+		return connect.NewError(connect.CodeInternal, errors.New("failed to create repository directory"))
 	}
 
 	_, err = git.PlainInit(repoPath, true)
 	if err != nil {
 		if errors.Is(err, git.ErrRepositoryAlreadyExists) {
 			zap.L().Warn("repository already exists on filesystem", zap.String("path", repoPath))
-			return fmt.Errorf("repository path already exists")
+			return connect.NewError(connect.CodeAlreadyExists, errors.New("repository path already exists"))
 		}
 
-		return fmt.Errorf("failed to initialize git repository: %w", err)
+		return connect.NewError(connect.CodeInternal, errors.New("failed to initialize git repository"))
 	}
 
 	now := time.Now().UTC()
@@ -104,7 +104,7 @@ func (s *service) CreateRepository(
 			)
 		}
 
-		return fmt.Errorf("failed to save repository to database: %w", err)
+		return connect.NewError(connect.CodeInternal, errors.New("failed to save repository to database"))
 	}
 
 	zap.L().Info("git repository created and synced with database",
@@ -125,12 +125,12 @@ func (s *service) GetRepository(
 
 	repo, err := s.repository.GetRepositoryById(ctx, repoId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get repository: %w", err)
+		return nil, err
 	}
 
 	userId, err := authentication.MustGetUserID(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user from context: %w", err)
+		return nil, err
 	}
 
 	if err := authorization.IsUserMember(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
@@ -139,7 +139,7 @@ func (s *service) GetRepository(
 
 	sdkPreferences, err := s.repository.GetSdkPreferences(ctx, repoId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get sdk preferences: %w", err)
+		return nil, err
 	}
 
 	var protoSdkPreferences []*registryv1.SdkPreference
@@ -164,7 +164,7 @@ func (s *service) GetRepositories(
 ) (*registryv1.GetRepositoriesResponse, error) {
 	userId, err := authentication.MustGetUserID(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user from context: %w", err)
+		return nil, err
 	}
 
 	totalCount, err := s.repository.GetRepositoriesByUserCount(ctx, userId)
@@ -269,12 +269,12 @@ func (s *service) DeleteRepository(
 
 	repo, err := s.repository.GetRepositoryById(ctx, repoId)
 	if err != nil {
-		return fmt.Errorf("failed to get repository: %w", err)
+		return err
 	}
 
 	userId, err := authentication.MustGetUserID(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get user from context: %w", err)
+		return err
 	}
 
 	if err := authorization.IsUserOwner(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
@@ -282,7 +282,7 @@ func (s *service) DeleteRepository(
 	}
 
 	if err := s.repository.DeleteRepository(ctx, repoId); err != nil {
-		return fmt.Errorf("failed to delete repository from database: %w", err)
+		return err
 	}
 
 	if err := os.RemoveAll(repo.Path); err != nil {
@@ -292,7 +292,7 @@ func (s *service) DeleteRepository(
 			zap.Error(err),
 		)
 
-		return fmt.Errorf("failed to remove repository directory: %w", err)
+		return connect.NewError(connect.CodeInternal, errors.New("failed to remove repository directory"))
 	}
 
 	zap.L().Info("repository deleted",
@@ -310,11 +310,11 @@ func (s *service) DeleteRepositoriesByOrganization(
 ) error {
 	repos, err := s.repository.GetRepositoriesByOrganizationId(ctx, organizationId)
 	if err != nil {
-		return fmt.Errorf("failed to get repositories for organization: %w", err)
+		return err
 	}
 
 	if err := s.repository.DeleteRepositoriesByOrganizationId(ctx, organizationId); err != nil {
-		return fmt.Errorf("failed to batch delete repositories from database: %w", err)
+		return err
 	}
 
 	errGroup := &errgroup.Group{}
@@ -328,7 +328,7 @@ func (s *service) DeleteRepositoriesByOrganization(
 					zap.Error(err),
 				)
 
-				return fmt.Errorf("failed to remove repository directory for %s: %w", repo.Id, err)
+				return connect.NewError(connect.CodeInternal, errors.New("failed to remove repository directory"))
 			}
 
 			zap.L().Info("repository deleted as part of organization deletion",
@@ -357,12 +357,12 @@ func (s *service) UpdateSdkPreferences(
 
 	repo, err := s.repository.GetRepositoryById(ctx, repositoryId)
 	if err != nil {
-		return fmt.Errorf("failed to get repository: %w", err)
+		return err
 	}
 
 	userId, err := authentication.MustGetUserID(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get user from context: %w", err)
+		return err
 	}
 
 	if err := authorization.IsUserOwner(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
@@ -380,7 +380,7 @@ func (s *service) UpdateSdkPreferences(
 	}
 
 	if err := s.repository.UpdateSdkPreferences(ctx, repositoryId, preferences); err != nil {
-		return fmt.Errorf("failed to update sdk preferences: %w", err)
+		return err
 	}
 
 	zap.L().Info("sdk preferences updated",
@@ -398,7 +398,7 @@ func (s *service) ValidateSshAccess(
 ) (bool, error) {
 	repo, err := s.repository.GetRepositoryByPath(ctx, repoPath)
 	if err != nil {
-		return false, fmt.Errorf("failed to get repository by path: %w", err)
+		return false, err
 	}
 
 	role, err := s.orgRepo.GetMemberRole(ctx, repo.OrganizationId, userId)
@@ -435,6 +435,6 @@ func (s *service) ValidateSshAccess(
 		)
 		return true, nil
 	default:
-		return false, fmt.Errorf("unknown SSH operation: %s", operation)
+		return false, errors.New("unknown SSH operation")
 	}
 }
