@@ -17,6 +17,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 const schema = z.object({
@@ -166,6 +167,40 @@ export function LoginForm({
               </Field>
             </FieldGroup>
           </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export function LoginFormSkeleton({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <Card>
+        <CardHeader className="text-center">
+          <CardTitle className="text-xl">Welcome back</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6">
+            <div className="grid gap-2">
+              <Skeleton className="h-4 w-10" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="grid gap-2">
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="grid gap-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-4 w-48 mx-auto" />
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
