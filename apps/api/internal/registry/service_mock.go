@@ -113,6 +113,20 @@ func (mr *MockServiceMockRecorder) GetRepository(ctx, req any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepository", reflect.TypeOf((*MockService)(nil).GetRepository), ctx, req)
 }
 
+// UpdateRepository mocks base method.
+func (m *MockService) UpdateRepository(ctx context.Context, req *registryv1.UpdateRepositoryRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateRepository", ctx, req)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateRepository indicates an expected call of UpdateRepository.
+func (mr *MockServiceMockRecorder) UpdateRepository(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRepository", reflect.TypeOf((*MockService)(nil).UpdateRepository), ctx, req)
+}
+
 // UpdateSdkPreferences mocks base method.
 func (m *MockService) UpdateSdkPreferences(ctx context.Context, req *registryv1.UpdateSdkPreferencesRequest) error {
 	m.ctrl.T.Helper()

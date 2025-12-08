@@ -316,6 +316,52 @@ func TestService_GetRepository(t *testing.T) {
 	})
 }
 
+func TestService_UpdateRepository(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	t.Run("success", func(t *testing.T) {
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   t.TempDir(),
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const repoID = "repo-123"
+		const repoName = "test-repo"
+		const orgID = "org-123"
+		const userID = "user-123"
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           repoName,
+				OrganizationId: orgID,
+				Visibility:     proto.VisibilityPrivate,
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(authorization.MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			UpdateRepository(ctx, gomock.Any()).
+			Return(nil)
+
+		err := svc.UpdateRepository(ctx, &registryv1.UpdateRepositoryRequest{
+			Id:         repoID,
+			Name:       repoName,
+			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
+		})
+		require.NoError(t, err)
+	})
+}
+
 func TestService_DeleteRepository(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)

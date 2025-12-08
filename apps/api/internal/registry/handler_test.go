@@ -12,11 +12,13 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/registry/v1/registryv1connect"
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
+	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
 
 	"hasir-api/internal/user"
 )
@@ -339,6 +341,74 @@ func TestHandler_GetRepositories(t *testing.T) {
 	})
 }
 
+func TestHandler_UpdateRepository(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			UpdateRepository(gomock.Any(), gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.UpdateRepository(context.Background(), connect.NewRequest(&registryv1.UpdateRepositoryRequest{
+			Id:         "test-repo-id",
+			Name:       "test-repo",
+			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
+		}))
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			UpdateRepository(gomock.Any(), gomock.Any()).
+			Return(connect.NewError(connect.CodeInternal, errors.New("database error"))).
+			Times(1)
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.UpdateRepository(context.Background(), connect.NewRequest(&registryv1.UpdateRepositoryRequest{
+			Id:         "test-repo-id",
+			Name:       "test-repo",
+			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+}
+
 func TestHandler_DeleteRepository(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -605,4 +675,3 @@ func TestGitHttpHandler_ServeHTTP(t *testing.T) {
 		require.Contains(t, w.Body.String(), "# service=git-upload-pack")
 	})
 }
-

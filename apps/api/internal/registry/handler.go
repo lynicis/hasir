@@ -93,6 +93,17 @@ func (h *handler) GetRepositories(
 	return connect.NewResponse(resp), nil
 }
 
+func (h *handler) UpdateRepository(
+	ctx context.Context,
+	req *connect.Request[registryv1.UpdateRepositoryRequest],
+) (*connect.Response[emptypb.Empty], error) {
+	if err := h.service.UpdateRepository(ctx, req.Msg); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(new(emptypb.Empty)), nil
+}
+
 func (h *handler) DeleteRepository(
 	ctx context.Context,
 	req *connect.Request[registryv1.DeleteRepositoryRequest],
@@ -119,6 +130,7 @@ type GitSshHandler struct {
 	service   Service
 	reposPath string
 }
+
 func NewGitSshHandler(service Service, reposPath string) *GitSshHandler {
 	return &GitSshHandler{
 		service:   service,

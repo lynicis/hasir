@@ -25,6 +25,7 @@ type Service interface {
 	CreateRepository(ctx context.Context, req *registryv1.CreateRepositoryRequest) error
 	GetRepository(ctx context.Context, req *registryv1.GetRepositoryRequest) (*registryv1.Repository, error)
 	GetRepositories(ctx context.Context, page, pageSize int) (*registryv1.GetRepositoriesResponse, error)
+	UpdateRepository(ctx context.Context, req *registryv1.UpdateRepositoryRequest) error
 	DeleteRepository(ctx context.Context, req *registryv1.DeleteRepositoryRequest) error
 	DeleteRepositoriesByOrganization(ctx context.Context, organizationId string) error
 	UpdateSdkPreferences(ctx context.Context, req *registryv1.UpdateSdkPreferencesRequest) error
@@ -223,6 +224,41 @@ func (s *service) GetRepositories(
 		NextPage:     nextPage,
 		TotalPage:    int32(totalPages),
 	}, nil
+}
+
+func (s *service) UpdateRepository(
+	ctx context.Context,
+	req *registryv1.UpdateRepositoryRequest,
+) error {
+	repoId := req.GetId()
+	repo, err := s.repository.GetRepositoryById(ctx, repoId)
+	if err != nil {
+		return err
+	}
+
+	userId, err := authentication.MustGetUserID(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := authorization.IsUserOwner(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
+		return err
+	}
+
+	repo.Name = req.GetName()
+	repo.Visibility = proto.VisibilityMap[req.GetVisibility()]
+
+	if err := s.repository.UpdateRepository(ctx, repo); err != nil {
+		return err
+	}
+
+	zap.L().Info("repository updated",
+		zap.String("id", repoId),
+		zap.String("name", repo.Name),
+		zap.String("visibility", string(repo.Visibility)),
+	)
+
+	return nil
 }
 
 func (s *service) DeleteRepository(
