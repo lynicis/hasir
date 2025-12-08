@@ -62,17 +62,11 @@ export default function RepositoriesPage() {
     );
   }, [repositoriesData]);
 
-  const totalRepositories =
-    (repositoriesData as { pagination?: { total?: number } })?.pagination
-      ?.total ?? repositories.length;
-
-  const hasMorePages = repositories.length === PAGE_SIZE;
-  const totalPages = hasMorePages
-    ? currentPage + 1
-    : Math.ceil(totalRepositories / PAGE_SIZE);
-
-  const hasNextPage = hasMorePages || currentPage < totalPages;
-  const hasPreviousPage = currentPage > 1;
+  const totalRepositories = repositories.length;
+  const totalPages = repositoriesData?.totalPage ?? 1;
+  const nextPage = repositoriesData?.nextPage ?? 1;
+  const hasNextPage = currentPage > nextPage;
+  const hasPreviousPage = currentPage < nextPage;
 
   const [deleteRepoDialog, setDeleteRepoDialog] = useState<{
     open: boolean;

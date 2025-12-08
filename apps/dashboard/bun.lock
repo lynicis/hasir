@@ -5,8 +5,8 @@
     "": {
       "name": "hasir-dashboard",
       "dependencies": {
-        "@buf/hasir_hasir.bufbuild_es": "2.10.1-20251207192920-cf9aa052e265.1",
-        "@buf/hasir_hasir.connectrpc_query-es": "2.2.0-20251207192920-cf9aa052e265.1",
+        "@buf/hasir_hasir.bufbuild_es": "2.10.1-20251208173919-15188e89d452.1",
+        "@buf/hasir_hasir.connectrpc_query-es": "2.2.0-20251208173919-15188e89d452.1",
         "@bufbuild/protovalidate": "^1.0.0",
         "@connectrpc/connect": "^2.1.1",
         "@connectrpc/connect-query": "^2.2.0",
@@ -159,9 +159,9 @@
 
     "@buf/bufbuild_protovalidate.connectrpc_query-es": ["@buf/bufbuild_protovalidate.connectrpc_query-es@2.2.0-20250912141014-52f32327d4b0.1", "https://buf.build/gen/npm/v1/@buf/bufbuild_protovalidate.connectrpc_query-es/-/bufbuild_protovalidate.connectrpc_query-es-2.2.0-20250912141014-52f32327d4b0.1.tgz", { "dependencies": { "@buf/bufbuild_protovalidate.bufbuild_es": "2.7.0-20250912141014-52f32327d4b0.1" }, "peerDependencies": { "@bufbuild/protobuf": "^2.7.0", "@connectrpc/connect-query": "^2.2.0" } }, ""],
 
-    "@buf/hasir_hasir.bufbuild_es": ["@buf/hasir_hasir.bufbuild_es@2.10.1-20251207192920-cf9aa052e265.1", "https://buf.build/gen/npm/v1/@buf/hasir_hasir.bufbuild_es/-/hasir_hasir.bufbuild_es-2.10.1-20251207192920-cf9aa052e265.1.tgz", { "dependencies": { "@buf/bufbuild_protovalidate.bufbuild_es": "2.10.1-20250912141014-52f32327d4b0.1", "@buf/protocolbuffers_wellknowntypes.bufbuild_es": "2.10.1-20251020202132-9220c3cb4fac.1" }, "peerDependencies": { "@bufbuild/protobuf": "^2.10.1" } }, ""],
+    "@buf/hasir_hasir.bufbuild_es": ["@buf/hasir_hasir.bufbuild_es@2.10.1-20251208173919-15188e89d452.1", "https://buf.build/gen/npm/v1/@buf/hasir_hasir.bufbuild_es/-/hasir_hasir.bufbuild_es-2.10.1-20251208173919-15188e89d452.1.tgz", { "dependencies": { "@buf/bufbuild_protovalidate.bufbuild_es": "2.10.1-20250912141014-52f32327d4b0.1", "@buf/protocolbuffers_wellknowntypes.bufbuild_es": "2.10.1-20251020202132-9220c3cb4fac.1" }, "peerDependencies": { "@bufbuild/protobuf": "^2.10.1" } }, ""],
 
-    "@buf/hasir_hasir.connectrpc_query-es": ["@buf/hasir_hasir.connectrpc_query-es@2.2.0-20251207192920-cf9aa052e265.1", "https://buf.build/gen/npm/v1/@buf/hasir_hasir.connectrpc_query-es/-/hasir_hasir.connectrpc_query-es-2.2.0-20251207192920-cf9aa052e265.1.tgz", { "dependencies": { "@buf/bufbuild_protovalidate.connectrpc_query-es": "2.2.0-20250912141014-52f32327d4b0.1", "@buf/hasir_hasir.bufbuild_es": "2.7.0-20251207192920-cf9aa052e265.1", "@buf/protocolbuffers_wellknowntypes.connectrpc_query-es": "2.2.0-20251020202132-9220c3cb4fac.1" }, "peerDependencies": { "@bufbuild/protobuf": "^2.7.0", "@connectrpc/connect-query": "^2.2.0" } }, ""],
+    "@buf/hasir_hasir.connectrpc_query-es": ["@buf/hasir_hasir.connectrpc_query-es@2.2.0-20251208173919-15188e89d452.1", "https://buf.build/gen/npm/v1/@buf/hasir_hasir.connectrpc_query-es/-/hasir_hasir.connectrpc_query-es-2.2.0-20251208173919-15188e89d452.1.tgz", { "dependencies": { "@buf/bufbuild_protovalidate.connectrpc_query-es": "2.2.0-20250912141014-52f32327d4b0.1", "@buf/hasir_hasir.bufbuild_es": "2.7.0-20251208173919-15188e89d452.1", "@buf/protocolbuffers_wellknowntypes.connectrpc_query-es": "2.2.0-20251020202132-9220c3cb4fac.1" }, "peerDependencies": { "@bufbuild/protobuf": "^2.7.0", "@connectrpc/connect-query": "^2.2.0" } }, ""],
 
     "@buf/protocolbuffers_wellknowntypes.bufbuild_es": ["@buf/protocolbuffers_wellknowntypes.bufbuild_es@2.10.1-20251020202132-9220c3cb4fac.1", "https://buf.build/gen/npm/v1/@buf/protocolbuffers_wellknowntypes.bufbuild_es/-/protocolbuffers_wellknowntypes.bufbuild_es-2.10.1-20251020202132-9220c3cb4fac.1.tgz", { "peerDependencies": { "@bufbuild/protobuf": "^2.10.1" } }, ""],
 
@@ -1785,7 +1785,7 @@
 
     "@buf/bufbuild_protovalidate.connectrpc_query-es/@buf/bufbuild_protovalidate.bufbuild_es": ["@buf/bufbuild_protovalidate.bufbuild_es@2.7.0-20250912141014-52f32327d4b0.1", "https://buf.build/gen/npm/v1/@buf/bufbuild_protovalidate.bufbuild_es/-/bufbuild_protovalidate.bufbuild_es-2.7.0-20250912141014-52f32327d4b0.1.tgz", { "peerDependencies": { "@bufbuild/protobuf": "^2.7.0" } }, ""],
 
-    "@buf/hasir_hasir.connectrpc_query-es/@buf/hasir_hasir.bufbuild_es": ["@buf/hasir_hasir.bufbuild_es@2.7.0-20251207192920-cf9aa052e265.1", "https://buf.build/gen/npm/v1/@buf/hasir_hasir.bufbuild_es/-/hasir_hasir.bufbuild_es-2.7.0-20251207192920-cf9aa052e265.1.tgz", { "dependencies": { "@buf/bufbuild_protovalidate.bufbuild_es": "2.7.0-20250912141014-52f32327d4b0.1", "@buf/protocolbuffers_wellknowntypes.bufbuild_es": "2.7.0-20251020202132-9220c3cb4fac.1" }, "peerDependencies": { "@bufbuild/protobuf": "^2.7.0" } }, ""],
+    "@buf/hasir_hasir.connectrpc_query-es/@buf/hasir_hasir.bufbuild_es": ["@buf/hasir_hasir.bufbuild_es@2.7.0-20251208173919-15188e89d452.1", "https://buf.build/gen/npm/v1/@buf/hasir_hasir.bufbuild_es/-/hasir_hasir.bufbuild_es-2.7.0-20251208173919-15188e89d452.1.tgz", { "dependencies": { "@buf/bufbuild_protovalidate.bufbuild_es": "2.7.0-20250912141014-52f32327d4b0.1", "@buf/protocolbuffers_wellknowntypes.bufbuild_es": "2.7.0-20251020202132-9220c3cb4fac.1" }, "peerDependencies": { "@bufbuild/protobuf": "^2.7.0" } }, ""],
 
     "@buf/protocolbuffers_wellknowntypes.connectrpc_query-es/@buf/protocolbuffers_wellknowntypes.bufbuild_es": ["@buf/protocolbuffers_wellknowntypes.bufbuild_es@2.7.0-20251020202132-9220c3cb4fac.1", "https://buf.build/gen/npm/v1/@buf/protocolbuffers_wellknowntypes.bufbuild_es/-/protocolbuffers_wellknowntypes.bufbuild_es-2.7.0-20251020202132-9220c3cb4fac.1.tgz", { "peerDependencies": { "@bufbuild/protobuf": "^2.7.0" } }, ""],
 

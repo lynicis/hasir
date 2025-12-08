@@ -2,6 +2,7 @@
 
 import { getRepository } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
 import { RegistryService } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useParams, useRouter } from "next/navigation";
 import { AlertTriangle, Trash2 } from "lucide-react";
@@ -16,10 +17,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  reverseVisibilityMapper,
+  visibilityMapper,
+} from "@/lib/visibility-mapper";
 import { DeleteRepositoryDialog } from "@/components/delete-repository-dialog";
 import { RepositorySettingsForm } from "@/components/repository-settings-form";
 import { type OrganizationRepository } from "@/components/repository-item";
-import { reverseVisibilityMapper } from "@/lib/visibility-mapper";
 import { useRegistryStore } from "@/stores/registry-store";
 import { customRetry } from "@/lib/query-retry";
 import { Button } from "@/components/ui/button";
@@ -34,6 +38,7 @@ export default function SettingsPage() {
     (state) => state.invalidateRepositories
   );
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
   const {
@@ -41,11 +46,7 @@ export default function SettingsPage() {
     isLoading,
     error,
     refetch,
-  } = useQuery(
-    getRepository,
-    { id: repositoryId },
-    { retry: customRetry }
-  );
+  } = useQuery(getRepository, { id: repositoryId }, { retry: customRetry });
 
   const repository = useMemo((): OrganizationRepository | undefined => {
     if (!repositoryData) return undefined;
@@ -53,7 +54,8 @@ export default function SettingsPage() {
     return {
       id: repositoryData.id,
       name: repositoryData.name,
-      visibility: reverseVisibilityMapper.get(repositoryData.visibility) || "private",
+      visibility:
+        reverseVisibilityMapper.get(repositoryData.visibility) || "private",
     };
   }, [repositoryData]);
 
@@ -81,14 +83,36 @@ export default function SettingsPage() {
     description?: string;
   }) => {
     try {
-      console.log("Update repository:", data);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      await refetch();
-      invalidateRepositories();
+      setIsSubmitting(true);
+      await registryApiClient.updateRepository({
+        id: repositoryId,
+        name: data.name,
+        visibility: visibilityMapper.get(data.visibility) || Visibility.PRIVATE,
+      });
       toast.success("Repository settings updated successfully");
+      invalidateRepositories();
+      await refetch();
     } catch (error) {
-      toast.error("Failed to update repository settings");
-      throw error;
+      if (error instanceof ConnectError) {
+        if (error.code === Code.PermissionDenied) {
+          toast.error("You don't have permission to update this repository");
+          return;
+        }
+
+        if (error.code === Code.NotFound) {
+          toast.error("Repository not found");
+          return;
+        }
+
+        if (error.code === Code.InvalidArgument) {
+          toast.error("Invalid repository data. Please check your input");
+          return;
+        }
+      }
+
+      toast.error("Failed to update repository settings. Please try again...");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -130,7 +154,7 @@ export default function SettingsPage() {
           visibility: repository?.visibility || "private",
         }}
         onSubmit={handleFormSubmit}
-        isLoading={isLoading}
+        isLoading={isLoading || isSubmitting}
       />
 
       <Card>
