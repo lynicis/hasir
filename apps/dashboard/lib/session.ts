@@ -55,4 +55,3 @@ export function isExpiredMillis(timestamp?: number): boolean {
   if (!timestamp) return true;
   return DateTime.utc() > DateTime.fromMillis(timestamp);
 }
-

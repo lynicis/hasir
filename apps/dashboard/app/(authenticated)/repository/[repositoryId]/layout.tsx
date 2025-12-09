@@ -1,28 +1,21 @@
 "use client";
 
-import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
-
 import { getRepository } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
 import { ArrowLeft, Book, Files, Settings, Wrench } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { createContext, useEffect, useMemo } from "react";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useQuery } from "@connectrpc/connect-query";
+import {  useEffect, useMemo } from "react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type OrganizationRepository } from "@/components/repository-item";
+import { RepositoryContext } from "@/components/repository-context";
 import { reverseVisibilityMapper } from "@/lib/visibility-mapper";
 import { CloneUrls } from "@/components/clone-urls";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { customRetry } from "@/lib/query-retry";
-
-export const RepositoryContext = createContext<{
-  repository: Repository | undefined;
-  isLoading: boolean;
-  error: unknown;
-} | null>(null);
 
 type TabType = "documentation" | "files" | "sdk-preferences" | "settings";
 
@@ -211,7 +204,7 @@ export default function RepositoryLayout({
               </p>
             </div>
             <div className="ml-auto">
-              {repository && <CloneUrls repositoryName={repository.name} />}
+              {repository && <CloneUrls repositoryName={repository.name} repositoryId={repository.id} />}
             </div>
           </div>
 

@@ -1,16 +1,10 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
-
-export default function RepositoryDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const repositoryId = params.repositoryId as string;
-
-  useEffect(() => {
-    router.replace(`/repository/${repositoryId}/documentation`);
-  }, [repositoryId, router]);
-
-  return null;
+export default async function RepositoryDetailPage({
+  params,
+}: {
+  params: Promise<{ repositoryId: string }>;
+}) {
+  const { repositoryId } = await params;
+  redirect(`/repository/${repositoryId}/documentation`);
 }

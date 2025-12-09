@@ -7,7 +7,7 @@ type InvitePageProps = {
 };
 
 export const metadata: Metadata = {
-  title: "Hasir | Organization Invitation",
+  title: "Organization Invitation | Hasir",
 }
 
 export default async function InvitePage({ params }: InvitePageProps) {

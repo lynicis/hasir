@@ -5,7 +5,7 @@ import { LoginForm, LoginFormSkeleton } from "@/components/login-form";
 import { BrandLink } from "@/components/brand-link";
 
 export const metadata: Metadata = {
-  title: "Hasir | Login"
+  title: "Login | Hasir"
 };
 
 export default function LoginPage() {

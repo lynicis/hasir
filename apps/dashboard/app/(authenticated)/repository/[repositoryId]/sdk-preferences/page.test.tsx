@@ -4,7 +4,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { RepositoryContext } from "../layout";
+import { RepositoryContext } from "@/components/repository-context";
+
 import SdkPreferencesPage from "./page";
 
 const mockParams = { repositoryId: "test-repo-id" };

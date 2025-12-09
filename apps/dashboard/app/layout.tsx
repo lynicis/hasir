@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Welcome to Hasir!",
+  title: "Welcome to Hasir",
   description: "On-premise proto schema registry",
 };
 

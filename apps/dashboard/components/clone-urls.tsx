@@ -15,9 +15,10 @@ import { Input } from "@/components/ui/input";
 
 interface CloneUrlsProps {
   repositoryName: string;
+  repositoryId: string;
 }
 
-export function CloneUrls({ repositoryName }: CloneUrlsProps) {
+export function CloneUrls({ repositoryName, repositoryId }: CloneUrlsProps) {
   const [protocol, setProtocol] = useState<"HTTPS" | "SSH">("HTTPS");
   const [copied, setCopied] = useState(false);
 
@@ -26,7 +27,7 @@ export function CloneUrls({ repositoryName }: CloneUrlsProps) {
 
   const url =
     protocol === "HTTPS"
-      ? `${apiUrl}/git/${repositoryName}.git`
+      ? `${apiUrl}/git/${repositoryId}.git`
       : `git@${host}:${repositoryName}.git`;
 
   const handleCopy = async () => {
@@ -70,6 +71,7 @@ export function CloneUrls({ repositoryName }: CloneUrlsProps) {
           variant="ghost"
           className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:text-foreground"
           onClick={handleCopy}
+          aria-label="Copy to clipboard"
         >
           {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
         </Button>
