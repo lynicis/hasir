@@ -187,21 +187,6 @@ func (mr *MockRepositoryMockRecorder) GetRepositoryByName(ctx, name any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositoryByName", reflect.TypeOf((*MockRepository)(nil).GetRepositoryByName), ctx, name)
 }
 
-// GetRepositoryByPath mocks base method.
-func (m *MockRepository) GetRepositoryByPath(ctx context.Context, path string) (*RepositoryDTO, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRepositoryByPath", ctx, path)
-	ret0, _ := ret[0].(*RepositoryDTO)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetRepositoryByPath indicates an expected call of GetRepositoryByPath.
-func (mr *MockRepositoryMockRecorder) GetRepositoryByPath(ctx, path any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepositoryByPath", reflect.TypeOf((*MockRepository)(nil).GetRepositoryByPath), ctx, path)
-}
-
 // GetSdkPreferences mocks base method.
 func (m *MockRepository) GetSdkPreferences(ctx context.Context, repositoryId string) ([]SdkPreferencesDTO, error) {
 	m.ctrl.T.Helper()

@@ -263,12 +263,12 @@ func (h *GitHttpHandler) requireAuth(w http.ResponseWriter) {
 }
 
 func (h *GitHttpHandler) authenticate(r *http.Request) (string, error) {
-	_, password, ok := r.BasicAuth()
-	if !ok || password == "" {
+	_, apiKey, ok := r.BasicAuth()
+	if !ok || apiKey == "" {
 		return "", fmt.Errorf("missing credentials")
 	}
 
-	userDTO, err := h.userRepo.GetUserByApiKey(r.Context(), password)
+	userDTO, err := h.userRepo.GetUserByApiKey(r.Context(), apiKey)
 	if err != nil {
 		return "", err
 	}

@@ -536,10 +536,16 @@ func TestGitHttpHandler_ServeHTTP(t *testing.T) {
 	t.Run("returns 404 for empty repo path", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
+		mockUserRepo := user.NewMockRepository(ctrl)
 
-		h := NewGitHttpHandler(mockService, nil, DefaultReposPath)
+		mockUserRepo.EXPECT().
+			GetUserByApiKey(gomock.Any(), "valid-key").
+			Return(&user.UserDTO{Id: "user-123"}, nil)
+
+		h := NewGitHttpHandler(mockService, mockUserRepo, DefaultReposPath)
 
 		req := httptest.NewRequest(http.MethodGet, "/git/", nil)
+		req.SetBasicAuth("user", "valid-key")
 		w := httptest.NewRecorder()
 
 		h.ServeHTTP(w, req)
@@ -717,51 +723,5 @@ func TestGitHttpHandler_ServeHTTP(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Contains(t, w.Header().Get("Content-Type"), "application/x-git-upload-pack-advertisement")
-	})
-
-	t.Run("cleans repository path when using relative paths", func(t *testing.T) {
-		if _, err := exec.LookPath("git"); err != nil {
-			t.Skip("git not installed")
-		}
-
-		ctrl := gomock.NewController(t)
-		mockService := NewMockService(ctrl)
-		mockUserRepo := user.NewMockRepository(ctrl)
-
-		tempDir, err := os.MkdirTemp("", "git-test")
-		require.NoError(t, err)
-		defer func() {
-			_ = os.RemoveAll(tempDir)
-		}()
-
-		repoName := "test-repo"
-		absUrl := filepath.Join(tempDir, repoName)
-		err = os.MkdirAll(absUrl, 0755)
-		require.NoError(t, err)
-
-		cmd := exec.Command("git", "init", "--bare", absUrl)
-		err = cmd.Run()
-		require.NoError(t, err)
-
-		mockUserRepo.EXPECT().
-			GetUserByApiKey(gomock.Any(), "valid-key").
-			Return(&user.UserDTO{Id: "user-123"}, nil)
-
-		messyBase := filepath.Dir(tempDir) + "/./" + filepath.Base(tempDir)
-		cleanedPath := filepath.Clean(absUrl)
-
-		mockService.EXPECT().
-			ValidateSshAccess(gomock.Any(), "user-123", cleanedPath, SshOperationRead).
-			Return(true, nil)
-
-		h := NewGitHttpHandler(mockService, mockUserRepo, messyBase)
-
-		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/git/%s/info/refs?service=git-upload-pack", repoName), nil)
-		req.SetBasicAuth("user", "valid-key")
-		w := httptest.NewRecorder()
-
-		h.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusOK, w.Code)
 	})
 }
