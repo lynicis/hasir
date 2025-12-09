@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { CloneUrls } from "./clone-urls";
@@ -45,6 +45,7 @@ describe("CloneUrls", () => {
   });
 
   it("copies URL to clipboard", async () => {
+    const user = userEvent.setup();
     const writeTextSpy = vi.fn();
     Object.defineProperty(navigator, "clipboard", {
       value: {
@@ -57,7 +58,7 @@ describe("CloneUrls", () => {
     render(<CloneUrls {...defaultProps} />);
 
     const copyButton = screen.getByRole("button", { name: "Copy to clipboard" });
-    fireEvent.click(copyButton);
+    await user.click(copyButton);
 
     expect(writeTextSpy).toHaveBeenCalledWith(
       `http://localhost:8080/git/${defaultProps.repositoryId}.git`

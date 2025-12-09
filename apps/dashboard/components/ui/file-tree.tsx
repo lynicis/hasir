@@ -235,6 +235,7 @@ const Folder = forwardRef<
     return (
       <AccordionPrimitive.Item
         {...props}
+        ref={ref}
         value={value}
         className="relative h-full overflow-hidden"
       >
@@ -317,7 +318,10 @@ const File = forwardRef<
           direction === "rtl" ? "rtl" : "ltr",
           className
         )}
-        onClick={() => selectItem(value)}
+        onClick={() => {
+          selectItem(value)
+          handleSelect?.(value)
+        }}
         {...props}
       >
         {fileIcon ?? <FileIcon className="size-4" />}
@@ -335,7 +339,7 @@ const CollapseButton = forwardRef<
     elements: TreeViewElement[]
     expandAll?: boolean
   } & React.HTMLAttributes<HTMLButtonElement>
->(({ className, elements, expandAll = false, children, ...props }, ref) => {
+>(({ elements, expandAll = false, children, ...props }, ref) => {
   const { expandedItems, setExpandedItems } = useTree()
 
   const expendAllTree = useCallback((elements: TreeViewElement[]) => {
