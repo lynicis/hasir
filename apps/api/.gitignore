@@ -2,3 +2,4 @@ hasir
 config.json
 !config.example.json
 repos/
+ssh_host_key

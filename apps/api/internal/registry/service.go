@@ -396,7 +396,8 @@ func (s *service) ValidateSshAccess(
 	userId, repoPath string,
 	operation SshOperation,
 ) (bool, error) {
-	repo, err := s.repository.GetRepositoryByPath(ctx, repoPath)
+	repoId := filepath.Base(repoPath)
+	repo, err := s.repository.GetRepositoryById(ctx, repoId)
 	if err != nil {
 		return false, err
 	}

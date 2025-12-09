@@ -63,4 +63,3 @@ const (
 	SshOperationRead  SshOperation = "read"
 	SshOperationWrite SshOperation = "write"
 )
-

@@ -6,7 +6,6 @@ type Repository interface {
 	CreateRepository(ctx context.Context, repo *RepositoryDTO) error
 	GetRepositoryByName(ctx context.Context, name string) (*RepositoryDTO, error)
 	GetRepositoryById(ctx context.Context, id string) (*RepositoryDTO, error)
-	GetRepositoryByPath(ctx context.Context, path string) (*RepositoryDTO, error)
 	GetRepositories(ctx context.Context, page, pageSize int) (*[]RepositoryDTO, error)
 	GetRepositoriesByOrganizationId(ctx context.Context, organizationId string) (*[]RepositoryDTO, error)
 	GetRepositoriesCount(ctx context.Context) (int, error)

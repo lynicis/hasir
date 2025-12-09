@@ -206,6 +206,12 @@ func NewGitHttpHandler(service Service, userRepo user.Repository, reposPath stri
 }
 
 func (h *GitHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	userId, err := h.authenticate(r)
+	if err != nil {
+		h.requireAuth(w)
+		return
+	}
+
 	path := strings.TrimPrefix(r.URL.Path, "/git/")
 	parts := strings.SplitN(path, "/", 2)
 	if len(parts) < 1 || parts[0] == "" {
@@ -213,7 +219,7 @@ func (h *GitHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repoUUID := parts[0]
+	repoUUID := strings.TrimSuffix(parts[0], ".git")
 	repoPath := h.reposPath + "/" + repoUUID
 	subPath := ""
 	if len(parts) > 1 {
@@ -226,12 +232,6 @@ func (h *GitHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		operation = SshOperationWrite
 	} else {
 		operation = SshOperationRead
-	}
-
-	userId, err := h.authenticate(r)
-	if err != nil {
-		h.requireAuth(w)
-		return
 	}
 
 	hasAccess, err := h.service.ValidateSshAccess(r.Context(), userId, repoPath, operation)
