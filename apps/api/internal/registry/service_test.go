@@ -591,3 +591,122 @@ func TestService_DeleteRepository(t *testing.T) {
 		require.Len(t, resp.GetRepositories()[1].GetSdkPreferences(), 0)
 	})
 }
+
+func TestService_GetCommits(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		const orgID = "org-123"
+		const repoID = "repo-123"
+		repoPath := filepath.Join("./repos", repoID)
+
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Path:           repoPath,
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(authorization.MemberRoleReader, nil)
+
+		expectedCommits := &registryv1.GetCommitsResponse{
+			Commits: []*registryv1.Commit{
+				{
+					Id:      "abc123",
+					Message: "Initial commit",
+					User: &registryv1.Commit_User{
+						Id:       "user@example.com",
+						Username: "Test User",
+					},
+				},
+			},
+		}
+
+		mockRepo.EXPECT().
+			GetCommits(ctx, repoPath).
+			Return(expectedCommits, nil)
+
+		req := &registryv1.GetCommitsRequest{Id: repoID}
+		resp, err := svc.GetCommits(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Len(t, resp.GetCommits(), 1)
+		require.Equal(t, "abc123", resp.GetCommits()[0].GetId())
+	})
+
+	t.Run("repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, "non-existent").
+			Return(nil, errors.New("repository not found"))
+
+		req := &registryv1.GetCommitsRequest{Id: "non-existent"}
+		_, err := svc.GetCommits(ctx, req)
+
+		require.Error(t, err)
+	})
+
+	t.Run("user not member of organization", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		const orgID = "org-123"
+		const repoID = "repo-123"
+
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Path:           "./repos/repo-123",
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return("", errors.New("user is not a member"))
+
+		req := &registryv1.GetCommitsRequest{Id: repoID}
+		_, err := svc.GetCommits(ctx, req)
+
+		require.Error(t, err)
+	})
+}

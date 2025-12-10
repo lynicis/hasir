@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"time"
 
+	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	"connectrpc.com/connect"
 	"github.com/exaring/otelpgx"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -16,6 +19,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"hasir-api/internal/registry"
 	"hasir-api/pkg/config"
@@ -660,4 +664,57 @@ func (r *PgRepository) GetSdkPreferencesByRepositoryIds(
 	}
 
 	return preferencesMap, nil
+}
+
+func (r *PgRepository) GetCommits(ctx context.Context, repoPath string) (*registryv1.GetCommitsResponse, error) {
+	var span trace.Span
+	_, span = r.tracer.Start(ctx, "GetCommits", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "repoPath",
+			Value: attribute.StringValue(repoPath),
+		},
+	))
+	defer span.End()
+
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("failed to open git repository"))
+	}
+
+	ref, err := repo.Head()
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("failed to get repository HEAD"))
+	}
+
+	commitIter, err := repo.Log(&git.LogOptions{From: ref.Hash()})
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get commit log"))
+	}
+	defer commitIter.Close()
+
+	var commits []*registryv1.Commit
+	err = commitIter.ForEach(func(c *object.Commit) error {
+		commit := &registryv1.Commit{
+			Id:      c.Hash.String(),
+			Message: c.Message,
+			User: &registryv1.Commit_User{
+				Id:       c.Author.Email,
+				Username: c.Author.Name,
+			},
+			CommitedAt: timestamppb.New(c.Author.When),
+		}
+		commits = append(commits, commit)
+		return nil
+	})
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to iterate commits"))
+	}
+
+	return &registryv1.GetCommitsResponse{
+		Commits: commits,
+	}, nil
 }

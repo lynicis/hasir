@@ -1,6 +1,10 @@
 package registry
 
-import "context"
+import (
+	"context"
+
+	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
+)
 
 type Repository interface {
 	CreateRepository(ctx context.Context, repo *RepositoryDTO) error
@@ -17,4 +21,5 @@ type Repository interface {
 	UpdateSdkPreferences(ctx context.Context, repositoryId string, preferences []SdkPreferencesDTO) error
 	GetSdkPreferences(ctx context.Context, repositoryId string) ([]SdkPreferencesDTO, error)
 	GetSdkPreferencesByRepositoryIds(ctx context.Context, repositoryIds []string) (map[string][]SdkPreferencesDTO, error)
+	GetCommits(ctx context.Context, repoPath string) (*registryv1.GetCommitsResponse, error)
 }

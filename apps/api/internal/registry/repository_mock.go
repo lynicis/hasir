@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -80,6 +81,21 @@ func (m *MockRepository) DeleteRepository(ctx context.Context, id string) error 
 func (mr *MockRepositoryMockRecorder) DeleteRepository(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRepository", reflect.TypeOf((*MockRepository)(nil).DeleteRepository), ctx, id)
+}
+
+// GetCommits mocks base method.
+func (m *MockRepository) GetCommits(ctx context.Context, repoPath string) (*registryv1.GetCommitsResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCommits", ctx, repoPath)
+	ret0, _ := ret[0].(*registryv1.GetCommitsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCommits indicates an expected call of GetCommits.
+func (mr *MockRepositoryMockRecorder) GetCommits(ctx, repoPath any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommits", reflect.TypeOf((*MockRepository)(nil).GetCommits), ctx, repoPath)
 }
 
 // GetRepositories mocks base method.

@@ -83,6 +83,21 @@ func (mr *MockServiceMockRecorder) DeleteRepository(ctx, req any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRepository", reflect.TypeOf((*MockService)(nil).DeleteRepository), ctx, req)
 }
 
+// GetCommits mocks base method.
+func (m *MockService) GetCommits(ctx context.Context, req *registryv1.GetCommitsRequest) (*registryv1.GetCommitsResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCommits", ctx, req)
+	ret0, _ := ret[0].(*registryv1.GetCommitsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCommits indicates an expected call of GetCommits.
+func (mr *MockServiceMockRecorder) GetCommits(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommits", reflect.TypeOf((*MockService)(nil).GetCommits), ctx, req)
+}
+
 // GetRepositories mocks base method.
 func (m *MockService) GetRepositories(ctx context.Context, page, pageSize int) (*registryv1.GetRepositoriesResponse, error) {
 	m.ctrl.T.Helper()

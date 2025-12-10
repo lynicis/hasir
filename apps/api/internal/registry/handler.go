@@ -126,6 +126,18 @@ func (h *handler) UpdateSdkPreferences(
 	return connect.NewResponse(new(emptypb.Empty)), nil
 }
 
+func (h *handler) GetCommits(
+	ctx context.Context,
+	req *connect.Request[registryv1.GetCommitsRequest],
+) (*connect.Response[registryv1.GetCommitsResponse], error) {
+	commits, err := h.service.GetCommits(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(commits), nil
+}
+
 type GitSshHandler struct {
 	service   Service
 	reposPath string

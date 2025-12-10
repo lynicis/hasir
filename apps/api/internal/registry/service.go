@@ -29,6 +29,7 @@ type Service interface {
 	DeleteRepository(ctx context.Context, req *registryv1.DeleteRepositoryRequest) error
 	DeleteRepositoriesByOrganization(ctx context.Context, organizationId string) error
 	UpdateSdkPreferences(ctx context.Context, req *registryv1.UpdateSdkPreferencesRequest) error
+	GetCommits(ctx context.Context, req *registryv1.GetCommitsRequest) (*registryv1.GetCommitsResponse, error)
 	ValidateSshAccess(ctx context.Context, userId, repoPath string, operation SshOperation) (bool, error)
 }
 
@@ -389,6 +390,33 @@ func (s *service) UpdateSdkPreferences(
 	)
 
 	return nil
+}
+
+func (s *service) GetCommits(
+	ctx context.Context,
+	req *registryv1.GetCommitsRequest,
+) (*registryv1.GetCommitsResponse, error) {
+	userId, err := authentication.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	repoId := req.GetId()
+	repo, err := s.repository.GetRepositoryById(ctx, repoId)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := authorization.IsUserMember(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
+		return nil, err
+	}
+
+	commits, err := s.repository.GetCommits(ctx, repo.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	return commits, nil
 }
 
 func (s *service) ValidateSshAccess(

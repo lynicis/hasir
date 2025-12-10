@@ -725,3 +725,87 @@ func TestGitHttpHandler_ServeHTTP(t *testing.T) {
 		require.Contains(t, w.Header().Get("Content-Type"), "application/x-git-upload-pack-advertisement")
 	})
 }
+
+func TestHandler_GetCommits(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		expectedCommits := &registryv1.GetCommitsResponse{
+			Commits: []*registryv1.Commit{
+				{
+					Id:      "abc123",
+					Message: "Initial commit",
+					User: &registryv1.Commit_User{
+						Id:       "user@example.com",
+						Username: "Test User",
+					},
+				},
+			},
+		}
+
+		mockService.EXPECT().
+			GetCommits(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, req *registryv1.GetCommitsRequest) (*registryv1.GetCommitsResponse, error) {
+				require.Equal(t, "test-repo-id", req.GetId())
+				return expectedCommits, nil
+			})
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.GetCommits(context.Background(), connect.NewRequest(&registryv1.GetCommitsRequest{
+			Id: "test-repo-id",
+		}))
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Len(t, resp.Msg.GetCommits(), 1)
+		require.Equal(t, "abc123", resp.Msg.GetCommits()[0].GetId())
+		require.Equal(t, "Initial commit", resp.Msg.GetCommits()[0].GetMessage())
+		require.Equal(t, "user@example.com", resp.Msg.GetCommits()[0].GetUser().GetId())
+		require.Equal(t, "Test User", resp.Msg.GetCommits()[0].GetUser().GetUsername())
+	})
+
+	t.Run("service error - repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			GetCommits(gomock.Any(), gomock.Any()).
+			Return(nil, ErrRepositoryNotFound)
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.GetCommits(context.Background(), connect.NewRequest(&registryv1.GetCommitsRequest{
+			Id: "non-existent-repo",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+}
