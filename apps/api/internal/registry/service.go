@@ -24,7 +24,7 @@ const DefaultReposPath = "./repos"
 type Service interface {
 	CreateRepository(ctx context.Context, req *registryv1.CreateRepositoryRequest) error
 	GetRepository(ctx context.Context, req *registryv1.GetRepositoryRequest) (*registryv1.Repository, error)
-	GetRepositories(ctx context.Context, page, pageSize int) (*registryv1.GetRepositoriesResponse, error)
+	GetRepositories(ctx context.Context, organizationId *string, page, pageSize int) (*registryv1.GetRepositoriesResponse, error)
 	UpdateRepository(ctx context.Context, req *registryv1.UpdateRepositoryRequest) error
 	DeleteRepository(ctx context.Context, req *registryv1.DeleteRepositoryRequest) error
 	DeleteRepositoriesByOrganization(ctx context.Context, organizationId string) error
@@ -161,6 +161,7 @@ func (s *service) GetRepository(
 
 func (s *service) GetRepositories(
 	ctx context.Context,
+	organizationId *string,
 	page, pageSize int,
 ) (*registryv1.GetRepositoriesResponse, error) {
 	userId, err := authentication.MustGetUserID(ctx)
@@ -168,14 +169,33 @@ func (s *service) GetRepositories(
 		return nil, err
 	}
 
-	totalCount, err := s.repository.GetRepositoriesByUserCount(ctx, userId)
-	if err != nil {
-		return nil, err
-	}
+	var totalCount int
+	var repositories *[]RepositoryDTO
 
-	repositories, err := s.repository.GetRepositoriesByUser(ctx, userId, page, pageSize)
-	if err != nil {
-		return nil, err
+	if organizationId != nil && *organizationId != "" {
+		if err := authorization.IsUserMember(ctx, s.orgRepo, *organizationId, userId); err != nil {
+			return nil, err
+		}
+
+		totalCount, err = s.repository.GetRepositoriesByUserAndOrganizationCount(ctx, userId, *organizationId)
+		if err != nil {
+			return nil, err
+		}
+
+		repositories, err = s.repository.GetRepositoriesByUserAndOrganization(ctx, userId, *organizationId, page, pageSize)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		totalCount, err = s.repository.GetRepositoriesByUserCount(ctx, userId)
+		if err != nil {
+			return nil, err
+		}
+
+		repositories, err = s.repository.GetRepositoriesByUser(ctx, userId, page, pageSize)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var repoIds []string

@@ -85,7 +85,13 @@ func (h *handler) GetRepositories(
 		page = 1
 	}
 
-	resp, err := h.service.GetRepositories(ctx, page, pageSize)
+	var organizationId *string
+	if req.Msg.HasOrganizationId() {
+		orgId := req.Msg.GetOrganizationId()
+		organizationId = &orgId
+	}
+
+	resp, err := h.service.GetRepositories(ctx, organizationId, page, pageSize)
 	if err != nil {
 		return nil, err
 	}

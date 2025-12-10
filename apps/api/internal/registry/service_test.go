@@ -580,7 +580,7 @@ func TestService_DeleteRepository(t *testing.T) {
 			GetSdkPreferencesByRepositoryIds(ctx, []string{"repo-1", "repo-2"}).
 			Return(sdkPrefsMap, nil)
 
-		resp, err := svc.GetRepositories(ctx, 1, 10)
+		resp, err := svc.GetRepositories(ctx, nil, 1, 10)
 		require.NoError(t, err)
 		require.Len(t, resp.GetRepositories(), 2)
 		require.Equal(t, "repo-1", resp.GetRepositories()[0].GetId())

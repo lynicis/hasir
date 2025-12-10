@@ -247,7 +247,7 @@ func TestHandler_GetRepositories(t *testing.T) {
 		mockRepository := NewMockRepository(ctrl)
 
 		mockService.EXPECT().
-			GetRepositories(gomock.Any(), 1, 10).
+			GetRepositories(gomock.Any(), (*string)(nil), 1, 10).
 			Return(&registryv1.GetRepositoriesResponse{
 				Repositories: []*registryv1.Repository{
 					{Id: "repo-1", Name: "first-repo"},
@@ -285,7 +285,7 @@ func TestHandler_GetRepositories(t *testing.T) {
 		mockRepository := NewMockRepository(ctrl)
 
 		mockService.EXPECT().
-			GetRepositories(gomock.Any(), 1, 10).
+			GetRepositories(gomock.Any(), (*string)(nil), 1, 10).
 			Return(&registryv1.GetRepositoriesResponse{
 				Repositories: []*registryv1.Repository{},
 				NextPage:     0,
@@ -316,7 +316,7 @@ func TestHandler_GetRepositories(t *testing.T) {
 		mockRepository := NewMockRepository(ctrl)
 
 		mockService.EXPECT().
-			GetRepositories(gomock.Any(), 1, 10).
+			GetRepositories(gomock.Any(), (*string)(nil), 1, 10).
 			Return(nil, connect.NewError(connect.CodeInternal, errors.New("database error")))
 
 		h := NewHandler(mockService, mockRepository)

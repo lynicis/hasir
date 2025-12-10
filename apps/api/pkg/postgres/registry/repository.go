@@ -351,6 +351,95 @@ func (r *PgRepository) GetRepositoriesByUserCount(ctx context.Context, userId st
 	return count, nil
 }
 
+func (r *PgRepository) GetRepositoriesByUserAndOrganization(ctx context.Context, userId, organizationId string, page, pageSize int) (*[]registry.RepositoryDTO, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetRepositoriesByUserAndOrganization", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "userId",
+			Value: attribute.StringValue(userId),
+		},
+		attribute.KeyValue{
+			Key:   "organizationId",
+			Value: attribute.StringValue(organizationId),
+		},
+		attribute.KeyValue{
+			Key:   "page",
+			Value: attribute.IntValue(page),
+		},
+		attribute.KeyValue{
+			Key:   "pageSize",
+			Value: attribute.IntValue(pageSize),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	offset := (page - 1) * pageSize
+	sql := `
+		SELECT r.*
+		FROM repositories r
+		INNER JOIN organization_members m ON m.organization_id = r.organization_id
+		WHERE m.user_id = $1 AND r.organization_id = $2 AND r.deleted_at IS NULL
+		ORDER BY r.created_at DESC
+		LIMIT $3 OFFSET $4`
+
+	rows, err := connection.Query(ctx, sql, userId, organizationId, pageSize, offset)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to query repositories by user and organization"))
+	}
+	defer rows.Close()
+
+	repos, err := pgx.CollectRows[registry.RepositoryDTO](rows, pgx.RowToStructByName)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect repositories by user and organization rows"))
+	}
+
+	return &repos, nil
+}
+
+func (r *PgRepository) GetRepositoriesByUserAndOrganizationCount(ctx context.Context, userId, organizationId string) (int, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetRepositoriesByUserAndOrganizationCount", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "userId",
+			Value: attribute.StringValue(userId),
+		},
+		attribute.KeyValue{
+			Key:   "organizationId",
+			Value: attribute.StringValue(organizationId),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return 0, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `
+		SELECT COUNT(*)
+		FROM repositories r
+		INNER JOIN organization_members m ON m.organization_id = r.organization_id
+		WHERE m.user_id = $1 AND r.organization_id = $2 AND r.deleted_at IS NULL`
+
+	var count int
+	err = connection.QueryRow(ctx, sql, userId, organizationId).Scan(&count)
+	if err != nil {
+		span.RecordError(err)
+		return 0, connect.NewError(connect.CodeInternal, errors.New("failed to count repositories by user and organization"))
+	}
+
+	return count, nil
+}
+
 func (r *PgRepository) GetRepositoryById(ctx context.Context, id string) (*registry.RepositoryDTO, error) {
 	var span trace.Span
 	ctx, span = r.tracer.Start(ctx, "GetRepositoryById", trace.WithAttributes(
