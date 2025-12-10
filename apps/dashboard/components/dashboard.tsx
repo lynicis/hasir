@@ -44,6 +44,25 @@ export function Dashboard() {
     [orgPage]
   );
 
+  const repositoriesQueryParams = useMemo(
+    () =>
+      activeOrgId === "all"
+        ? {
+            pagination: {
+              page: repoPage,
+              pageLimit: DEFAULT_PAGINATION.pageLimit,
+            },
+          }
+        : {
+            pagination: {
+              page: repoPage,
+              pageLimit: DEFAULT_PAGINATION.pageLimit,
+            },
+            organizationId: activeOrgId,
+          },
+    [activeOrgId, repoPage]
+  );
+
   const {
     data: organizations,
     isLoading: isLoadingOrganizations,
@@ -58,24 +77,9 @@ export function Dashboard() {
     isLoading: isLoadingRepositories,
     error: repositoriesError,
     refetch: refetchRepositories,
-  } = useQuery(
-    getRepositories,
-    activeOrgId === "all"
-      ? {
-          pagination: {
-            page: repoPage,
-            pageLimit: DEFAULT_PAGINATION.pageLimit,
-          },
-        }
-      : {
-          pagination: {
-            page: repoPage,
-            pageLimit: DEFAULT_PAGINATION.pageLimit,
-          },
-          organizationId: activeOrgId,
-        },
-    { retry: customRetry }
-  );
+  } = useQuery(getRepositories, repositoriesQueryParams, {
+    retry: customRetry,
+  });
 
   const organizationsList = organizations?.organizations ?? [];
   const repositoriesList = repositoriesData?.repositories ?? [];
