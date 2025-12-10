@@ -1,7 +1,7 @@
 "use client";
 
 import { getRepository } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
-import { ArrowLeft, Book, Files, Settings, Wrench } from "lucide-react";
+import { ArrowLeft, Book, Files, GitCommit, Settings, Wrench } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useQuery } from "@connectrpc/connect-query";
@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { customRetry } from "@/lib/query-retry";
 
-type TabType = "documentation" | "files" | "sdk-preferences" | "settings";
+type TabType = "documentation" | "files" | "commits" | "sdk-preferences" | "settings";
 
 export default function RepositoryLayout({
   children,
@@ -52,6 +52,7 @@ export default function RepositoryLayout({
   const activeTab = useMemo((): TabType => {
     if (pathname.includes("/documentation")) return "documentation";
     if (pathname.includes("/files")) return "files";
+    if (pathname.includes("/commits")) return "commits";
     if (pathname.includes("/sdk-preferences")) return "sdk-preferences";
     if (pathname.includes("/settings")) return "settings";
     return "documentation";
@@ -94,6 +95,12 @@ export default function RepositoryLayout({
       label: "Files",
       icon: Files,
       href: `/repository/${repositoryId}/files`,
+    },
+    {
+      id: "commits" as const,
+      label: "Commits",
+      icon: GitCommit,
+      href: `/repository/${repositoryId}/commits`,
     },
     {
       id: "sdk-preferences" as const,
