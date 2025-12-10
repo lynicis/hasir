@@ -4,6 +4,7 @@ package registry.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 import "shared/filter.proto";
 import "shared/visibility.proto";
 
@@ -70,11 +71,32 @@ message UpdateRepositoryRequest {
   shared.Visibility visibility = 3 [(buf.validate.field).required = true];
 }
 
+message GetCommitsRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+
+message Commit {
+  message User {
+    string id = 1;
+    string username = 2;
+  }
+
+  string id = 1;
+  string message = 2;
+  User user = 3;
+  google.protobuf.Timestamp commited_at = 4;
+}
+
+message GetCommitsResponse {
+  repeated Commit commits = 1;
+}
+
 service RegistryService {
   rpc CreateRepository(CreateRepositoryRequest) returns (google.protobuf.Empty);
   rpc GetRepositories(GetRepositoriesRequest) returns (GetRepositoriesResponse);
   rpc DeleteRepository(DeleteRepositoryRequest) returns (google.protobuf.Empty);
   rpc UpdateRepository(UpdateRepositoryRequest) returns (google.protobuf.Empty);
   rpc GetRepository(GetRepositoryRequest) returns (Repository);
+  rpc GetCommits(GetCommitsRequest) returns (GetCommitsResponse);
   rpc UpdateSdkPreferences(UpdateSdkPreferencesRequest) returns (google.protobuf.Empty);
 }
