@@ -30,6 +30,7 @@ type Service interface {
 	DeleteRepositoriesByOrganization(ctx context.Context, organizationId string) error
 	UpdateSdkPreferences(ctx context.Context, req *registryv1.UpdateSdkPreferencesRequest) error
 	GetCommits(ctx context.Context, req *registryv1.GetCommitsRequest) (*registryv1.GetCommitsResponse, error)
+	GetFileTree(ctx context.Context, req *registryv1.GetFileTreeRequest) (*registryv1.GetFileTreeResponse, error)
 	ValidateSshAccess(ctx context.Context, userId, repoPath string, operation SshOperation) (bool, error)
 }
 
@@ -437,6 +438,39 @@ func (s *service) GetCommits(
 	}
 
 	return commits, nil
+}
+
+func (s *service) GetFileTree(
+	ctx context.Context,
+	req *registryv1.GetFileTreeRequest,
+) (*registryv1.GetFileTreeResponse, error) {
+	userId, err := authentication.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	repoId := req.GetId()
+	repo, err := s.repository.GetRepositoryById(ctx, repoId)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := authorization.IsUserMember(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
+		return nil, err
+	}
+
+	var subPath *string
+	if req.HasPath() {
+		path := req.GetPath()
+		subPath = &path
+	}
+
+	fileTree, err := s.repository.GetFileTree(ctx, repo.Path, subPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return fileTree, nil
 }
 
 func (s *service) ValidateSshAccess(

@@ -807,3 +807,117 @@ func (r *PgRepository) GetCommits(ctx context.Context, repoPath string) (*regist
 		Commits: commits,
 	}, nil
 }
+
+func (r *PgRepository) GetFileTree(ctx context.Context, repoPath string, subPath *string) (*registryv1.GetFileTreeResponse, error) {
+	var span trace.Span
+	_, span = r.tracer.Start(ctx, "GetFileTree", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "repoPath",
+			Value: attribute.StringValue(repoPath),
+		},
+	))
+	defer span.End()
+
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("failed to open git repository"))
+	}
+
+	ref, err := repo.Head()
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("failed to get repository HEAD"))
+	}
+
+	commit, err := repo.CommitObject(ref.Hash())
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get commit object"))
+	}
+
+	tree, err := commit.Tree()
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get tree object"))
+	}
+
+	var targetTree *object.Tree
+	targetPath := ""
+	if subPath != nil && *subPath != "" {
+		targetPath = *subPath
+		targetTree, err = tree.Tree(targetPath)
+		if err != nil {
+			span.RecordError(err)
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("path not found in repository"))
+		}
+	} else {
+		targetTree = tree
+	}
+
+	var nodes []*registryv1.FileTreeNode
+	for _, entry := range targetTree.Entries {
+		nodePath := entry.Name
+		if targetPath != "" {
+			nodePath = targetPath + "/" + entry.Name
+		}
+
+		var nodeType registryv1.NodeType
+		var children []*registryv1.FileTreeNode
+
+		if entry.Mode.IsFile() {
+			nodeType = registryv1.NodeType_NODE_TYPE_FILE
+		} else {
+			nodeType = registryv1.NodeType_NODE_TYPE_DIRECTORY
+
+			subTree, err := tree.Tree(nodePath)
+			if err == nil {
+				children = buildFileTreeNodes(tree, subTree, nodePath)
+			}
+		}
+
+		node := &registryv1.FileTreeNode{
+			Name:     entry.Name,
+			Path:     nodePath,
+			Type:     nodeType,
+			Children: children,
+		}
+		nodes = append(nodes, node)
+	}
+
+	return &registryv1.GetFileTreeResponse{
+		Nodes: nodes,
+	}, nil
+}
+
+func buildFileTreeNodes(rootTree *object.Tree, tree *object.Tree, basePath string) []*registryv1.FileTreeNode {
+	var nodes []*registryv1.FileTreeNode
+
+	for _, entry := range tree.Entries {
+		nodePath := basePath + "/" + entry.Name
+
+		var nodeType registryv1.NodeType
+		var children []*registryv1.FileTreeNode
+
+		if entry.Mode.IsFile() {
+			nodeType = registryv1.NodeType_NODE_TYPE_FILE
+		} else {
+			nodeType = registryv1.NodeType_NODE_TYPE_DIRECTORY
+
+			subTree, err := rootTree.Tree(nodePath)
+			if err == nil {
+				children = buildFileTreeNodes(rootTree, subTree, nodePath)
+			}
+		}
+
+		node := &registryv1.FileTreeNode{
+			Name:     entry.Name,
+			Path:     nodePath,
+			Type:     nodeType,
+			Children: children,
+		}
+		nodes = append(nodes, node)
+	}
+
+	return nodes
+}

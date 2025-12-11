@@ -144,6 +144,18 @@ func (h *handler) GetCommits(
 	return connect.NewResponse(commits), nil
 }
 
+func (h *handler) GetFileTree(
+	ctx context.Context,
+	req *connect.Request[registryv1.GetFileTreeRequest],
+) (*connect.Response[registryv1.GetFileTreeResponse], error) {
+	fileTree, err := h.service.GetFileTree(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(fileTree), nil
+}
+
 type GitSshHandler struct {
 	service   Service
 	reposPath string

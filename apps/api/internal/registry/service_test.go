@@ -710,3 +710,183 @@ func TestService_GetCommits(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestService_GetFileTree(t *testing.T) {
+	t.Run("success - root directory", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		const orgID = "org-123"
+		const repoID = "repo-123"
+		repoPath := filepath.Join("./repos", repoID)
+
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Path:           repoPath,
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(authorization.MemberRoleReader, nil)
+
+		expectedFileTree := &registryv1.GetFileTreeResponse{
+			Nodes: []*registryv1.FileTreeNode{
+				{
+					Name: "README.md",
+					Path: "README.md",
+					Type: registryv1.NodeType_NODE_TYPE_FILE,
+				},
+				{
+					Name: "src",
+					Path: "src",
+					Type: registryv1.NodeType_NODE_TYPE_DIRECTORY,
+				},
+			},
+		}
+
+		mockRepo.EXPECT().
+			GetFileTree(ctx, repoPath, (*string)(nil)).
+			Return(expectedFileTree, nil)
+
+		req := &registryv1.GetFileTreeRequest{Id: repoID}
+		resp, err := svc.GetFileTree(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Len(t, resp.GetNodes(), 2)
+		require.Equal(t, "README.md", resp.GetNodes()[0].GetName())
+		require.Equal(t, "src", resp.GetNodes()[1].GetName())
+	})
+
+	t.Run("success - subdirectory", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		const orgID = "org-123"
+		const repoID = "repo-123"
+		repoPath := filepath.Join("./repos", repoID)
+		subPath := "src"
+
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Path:           repoPath,
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(authorization.MemberRoleReader, nil)
+
+		expectedFileTree := &registryv1.GetFileTreeResponse{
+			Nodes: []*registryv1.FileTreeNode{
+				{
+					Name: "main.go",
+					Path: "src/main.go",
+					Type: registryv1.NodeType_NODE_TYPE_FILE,
+				},
+			},
+		}
+
+		mockRepo.EXPECT().
+			GetFileTree(ctx, repoPath, &subPath).
+			Return(expectedFileTree, nil)
+
+		req := &registryv1.GetFileTreeRequest{
+			Id:   repoID,
+			Path: &subPath,
+		}
+		resp, err := svc.GetFileTree(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Len(t, resp.GetNodes(), 1)
+		require.Equal(t, "main.go", resp.GetNodes()[0].GetName())
+	})
+
+	t.Run("repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, "non-existent").
+			Return(nil, errors.New("repository not found"))
+
+		req := &registryv1.GetFileTreeRequest{Id: "non-existent"}
+		_, err := svc.GetFileTree(ctx, req)
+
+		require.Error(t, err)
+	})
+
+	t.Run("user not member of organization", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		const orgID = "org-123"
+		const repoID = "repo-123"
+
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Path:           "./repos/repo-123",
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return("", errors.New("user is not a member"))
+
+		req := &registryv1.GetFileTreeRequest{Id: repoID}
+		_, err := svc.GetFileTree(ctx, req)
+
+		require.Error(t, err)
+	})
+}

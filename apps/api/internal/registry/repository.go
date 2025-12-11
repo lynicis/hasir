@@ -24,4 +24,5 @@ type Repository interface {
 	GetSdkPreferences(ctx context.Context, repositoryId string) ([]SdkPreferencesDTO, error)
 	GetSdkPreferencesByRepositoryIds(ctx context.Context, repositoryIds []string) (map[string][]SdkPreferencesDTO, error)
 	GetCommits(ctx context.Context, repoPath string) (*registryv1.GetCommitsResponse, error)
+	GetFileTree(ctx context.Context, repoPath string, subPath *string) (*registryv1.GetFileTreeResponse, error)
 }

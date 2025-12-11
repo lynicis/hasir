@@ -809,3 +809,146 @@ func TestHandler_GetCommits(t *testing.T) {
 		require.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 }
+
+func TestHandler_GetFileTree(t *testing.T) {
+	t.Run("success - root directory", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		expectedFileTree := &registryv1.GetFileTreeResponse{
+			Nodes: []*registryv1.FileTreeNode{
+				{
+					Name: "README.md",
+					Path: "README.md",
+					Type: registryv1.NodeType_NODE_TYPE_FILE,
+				},
+				{
+					Name: "src",
+					Path: "src",
+					Type: registryv1.NodeType_NODE_TYPE_DIRECTORY,
+					Children: []*registryv1.FileTreeNode{
+						{
+							Name: "main.go",
+							Path: "src/main.go",
+							Type: registryv1.NodeType_NODE_TYPE_FILE,
+						},
+					},
+				},
+			},
+		}
+
+		mockService.EXPECT().
+			GetFileTree(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, req *registryv1.GetFileTreeRequest) (*registryv1.GetFileTreeResponse, error) {
+				require.Equal(t, "test-repo-id", req.GetId())
+				require.False(t, req.HasPath())
+				return expectedFileTree, nil
+			})
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.GetFileTree(context.Background(), connect.NewRequest(&registryv1.GetFileTreeRequest{
+			Id: "test-repo-id",
+		}))
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Len(t, resp.Msg.GetNodes(), 2)
+		require.Equal(t, "README.md", resp.Msg.GetNodes()[0].GetName())
+		require.Equal(t, registryv1.NodeType_NODE_TYPE_FILE, resp.Msg.GetNodes()[0].GetType())
+		require.Equal(t, "src", resp.Msg.GetNodes()[1].GetName())
+		require.Equal(t, registryv1.NodeType_NODE_TYPE_DIRECTORY, resp.Msg.GetNodes()[1].GetType())
+		require.Len(t, resp.Msg.GetNodes()[1].GetChildren(), 1)
+	})
+
+	t.Run("success - subdirectory", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		expectedFileTree := &registryv1.GetFileTreeResponse{
+			Nodes: []*registryv1.FileTreeNode{
+				{
+					Name: "main.go",
+					Path: "src/main.go",
+					Type: registryv1.NodeType_NODE_TYPE_FILE,
+				},
+			},
+		}
+
+		mockService.EXPECT().
+			GetFileTree(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, req *registryv1.GetFileTreeRequest) (*registryv1.GetFileTreeResponse, error) {
+				require.Equal(t, "test-repo-id", req.GetId())
+				require.True(t, req.HasPath())
+				require.Equal(t, "src", req.GetPath())
+				return expectedFileTree, nil
+			})
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		subPath := "src"
+		resp, err := client.GetFileTree(context.Background(), connect.NewRequest(&registryv1.GetFileTreeRequest{
+			Id:   "test-repo-id",
+			Path: &subPath,
+		}))
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Len(t, resp.Msg.GetNodes(), 1)
+		require.Equal(t, "main.go", resp.Msg.GetNodes()[0].GetName())
+	})
+
+	t.Run("service error - repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			GetFileTree(gomock.Any(), gomock.Any()).
+			Return(nil, ErrRepositoryNotFound)
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.GetFileTree(context.Background(), connect.NewRequest(&registryv1.GetFileTreeRequest{
+			Id: "non-existent-repo",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+}
