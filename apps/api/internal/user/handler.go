@@ -74,6 +74,28 @@ func (h *handler) RenewTokens(
 	return connect.NewResponse(tokens), nil
 }
 
+func (h *handler) ForgotPassword(
+	ctx context.Context,
+	req *connect.Request[userv1.ForgotPasswordRequest],
+) (*connect.Response[emptypb.Empty], error) {
+	if err := h.userService.ForgotPassword(ctx, req.Msg); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(new(emptypb.Empty)), nil
+}
+
+func (h *handler) ResetPassword(
+	ctx context.Context,
+	req *connect.Request[userv1.ResetPasswordRequest],
+) (*connect.Response[emptypb.Empty], error) {
+	if err := h.userService.ResetPassword(ctx, req.Msg); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(new(emptypb.Empty)), nil
+}
+
 func (h *handler) UpdateUser(
 	ctx context.Context,
 	req *connect.Request[userv1.UpdateUserRequest],

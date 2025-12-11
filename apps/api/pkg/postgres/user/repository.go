@@ -843,3 +843,125 @@ func (r *PgRepository) GetUserByApiKey(ctx context.Context, apiKey string) (*use
 
 	return &userDTO, nil
 }
+
+func (r *PgRepository) CreatePasswordResetToken(ctx context.Context, userId, token string, expiresAt time.Time) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "CreatePasswordResetToken", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "userId",
+			Value: attribute.StringValue(userId),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `
+		INSERT INTO password_reset_tokens (id, user_id, token, expires_at, created_at)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4)
+	`
+
+	_, err = connection.Exec(
+		ctx,
+		sql,
+		userId,
+		token,
+		expiresAt,
+		time.Now().UTC(),
+	)
+	if err != nil {
+		span.RecordError(err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == ErrUniqueViolationCode {
+			return connect.NewError(connect.CodeAlreadyExists, errors.New("reset token already exists"))
+		}
+		return ErrInternalServer
+	}
+
+	return nil
+}
+
+func (r *PgRepository) GetPasswordResetToken(ctx context.Context, token string) (*user.PasswordResetTokenDTO, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "GetPasswordResetToken", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "token",
+			Value: attribute.StringValue(token),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `
+		SELECT id, user_id, token, expires_at, created_at, used_at
+		FROM password_reset_tokens
+		WHERE token = $1
+	`
+
+	rows, err := connection.Query(ctx, sql, token)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrInternalServer
+	}
+	defer rows.Close()
+
+	var resetToken user.PasswordResetTokenDTO
+	resetToken, err = pgx.CollectOneRow[user.PasswordResetTokenDTO](rows, pgx.RowToStructByName)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("reset token not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to collect row"))
+	}
+
+	return &resetToken, nil
+}
+
+func (r *PgRepository) MarkPasswordResetTokenAsUsed(ctx context.Context, token string) error {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "MarkPasswordResetTokenAsUsed", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "token",
+			Value: attribute.StringValue(token),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	sql := `
+		UPDATE password_reset_tokens
+		SET used_at = $1
+		WHERE token = $2 AND used_at IS NULL
+	`
+
+	result, err := connection.Exec(
+		ctx,
+		sql,
+		time.Now().UTC(),
+		token,
+	)
+	if err != nil {
+		span.RecordError(err)
+		return ErrInternalServer
+	}
+
+	if result.RowsAffected() == 0 {
+		return connect.NewError(connect.CodeNotFound, errors.New("reset token not found or already used"))
+	}
+
+	return nil
+}

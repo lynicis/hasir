@@ -42,7 +42,7 @@ func TestMigrations(t *testing.T) {
 		version, dirty, err := m.Version()
 		assert.NoError(t, err)
 		assert.False(t, dirty)
-		assert.Equal(t, uint(12), version, "Expected migration version to be 12")
+		assert.Equal(t, uint(13), version, "Expected migration version to be 13")
 	})
 
 	t.Run("idempotent - running migrations twice should not fail", func(t *testing.T) {
@@ -103,6 +103,7 @@ func TestMigrations(t *testing.T) {
 			"api_keys",
 			"ssh_keys",
 			"sdk_preferences",
+			"password_reset_tokens",
 		}
 
 		for _, tableName := range expectedTables {
@@ -461,6 +462,122 @@ func TestMigrations(t *testing.T) {
 		assert.True(t, cascadeExists, "ON DELETE CASCADE should be set for repository_id foreign key")
 	})
 
+	t.Run("verify password_reset_tokens table schema and indexes", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+
+		var exists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT FROM information_schema.tables
+				WHERE table_schema = 'public'
+				AND table_name = 'password_reset_tokens'
+			)`).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists, "Table password_reset_tokens should exist")
+
+		expectedColumns := map[string]string{
+			"id":         "uuid",
+			"user_id":    "character varying",
+			"token":      "character varying",
+			"expires_at": "timestamp with time zone",
+			"created_at": "timestamp with time zone",
+			"used_at":    "timestamp with time zone",
+		}
+
+		for columnName, expectedType := range expectedColumns {
+			var dataType string
+			err = conn.QueryRow(context.Background(),
+				`SELECT data_type
+				FROM information_schema.columns
+				WHERE table_name = 'password_reset_tokens'
+				AND column_name = $1`, columnName).Scan(&dataType)
+			require.NoError(t, err, "Column %s should exist", columnName)
+			assert.Equal(t, expectedType, dataType, "Column %s should have type %s", columnName, expectedType)
+		}
+
+		var fkExists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT 1
+				FROM information_schema.table_constraints tc
+				JOIN information_schema.key_column_usage kcu
+				ON tc.constraint_name = kcu.constraint_name
+				WHERE tc.table_name = 'password_reset_tokens'
+				AND tc.constraint_type = 'FOREIGN KEY'
+				AND kcu.column_name = 'user_id'
+			)`).Scan(&fkExists)
+		require.NoError(t, err)
+		assert.True(t, fkExists, "Foreign key on user_id should exist")
+
+		expectedIndexes := []string{
+			"idx_password_reset_tokens_token",
+			"idx_password_reset_tokens_user_id",
+			"idx_password_reset_tokens_expires_at",
+		}
+
+		for _, indexName := range expectedIndexes {
+			var indexExists bool
+			err = conn.QueryRow(context.Background(),
+				`SELECT EXISTS (
+					SELECT 1
+					FROM pg_indexes
+					WHERE tablename = 'password_reset_tokens'
+					AND indexname = $1
+				)`, indexName).Scan(&indexExists)
+			require.NoError(t, err)
+			assert.True(t, indexExists, "Index %s should exist", indexName)
+		}
+
+		var uniqueExists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT 1
+				FROM pg_indexes
+				WHERE tablename = 'password_reset_tokens'
+				AND indexdef LIKE '%UNIQUE%'
+				AND indexdef LIKE '%token%'
+			)`).Scan(&uniqueExists)
+		require.NoError(t, err)
+		assert.True(t, uniqueExists, "Unique constraint on token should exist")
+
+		var cascadeExists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT 1
+				FROM information_schema.referential_constraints rc
+				WHERE rc.constraint_name IN (
+					SELECT constraint_name
+					FROM information_schema.key_column_usage
+					WHERE table_name = 'password_reset_tokens'
+					AND column_name = 'user_id'
+				)
+				AND rc.delete_rule = 'CASCADE'
+			)`).Scan(&cascadeExists)
+		require.NoError(t, err)
+		assert.True(t, cascadeExists, "ON DELETE CASCADE should be set for user_id foreign key")
+	})
+
 	t.Run("rollback all migrations successfully", func(t *testing.T) {
 		container := setupPostgresContainer(t)
 		defer func() {
@@ -509,6 +626,7 @@ func TestMigrations(t *testing.T) {
 			"api_keys",
 			"ssh_keys",
 			"sdk_preferences",
+			"password_reset_tokens",
 		}
 
 		for _, tableName := range expectedTables {
@@ -719,6 +837,52 @@ func TestMigrations(t *testing.T) {
 			`SELECT COUNT(*) FROM ssh_keys WHERE user_id = $1`, userId).Scan(&count)
 		require.NoError(t, err)
 		assert.Equal(t, 0, count, "SSH key should be cascade deleted when user is deleted")
+	})
+
+	t.Run("verify ON DELETE CASCADE works for password_reset_tokens", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+		userId := "test-user-id"
+		_, err = conn.Exec(context.Background(),
+			`INSERT INTO users (id, username, email, password, created_at)
+			VALUES ($1, 'testuser', 'test@example.com', 'password', NOW())`, userId)
+		require.NoError(t, err)
+		_, err = conn.Exec(context.Background(),
+			`INSERT INTO password_reset_tokens (user_id, token, expires_at, created_at)
+			VALUES ($1, 'test-token-12345', NOW() + INTERVAL '1 hour', NOW())`, userId)
+		require.NoError(t, err)
+		var count int
+		err = conn.QueryRow(context.Background(),
+			`SELECT COUNT(*) FROM password_reset_tokens WHERE user_id = $1`, userId).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+		_, err = conn.Exec(context.Background(),
+			`DELETE FROM users WHERE id = $1`, userId)
+		require.NoError(t, err)
+		err = conn.QueryRow(context.Background(),
+			`SELECT COUNT(*) FROM password_reset_tokens WHERE user_id = $1`, userId).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 0, count, "Password reset token should be cascade deleted when user is deleted")
 	})
 }
 

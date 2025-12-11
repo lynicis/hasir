@@ -37,6 +37,8 @@ func NewAuthInterceptor(jwtSecret []byte) *AuthInterceptor {
 			userv1connect.UserServiceRegisterProcedure:                          true,
 			userv1connect.UserServiceLoginProcedure:                             true,
 			userv1connect.UserServiceRenewTokensProcedure:                       true,
+			userv1connect.UserServiceForgotPasswordProcedure:                    true,
+			userv1connect.UserServiceResetPasswordProcedure:                     true,
 			organizationv1connect.OrganizationServiceIsInvitationValidProcedure: true,
 		},
 	}

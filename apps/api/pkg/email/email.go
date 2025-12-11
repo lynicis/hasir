@@ -18,6 +18,7 @@ var templateFS embed.FS
 
 type Service interface {
 	SendInvite(to, organizationName, inviteToken string) error
+	SendForgotPassword(to, resetToken string) error
 }
 
 type smtpService struct {
@@ -58,6 +59,26 @@ func (s *smtpService) SendInvite(to, organizationName, inviteToken string) error
 	}
 
 	subject := fmt.Sprintf("You've been invited to join %s", organizationName)
+	return s.sendEmail(to, subject, body.String(), true)
+}
+
+type forgotPasswordTemplateData struct {
+	ResetUrl string
+}
+
+func (s *smtpService) SendForgotPassword(to, resetToken string) error {
+	resetUrl := fmt.Sprintf("%s/reset-password/%s", s.dashboardUrl, resetToken)
+
+	data := forgotPasswordTemplateData{
+		ResetUrl: resetUrl,
+	}
+
+	var body bytes.Buffer
+	if err := s.templates.ExecuteTemplate(&body, "forgot-password.html", data); err != nil {
+		return fmt.Errorf("failed to execute forgot-password template: %w", err)
+	}
+
+	subject := "Reset Your Password"
 	return s.sendEmail(to, subject, body.String(), true)
 }
 

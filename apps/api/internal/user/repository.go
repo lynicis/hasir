@@ -25,4 +25,7 @@ type Repository interface {
 	RevokeSshKey(ctx context.Context, userId, keyId string) error
 	GetUserBySshPublicKey(ctx context.Context, publicKey string) (*UserDTO, error)
 	GetUserByApiKey(ctx context.Context, apiKey string) (*UserDTO, error)
+	CreatePasswordResetToken(ctx context.Context, userId, token string, expiresAt time.Time) error
+	GetPasswordResetToken(ctx context.Context, token string) (*PasswordResetTokenDTO, error)
+	MarkPasswordResetTokenAsUsed(ctx context.Context, token string) error
 }

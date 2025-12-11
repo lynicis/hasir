@@ -1081,3 +1081,173 @@ func TestHandler_GetSshKeys(t *testing.T) {
 		assert.Nil(t, resp)
 	})
 }
+
+func TestHandler_ForgotPassword(t *testing.T) {
+	validateInterceptor := validate.NewInterceptor()
+	otelInterceptor, err := otelconnect.NewInterceptor()
+	require.NoError(t, err)
+	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
+
+	t.Run("happy path", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		mockUserService.
+			EXPECT().
+			ForgotPassword(gomock.Any(), gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.ForgotPassword(context.Background(), connect.NewRequest(&userv1.ForgotPasswordRequest{
+			Email: "test@mail.com",
+		}))
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.IsType(t, new(emptypb.Empty), resp.Msg)
+	})
+
+	t.Run("validation error - invalid email", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.ForgotPassword(context.Background(), connect.NewRequest(&userv1.ForgotPasswordRequest{
+			Email: "invalid-email",
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		mockUserService.
+			EXPECT().
+			ForgotPassword(gomock.Any(), gomock.Any()).
+			Return(errors.New("service error")).
+			Times(1)
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.ForgotPassword(context.Background(), connect.NewRequest(&userv1.ForgotPasswordRequest{
+			Email: "test@mail.com",
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+}
+
+func TestHandler_ResetPassword(t *testing.T) {
+	validateInterceptor := validate.NewInterceptor()
+	otelInterceptor, err := otelconnect.NewInterceptor()
+	require.NoError(t, err)
+	interceptors := []connect.Interceptor{validateInterceptor, otelInterceptor}
+
+	t.Run("happy path", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		mockUserService.
+			EXPECT().
+			ResetPassword(gomock.Any(), gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.ResetPassword(context.Background(), connect.NewRequest(&userv1.ResetPasswordRequest{
+			Token:       "reset-token-123",
+			NewPassword: "NewPassword123!",
+		}))
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.IsType(t, new(emptypb.Empty), resp.Msg)
+	})
+
+	t.Run("validation error - empty token", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.ResetPassword(context.Background(), connect.NewRequest(&userv1.ResetPasswordRequest{
+			Token:       "",
+			NewPassword: "NewPassword123!",
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("validation error - weak password", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.ResetPassword(context.Background(), connect.NewRequest(&userv1.ResetPasswordRequest{
+			Token:       "reset-token-123",
+			NewPassword: "weak",
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockUserService := NewMockService(ctrl)
+		mockUserRepository := NewMockRepository(ctrl)
+
+		mockUserService.
+			EXPECT().
+			ResetPassword(gomock.Any(), gomock.Any()).
+			Return(errors.New("service error")).
+			Times(1)
+
+		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
+		server := setupTestServer(t, h)
+		defer server.Close()
+
+		client := userv1connect.NewUserServiceClient(http.DefaultClient, server.URL)
+		resp, err := client.ResetPassword(context.Background(), connect.NewRequest(&userv1.ResetPasswordRequest{
+			Token:       "reset-token-123",
+			NewPassword: "NewPassword123!",
+		}))
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+}

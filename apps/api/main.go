@@ -90,7 +90,7 @@ func main() {
 
 	orgRepoAdapter := authorization.NewOrgRepositoryAdapter(organizationPgRepository)
 
-	userService := user.NewService(cfg, userPgRepository)
+	userService := user.NewService(cfg, userPgRepository, emailService)
 	registryService := registry.NewService(repositoryPgRepository, orgRepoAdapter)
 	organizationService := internalOrganization.NewService(
 		organizationPgRepository,

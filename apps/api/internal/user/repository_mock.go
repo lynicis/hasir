@@ -55,6 +55,20 @@ func (mr *MockRepositoryMockRecorder) CreateApiKey(ctx, userId, name, apiKey any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateApiKey", reflect.TypeOf((*MockRepository)(nil).CreateApiKey), ctx, userId, name, apiKey)
 }
 
+// CreatePasswordResetToken mocks base method.
+func (m *MockRepository) CreatePasswordResetToken(ctx context.Context, userId, token string, expiresAt time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreatePasswordResetToken", ctx, userId, token, expiresAt)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreatePasswordResetToken indicates an expected call of CreatePasswordResetToken.
+func (mr *MockRepositoryMockRecorder) CreatePasswordResetToken(ctx, userId, token, expiresAt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePasswordResetToken", reflect.TypeOf((*MockRepository)(nil).CreatePasswordResetToken), ctx, userId, token, expiresAt)
+}
+
 // CreateRefreshToken mocks base method.
 func (m *MockRepository) CreateRefreshToken(ctx context.Context, id, token string, expiresAt time.Time) error {
 	m.ctrl.T.Helper()
@@ -153,6 +167,21 @@ func (m *MockRepository) GetApiKeysCount(ctx context.Context, userId string) (in
 func (mr *MockRepositoryMockRecorder) GetApiKeysCount(ctx, userId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApiKeysCount", reflect.TypeOf((*MockRepository)(nil).GetApiKeysCount), ctx, userId)
+}
+
+// GetPasswordResetToken mocks base method.
+func (m *MockRepository) GetPasswordResetToken(ctx context.Context, token string) (*PasswordResetTokenDTO, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPasswordResetToken", ctx, token)
+	ret0, _ := ret[0].(*PasswordResetTokenDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPasswordResetToken indicates an expected call of GetPasswordResetToken.
+func (mr *MockRepositoryMockRecorder) GetPasswordResetToken(ctx, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPasswordResetToken", reflect.TypeOf((*MockRepository)(nil).GetPasswordResetToken), ctx, token)
 }
 
 // GetRefreshTokenByTokenId mocks base method.
@@ -273,6 +302,20 @@ func (m *MockRepository) GetUsersByEmails(ctx context.Context, emails []string) 
 func (mr *MockRepositoryMockRecorder) GetUsersByEmails(ctx, emails any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUsersByEmails", reflect.TypeOf((*MockRepository)(nil).GetUsersByEmails), ctx, emails)
+}
+
+// MarkPasswordResetTokenAsUsed mocks base method.
+func (m *MockRepository) MarkPasswordResetTokenAsUsed(ctx context.Context, token string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarkPasswordResetTokenAsUsed", ctx, token)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarkPasswordResetTokenAsUsed indicates an expected call of MarkPasswordResetTokenAsUsed.
+func (mr *MockRepositoryMockRecorder) MarkPasswordResetTokenAsUsed(ctx, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkPasswordResetTokenAsUsed", reflect.TypeOf((*MockRepository)(nil).MarkPasswordResetTokenAsUsed), ctx, token)
 }
 
 // RevokeApiKey mocks base method.

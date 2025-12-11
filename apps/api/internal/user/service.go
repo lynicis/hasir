@@ -22,17 +22,25 @@ type Service interface {
 	Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.TokenEnvelope, error)
 	UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.TokenEnvelope, error)
 	RenewTokens(ctx context.Context, req *userv1.RenewTokensRequest) (*userv1.RenewTokensResponse, error)
+	ForgotPassword(ctx context.Context, req *userv1.ForgotPasswordRequest) error
+	ResetPassword(ctx context.Context, req *userv1.ResetPasswordRequest) error
 }
 
 type service struct {
 	config         *config.Config
 	userRepository Repository
+	emailService   EmailService
 }
 
-func NewService(config *config.Config, userRepository Repository) *service {
+type EmailService interface {
+	SendForgotPassword(to, resetToken string) error
+}
+
+func NewService(config *config.Config, userRepository Repository, emailService EmailService) *service {
 	return &service{
 		config:         config,
 		userRepository: userRepository,
+		emailService:   emailService,
 	}
 }
 
@@ -271,4 +279,71 @@ func (s *service) generateTokens(user *UserDTO) (*userv1.TokenEnvelope, string, 
 		AccessToken:  signedAccessToken,
 		RefreshToken: signedRefreshToken,
 	}, refreshTokenClaims.ID, nil
+}
+
+func (s *service) ForgotPassword(ctx context.Context, req *userv1.ForgotPasswordRequest) error {
+	user, err := s.userRepository.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeNotFound {
+			return nil
+		}
+		return err
+	}
+
+	resetToken := uuid.NewString()
+	expiresAt := time.Now().UTC().Add(1 * time.Hour)
+
+	if err := s.userRepository.CreatePasswordResetToken(ctx, user.Id, resetToken, expiresAt); err != nil {
+		return err
+	}
+
+	if err := s.emailService.SendForgotPassword(user.Email, resetToken); err != nil {
+		return connect.NewError(connect.CodeInternal, errors.New("failed to send reset email"))
+	}
+
+	return nil
+}
+
+func (s *service) ResetPassword(ctx context.Context, req *userv1.ResetPasswordRequest) error {
+	resetToken, err := s.userRepository.GetPasswordResetToken(ctx, req.Token)
+	if err != nil {
+		return err
+	}
+
+	if resetToken.UsedAt != nil {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("reset token has already been used"))
+	}
+
+	now := time.Now().UTC()
+	if now.After(resetToken.ExpiresAt) {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("reset token has expired"))
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return ErrInternalServer
+	}
+
+	user, err := s.userRepository.GetUserById(ctx, resetToken.UserId)
+	if err != nil {
+		return err
+	}
+
+	updatedUser := &UserDTO{
+		Id:       user.Id,
+		Username: user.Username,
+		Email:    user.Email,
+		Password: string(hashedPassword),
+	}
+
+	if err := s.userRepository.UpdateUserById(ctx, user.Id, updatedUser); err != nil {
+		return err
+	}
+
+	if err := s.userRepository.MarkPasswordResetTokenAsUsed(ctx, req.Token); err != nil {
+		return err
+	}
+
+	return nil
 }

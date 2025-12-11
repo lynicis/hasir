@@ -39,6 +39,20 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
+// SendForgotPassword mocks base method.
+func (m *MockService) SendForgotPassword(to, resetToken string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendForgotPassword", to, resetToken)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SendForgotPassword indicates an expected call of SendForgotPassword.
+func (mr *MockServiceMockRecorder) SendForgotPassword(to, resetToken any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendForgotPassword", reflect.TypeOf((*MockService)(nil).SendForgotPassword), to, resetToken)
+}
+
 // SendInvite mocks base method.
 func (m *MockService) SendInvite(to, organizationName, inviteToken string) error {
 	m.ctrl.T.Helper()

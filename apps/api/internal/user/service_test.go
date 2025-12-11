@@ -17,12 +17,13 @@ import (
 
 	"hasir-api/pkg/authentication"
 	"hasir-api/pkg/config"
+	"hasir-api/pkg/email"
 )
 
 var ErrNoRows = connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 
 func TestNewService(t *testing.T) {
-	s := NewService(nil, nil)
+	s := NewService(nil, nil, nil)
 	assert.Implements(t, (*Service)(nil), s)
 }
 
@@ -43,7 +44,7 @@ func TestService_Register(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		s := NewService(nil, mockUserRepository)
+		s := NewService(nil, mockUserRepository, nil)
 		err := s.Register(t.Context(), &userv1.RegisterRequest{
 			Email:    "test@mail.com",
 			Username: "test-user",
@@ -61,7 +62,7 @@ func TestService_Register(t *testing.T) {
 			Return(nil, errors.New("something went wrong")).
 			Times(1)
 
-		s := NewService(nil, mockUserRepository)
+		s := NewService(nil, mockUserRepository, nil)
 		err := s.Register(t.Context(), &userv1.RegisterRequest{
 			Email:    "test@mail.com",
 			Username: "test-user",
@@ -85,7 +86,7 @@ func TestService_Register(t *testing.T) {
 			}, nil).
 			Times(1)
 
-		s := NewService(nil, mockUserRepository)
+		s := NewService(nil, mockUserRepository, nil)
 		err := s.Register(t.Context(), &userv1.RegisterRequest{
 			Email:    "test@mail.com",
 			Username: "test-user",
@@ -108,7 +109,7 @@ func TestService_Register(t *testing.T) {
 			Return(errors.New("something went wrong")).
 			Times(1)
 
-		s := NewService(nil, mockUserRepository)
+		s := NewService(nil, mockUserRepository, nil)
 		err := s.Register(t.Context(), &userv1.RegisterRequest{
 			Email:    "test@mail.com",
 			Username: "test-user",
@@ -153,7 +154,7 @@ func TestService_Login(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		s := NewService(cfg, mockUserRepository)
+		s := NewService(cfg, mockUserRepository, nil)
 		tokens, err := s.Login(t.Context(), &userv1.LoginRequest{
 			Email:    "test@mail.com",
 			Password: "Asdfg12345_",
@@ -181,7 +182,7 @@ func TestService_Login(t *testing.T) {
 			}, nil).
 			Times(1)
 
-		s := NewService(cfg, mockUserRepository)
+		s := NewService(cfg, mockUserRepository, nil)
 		tokens, err := s.Login(t.Context(), &userv1.LoginRequest{
 			Email:    "test@mail.com",
 			Password: "wrong-password123_",
@@ -213,7 +214,7 @@ func TestService_Login(t *testing.T) {
 			Return(errors.New("something went wrong")).
 			Times(1)
 
-		s := NewService(cfg, mockUserRepository)
+		s := NewService(cfg, mockUserRepository, nil)
 		tokens, err := s.Login(t.Context(), &userv1.LoginRequest{
 			Email:    "test@mail.com",
 			Password: "Asdfg12345_",
@@ -268,7 +269,7 @@ func TestService_UpdateUser(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		s := NewService(cfg, mockUserRepository)
+		s := NewService(cfg, mockUserRepository, nil)
 		ctx := context.WithValue(t.Context(), authentication.UserIDKey, userId)
 		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
@@ -291,7 +292,7 @@ func TestService_UpdateUser(t *testing.T) {
 			Return(nil, ErrNoRows).
 			Times(1)
 
-		s := NewService(cfg, mockUserRepository)
+		s := NewService(cfg, mockUserRepository, nil)
 		ctx := context.WithValue(t.Context(), authentication.UserIDKey, userId)
 		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
@@ -318,7 +319,7 @@ func TestService_UpdateUser(t *testing.T) {
 			}, nil).
 			Times(1)
 
-		s := NewService(cfg, mockUserRepository)
+		s := NewService(cfg, mockUserRepository, nil)
 		wrongPassword := "wrong-password"
 		ctx := context.WithValue(t.Context(), authentication.UserIDKey, userId)
 		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
@@ -352,7 +353,7 @@ func TestService_UpdateUser(t *testing.T) {
 			Return(errors.New("something went wrong")).
 			Times(1)
 
-		s := NewService(cfg, mockUserRepository)
+		s := NewService(cfg, mockUserRepository, nil)
 		ctx := context.WithValue(t.Context(), authentication.UserIDKey, userId)
 		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
@@ -390,7 +391,7 @@ func TestService_UpdateUser(t *testing.T) {
 			Return(errors.New("something went wrong")).
 			Times(1)
 
-		s := NewService(cfg, mockUserRepository)
+		s := NewService(cfg, mockUserRepository, nil)
 		ctx := context.WithValue(t.Context(), authentication.UserIDKey, userId)
 		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
 			Username:    &newUsername,
@@ -433,7 +434,7 @@ func TestService_UpdateUser(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		s := NewService(cfg, mockUserRepository)
+		s := NewService(cfg, mockUserRepository, nil)
 		ctx := context.WithValue(t.Context(), authentication.UserIDKey, userId)
 		emptyPassword := ""
 		tokens, err := s.UpdateUser(ctx, &userv1.UpdateUserRequest{
@@ -505,7 +506,7 @@ func TestService_RenewTokens(t *testing.T) {
 			}, nil).
 			Times(1)
 
-		s := NewService(cfg, mockUserRepository)
+		s := NewService(cfg, mockUserRepository, nil)
 		resp, err := s.RenewTokens(t.Context(), &userv1.RenewTokensRequest{
 			RefreshToken: signedToken,
 		})
@@ -535,7 +536,7 @@ func TestService_RenewTokens(t *testing.T) {
 
 		mockUserRepository := NewMockRepository(mockController)
 
-		s := NewService(cfg, mockUserRepository)
+		s := NewService(cfg, mockUserRepository, nil)
 		resp, err := s.RenewTokens(t.Context(), &userv1.RenewTokensRequest{
 			RefreshToken: signedToken,
 		})
@@ -543,5 +544,316 @@ func TestService_RenewTokens(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, resp)
 		assert.Contains(t, err.Error(), "invalid refresh token id")
+	})
+}
+
+func TestService_ForgotPassword(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+
+	t.Run("happy path", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+		mockEmailService := email.NewMockService(mockController)
+
+		userEmail := "test@mail.com"
+		userId := uuid.NewString()
+
+		mockUserRepository.
+			EXPECT().
+			GetUserByEmail(gomock.Any(), userEmail).
+			Return(&UserDTO{
+				Id:       userId,
+				Email:    userEmail,
+				Username: "test-user",
+			}, nil).
+			Times(1)
+
+		mockUserRepository.
+			EXPECT().
+			CreatePasswordResetToken(gomock.Any(), userId, gomock.Any(), gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		mockEmailService.
+			EXPECT().
+			SendForgotPassword(userEmail, gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		s := NewService(nil, mockUserRepository, mockEmailService)
+		err := s.ForgotPassword(t.Context(), &userv1.ForgotPasswordRequest{
+			Email: userEmail,
+		})
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("user not found - should succeed silently", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+		mockEmailService := email.NewMockService(mockController)
+
+		userEmail := "nonexistent@mail.com"
+
+		mockUserRepository.
+			EXPECT().
+			GetUserByEmail(gomock.Any(), userEmail).
+			Return(nil, ErrNoRows).
+			Times(1)
+
+		s := NewService(nil, mockUserRepository, mockEmailService)
+		err := s.ForgotPassword(t.Context(), &userv1.ForgotPasswordRequest{
+			Email: userEmail,
+		})
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("error creating reset token", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+		mockEmailService := email.NewMockService(mockController)
+
+		userEmail := "test@mail.com"
+		userId := uuid.NewString()
+
+		mockUserRepository.
+			EXPECT().
+			GetUserByEmail(gomock.Any(), userEmail).
+			Return(&UserDTO{
+				Id:       userId,
+				Email:    userEmail,
+				Username: "test-user",
+			}, nil).
+			Times(1)
+
+		mockUserRepository.
+			EXPECT().
+			CreatePasswordResetToken(gomock.Any(), userId, gomock.Any(), gomock.Any()).
+			Return(errors.New("database error")).
+			Times(1)
+
+		s := NewService(nil, mockUserRepository, mockEmailService)
+		err := s.ForgotPassword(t.Context(), &userv1.ForgotPasswordRequest{
+			Email: userEmail,
+		})
+
+		assert.Error(t, err)
+	})
+
+	t.Run("error sending email", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+		mockEmailService := email.NewMockService(mockController)
+
+		userEmail := "test@mail.com"
+		userId := uuid.NewString()
+
+		mockUserRepository.
+			EXPECT().
+			GetUserByEmail(gomock.Any(), userEmail).
+			Return(&UserDTO{
+				Id:       userId,
+				Email:    userEmail,
+				Username: "test-user",
+			}, nil).
+			Times(1)
+
+		mockUserRepository.
+			EXPECT().
+			CreatePasswordResetToken(gomock.Any(), userId, gomock.Any(), gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		mockEmailService.
+			EXPECT().
+			SendForgotPassword(userEmail, gomock.Any()).
+			Return(errors.New("smtp error")).
+			Times(1)
+
+		s := NewService(nil, mockUserRepository, mockEmailService)
+		err := s.ForgotPassword(t.Context(), &userv1.ForgotPasswordRequest{
+			Email: userEmail,
+		})
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to send reset email")
+	})
+}
+
+func TestService_ResetPassword(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+
+	t.Run("happy path", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+
+		resetToken := uuid.NewString()
+		userId := uuid.NewString()
+		newPassword := "NewPassword123!"
+
+		mockUserRepository.
+			EXPECT().
+			GetPasswordResetToken(gomock.Any(), resetToken).
+			Return(&PasswordResetTokenDTO{
+				Id:        uuid.NewString(),
+				UserId:    userId,
+				Token:     resetToken,
+				ExpiresAt: time.Now().UTC().Add(1 * time.Hour),
+				CreatedAt: time.Now().UTC(),
+				UsedAt:    nil,
+			}, nil).
+			Times(1)
+
+		mockUserRepository.
+			EXPECT().
+			GetUserById(gomock.Any(), userId).
+			Return(&UserDTO{
+				Id:       userId,
+				Username: "test-user",
+				Email:    "test@mail.com",
+				Password: "old-hashed-password",
+			}, nil).
+			Times(1)
+
+		mockUserRepository.
+			EXPECT().
+			UpdateUserById(gomock.Any(), userId, gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		mockUserRepository.
+			EXPECT().
+			MarkPasswordResetTokenAsUsed(gomock.Any(), resetToken).
+			Return(nil).
+			Times(1)
+
+		s := NewService(nil, mockUserRepository, nil)
+		err := s.ResetPassword(t.Context(), &userv1.ResetPasswordRequest{
+			Token:       resetToken,
+			NewPassword: newPassword,
+		})
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("token not found", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+
+		resetToken := uuid.NewString()
+
+		mockUserRepository.
+			EXPECT().
+			GetPasswordResetToken(gomock.Any(), resetToken).
+			Return(nil, connect.NewError(connect.CodeNotFound, errors.New("reset token not found"))).
+			Times(1)
+
+		s := NewService(nil, mockUserRepository, nil)
+		err := s.ResetPassword(t.Context(), &userv1.ResetPasswordRequest{
+			Token:       resetToken,
+			NewPassword: "NewPassword123!",
+		})
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "reset token not found")
+	})
+
+	t.Run("token already used", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+
+		resetToken := uuid.NewString()
+		usedAt := time.Now().UTC().Add(-10 * time.Minute)
+
+		mockUserRepository.
+			EXPECT().
+			GetPasswordResetToken(gomock.Any(), resetToken).
+			Return(&PasswordResetTokenDTO{
+				Id:        uuid.NewString(),
+				UserId:    uuid.NewString(),
+				Token:     resetToken,
+				ExpiresAt: time.Now().UTC().Add(1 * time.Hour),
+				CreatedAt: time.Now().UTC().Add(-30 * time.Minute),
+				UsedAt:    &usedAt,
+			}, nil).
+			Times(1)
+
+		s := NewService(nil, mockUserRepository, nil)
+		err := s.ResetPassword(t.Context(), &userv1.ResetPasswordRequest{
+			Token:       resetToken,
+			NewPassword: "NewPassword123!",
+		})
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "reset token has already been used")
+	})
+
+	t.Run("token expired", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+
+		resetToken := uuid.NewString()
+
+		mockUserRepository.
+			EXPECT().
+			GetPasswordResetToken(gomock.Any(), resetToken).
+			Return(&PasswordResetTokenDTO{
+				Id:        uuid.NewString(),
+				UserId:    uuid.NewString(),
+				Token:     resetToken,
+				ExpiresAt: time.Now().UTC().Add(-10 * time.Minute),
+				CreatedAt: time.Now().UTC().Add(-2 * time.Hour),
+				UsedAt:    nil,
+			}, nil).
+			Times(1)
+
+		s := NewService(nil, mockUserRepository, nil)
+		err := s.ResetPassword(t.Context(), &userv1.ResetPasswordRequest{
+			Token:       resetToken,
+			NewPassword: "NewPassword123!",
+		})
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "reset token has expired")
+	})
+
+	t.Run("error updating user", func(t *testing.T) {
+		mockUserRepository := NewMockRepository(mockController)
+
+		resetToken := uuid.NewString()
+		userId := uuid.NewString()
+
+		mockUserRepository.
+			EXPECT().
+			GetPasswordResetToken(gomock.Any(), resetToken).
+			Return(&PasswordResetTokenDTO{
+				Id:        uuid.NewString(),
+				UserId:    userId,
+				Token:     resetToken,
+				ExpiresAt: time.Now().UTC().Add(1 * time.Hour),
+				CreatedAt: time.Now().UTC(),
+				UsedAt:    nil,
+			}, nil).
+			Times(1)
+
+		mockUserRepository.
+			EXPECT().
+			GetUserById(gomock.Any(), userId).
+			Return(&UserDTO{
+				Id:       userId,
+				Username: "test-user",
+				Email:    "test@mail.com",
+				Password: "old-hashed-password",
+			}, nil).
+			Times(1)
+
+		mockUserRepository.
+			EXPECT().
+			UpdateUserById(gomock.Any(), userId, gomock.Any()).
+			Return(errors.New("database error")).
+			Times(1)
+
+		s := NewService(nil, mockUserRepository, nil)
+		err := s.ResetPassword(t.Context(), &userv1.ResetPasswordRequest{
+			Token:       resetToken,
+			NewPassword: "NewPassword123!",
+		})
+
+		assert.Error(t, err)
 	})
 }

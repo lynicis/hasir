@@ -35,3 +35,12 @@ type SshKeyDTO struct {
 	CreatedAt time.Time  `db:"created_at"`
 	DeletedAt *time.Time `db:"deleted_at"`
 }
+
+type PasswordResetTokenDTO struct {
+	Id        string     `db:"id"`
+	UserId    string     `db:"user_id"`
+	Token     string     `db:"token"`
+	ExpiresAt time.Time  `db:"expires_at"`
+	CreatedAt time.Time  `db:"created_at"`
+	UsedAt    *time.Time `db:"used_at"`
+}

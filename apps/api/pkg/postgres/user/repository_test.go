@@ -1738,3 +1738,330 @@ func TestPgRepository_GetUserBySshPublicKey(t *testing.T) {
 		assert.Contains(t, err.Error(), "ssh key not found")
 	})
 }
+
+func TestPgRepository_CreatePasswordResetToken(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createPasswordResetTokensTable(t, connString)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		token := uuid.NewString()
+		expiresAt := time.Now().UTC().Add(1 * time.Hour)
+
+		err = pgRepository.CreatePasswordResetToken(t.Context(), fakeId, token, expiresAt)
+
+		assert.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var dbToken, dbUserId string
+		var dbExpiresAt, dbCreatedAt time.Time
+		err = conn.QueryRow(t.Context(),
+			"SELECT user_id, token, expires_at, created_at FROM password_reset_tokens WHERE token = $1", token).
+			Scan(&dbUserId, &dbToken, &dbExpiresAt, &dbCreatedAt)
+		require.NoError(t, err)
+
+		assert.Equal(t, fakeId, dbUserId)
+		assert.Equal(t, token, dbToken)
+		assert.WithinDuration(t, expiresAt, dbExpiresAt, time.Second)
+	})
+
+	t.Run("duplicate token returns error", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createPasswordResetTokensTable(t, connString)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		token := uuid.NewString()
+		expiresAt := time.Now().UTC().Add(1 * time.Hour)
+
+		err = pgRepository.CreatePasswordResetToken(t.Context(), fakeId, token, expiresAt)
+		assert.NoError(t, err)
+
+		err = pgRepository.CreatePasswordResetToken(t.Context(), fakeId, token, expiresAt)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "reset token already exists")
+	})
+}
+
+func TestPgRepository_GetPasswordResetToken(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createPasswordResetTokensTable(t, connString)
+
+		token := uuid.NewString()
+		expiresAt := time.Now().UTC().Add(1 * time.Hour)
+		createFakePasswordResetToken(t, connString, fakeId, token, expiresAt, nil)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		resetToken, err := pgRepository.GetPasswordResetToken(t.Context(), token)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resetToken)
+		assert.Equal(t, fakeId, resetToken.UserId)
+		assert.Equal(t, token, resetToken.Token)
+		assert.WithinDuration(t, expiresAt, resetToken.ExpiresAt, time.Second)
+		assert.Nil(t, resetToken.UsedAt)
+	})
+
+	t.Run("token not found", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createPasswordResetTokensTable(t, connString)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		resetToken, err := pgRepository.GetPasswordResetToken(t.Context(), "nonexistent-token")
+
+		assert.Error(t, err)
+		assert.Nil(t, resetToken)
+		assert.Contains(t, err.Error(), "reset token not found")
+	})
+
+	t.Run("returns used token", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createPasswordResetTokensTable(t, connString)
+
+		token := uuid.NewString()
+		expiresAt := time.Now().UTC().Add(1 * time.Hour)
+		usedAt := time.Now().UTC().Add(-10 * time.Minute)
+		createFakePasswordResetToken(t, connString, fakeId, token, expiresAt, &usedAt)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		resetToken, err := pgRepository.GetPasswordResetToken(t.Context(), token)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resetToken)
+		assert.NotNil(t, resetToken.UsedAt)
+		assert.WithinDuration(t, usedAt, *resetToken.UsedAt, time.Second)
+	})
+}
+
+func TestPgRepository_MarkPasswordResetTokenAsUsed(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createPasswordResetTokensTable(t, connString)
+
+		token := uuid.NewString()
+		expiresAt := time.Now().UTC().Add(1 * time.Hour)
+		createFakePasswordResetToken(t, connString, fakeId, token, expiresAt, nil)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		err = pgRepository.MarkPasswordResetTokenAsUsed(t.Context(), token)
+
+		assert.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		var usedAt *time.Time
+		err = conn.QueryRow(t.Context(),
+			"SELECT used_at FROM password_reset_tokens WHERE token = $1", token).
+			Scan(&usedAt)
+		require.NoError(t, err)
+
+		assert.NotNil(t, usedAt)
+		assert.WithinDuration(t, time.Now().UTC(), *usedAt, 2*time.Second)
+	})
+
+	t.Run("token not found", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createPasswordResetTokensTable(t, connString)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		err = pgRepository.MarkPasswordResetTokenAsUsed(t.Context(), "nonexistent-token")
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "reset token not found or already used")
+	})
+
+	t.Run("already used token returns error", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createPasswordResetTokensTable(t, connString)
+
+		token := uuid.NewString()
+		expiresAt := time.Now().UTC().Add(1 * time.Hour)
+		usedAt := time.Now().UTC().Add(-10 * time.Minute)
+		createFakePasswordResetToken(t, connString, fakeId, token, expiresAt, &usedAt)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		err = pgRepository.MarkPasswordResetTokenAsUsed(t.Context(), token)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "reset token not found or already used")
+	})
+}
+
+func createPasswordResetTokensTable(t *testing.T, connString string) {
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		err = conn.Close(t.Context())
+		require.NoError(t, err)
+	}()
+
+	sql := `
+		CREATE TABLE password_reset_tokens (
+			id varchar PRIMARY KEY DEFAULT gen_random_uuid()::varchar,
+			user_id varchar NOT NULL,
+			token varchar NOT NULL UNIQUE,
+			expires_at timestamp NOT NULL,
+			created_at timestamp NOT NULL,
+			used_at timestamp
+		);
+	`
+
+	_, err = conn.Exec(t.Context(), sql)
+	require.NoError(t, err)
+}
+
+func createFakePasswordResetToken(t *testing.T, connString, userId, token string, expiresAt time.Time, usedAt *time.Time) {
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		err = conn.Close(t.Context())
+		require.NoError(t, err)
+	}()
+
+	sql := `
+		INSERT INTO password_reset_tokens (user_id, token, expires_at, created_at, used_at)
+		VALUES ($1, $2, $3, $4, $5)
+	`
+
+	_, err = conn.Exec(t.Context(), sql,
+		userId,
+		token,
+		expiresAt,
+		time.Now().UTC().Add(-30*time.Minute),
+		usedAt,
+	)
+	require.NoError(t, err)
+}
