@@ -1,6 +1,6 @@
 import { type Interceptor, Code, ConnectError } from "@connectrpc/connect";
 
-const publicMethods = ['login', 'register'];
+const publicMethods = ['login', 'register', 'forgotpassword', 'resetpassword'];
 
 function isPublicPage(): boolean {
   const pathname = window.location.pathname;

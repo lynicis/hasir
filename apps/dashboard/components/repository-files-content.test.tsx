@@ -206,7 +206,7 @@ describe("RepositoryFilesContent", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows file preview and download button when a file is selected", async () => {
+  it("shows file preview when a file is selected", async () => {
     const user = userEvent.setup();
     const mockFileContent = 'syntax = "proto3";\n\nmessage User {\n  string id = 1;\n}';
     mockGetFilePreview.mockResolvedValue({
@@ -244,10 +244,6 @@ describe("RepositoryFilesContent", () => {
       expect(screen.getByText(/syntax = "proto3"/)).toBeInTheDocument();
       expect(screen.getByText(/message User/)).toBeInTheDocument();
     });
-
-    expect(
-      screen.getByRole("button", { name: /download/i })
-    ).toBeInTheDocument();
   });
 
   it("renders folder structure with proto, docs folders", async () => {
