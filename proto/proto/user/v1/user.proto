@@ -39,6 +39,18 @@ message RenewTokensResponse {
   string access_token = 1;
 }
 
+message ForgotPasswordRequest {
+  string email = 1 [(buf.validate.field).string.email = true];
+}
+
+message ResetPasswordRequest {
+  string token = 1 [(buf.validate.field).required = true];
+  string new_password = 2 [
+    (buf.validate.field).string.min_len = 8,
+    (buf.validate.field).string.max_len = 20
+  ];
+}
+
 message UpdateUserRequest {
   string password = 1 [
     (buf.validate.field).string.min_len = 8,
@@ -88,6 +100,8 @@ service UserService {
   rpc Register(RegisterRequest) returns (google.protobuf.Empty);
   rpc Login(LoginRequest) returns (TokenEnvelope);
   rpc RenewTokens(RenewTokensRequest) returns (RenewTokensResponse);
+  rpc ForgotPassword(ForgotPasswordRequest) returns (google.protobuf.Empty);
+  rpc ResetPassword(ResetPasswordRequest) returns (google.protobuf.Empty);
   rpc UpdateUser(UpdateUserRequest) returns (TokenEnvelope);
   rpc DeleteAccount(google.protobuf.Empty) returns (google.protobuf.Empty);
   rpc CreateApiKey(CreateApiKeyRequest) returns (CreateApiKeyResponse);
