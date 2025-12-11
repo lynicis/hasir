@@ -8,10 +8,21 @@ import userEvent from "@testing-library/user-event";
 import RepositoryFilesContent from "./repository-files-content";
 import { RepositoryContext } from "./repository-context";
 
+// Mock SyntaxHighlighter to avoid rendering issues in tests
+vi.mock("react-syntax-highlighter", () => ({
+  Prism: ({ children }: { children: string }) => <pre>{children}</pre>,
+}));
+
+vi.mock("react-syntax-highlighter/dist/esm/styles/prism", () => ({
+  vscDarkPlus: {},
+}));
+
 const mockGetFileTree = vi.fn();
+const mockGetFilePreview = vi.fn();
 
 const mockClient = {
   getFileTree: mockGetFileTree,
+  getFilePreview: mockGetFilePreview,
 };
 
 vi.mock("@/lib/use-client", () => ({
@@ -195,8 +206,15 @@ describe("RepositoryFilesContent", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows file action buttons when a file is selected", async () => {
+  it("shows file preview and download button when a file is selected", async () => {
     const user = userEvent.setup();
+    const mockFileContent = 'syntax = "proto3";\n\nmessage User {\n  string id = 1;\n}';
+    mockGetFilePreview.mockResolvedValue({
+      content: mockFileContent,
+      mimeType: "text/plain",
+      size: BigInt(mockFileContent.length),
+    });
+
     renderWithContext(<RepositoryFilesContent />);
 
     await waitFor(
@@ -216,17 +234,20 @@ describe("RepositoryFilesContent", () => {
     await user.click(file);
 
     await waitFor(() => {
-      expect(screen.getByText("File Actions")).toBeInTheDocument();
+      expect(mockGetFilePreview).toHaveBeenCalledWith({
+        id: "test-repo-id",
+        path: "proto/user/user.proto",
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/syntax = "proto3"/)).toBeInTheDocument();
+      expect(screen.getByText(/message User/)).toBeInTheDocument();
     });
 
     expect(
       screen.getByRole("button", { name: /download/i })
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /history/i })
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
   });
 
   it("renders folder structure with proto, docs folders", async () => {
@@ -369,6 +390,148 @@ describe("RepositoryFilesContent", () => {
       expect(
         screen.getByText(/no files found in this repository/i)
       ).toBeInTheDocument();
+    });
+  });
+
+  it("shows loading skeleton while fetching file preview", async () => {
+    const user = userEvent.setup();
+    mockGetFilePreview.mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                content: "test content",
+                mimeType: "text/plain",
+                size: BigInt(12),
+              }),
+            100
+          )
+        )
+    );
+
+    renderWithContext(<RepositoryFilesContent />);
+
+    await waitFor(
+      () => {
+        expect(screen.getByText("proto")).toBeInTheDocument();
+      },
+      { timeout: 2000 }
+    );
+
+    const protoFolder = screen.getByText("proto");
+    await user.click(protoFolder);
+
+    const userFolder = screen.getByText("user");
+    await user.click(userFolder);
+
+    const file = screen.getByText("user.proto");
+    await user.click(file);
+
+    // Should show skeleton while loading
+    expect(document.querySelector(".animate-pulse")).toBeInTheDocument();
+
+    await waitFor(
+      () => {
+        expect(screen.getByText("test content")).toBeInTheDocument();
+      },
+      { timeout: 2000 }
+    );
+  });
+
+  it("shows error alert when file preview fails to load", async () => {
+    const user = userEvent.setup();
+    const mockError = new Error("Failed to load file preview");
+    mockGetFilePreview.mockRejectedValue(mockError);
+
+    renderWithContext(<RepositoryFilesContent />);
+
+    await waitFor(
+      () => {
+        expect(screen.getByText("proto")).toBeInTheDocument();
+      },
+      { timeout: 2000 }
+    );
+
+    const protoFolder = screen.getByText("proto");
+    await user.click(protoFolder);
+
+    const userFolder = screen.getByText("user");
+    await user.click(userFolder);
+
+    const file = screen.getByText("user.proto");
+    await user.click(file);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Error loading file preview")
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("shows appropriate message for non-text files", async () => {
+    const user = userEvent.setup();
+    mockGetFilePreview.mockResolvedValue({
+      content: "binary content",
+      mimeType: "image/png",
+      size: BigInt(1024),
+    });
+
+    renderWithContext(<RepositoryFilesContent />);
+
+    await waitFor(
+      () => {
+        expect(screen.getByText("proto")).toBeInTheDocument();
+      },
+      { timeout: 2000 }
+    );
+
+    const protoFolder = screen.getByText("proto");
+    await user.click(protoFolder);
+
+    const userFolder = screen.getByText("user");
+    await user.click(userFolder);
+
+    const file = screen.getByText("user.proto");
+    await user.click(file);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/preview not available for this file type/i)
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("displays file metadata (size and mime type)", async () => {
+    const user = userEvent.setup();
+    const fileSize = BigInt(2048);
+    mockGetFilePreview.mockResolvedValue({
+      content: "test content",
+      mimeType: "text/plain",
+      size: fileSize,
+    });
+
+    renderWithContext(<RepositoryFilesContent />);
+
+    await waitFor(
+      () => {
+        expect(screen.getByText("proto")).toBeInTheDocument();
+      },
+      { timeout: 2000 }
+    );
+
+    const protoFolder = screen.getByText("proto");
+    await user.click(protoFolder);
+
+    const userFolder = screen.getByText("user");
+    await user.click(userFolder);
+
+    const file = screen.getByText("user.proto");
+    await user.click(file);
+
+    await waitFor(() => {
+      expect(screen.getByText(/2\.00 KB/)).toBeInTheDocument();
+      expect(screen.getByText(/text\/plain/)).toBeInTheDocument();
     });
   });
 });

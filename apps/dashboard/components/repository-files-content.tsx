@@ -4,9 +4,11 @@ import type { FileTreeNode } from "@buf/hasir_hasir.bufbuild_es/registry/v1/regi
 
 import { RegistryService } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { NodeType } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { Files } from "lucide-react";
+import { Files, FileText } from "lucide-react";
 
 import {
   Card,
@@ -22,7 +24,6 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RepositoryContext } from "@/components/repository-context";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { useClient } from "@/lib/use-client";
 
 function transformFileTreeNode(
@@ -72,11 +73,58 @@ function FileTreeSkeleton() {
   );
 }
 
+function getLanguageFromPath(path: string): string {
+  const extension = path.split(".").pop()?.toLowerCase() || "";
+  const languageMap: Record<string, string> = {
+    js: "javascript",
+    jsx: "jsx",
+    ts: "typescript",
+    tsx: "tsx",
+    json: "json",
+    md: "markdown",
+    proto: "protobuf",
+    py: "python",
+    go: "go",
+    rs: "rust",
+    java: "java",
+    cpp: "cpp",
+    c: "c",
+    sh: "bash",
+    yaml: "yaml",
+    yml: "yaml",
+    toml: "toml",
+    xml: "xml",
+    html: "html",
+    css: "css",
+    scss: "scss",
+    sql: "sql",
+    graphql: "graphql",
+    dockerfile: "docker",
+  };
+  return languageMap[extension] || "text";
+}
+
+function formatFileSize(bytes: bigint): string {
+  const sizes = ["B", "KB", "MB", "GB"];
+  if (bytes === BigInt(0)) return "0 B";
+  const i = Math.floor(Math.log(Number(bytes)) / Math.log(1024));
+  return `${(Number(bytes) / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+}
+
+interface FilePreview {
+  content: string;
+  mimeType: string;
+  size: bigint;
+}
+
 export default function RepositoryFilesContent() {
   const [selectedFile, setSelectedFile] = useState<string | undefined>();
   const [fileTree, setFileTree] = useState<ExtendedTreeViewElement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [filePreview, setFilePreview] = useState<FilePreview | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState<Error | null>(null);
 
   const context = useContext(RepositoryContext);
   const client = useClient(RegistryService);
@@ -213,9 +261,48 @@ export default function RepositoryFilesContent() {
     [repository?.id, client, updateNodeLoading, updateNodeChildren, findNodeInTree]
   );
 
+  const loadFilePreview = useCallback(
+    async (filePath: string) => {
+      if (!repository?.id) return;
+
+      setIsLoadingPreview(true);
+      setPreviewError(null);
+      setFilePreview(null);
+
+      try {
+        const response = await client.getFilePreview({
+          id: repository.id,
+          path: filePath,
+        });
+
+        setFilePreview({
+          content: response.content,
+          mimeType: response.mimeType,
+          size: response.size,
+        });
+      } catch (err) {
+        setPreviewError(
+          err instanceof Error ? err : new Error("Failed to load file preview")
+        );
+      } finally {
+        setIsLoadingPreview(false);
+      }
+    },
+    [repository?.id, client]
+  );
+
   useEffect(() => {
     loadRootTree();
   }, [loadRootTree]);
+
+  useEffect(() => {
+    if (selectedFile) {
+      loadFilePreview(selectedFile);
+    } else {
+      setFilePreview(null);
+      setPreviewError(null);
+    }
+  }, [selectedFile, loadFilePreview]);
 
   const isNotFound =
     error instanceof ConnectError && error.code === Code.NotFound;
@@ -283,29 +370,64 @@ export default function RepositoryFilesContent() {
                 <div className="h-[500px] overflow-auto p-4">
                   {selectedFile ? (
                     <div className="space-y-4">
-                      <div className="rounded-lg border border-border bg-muted/30 p-4">
-                        <p className="text-muted-foreground text-sm">
-                          File preview will be displayed here for:{" "}
-                          {selectedFile}
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium">File Actions</h4>
-                        <div className="flex flex-wrap gap-2">
-                          <Button variant="outline" size="sm">
-                            Download
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            Edit
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            History
-                          </Button>
-                          <Button variant="destructive" size="sm">
-                            Delete
-                          </Button>
+                      {isLoadingPreview ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-6 w-1/2" />
+                          <Skeleton className="h-[300px] w-full" />
                         </div>
-                      </div>
+                      ) : previewError ? (
+                        <Alert variant="destructive">
+                          <AlertTitle>Error loading file preview</AlertTitle>
+                          <AlertDescription>
+                            {previewError instanceof ConnectError
+                              ? previewError.message
+                              : "Failed to load file preview. Please try again."}
+                          </AlertDescription>
+                        </Alert>
+                      ) : filePreview ? (
+                        <>
+                          <div className="mb-4 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <FileText className="size-4 text-muted-foreground" />
+                              <h4 className="text-sm font-medium">
+                                {selectedFile.split("/").pop()}
+                              </h4>
+                            </div>
+                            <p className="text-muted-foreground text-xs">
+                              {formatFileSize(filePreview.size)} •{" "}
+                              {filePreview.mimeType}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-border overflow-hidden">
+                            {filePreview.mimeType.startsWith("text/") ||
+                            filePreview.mimeType === "application/json" ||
+                            filePreview.mimeType === "application/x-protobuf" ? (
+                              <SyntaxHighlighter
+                                language={getLanguageFromPath(selectedFile)}
+                                style={vscDarkPlus}
+                                customStyle={{
+                                  margin: 0,
+                                  borderRadius: 0,
+                                  fontSize: "0.875rem",
+                                }}
+                                showLineNumbers
+                              >
+                                {filePreview.content}
+                              </SyntaxHighlighter>
+                            ) : (
+                              <div className="bg-muted/30 p-8 text-center">
+                                <FileText className="mx-auto mb-4 size-12 text-muted-foreground" />
+                                <p className="text-muted-foreground text-sm">
+                                  Preview not available for this file type
+                                </p>
+                                <p className="text-muted-foreground mt-1 text-xs">
+                                  Use the download button to view the file
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      ) : null}
                     </div>
                   ) : (
                     <div className="text-muted-foreground flex h-full items-center justify-center">

@@ -12,8 +12,8 @@
     "test:ci": "vitest run --coverage --watch='false'"
   },
   "dependencies": {
-    "@buf/hasir_hasir.bufbuild_es": "2.10.1-20251211095003-cc6a5c19d465.1",
-    "@buf/hasir_hasir.connectrpc_query-es": "2.2.0-20251211095003-cc6a5c19d465.1",
+    "@buf/hasir_hasir.bufbuild_es": "2.10.1-20251211140448-32604a7c7fe8.1",
+    "@buf/hasir_hasir.connectrpc_query-es": "2.2.0-20251211140448-32604a7c7fe8.1",
     "@bufbuild/protovalidate": "^1.1.0",
     "@connectrpc/connect": "^2.1.1",
     "@connectrpc/connect-query": "^2.2.0",
@@ -49,6 +49,7 @@
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "react-hook-form": "^7.68.0",
+    "react-syntax-highlighter": "^16.1.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.1.13",
@@ -63,6 +64,7 @@
     "@types/node": "^25.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "@vitejs/plugin-react": "^5.1.2",
     "@vitest/coverage-v8": "^4.0.15",
     "eslint": "^9",
