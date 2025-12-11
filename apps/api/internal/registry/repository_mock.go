@@ -98,6 +98,21 @@ func (mr *MockRepositoryMockRecorder) GetCommits(ctx, repoPath any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommits", reflect.TypeOf((*MockRepository)(nil).GetCommits), ctx, repoPath)
 }
 
+// GetFilePreview mocks base method.
+func (m *MockRepository) GetFilePreview(ctx context.Context, repoPath, filePath string) (*registryv1.GetFilePreviewResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFilePreview", ctx, repoPath, filePath)
+	ret0, _ := ret[0].(*registryv1.GetFilePreviewResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFilePreview indicates an expected call of GetFilePreview.
+func (mr *MockRepositoryMockRecorder) GetFilePreview(ctx, repoPath, filePath any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFilePreview", reflect.TypeOf((*MockRepository)(nil).GetFilePreview), ctx, repoPath, filePath)
+}
+
 // GetFileTree mocks base method.
 func (m *MockRepository) GetFileTree(ctx context.Context, repoPath string, subPath *string) (*registryv1.GetFileTreeResponse, error) {
 	m.ctrl.T.Helper()

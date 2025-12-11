@@ -1,9 +1,9 @@
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20251209175733-2a1774d88802.1 h1:ZnX3qpF/pDiYrf+Q3p+/zCzZ5ELSpszy5hdVarDMSV4=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20251209175733-2a1774d88802.1/go.mod h1:fUl8CEN/6ZAMk6bP8ahBJPUJw7rbp+j4x+wCcYi2IG4=
-buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251211095003-cc6a5c19d465.2 h1:2mhejJ/tYcluflu/h6BS1R2PaewRgu8htT5GFx5u5PI=
-buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251211095003-cc6a5c19d465.2/go.mod h1:4RylzvJJahfG0+8wfojRiTagmiQ93O6sLJR8mM/exnM=
-buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251211095003-cc6a5c19d465.1 h1:7eUuTovCgH51+4FMjt0U5FcqSBPMzmk92zmE7hu/35U=
-buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251211095003-cc6a5c19d465.1/go.mod h1:zI1JEBm9ommmarkR/IDTL0Xv1iEmRG96sARZqun8vhE=
+buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251211140448-32604a7c7fe8.2 h1:oNK8SxK6ZvA9z7JaoawcAxfSzo3Hz2Brl/ZS364MtGE=
+buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251211140448-32604a7c7fe8.2/go.mod h1:VuFPMEWDMJ67HptJV/L5Ijm4dal+IjCVDpRL49fOCV8=
+buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251211140448-32604a7c7fe8.1 h1:VT5YmTIyHEaoT1UT/KG8Uu4yvu93R5XATQtT6fQ4TpQ=
+buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251211140448-32604a7c7fe8.1/go.mod h1:zI1JEBm9ommmarkR/IDTL0Xv1iEmRG96sARZqun8vhE=
 buf.build/go/protovalidate v1.1.0 h1:pQqEQRpOo4SqS60qkvmhLTTQU9JwzEvdyiqAtXa5SeY=
 buf.build/go/protovalidate v1.1.0/go.mod h1:bGZcPiAQDC3ErCHK3t74jSoJDFOs2JH3d7LWuTEIdss=
 cel.dev/expr v0.25.1 h1:1KrZg61W6TWSxuNZ37Xy49ps13NUovb66QLprthtwi4=

@@ -890,3 +890,226 @@ func TestService_GetFileTree(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestService_GetFilePreview(t *testing.T) {
+	t.Run("success - text file", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		const orgID = "org-123"
+		const repoID = "repo-123"
+		const filePath = "README.md"
+		repoPath := filepath.Join("./repos", repoID)
+
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Path:           repoPath,
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(authorization.MemberRoleReader, nil)
+
+		expectedPreview := &registryv1.GetFilePreviewResponse{
+			Content:  "# Test Repository\n\nThis is a test.",
+			MimeType: "text/markdown",
+			Size:     35,
+		}
+
+		mockRepo.EXPECT().
+			GetFilePreview(ctx, repoPath, filePath).
+			Return(expectedPreview, nil)
+
+		req := &registryv1.GetFilePreviewRequest{
+			Id:   repoID,
+			Path: filePath,
+		}
+		resp, err := svc.GetFilePreview(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, expectedPreview.GetContent(), resp.GetContent())
+		require.Equal(t, expectedPreview.GetMimeType(), resp.GetMimeType())
+		require.Equal(t, expectedPreview.GetSize(), resp.GetSize())
+	})
+
+	t.Run("success - go file", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		const orgID = "org-123"
+		const repoID = "repo-123"
+		const filePath = "main.go"
+		repoPath := filepath.Join("./repos", repoID)
+
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Path:           repoPath,
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(authorization.MemberRoleReader, nil)
+
+		expectedPreview := &registryv1.GetFilePreviewResponse{
+			Content:  "package main\n\nfunc main() {}",
+			MimeType: "text/x-go",
+			Size:     30,
+		}
+
+		mockRepo.EXPECT().
+			GetFilePreview(ctx, repoPath, filePath).
+			Return(expectedPreview, nil)
+
+		req := &registryv1.GetFilePreviewRequest{
+			Id:   repoID,
+			Path: filePath,
+		}
+		resp, err := svc.GetFilePreview(ctx, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, expectedPreview.GetContent(), resp.GetContent())
+		require.Equal(t, expectedPreview.GetMimeType(), resp.GetMimeType())
+	})
+
+	t.Run("repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, "non-existent").
+			Return(nil, errors.New("repository not found"))
+
+		req := &registryv1.GetFilePreviewRequest{
+			Id:   "non-existent",
+			Path: "README.md",
+		}
+		_, err := svc.GetFilePreview(ctx, req)
+
+		require.Error(t, err)
+	})
+
+	t.Run("user not member of organization", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		const orgID = "org-123"
+		const repoID = "repo-123"
+
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Path:           "./repos/repo-123",
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return("", errors.New("user is not a member"))
+
+		req := &registryv1.GetFilePreviewRequest{
+			Id:   repoID,
+			Path: "README.md",
+		}
+		_, err := svc.GetFilePreview(ctx, req)
+
+		require.Error(t, err)
+	})
+
+	t.Run("file not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		const orgID = "org-123"
+		const repoID = "repo-123"
+		const filePath = "nonexistent.txt"
+		repoPath := filepath.Join("./repos", repoID)
+
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Path:           repoPath,
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(authorization.MemberRoleReader, nil)
+
+		mockRepo.EXPECT().
+			GetFilePreview(ctx, repoPath, filePath).
+			Return(nil, errors.New("file not found in repository"))
+
+		req := &registryv1.GetFilePreviewRequest{
+			Id:   repoID,
+			Path: filePath,
+		}
+		_, err := svc.GetFilePreview(ctx, req)
+
+		require.Error(t, err)
+		require.ErrorContains(t, err, "file not found")
+	})
+}

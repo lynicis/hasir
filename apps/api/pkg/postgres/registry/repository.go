@@ -921,3 +921,114 @@ func buildFileTreeNodes(rootTree *object.Tree, tree *object.Tree, basePath strin
 
 	return nodes
 }
+
+func (r *PgRepository) GetFilePreview(ctx context.Context, repoPath, filePath string) (*registryv1.GetFilePreviewResponse, error) {
+	var span trace.Span
+	_, span = r.tracer.Start(ctx, "GetFilePreview", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "repoPath",
+			Value: attribute.StringValue(repoPath),
+		},
+		attribute.KeyValue{
+			Key:   "filePath",
+			Value: attribute.StringValue(filePath),
+		},
+	))
+	defer span.End()
+
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("failed to open git repository"))
+	}
+
+	ref, err := repo.Head()
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("failed to get repository HEAD"))
+	}
+
+	commit, err := repo.CommitObject(ref.Hash())
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get commit object"))
+	}
+
+	tree, err := commit.Tree()
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get tree object"))
+	}
+
+	file, err := tree.File(filePath)
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("file not found in repository"))
+	}
+
+	content, err := file.Contents()
+	if err != nil {
+		span.RecordError(err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to read file content"))
+	}
+
+	mimeType := detectMimeType(filePath, []byte(content))
+	size := file.Size
+
+	return &registryv1.GetFilePreviewResponse{
+		Content:  content,
+		MimeType: mimeType,
+		Size:     size,
+	}, nil
+}
+
+var mimeTypeMap = map[string]string{
+	".txt":        "text/plain",
+	".md":         "text/markdown",
+	".json":       "application/json",
+	".yaml":       "application/yaml",
+	".yml":        "application/yaml",
+	".xml":        "application/xml",
+	".html":       "text/html",
+	".htm":        "text/html",
+	".css":        "text/css",
+	".js":         "application/javascript",
+	".ts":         "application/typescript",
+	".go":         "text/x-go",
+	".py":         "text/x-python",
+	".java":       "text/x-java",
+	".c":          "text/x-c",
+	".cpp":        "text/x-c++",
+	".cc":         "text/x-c++",
+	".cxx":        "text/x-c++",
+	".h":          "text/x-c-header",
+	".hpp":        "text/x-c-header",
+	".rs":         "text/x-rust",
+	".sh":         "application/x-sh",
+	".sql":        "application/sql",
+	".proto":      "text/x-protobuf",
+	".dockerfile": "text/x-dockerfile",
+	".Dockerfile": "text/x-dockerfile",
+}
+
+func detectMimeType(filePath string, content []byte) string {
+	ext := ""
+	for i := len(filePath) - 1; i >= 0; i-- {
+		if filePath[i] == '.' {
+			ext = filePath[i:]
+			break
+		}
+		if filePath[i] == '/' {
+			break
+		}
+	}
+
+	if mimeType, ok := mimeTypeMap[ext]; ok {
+		return mimeType
+	}
+
+	if len(content) > 0 && content[0] == 0 {
+		return "application/octet-stream"
+	}
+	return "text/plain"
+}

@@ -952,3 +952,294 @@ func TestHandler_GetFileTree(t *testing.T) {
 		require.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 }
+
+func TestHandler_GetFilePreview(t *testing.T) {
+	t.Run("success - text file", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		expectedFilePreview := &registryv1.GetFilePreviewResponse{
+			Content: "package main\n\nfunc main() {\n\tfmt.Println(\"Hello, World!\")\n}",
+		}
+
+		mockService.EXPECT().
+			GetFilePreview(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, req *registryv1.GetFilePreviewRequest) (*registryv1.GetFilePreviewResponse, error) {
+				require.Equal(t, "test-repo-id", req.GetId())
+				require.Equal(t, "main.go", req.GetPath())
+				return expectedFilePreview, nil
+			})
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.GetFilePreview(context.Background(), connect.NewRequest(&registryv1.GetFilePreviewRequest{
+			Id:   "test-repo-id",
+			Path: "main.go",
+		}))
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, "package main\n\nfunc main() {\n\tfmt.Println(\"Hello, World!\")\n}", resp.Msg.GetContent())
+	})
+
+	t.Run("success - file in subdirectory", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		expectedFilePreview := &registryv1.GetFilePreviewResponse{
+			Content: "# Test README\n\nThis is a test file.",
+		}
+
+		mockService.EXPECT().
+			GetFilePreview(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, req *registryv1.GetFilePreviewRequest) (*registryv1.GetFilePreviewResponse, error) {
+				require.Equal(t, "test-repo-id", req.GetId())
+				require.Equal(t, "docs/README.md", req.GetPath())
+				return expectedFilePreview, nil
+			})
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.GetFilePreview(context.Background(), connect.NewRequest(&registryv1.GetFilePreviewRequest{
+			Id:   "test-repo-id",
+			Path: "docs/README.md",
+		}))
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, "# Test README\n\nThis is a test file.", resp.Msg.GetContent())
+	})
+
+	t.Run("success - empty file", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		expectedFilePreview := &registryv1.GetFilePreviewResponse{
+			Content: "",
+		}
+
+		mockService.EXPECT().
+			GetFilePreview(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, req *registryv1.GetFilePreviewRequest) (*registryv1.GetFilePreviewResponse, error) {
+				require.Equal(t, "test-repo-id", req.GetId())
+				require.Equal(t, "empty.txt", req.GetPath())
+				return expectedFilePreview, nil
+			})
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.GetFilePreview(context.Background(), connect.NewRequest(&registryv1.GetFilePreviewRequest{
+			Id:   "test-repo-id",
+			Path: "empty.txt",
+		}))
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Empty(t, resp.Msg.GetContent())
+	})
+
+	t.Run("service error - repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			GetFilePreview(gomock.Any(), gomock.Any()).
+			Return(nil, ErrRepositoryNotFound)
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.GetFilePreview(context.Background(), connect.NewRequest(&registryv1.GetFilePreviewRequest{
+			Id:   "non-existent-repo",
+			Path: "main.go",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+
+	t.Run("service error - file not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			GetFilePreview(gomock.Any(), gomock.Any()).
+			Return(nil, connect.NewError(connect.CodeNotFound, errors.New("file not found")))
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.GetFilePreview(context.Background(), connect.NewRequest(&registryv1.GetFilePreviewRequest{
+			Id:   "test-repo-id",
+			Path: "nonexistent.go",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+
+	t.Run("service error - permission denied", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			GetFilePreview(gomock.Any(), gomock.Any()).
+			Return(nil, connect.NewError(connect.CodePermissionDenied, errors.New("you are not a member of this organization")))
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.GetFilePreview(context.Background(), connect.NewRequest(&registryv1.GetFilePreviewRequest{
+			Id:   "test-repo-id",
+			Path: "main.go",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+	})
+
+	t.Run("service error - internal error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			GetFilePreview(gomock.Any(), gomock.Any()).
+			Return(nil, connect.NewError(connect.CodeInternal, errors.New("git error")))
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.GetFilePreview(context.Background(), connect.NewRequest(&registryv1.GetFilePreviewRequest{
+			Id:   "test-repo-id",
+			Path: "main.go",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeInternal, connectErr.Code())
+	})
+
+	t.Run("success - file with unicode and special characters", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		specialContent := "Unicode: 你好 🚀\nTabs:\t\ttabs\nNewlines:\n\nSpaces:   multiple"
+		expectedFilePreview := &registryv1.GetFilePreviewResponse{
+			Content: specialContent,
+		}
+
+		mockService.EXPECT().
+			GetFilePreview(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, req *registryv1.GetFilePreviewRequest) (*registryv1.GetFilePreviewResponse, error) {
+				require.Equal(t, "test-repo-id", req.GetId())
+				require.Equal(t, "special.txt", req.GetPath())
+				return expectedFilePreview, nil
+			})
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.GetFilePreview(context.Background(), connect.NewRequest(&registryv1.GetFilePreviewRequest{
+			Id:   "test-repo-id",
+			Path: "special.txt",
+		}))
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, specialContent, resp.Msg.GetContent())
+	})
+}

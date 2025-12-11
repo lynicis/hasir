@@ -31,6 +31,7 @@ type Service interface {
 	UpdateSdkPreferences(ctx context.Context, req *registryv1.UpdateSdkPreferencesRequest) error
 	GetCommits(ctx context.Context, req *registryv1.GetCommitsRequest) (*registryv1.GetCommitsResponse, error)
 	GetFileTree(ctx context.Context, req *registryv1.GetFileTreeRequest) (*registryv1.GetFileTreeResponse, error)
+	GetFilePreview(ctx context.Context, req *registryv1.GetFilePreviewRequest) (*registryv1.GetFilePreviewResponse, error)
 	ValidateSshAccess(ctx context.Context, userId, repoPath string, operation SshOperation) (bool, error)
 }
 
@@ -471,6 +472,34 @@ func (s *service) GetFileTree(
 	}
 
 	return fileTree, nil
+}
+
+func (s *service) GetFilePreview(
+	ctx context.Context,
+	req *registryv1.GetFilePreviewRequest,
+) (*registryv1.GetFilePreviewResponse, error) {
+	userId, err := authentication.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	repoId := req.GetId()
+	repo, err := s.repository.GetRepositoryById(ctx, repoId)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := authorization.IsUserMember(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
+		return nil, err
+	}
+
+	filePath := req.GetPath()
+	filePreview, err := s.repository.GetFilePreview(ctx, repo.Path, filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	return filePreview, nil
 }
 
 func (s *service) ValidateSshAccess(

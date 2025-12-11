@@ -1,9 +1,14 @@
 package registry
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -122,6 +127,50 @@ func createRepositoriesAndMembersTables(t *testing.T, connString string) {
 
 	_, err = conn.Exec(t.Context(), sql)
 	require.NoError(t, err)
+}
+
+func setupTestGitRepository(t *testing.T, files map[string]string) string {
+	t.Helper()
+
+	tempDir, err := os.MkdirTemp("", "test-git-repo-*")
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = os.RemoveAll(tempDir)
+	})
+
+	repo, err := git.PlainInit(tempDir, false)
+	require.NoError(t, err)
+
+	worktree, err := repo.Worktree()
+	require.NoError(t, err)
+
+	for filePath, content := range files {
+		fullPath := filepath.Join(tempDir, filePath)
+
+		dir := filepath.Dir(fullPath)
+		if dir != tempDir {
+			err = os.MkdirAll(dir, 0755)
+			require.NoError(t, err)
+		}
+
+		err = os.WriteFile(fullPath, []byte(content), 0644)
+		require.NoError(t, err)
+
+		_, err = worktree.Add(filePath)
+		require.NoError(t, err)
+	}
+
+	_, err = worktree.Commit("Initial commit", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test User",
+			Email: "test@example.com",
+			When:  time.Now(),
+		},
+	})
+	require.NoError(t, err)
+
+	return tempDir
 }
 
 func TestPgRepository_CreateRepository(t *testing.T) {
@@ -887,5 +936,628 @@ func TestPgRepository_DeleteRepositoriesByOrganizationId(t *testing.T) {
 			timeDiff = -timeDiff
 		}
 		assert.Less(t, timeDiff, 1*time.Second, "all repositories should be deleted with same timestamp (atomic operation)")
+	})
+}
+
+func TestPgRepository_GetFilePreview(t *testing.T) {
+	t.Run("successfully retrieves file content", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		content := "# Test Repository\n\nThis is a test file."
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"README.md": content,
+		})
+
+		response, err := repo.GetFilePreview(t.Context(), testRepoPath, "README.md")
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		assert.Equal(t, content, response.Content)
+		assert.Equal(t, "text/markdown", response.MimeType)
+		assert.Equal(t, int64(len(content)), response.Size)
+	})
+
+	t.Run("returns correct mime type for different file extensions", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		tests := []struct {
+			fileName     string
+			content      string
+			expectedMime string
+		}{
+			{"file.txt", "plain text", "text/plain"},
+			{"config.json", `{"key": "value"}`, "application/json"},
+			{"config.yaml", "key: value", "application/yaml"},
+			{"config.yml", "key: value", "application/yaml"},
+			{"style.css", "body { margin: 0; }", "text/css"},
+			{"script.js", "console.log('test');", "application/javascript"},
+			{"app.ts", "const x: string = 'test';", "application/typescript"},
+			{"main.go", "package main", "text/x-go"},
+			{"script.py", "print('hello')", "text/x-python"},
+			{"Main.java", "public class Main {}", "text/x-java"},
+			{"schema.proto", "syntax = \"proto3\";", "text/x-protobuf"},
+			{"query.sql", "SELECT * FROM users;", "application/sql"},
+			{"index.html", "<html></html>", "text/html"},
+		}
+
+		for _, tt := range tests {
+			testRepoPath := setupTestGitRepository(t, map[string]string{
+				tt.fileName: tt.content,
+			})
+
+			response, err := repo.GetFilePreview(t.Context(), testRepoPath, tt.fileName)
+			require.NoError(t, err, "failed for file: %s", tt.fileName)
+			assert.Equal(t, tt.expectedMime, response.MimeType, "incorrect mime type for: %s", tt.fileName)
+			assert.Equal(t, tt.content, response.Content, "incorrect content for: %s", tt.fileName)
+		}
+	})
+
+	t.Run("returns correct size for file", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		content := "This is a test file with specific length."
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"test.txt": content,
+		})
+
+		response, err := repo.GetFilePreview(t.Context(), testRepoPath, "test.txt")
+		require.NoError(t, err)
+		assert.Equal(t, int64(len(content)), response.Size)
+	})
+
+	t.Run("handles file in subdirectory", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"src/main.go": "package main\n\nfunc main() {}",
+		})
+
+		response, err := repo.GetFilePreview(t.Context(), testRepoPath, "src/main.go")
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		assert.Equal(t, "package main\n\nfunc main() {}", response.Content)
+		assert.Equal(t, "text/x-go", response.MimeType)
+	})
+
+	t.Run("handles deeply nested file", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"src/internal/handlers/auth/login.go": "package auth",
+		})
+
+		response, err := repo.GetFilePreview(t.Context(), testRepoPath, "src/internal/handlers/auth/login.go")
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		assert.Equal(t, "package auth", response.Content)
+		assert.Equal(t, "text/x-go", response.MimeType)
+	})
+
+	t.Run("returns error for non-existent file", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"README.md": "# Test",
+		})
+
+		_, err := repo.GetFilePreview(t.Context(), testRepoPath, "non-existent.txt")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "file not found")
+	})
+
+	t.Run("returns error for invalid repository path", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		_, err := repo.GetFilePreview(t.Context(), "/invalid/path/to/repo", "README.md")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to open git repository")
+	})
+
+	t.Run("handles empty file", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"empty.txt": "",
+		})
+
+		response, err := repo.GetFilePreview(t.Context(), testRepoPath, "empty.txt")
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		assert.Equal(t, "", response.Content)
+		assert.Equal(t, int64(0), response.Size)
+		assert.Equal(t, "text/plain", response.MimeType)
+	})
+
+	t.Run("handles file without extension", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"Makefile": "all:\n\tgo build",
+		})
+
+		response, err := repo.GetFilePreview(t.Context(), testRepoPath, "Makefile")
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		assert.Equal(t, "all:\n\tgo build", response.Content)
+		assert.Equal(t, "text/plain", response.MimeType)
+	})
+
+	t.Run("handles dockerfile extension", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"app.dockerfile": "FROM node:18",
+		})
+
+		response, err := repo.GetFilePreview(t.Context(), testRepoPath, "app.dockerfile")
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		assert.Equal(t, "text/x-dockerfile", response.MimeType)
+		assert.Equal(t, "FROM node:18", response.Content)
+	})
+
+	t.Run("defaults to text/plain for unknown extension", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"file.unknown": "some content",
+		})
+
+		response, err := repo.GetFilePreview(t.Context(), testRepoPath, "file.unknown")
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		assert.Equal(t, "text/plain", response.MimeType)
+	})
+
+	t.Run("detects binary file", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		binaryContent := string([]byte{0x00, 0x01, 0x02, 0x03})
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"binary.bin": binaryContent,
+		})
+
+		response, err := repo.GetFilePreview(t.Context(), testRepoPath, "binary.bin")
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		assert.Equal(t, "application/octet-stream", response.MimeType)
+	})
+
+	t.Run("handles large file content", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		largeContent := ""
+		for i := 0; i < 1000; i++ {
+			largeContent += "This is line " + string(rune(i)) + "\n"
+		}
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"large.txt": largeContent,
+		})
+
+		response, err := repo.GetFilePreview(t.Context(), testRepoPath, "large.txt")
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		assert.Equal(t, largeContent, response.Content)
+		assert.Equal(t, int64(len(largeContent)), response.Size)
+	})
+
+	t.Run("handles multiple files and retrieves correct one", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"file1.txt": "content1",
+			"file2.txt": "content2",
+			"file3.txt": "content3",
+		})
+
+		response, err := repo.GetFilePreview(t.Context(), testRepoPath, "file2.txt")
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		assert.Equal(t, "content2", response.Content)
+	})
+
+	t.Run("returns error when file is actually a directory", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"src/main.go": "package main",
+		})
+
+		_, err := repo.GetFilePreview(t.Context(), testRepoPath, "src")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "file not found")
+	})
+}
+
+func TestPgRepository_GetFileTree(t *testing.T) {
+	t.Run("successfully retrieves file tree from root", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"README.md":  "# Test",
+			"main.go":    "package main",
+			"config.yml": "key: value",
+		})
+
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, nil)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		require.Len(t, response.Nodes, 3)
+
+		nodeNames := make(map[string]bool)
+		for _, node := range response.Nodes {
+			nodeNames[node.Name] = true
+			assert.Equal(t, registryv1.NodeType_NODE_TYPE_FILE, node.Type)
+		}
+
+		assert.True(t, nodeNames["README.md"])
+		assert.True(t, nodeNames["main.go"])
+		assert.True(t, nodeNames["config.yml"])
+	})
+
+	t.Run("successfully retrieves file tree with directories", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"README.md":     "# Test",
+			"src/main.go":   "package main",
+			"src/utils.go":  "package main",
+			"docs/guide.md": "# Guide",
+		})
+
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, nil)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		require.Len(t, response.Nodes, 3)
+
+		var srcDir, docsDir *registryv1.FileTreeNode
+		for _, node := range response.Nodes {
+			switch node.Name {
+			case "src":
+				srcDir = node
+			case "docs":
+				docsDir = node
+			}
+		}
+
+		require.NotNil(t, srcDir)
+		assert.Equal(t, registryv1.NodeType_NODE_TYPE_DIRECTORY, srcDir.Type)
+		assert.Equal(t, "src", srcDir.Path)
+		require.Len(t, srcDir.Children, 2)
+
+		require.NotNil(t, docsDir)
+		assert.Equal(t, registryv1.NodeType_NODE_TYPE_DIRECTORY, docsDir.Type)
+		assert.Equal(t, "docs", docsDir.Path)
+		require.Len(t, docsDir.Children, 1)
+	})
+
+	t.Run("successfully retrieves file tree from subdirectory", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"README.md":    "# Test",
+			"src/main.go":  "package main",
+			"src/utils.go": "package main",
+			"docs/api.md":  "# API",
+		})
+
+		subPath := "src"
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, &subPath)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		require.Len(t, response.Nodes, 2)
+
+		nodeNames := make(map[string]bool)
+		for _, node := range response.Nodes {
+			nodeNames[node.Name] = true
+			assert.Equal(t, registryv1.NodeType_NODE_TYPE_FILE, node.Type)
+			assert.Contains(t, node.Path, "src/")
+		}
+
+		assert.True(t, nodeNames["main.go"])
+		assert.True(t, nodeNames["utils.go"])
+	})
+
+	t.Run("handles deeply nested directory structure", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"src/internal/handlers/auth/login.go":    "package auth",
+			"src/internal/handlers/auth/register.go": "package auth",
+			"src/internal/handlers/user/profile.go":  "package user",
+			"src/pkg/utils/helpers.go":               "package utils",
+		})
+
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, nil)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		require.Len(t, response.Nodes, 1)
+
+		srcNode := response.Nodes[0]
+		assert.Equal(t, "src", srcNode.Name)
+		assert.Equal(t, registryv1.NodeType_NODE_TYPE_DIRECTORY, srcNode.Type)
+		require.Len(t, srcNode.Children, 2)
+
+		var internalNode, pkgNode *registryv1.FileTreeNode
+		for _, child := range srcNode.Children {
+			switch child.Name {
+			case "internal":
+				internalNode = child
+			case "pkg":
+				pkgNode = child
+			}
+		}
+
+		require.NotNil(t, internalNode)
+		assert.Equal(t, registryv1.NodeType_NODE_TYPE_DIRECTORY, internalNode.Type)
+
+		require.NotNil(t, pkgNode)
+		assert.Equal(t, registryv1.NodeType_NODE_TYPE_DIRECTORY, pkgNode.Type)
+	})
+
+	t.Run("correctly builds paths for nested files", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"src/internal/auth/login.go": "package auth",
+		})
+
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, nil)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+
+		srcNode := response.Nodes[0]
+		assert.Equal(t, "src", srcNode.Path)
+
+		internalNode := srcNode.Children[0]
+		assert.Equal(t, "src/internal", internalNode.Path)
+
+		authNode := internalNode.Children[0]
+		assert.Equal(t, "src/internal/auth", authNode.Path)
+
+		loginFile := authNode.Children[0]
+		assert.Equal(t, "src/internal/auth/login.go", loginFile.Path)
+		assert.Equal(t, registryv1.NodeType_NODE_TYPE_FILE, loginFile.Type)
+	})
+
+	t.Run("handles empty repository", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			".gitkeep": "",
+		})
+
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, nil)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		require.Len(t, response.Nodes, 1)
+		assert.Equal(t, ".gitkeep", response.Nodes[0].Name)
+	})
+
+	t.Run("returns error for invalid repository path", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		_, err := repo.GetFileTree(t.Context(), "/invalid/path/to/repo", nil)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to open git repository")
+	})
+
+	t.Run("returns error for non-existent subpath", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"README.md": "# Test",
+		})
+
+		subPath := "nonexistent/path"
+		_, err := repo.GetFileTree(t.Context(), testRepoPath, &subPath)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "path not found")
+	})
+
+	t.Run("handles mixed files and directories at same level", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"README.md":      "# Test",
+			"main.go":        "package main",
+			"src/utils.go":   "package utils",
+			"docs/README.md": "# Docs",
+			"config.yml":     "key: value",
+		})
+
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, nil)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		require.Len(t, response.Nodes, 5)
+
+		fileCount := 0
+		dirCount := 0
+		for _, node := range response.Nodes {
+			switch node.Type {
+			case registryv1.NodeType_NODE_TYPE_FILE:
+				fileCount++
+			case registryv1.NodeType_NODE_TYPE_DIRECTORY:
+				dirCount++
+			}
+		}
+
+		assert.Equal(t, 3, fileCount, "should have 3 files at root level")
+		assert.Equal(t, 2, dirCount, "should have 2 directories at root level")
+	})
+
+	t.Run("children list is empty for files", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"README.md": "# Test",
+			"main.go":   "package main",
+		})
+
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, nil)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+
+		for _, node := range response.Nodes {
+			if node.Type == registryv1.NodeType_NODE_TYPE_FILE {
+				assert.Nil(t, node.Children, "files should have nil children")
+			}
+		}
+	})
+
+	t.Run("retrieves subdirectory tree with nested structure", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"README.md":                  "# Test",
+			"src/internal/auth/login.go": "package auth",
+			"src/internal/user/user.go":  "package user",
+			"src/pkg/utils.go":           "package pkg",
+		})
+
+		subPath := "src/internal"
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, &subPath)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		require.Len(t, response.Nodes, 2)
+
+		for _, node := range response.Nodes {
+			assert.Equal(t, registryv1.NodeType_NODE_TYPE_DIRECTORY, node.Type)
+			assert.Contains(t, node.Path, "src/internal/")
+			require.NotNil(t, node.Children)
+			require.Len(t, node.Children, 1)
+		}
+	})
+
+	t.Run("handles empty string subpath as root", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"README.md": "# Test",
+			"main.go":   "package main",
+		})
+
+		emptySubPath := ""
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, &emptySubPath)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		require.Len(t, response.Nodes, 2)
+	})
+
+	t.Run("file tree nodes have correct names", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"src/handlers/auth.go": "package handlers",
+		})
+
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, nil)
+		require.NoError(t, err)
+
+		srcNode := response.Nodes[0]
+		assert.Equal(t, "src", srcNode.Name)
+
+		handlersNode := srcNode.Children[0]
+		assert.Equal(t, "handlers", handlersNode.Name)
+
+		authFile := handlersNode.Children[0]
+		assert.Equal(t, "auth.go", authFile.Name)
+	})
+
+	t.Run("handles repository with only directories", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"src/internal/.gitkeep": "",
+			"docs/api/.gitkeep":     "",
+			"tests/unit/.gitkeep":   "",
+		})
+
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, nil)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		require.Len(t, response.Nodes, 3)
+
+		for _, node := range response.Nodes {
+			assert.Equal(t, registryv1.NodeType_NODE_TYPE_DIRECTORY, node.Type)
+			require.NotNil(t, node.Children)
+		}
+	})
+
+	t.Run("handles special characters in file names", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"file-with-dashes.txt":     "content",
+			"file_with_underscores.go": "package main",
+			"file.multiple.dots.yaml":  "key: value",
+		})
+
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, nil)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		require.Len(t, response.Nodes, 3)
+
+		nodeNames := make(map[string]bool)
+		for _, node := range response.Nodes {
+			nodeNames[node.Name] = true
+		}
+
+		assert.True(t, nodeNames["file-with-dashes.txt"])
+		assert.True(t, nodeNames["file_with_underscores.go"])
+		assert.True(t, nodeNames["file.multiple.dots.yaml"])
+	})
+
+	t.Run("retrieves file tree with multiple levels from subpath", func(t *testing.T) {
+		repo, pool := setupTestRepository(t, "")
+		defer pool.Close()
+
+		testRepoPath := setupTestGitRepository(t, map[string]string{
+			"src/internal/handlers/auth/login.go":    "package auth",
+			"src/internal/handlers/auth/register.go": "package auth",
+			"src/internal/handlers/user/profile.go":  "package user",
+		})
+
+		subPath := "src/internal/handlers"
+		response, err := repo.GetFileTree(t.Context(), testRepoPath, &subPath)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		require.Len(t, response.Nodes, 2)
+
+		for _, node := range response.Nodes {
+			assert.True(t, node.Name == "auth" || node.Name == "user")
+			assert.Equal(t, registryv1.NodeType_NODE_TYPE_DIRECTORY, node.Type)
+			assert.Contains(t, node.Path, "src/internal/handlers/")
+		}
 	})
 }

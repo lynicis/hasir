@@ -156,6 +156,18 @@ func (h *handler) GetFileTree(
 	return connect.NewResponse(fileTree), nil
 }
 
+func (h *handler) GetFilePreview(
+	ctx context.Context,
+	req *connect.Request[registryv1.GetFilePreviewRequest],
+) (*connect.Response[registryv1.GetFilePreviewResponse], error) {
+	filePreview, err := h.service.GetFilePreview(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(filePreview), nil
+}
+
 type GitSshHandler struct {
 	service   Service
 	reposPath string
