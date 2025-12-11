@@ -113,6 +113,17 @@ message GetFileTreeResponse {
   repeated FileTreeNode nodes = 1;
 }
 
+message GetFilePreviewRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  string path = 2 [(buf.validate.field).required = true];
+}
+
+message GetFilePreviewResponse {
+  string content = 1;
+  string mime_type = 2;
+  int64 size = 3;
+}
+
 service RegistryService {
   rpc CreateRepository(CreateRepositoryRequest) returns (google.protobuf.Empty);
   rpc GetRepositories(GetRepositoriesRequest) returns (GetRepositoriesResponse);
@@ -121,5 +132,6 @@ service RegistryService {
   rpc GetRepository(GetRepositoryRequest) returns (Repository);
   rpc GetCommits(GetCommitsRequest) returns (GetCommitsResponse);
   rpc GetFileTree(GetFileTreeRequest) returns (GetFileTreeResponse);
+  rpc GetFilePreview(GetFilePreviewRequest) returns (GetFilePreviewResponse);
   rpc UpdateSdkPreferences(UpdateSdkPreferencesRequest) returns (google.protobuf.Empty);
 }
