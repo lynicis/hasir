@@ -1,7 +1,12 @@
 "use client";
 
+import type { FileTreeNode } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+
+import { RegistryService } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import { NodeType } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import { useCallback, useContext, useEffect, useState } from "react";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { Files } from "lucide-react";
-import { useState } from "react";
 
 import {
   Card,
@@ -11,102 +16,209 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  File,
-  Folder,
-  Tree,
-  type TreeViewElement,
+  TreeWithLazyLoad,
+  type ExtendedTreeViewElement,
 } from "@/components/ui/file-tree";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { RepositoryContext } from "@/components/repository-context";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { useClient } from "@/lib/use-client";
 
-const sampleFileTree: TreeViewElement[] = [
-  {
-    id: "1",
-    name: "proto",
-    children: [
-      {
-        id: "2",
-        name: "user",
-        children: [
-          {
-            id: "3",
-            name: "user.proto",
-          },
-          {
-            id: "4",
-            name: "user_service.proto",
-          },
-        ],
-      },
-      {
-        id: "5",
-        name: "product",
-        children: [
-          {
-            id: "6",
-            name: "product.proto",
-          },
-          {
-            id: "7",
-            name: "product_service.proto",
-          },
-        ],
-      },
-      {
-        id: "8",
-        name: "common",
-        children: [
-          {
-            id: "9",
-            name: "types.proto",
-          },
-          {
-            id: "10",
-            name: "errors.proto",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "11",
-    name: "docs",
-    children: [
-      {
-        id: "12",
-        name: "README.md",
-      },
-      {
-        id: "13",
-        name: "API.md",
-      },
-    ],
-  },
-];
+function transformFileTreeNode(
+  node: FileTreeNode,
+  markDirectoriesAsUnloaded = false
+): ExtendedTreeViewElement {
+  const isDirectory = node.type === NodeType.DIRECTORY;
+
+  if (isDirectory && markDirectoriesAsUnloaded) {
+    return {
+      id: node.path,
+      name: node.name,
+      children: [],
+      isLoaded: false,
+      isLoading: false,
+    };
+  }
+
+  return {
+    id: node.path,
+    name: node.name,
+    children: isDirectory
+      ? node.children.map((child) =>
+          transformFileTreeNode(child, markDirectoriesAsUnloaded)
+        )
+      : undefined,
+    isLoaded: isDirectory ? true : undefined,
+    isLoading: false,
+  };
+}
+
+function FileTreeSkeleton() {
+  return (
+    <div className="space-y-2 p-2">
+      <Skeleton className="h-6 w-3/4" />
+      <div className="ml-4 space-y-2">
+        <Skeleton className="h-6 w-5/6" />
+        <Skeleton className="h-6 w-4/6" />
+        <Skeleton className="h-6 w-5/6" />
+      </div>
+      <Skeleton className="h-6 w-2/3" />
+      <div className="ml-4 space-y-2">
+        <Skeleton className="h-6 w-4/5" />
+        <Skeleton className="h-6 w-3/5" />
+      </div>
+    </div>
+  );
+}
 
 export default function RepositoryFilesContent() {
   const [selectedFile, setSelectedFile] = useState<string | undefined>();
+  const [fileTree, setFileTree] = useState<ExtendedTreeViewElement[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const renderTree = (elements: TreeViewElement[]) => {
-    return elements.map((element) => {
-      if (element.children && element.children.length > 0) {
-        return (
-          <Folder key={element.id} element={element.name} value={element.id}>
-            {renderTree(element.children)}
-          </Folder>
-        );
-      }
+  const context = useContext(RepositoryContext);
+  const client = useClient(RegistryService);
 
-      return (
-        <File
-          key={element.id}
-          value={element.id}
-          handleSelect={setSelectedFile}
-        >
-          <span>{element.name}</span>
-        </File>
+  if (!context) {
+    throw new Error(
+      "RepositoryFilesContent must be used within RepositoryContext"
+    );
+  }
+
+  const { repository } = context;
+
+  const loadRootTree = useCallback(async () => {
+    if (!repository?.id) return;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await client.getFileTree({ id: repository.id });
+      const rootNodes = response.nodes.map((node) =>
+        transformFileTreeNode(node, true)
       );
-    });
-  };
+      setFileTree(rootNodes);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err : new Error("Failed to load file tree")
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [repository?.id, client]);
+
+  const updateNodeLoading = useCallback(
+    (
+      nodes: ExtendedTreeViewElement[],
+      targetPath: string,
+      loading: boolean
+    ): ExtendedTreeViewElement[] => {
+      return nodes.map((node) => {
+        if (node.id === targetPath) {
+          return { ...node, isLoading: loading };
+        }
+        if (node.children) {
+          return {
+            ...node,
+            children: updateNodeLoading(node.children, targetPath, loading),
+          };
+        }
+        return node;
+      });
+    },
+    []
+  );
+
+  const updateNodeChildren = useCallback(
+    (
+      nodes: ExtendedTreeViewElement[],
+      targetPath: string,
+      newChildren: ExtendedTreeViewElement[]
+    ): ExtendedTreeViewElement[] => {
+      return nodes.map((node) => {
+        if (node.id === targetPath) {
+          return {
+            ...node,
+            children: newChildren,
+            isLoaded: true,
+            isLoading: false,
+          };
+        }
+        if (node.children) {
+          return {
+            ...node,
+            children: updateNodeChildren(
+              node.children,
+              targetPath,
+              newChildren
+            ),
+          };
+        }
+        return node;
+      });
+    },
+    []
+  );
+
+  const findNodeInTree = useCallback(
+    (
+      nodes: ExtendedTreeViewElement[],
+      id: string
+    ): ExtendedTreeViewElement | null => {
+      for (const node of nodes) {
+        if (node.id === id) {
+          return node;
+        }
+        if (node.children && node.children.length > 0) {
+          const found = findNodeInTree(node.children, id);
+          if (found) return found;
+        }
+      }
+      return null;
+    },
+    []
+  );
+
+  const loadFolderContents = useCallback(
+    async (folderPath: string) => {
+      if (!repository?.id) return;
+
+      setFileTree((currentTree) => {
+        const folderNode = findNodeInTree(currentTree, folderPath);
+        if (!folderNode || folderNode.isLoaded || folderNode.isLoading) {
+          return currentTree;
+        }
+        return updateNodeLoading(currentTree, folderPath, true);
+      });
+
+      try {
+        const response = await client.getFileTree({
+          id: repository.id,
+          path: folderPath,
+        });
+
+        setFileTree((prev) =>
+          updateNodeChildren(
+            prev,
+            folderPath,
+            response.nodes.map((node) => transformFileTreeNode(node, true))
+          )
+        );
+      } catch {
+        setFileTree((prev) => updateNodeLoading(prev, folderPath, false));
+      }
+    },
+    [repository?.id, client, updateNodeLoading, updateNodeChildren, findNodeInTree]
+  );
+
+  useEffect(() => {
+    loadRootTree();
+  }, [loadRootTree]);
+
+  const isNotFound =
+    error instanceof ConnectError && error.code === Code.NotFound;
 
   return (
     <div className="space-y-6">
@@ -127,14 +239,36 @@ export default function RepositoryFilesContent() {
                 <div className="border-border border-b bg-muted/50 p-3">
                   <h3 className="text-sm font-medium">File Tree</h3>
                 </div>
-                <div className="h-[500px] p-2">
-                  <Tree
-                    className="h-full w-full"
-                    initialSelectedId={selectedFile}
-                    elements={sampleFileTree}
-                  >
-                    {renderTree(sampleFileTree)}
-                  </Tree>
+                <div className="h-[500px] overflow-auto">
+                  {isLoading ? (
+                    <FileTreeSkeleton />
+                  ) : error && !isNotFound ? (
+                    <div className="p-4">
+                      <Alert variant="destructive">
+                        <AlertTitle>Error loading file tree</AlertTitle>
+                        <AlertDescription>
+                          {error instanceof ConnectError
+                            ? error.message
+                            : "Failed to load file tree. Please try again later."}
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  ) : fileTree.length === 0 || isNotFound ? (
+                    <div className="text-muted-foreground flex h-full items-center justify-center px-4 text-center">
+                      <p className="text-sm">
+                        No files found in this repository.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-2">
+                      <TreeWithLazyLoad
+                        fileTree={fileTree}
+                        selectedFile={selectedFile}
+                        onFolderExpand={loadFolderContents}
+                        onFileSelect={setSelectedFile}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

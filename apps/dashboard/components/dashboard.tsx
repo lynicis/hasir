@@ -24,7 +24,7 @@ const DEFAULT_PAGINATION = {
 export function Dashboard() {
   const [activeOrgId, setActiveOrgId] = useState<string | "all">("all");
   const [isCreateOrgDialogOpen, setIsCreateOrgDialogOpen] = useState(false);
-  const [orgPage, setOrgPage] = useState(1);
+  const [orgPage, setOrgPage] = useState(DEFAULT_PAGINATION.page);
   const [repoPage, setRepoPage] = useState(1);
 
   const organizationsVersion = useRegistryStore(

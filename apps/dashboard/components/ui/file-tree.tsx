@@ -8,7 +8,7 @@ import React, {
   useEffect,
   useState,
 } from "react"
-import { FileIcon, FolderIcon, FolderOpenIcon } from "lucide-react"
+import { FileIcon, FolderIcon, FolderOpenIcon, Loader2 } from "lucide-react"
 import * as AccordionPrimitive from "@radix-ui/react-accordion"
 
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -384,4 +384,119 @@ const CollapseButton = forwardRef<
 
 CollapseButton.displayName = "CollapseButton"
 
-export { CollapseButton, File, Folder, Tree, type TreeViewElement }
+// Extended tree element to support lazy loading
+type ExtendedTreeViewElement = TreeViewElement & {
+  isLoaded?: boolean
+  isLoading?: boolean
+}
+
+type TreeWithLazyLoadProps = {
+  fileTree: ExtendedTreeViewElement[]
+  selectedFile?: string
+  onFolderExpand: (folderId: string) => void
+  onFileSelect: (fileId: string) => void
+}
+
+// Inner component that has access to Tree context
+function TreeContent({
+  fileTree,
+  onFolderExpand,
+  onFileSelect,
+}: {
+  fileTree: ExtendedTreeViewElement[]
+  onFolderExpand: (folderId: string) => void
+  onFileSelect: (fileId: string) => void
+}) {
+  const { expandedItems } = useTree()
+
+  // Load folders that are expanded but not yet loaded
+  useEffect(() => {
+    if (!expandedItems) return
+
+    const checkAndLoadFolder = (nodes: ExtendedTreeViewElement[]) => {
+      for (const node of nodes) {
+        if (node.children !== undefined) {
+          // This is a folder
+          if (
+            expandedItems.includes(node.id) &&
+            !node.isLoaded &&
+            !node.isLoading
+          ) {
+            onFolderExpand(node.id)
+          }
+          if (node.children.length > 0) {
+            checkAndLoadFolder(node.children)
+          }
+        }
+      }
+    }
+
+    checkAndLoadFolder(fileTree)
+  }, [expandedItems, fileTree, onFolderExpand])
+
+  const renderTree = (elements: ExtendedTreeViewElement[]): React.ReactNode => {
+    return elements.map((element) => {
+      const isFolder = element.children !== undefined
+      const isLoadingFolder = element.isLoading
+
+      if (isFolder) {
+        const folderName = isLoadingFolder
+          ? `${element.name} (Loading...)`
+          : element.name
+
+        return (
+          <Folder key={element.id} element={folderName} value={element.id}>
+            {isLoadingFolder && (
+              <div className="flex items-center gap-2 py-1 text-muted-foreground text-xs">
+                <Loader2 className="size-3 animate-spin" />
+                <span>Loading...</span>
+              </div>
+            )}
+            {element.children && element.children.length > 0
+              ? renderTree(element.children)
+              : null}
+          </Folder>
+        )
+      }
+
+      return (
+        <File key={element.id} value={element.id} handleSelect={onFileSelect}>
+          <span>{element.name}</span>
+        </File>
+      )
+    })
+  }
+
+  return <>{renderTree(fileTree)}</>
+}
+
+function TreeWithLazyLoad({
+  fileTree,
+  selectedFile,
+  onFolderExpand,
+  onFileSelect,
+}: TreeWithLazyLoadProps) {
+  return (
+    <Tree
+      className="h-full w-full"
+      initialSelectedId={selectedFile}
+      elements={fileTree}
+    >
+      <TreeContent
+        fileTree={fileTree}
+        onFolderExpand={onFolderExpand}
+        onFileSelect={onFileSelect}
+      />
+    </Tree>
+  )
+}
+
+export {
+  CollapseButton,
+  File,
+  Folder,
+  Tree,
+  TreeWithLazyLoad,
+  type ExtendedTreeViewElement,
+  type TreeViewElement,
+}
