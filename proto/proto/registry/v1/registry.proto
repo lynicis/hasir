@@ -91,6 +91,28 @@ message GetCommitsResponse {
   repeated Commit commits = 1;
 }
 
+message GetFileTreeRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  optional string path = 3;
+}
+
+enum NodeType {
+  NODE_TYPE_UNSPECIFIED = 0;
+  NODE_TYPE_FILE = 1;
+  NODE_TYPE_DIRECTORY = 2;
+}
+
+message FileTreeNode {
+  string name = 1;
+  string path = 2;
+  NodeType type = 3;
+  repeated FileTreeNode children = 7;
+}
+
+message GetFileTreeResponse {
+  repeated FileTreeNode nodes = 1;
+}
+
 service RegistryService {
   rpc CreateRepository(CreateRepositoryRequest) returns (google.protobuf.Empty);
   rpc GetRepositories(GetRepositoriesRequest) returns (GetRepositoriesResponse);
@@ -98,5 +120,6 @@ service RegistryService {
   rpc UpdateRepository(UpdateRepositoryRequest) returns (google.protobuf.Empty);
   rpc GetRepository(GetRepositoryRequest) returns (Repository);
   rpc GetCommits(GetCommitsRequest) returns (GetCommitsResponse);
+  rpc GetFileTree(GetFileTreeRequest) returns (GetFileTreeResponse);
   rpc UpdateSdkPreferences(UpdateSdkPreferencesRequest) returns (google.protobuf.Empty);
 }
