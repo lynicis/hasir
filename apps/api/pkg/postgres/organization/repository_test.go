@@ -2820,3 +2820,378 @@ func TestPgRepository_SearchItems(t *testing.T) {
 		assert.Equal(t, org.Id, *item.OrganizationId)
 	})
 }
+
+func TestPgRepository_GetUserOrganizationsCount(t *testing.T) {
+	t.Run("returns correct count for user", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsAndMembersTables(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		user := createTestUser(t, "testuser", "test@example.com")
+		insertTestUser(t, connString, user)
+
+		org1 := createTestOrganization(t, "org1", proto.VisibilityPrivate)
+		org2 := createTestOrganization(t, "org2", proto.VisibilityPrivate)
+
+		err = repo.CreateOrganization(t.Context(), org1)
+		require.NoError(t, err)
+		err = repo.CreateOrganization(t.Context(), org2)
+		require.NoError(t, err)
+
+		member1 := createTestMember(t, org1.Id, user.Id, organization.MemberRoleOwner)
+		member2 := createTestMember(t, org2.Id, user.Id, organization.MemberRoleAuthor)
+
+		insertTestMember(t, connString, member1)
+		insertTestMember(t, connString, member2)
+
+		count, err := repo.GetUserOrganizationsCount(t.Context(), user.Id)
+		require.NoError(t, err)
+		assert.Equal(t, 2, count)
+	})
+}
+
+func TestPgRepository_UpdateOrganization(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "original-name", proto.VisibilityPrivate)
+
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		org.Name = "updated-name"
+		org.Visibility = proto.VisibilityPublic
+
+		err = repo.UpdateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		updated, err := repo.GetOrganizationById(t.Context(), org.Id)
+		require.NoError(t, err)
+		assert.Equal(t, "updated-name", updated.Name)
+		assert.Equal(t, proto.VisibilityPublic, updated.Visibility)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "non-existent", proto.VisibilityPrivate)
+		err = repo.UpdateOrganization(t.Context(), org)
+		require.ErrorIs(t, err, ErrOrganizationNotFound)
+	})
+}
+
+func TestPgRepository_GetInviteByToken(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createOrganizationInvitesTable(t, connString)
+		createUsersTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		user := createTestUser(t, "inviter", "inviter@example.com")
+		insertTestUser(t, connString, user)
+
+		org := createTestOrganization(t, "test-org", proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		invites := []*organization.OrganizationInviteDTO{
+			createTestInvite(t, org.Id, "test@example.com", uuid.NewString(), user.Id, organization.MemberRoleAuthor),
+		}
+
+		err = repo.CreateInvites(t.Context(), invites)
+		require.NoError(t, err)
+
+		found, err := repo.GetInviteByToken(t.Context(), invites[0].Token)
+		require.NoError(t, err)
+		require.NotNil(t, found)
+		assert.Equal(t, invites[0].Id, found.Id)
+		assert.Equal(t, invites[0].Email, found.Email)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createOrganizationInvitesTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		_, err = repo.GetInviteByToken(t.Context(), "invalid-token")
+		require.ErrorIs(t, err, ErrInviteNotFound)
+	})
+}
+
+func TestPgRepository_UpdateInviteStatus(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createOrganizationInvitesTable(t, connString)
+		createUsersTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		user := createTestUser(t, "inviter", "inviter@example.com")
+		insertTestUser(t, connString, user)
+
+		org := createTestOrganization(t, "test-org", proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		invites := []*organization.OrganizationInviteDTO{
+			createTestInvite(t, org.Id, "test@example.com", uuid.NewString(), user.Id, organization.MemberRoleAuthor),
+		}
+
+		err = repo.CreateInvites(t.Context(), invites)
+		require.NoError(t, err)
+
+		now := time.Now().UTC()
+		err = repo.UpdateInviteStatus(t.Context(), invites[0].Id, organization.InviteStatusAccepted, &now)
+		require.NoError(t, err)
+
+		invite, err := repo.GetInviteByToken(t.Context(), invites[0].Token)
+		require.NoError(t, err)
+		assert.Equal(t, organization.InviteStatusAccepted, invite.Status)
+		assert.NotNil(t, invite.AcceptedAt)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsTable(t, connString)
+		createOrganizationInvitesTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		now := time.Now().UTC()
+		err = repo.UpdateInviteStatus(t.Context(), uuid.NewString(), organization.InviteStatusAccepted, &now)
+		require.ErrorIs(t, err, ErrInviteNotFound)
+	})
+}
+
+func TestPgRepository_AddMember(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsAndMembersTables(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		user := createTestUser(t, "testuser", "test@example.com")
+		insertTestUser(t, connString, user)
+
+		org := createTestOrganization(t, "test-org", proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleAuthor)
+
+		err = repo.AddMember(t.Context(), member)
+		require.NoError(t, err)
+
+		role, err := repo.GetMemberRole(t.Context(), org.Id, user.Id)
+		require.NoError(t, err)
+		assert.Equal(t, organization.MemberRoleAuthor, role)
+	})
+}
+
+func TestPgRepository_GetMemberRole(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsAndMembersTables(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		user := createTestUser(t, "testuser", "test@example.com")
+		insertTestUser(t, connString, user)
+
+		org := createTestOrganization(t, "test-org", proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleOwner)
+		insertTestMember(t, connString, member)
+
+		role, err := repo.GetMemberRole(t.Context(), org.Id, user.Id)
+		require.NoError(t, err)
+		assert.Equal(t, organization.MemberRoleOwner, role)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsAndMembersTables(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		_, err = repo.GetMemberRole(t.Context(), uuid.NewString(), uuid.NewString())
+		require.ErrorIs(t, err, ErrMemberNotFound)
+	})
+}
+
+func TestPgRepository_GetMemberRoleString(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsAndMembersTables(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		user := createTestUser(t, "testuser", "test@example.com")
+		insertTestUser(t, connString, user)
+
+		org := createTestOrganization(t, "test-org", proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleOwner)
+		insertTestMember(t, connString, member)
+
+		roleStr, err := repo.GetMemberRoleString(t.Context(), org.Id, user.Id)
+		require.NoError(t, err)
+		assert.Equal(t, string(organization.MemberRoleOwner), roleStr)
+	})
+}
+
+func TestPgRepository_GetOwnerCount(t *testing.T) {
+	t.Run("returns correct count", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createOrganizationsAndMembersTables(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		user1 := createTestUser(t, "user1", "user1@example.com")
+		user2 := createTestUser(t, "user2", "user2@example.com")
+		user3 := createTestUser(t, "user3", "user3@example.com")
+		insertTestUser(t, connString, user1)
+		insertTestUser(t, connString, user2)
+		insertTestUser(t, connString, user3)
+
+		org := createTestOrganization(t, "test-org", proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		member1 := createTestMember(t, org.Id, user1.Id, organization.MemberRoleOwner)
+		member2 := createTestMember(t, org.Id, user2.Id, organization.MemberRoleOwner)
+		member3 := createTestMember(t, org.Id, user3.Id, organization.MemberRoleAuthor)
+
+		insertTestMember(t, connString, member1)
+		insertTestMember(t, connString, member2)
+		insertTestMember(t, connString, member3)
+
+		count, err := repo.GetOwnerCount(t.Context(), org.Id)
+		require.NoError(t, err)
+		assert.Equal(t, 2, count)
+	})
+}

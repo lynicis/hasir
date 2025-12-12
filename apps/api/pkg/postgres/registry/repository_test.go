@@ -1184,6 +1184,403 @@ func TestPgRepository_GetFilePreview(t *testing.T) {
 	})
 }
 
+func TestPgRepository_GetRepositoriesByOrganizationId(t *testing.T) {
+	t.Run("success with multiple repositories", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		orgID := uuid.NewString()
+		repo1 := createTestRepository(t, "org-repo-1-"+uuid.NewString())
+		repo1.OrganizationId = orgID
+		repo2 := createTestRepository(t, "org-repo-2-"+uuid.NewString())
+		repo2.OrganizationId = orgID
+
+		otherOrgID := uuid.NewString()
+		repoOther := createTestRepository(t, "other-org-repo-"+uuid.NewString())
+		repoOther.OrganizationId = otherOrgID
+
+		err = repo.CreateRepository(t.Context(), repo1)
+		require.NoError(t, err)
+		err = repo.CreateRepository(t.Context(), repo2)
+		require.NoError(t, err)
+		err = repo.CreateRepository(t.Context(), repoOther)
+		require.NoError(t, err)
+
+		repos, err := repo.GetRepositoriesByOrganizationId(t.Context(), orgID)
+		require.NoError(t, err)
+		require.NotNil(t, repos)
+		require.Len(t, *repos, 2)
+	})
+
+	t.Run("returns empty list for non-existent organization", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		repos, err := repo.GetRepositoriesByOrganizationId(t.Context(), uuid.NewString())
+		require.NoError(t, err)
+		require.NotNil(t, repos)
+		require.Empty(t, *repos)
+	})
+}
+
+func TestPgRepository_GetRepositoriesCount(t *testing.T) {
+	t.Run("returns correct count", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		repo1 := createTestRepository(t, "count-repo-1-"+uuid.NewString())
+		repo2 := createTestRepository(t, "count-repo-2-"+uuid.NewString())
+		repo3 := createTestRepository(t, "count-repo-3-"+uuid.NewString())
+
+		err = repo.CreateRepository(t.Context(), repo1)
+		require.NoError(t, err)
+		err = repo.CreateRepository(t.Context(), repo2)
+		require.NoError(t, err)
+		err = repo.CreateRepository(t.Context(), repo3)
+		require.NoError(t, err)
+
+		count, err := repo.GetRepositoriesCount(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, 3, count)
+	})
+
+	t.Run("returns 0 for empty table", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		count, err := repo.GetRepositoriesCount(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("excludes deleted repositories", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		repo1 := createTestRepository(t, "active-repo")
+		repo2 := createTestRepository(t, "deleted-repo")
+
+		err = repo.CreateRepository(t.Context(), repo1)
+		require.NoError(t, err)
+		err = repo.CreateRepository(t.Context(), repo2)
+		require.NoError(t, err)
+
+		err = repo.DeleteRepository(t.Context(), repo2.Id)
+		require.NoError(t, err)
+
+		count, err := repo.GetRepositoriesCount(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+	})
+}
+
+func TestPgRepository_GetRepositoriesByUserCount(t *testing.T) {
+	t.Run("returns correct count for user", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesAndMembersTables(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		userID := uuid.NewString()
+		orgID1 := uuid.NewString()
+		orgID2 := uuid.NewString()
+
+		repo1 := createTestRepository(t, "user-repo-1")
+		repo1.OrganizationId = orgID1
+		repo2 := createTestRepository(t, "user-repo-2")
+		repo2.OrganizationId = orgID2
+
+		err = repo.CreateRepository(t.Context(), repo1)
+		require.NoError(t, err)
+		err = repo.CreateRepository(t.Context(), repo2)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		_, err = conn.Exec(t.Context(),
+			`INSERT INTO organization_members (id, organization_id, user_id, role, joined_at)
+			 VALUES ($1, $2, $3, 'owner', NOW()),
+			        ($4, $5, $3, 'author', NOW())`,
+			uuid.NewString(), orgID1, userID,
+			uuid.NewString(), orgID2,
+		)
+		require.NoError(t, err)
+
+		count, err := repo.GetRepositoriesByUserCount(t.Context(), userID)
+		require.NoError(t, err)
+		assert.Equal(t, 2, count)
+	})
+}
+
+func TestPgRepository_GetRepositoriesByUserAndOrganization(t *testing.T) {
+	t.Run("returns repositories for user in specific organization", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesAndMembersTables(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		userID := uuid.NewString()
+		orgID := uuid.NewString()
+		otherOrgID := uuid.NewString()
+
+		repo1 := createTestRepository(t, "repo-1")
+		repo1.OrganizationId = orgID
+		repo2 := createTestRepository(t, "repo-2")
+		repo2.OrganizationId = orgID
+		repoOther := createTestRepository(t, "other-org-repo")
+		repoOther.OrganizationId = otherOrgID
+
+		err = repo.CreateRepository(t.Context(), repo1)
+		require.NoError(t, err)
+		err = repo.CreateRepository(t.Context(), repo2)
+		require.NoError(t, err)
+		err = repo.CreateRepository(t.Context(), repoOther)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		_, err = conn.Exec(t.Context(),
+			`INSERT INTO organization_members (id, organization_id, user_id, role, joined_at)
+			 VALUES ($1, $2, $3, 'owner', NOW())`,
+			uuid.NewString(), orgID, userID,
+		)
+		require.NoError(t, err)
+
+		repos, err := repo.GetRepositoriesByUserAndOrganization(t.Context(), userID, orgID, 1, 10)
+		require.NoError(t, err)
+		require.NotNil(t, repos)
+		require.Len(t, *repos, 2)
+	})
+}
+
+func TestPgRepository_GetRepositoriesByUserAndOrganizationCount(t *testing.T) {
+	t.Run("returns correct count", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesAndMembersTables(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		userID := uuid.NewString()
+		orgID := uuid.NewString()
+
+		repo1 := createTestRepository(t, "repo-1")
+		repo1.OrganizationId = orgID
+		repo2 := createTestRepository(t, "repo-2")
+		repo2.OrganizationId = orgID
+
+		err = repo.CreateRepository(t.Context(), repo1)
+		require.NoError(t, err)
+		err = repo.CreateRepository(t.Context(), repo2)
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		_, err = conn.Exec(t.Context(),
+			`INSERT INTO organization_members (id, organization_id, user_id, role, joined_at)
+			 VALUES ($1, $2, $3, 'owner', NOW())`,
+			uuid.NewString(), orgID, userID,
+		)
+		require.NoError(t, err)
+
+		count, err := repo.GetRepositoriesByUserAndOrganizationCount(t.Context(), userID, orgID)
+		require.NoError(t, err)
+		assert.Equal(t, 2, count)
+	})
+}
+
+func TestPgRepository_GetRepositoryById(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		testRepo := createTestRepository(t, "get-by-id-"+uuid.NewString())
+
+		err = repo.CreateRepository(t.Context(), testRepo)
+		require.NoError(t, err)
+
+		found, err := repo.GetRepositoryById(t.Context(), testRepo.Id)
+		require.NoError(t, err)
+		require.NotNil(t, found)
+		assert.Equal(t, testRepo.Id, found.Id)
+		assert.Equal(t, testRepo.Name, found.Name)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		_, err = repo.GetRepositoryById(t.Context(), uuid.NewString())
+		require.ErrorIs(t, err, ErrRepositoryNotFound)
+	})
+}
+
+func TestPgRepository_UpdateRepository(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		testRepo := createTestRepository(t, "original-name")
+
+		err = repo.CreateRepository(t.Context(), testRepo)
+		require.NoError(t, err)
+
+		testRepo.Name = "updated-name"
+		err = repo.UpdateRepository(t.Context(), testRepo)
+		require.NoError(t, err)
+
+		updated, err := repo.GetRepositoryById(t.Context(), testRepo.Id)
+		require.NoError(t, err)
+		assert.Equal(t, "updated-name", updated.Name)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createRepositoriesTable(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		testRepo := createTestRepository(t, "non-existent")
+		err = repo.UpdateRepository(t.Context(), testRepo)
+		require.ErrorIs(t, err, ErrRepositoryNotFound)
+	})
+}
+
 func TestPgRepository_GetFileTree(t *testing.T) {
 	t.Run("successfully retrieves file tree from root", func(t *testing.T) {
 		repo, pool := setupTestRepository(t, "")
