@@ -41,3 +41,16 @@ jobs:
 
       - name: Run unit tests
         run: bun run test:ci
+      
+      - uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          directory: ./coverage/
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - uses: codecov/test-results-action@v1
+        with:
+          fail_ci_if_error: true
+          files: junit.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
