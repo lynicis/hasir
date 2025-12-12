@@ -4,6 +4,7 @@ package organization.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/empty.proto";
+import "registry/v1/registry.proto";
 import "shared/filter.proto";
 import "shared/role.proto";
 import "shared/visibility.proto";
@@ -35,6 +36,18 @@ message GetOrganizationsResponse {
   repeated Organization organizations = 1;
   int32 next_page = 2;
   int32 total_page = 3;
+}
+
+message SearchRequest {
+  string query = 1 [(buf.validate.field).string.min_len = 1];
+  shared.Pagination pagination = 2 [(buf.validate.field).required = true];
+}
+
+message SearchResponse {
+  repeated Organization organizations = 1;
+  repeated registry.v1.Repository repositories = 2;
+  int32 next_page = 3;
+  int32 total_page = 4;
 }
 
 message IsInvitationValidRequest {
@@ -110,4 +123,5 @@ service OrganizationService {
   rpc GetMembers(GetMembersRequest) returns (GetMembersResponse);
   rpc UpdateMemberRole(UpdateMemberRoleRequest) returns (google.protobuf.Empty);
   rpc DeleteMember(DeleteMemberRequest) returns (google.protobuf.Empty);
+  rpc Search(SearchRequest) returns (SearchResponse);
 }
