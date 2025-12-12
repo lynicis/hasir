@@ -53,14 +53,14 @@ jobs:
         run: go mod verify
 
       - name: Run tests
-        run: go test -v -race -coverprofile=coverage.out ./...
+        run: go test -v -race -coverprofile=coverage.txt ./...
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        if: always()
+        uses: codecov/codecov-action@v5
         with:
-          file: ./coverage.out
+          file: coverage.txt
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   static-code-analysis:
     name: Static Code Analysis
