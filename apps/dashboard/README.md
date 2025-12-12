@@ -6,6 +6,7 @@
   **Web interface for on-premise proto schema registry**
 
   [![CI](https://github.com/protohasir/dashboard/actions/workflows/ci.yaml/badge.svg)](https://github.com/protohasir/dashboard/actions)
+  [![codecov](https://codecov.io/gh/protohasir/dashboard/branch/master/graph/badge.svg?token=3WH38YDL1T)](https://codecov.io/gh/protohasir/dashboard)
   [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
   [![React](https://img.shields.io/badge/React-19-blue)](https://react.dev/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
