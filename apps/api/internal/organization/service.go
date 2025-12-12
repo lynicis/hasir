@@ -56,6 +56,7 @@ type Service interface {
 		ctx context.Context,
 		token string,
 		userId string,
+		userEmail string,
 		accept bool,
 	) error
 	UpdateMemberRole(
@@ -371,6 +372,7 @@ func (s *service) RespondToInvitation(
 	ctx context.Context,
 	token string,
 	userId string,
+	userEmail string,
 	accept bool,
 ) error {
 	invite, err := s.repository.GetInviteByToken(ctx, token)
@@ -379,26 +381,47 @@ func (s *service) RespondToInvitation(
 	}
 
 	if invite.Status != InviteStatusPending {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("invite is no longer pending"))
+		return connect.NewError(
+			connect.CodeFailedPrecondition,
+			errors.New("invite is no longer pending"),
+		)
 	}
 
 	if time.Now().UTC().After(invite.ExpiresAt) {
 		if err := s.repository.UpdateInviteStatus(ctx, invite.Id, InviteStatusExpired, nil); err != nil {
-			zap.L().Error("failed to update expired invite status", zap.Error(err), zap.String("inviteId", invite.Id))
+			zap.L().Error(
+				"failed to update expired invite status",
+				zap.Error(err),
+				zap.String("inviteId", invite.Id),
+			)
 		}
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("invite has expired"))
+		return connect.NewError(
+			connect.CodeFailedPrecondition,
+			errors.New("invite has expired"),
+		)
+	}
+
+	if invite.Email != userEmail {
+		return connect.NewError(
+			connect.CodePermissionDenied,
+			errors.New("this invitation is not for your email address"),
+		)
 	}
 
 	if !accept {
-		if err := s.repository.UpdateInviteStatus(ctx, invite.Id, InviteStatusCancelled, nil); err != nil {
+		if err = s.repository.UpdateInviteStatus(ctx, invite.Id, InviteStatusCancelled, nil); err != nil {
 			return err
 		}
-		zap.L().Info("invite rejected", zap.String("inviteId", invite.Id), zap.String("userId", userId))
+		zap.L().Info(
+			"invite rejected",
+			zap.String("inviteId", invite.Id),
+			zap.String("userId", userId),
+		)
 		return nil
 	}
 
 	now := time.Now().UTC()
-	if err := s.repository.UpdateInviteStatus(ctx, invite.Id, InviteStatusAccepted, &now); err != nil {
+	if err = s.repository.UpdateInviteStatus(ctx, invite.Id, InviteStatusAccepted, &now); err != nil {
 		return err
 	}
 
@@ -413,7 +436,11 @@ func (s *service) RespondToInvitation(
 	if err := s.repository.AddMember(ctx, member); err != nil {
 		var connectErr *connect.Error
 		if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeAlreadyExists {
-			zap.L().Warn("user is already a member", zap.String("userId", userId), zap.String("organizationId", invite.OrganizationId))
+			zap.L().Warn(
+				"user is already a member",
+				zap.String("userId", userId),
+				zap.String("organizationId", invite.OrganizationId),
+			)
 			return nil
 		}
 		return err

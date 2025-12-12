@@ -561,7 +561,7 @@ func TestGenerateInviteToken(t *testing.T) {
 		t.Fatalf("failed to generate token: %v", err)
 	}
 
-	if len(token1) != 64 { // 32 bytes = 64 hex chars
+	if len(token1) != 64 {
 		t.Errorf("expected token length 64, got %d", len(token1))
 	}
 
@@ -580,11 +580,12 @@ func TestRespondToInvitation(t *testing.T) {
 		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "valid-token-123"
 		userId := "user-456"
+		userEmail := "user@example.com"
 
 		invite := &OrganizationInviteDTO{
 			Id:             "invite-id",
 			OrganizationId: "org-123",
-			Email:          "user@example.com",
+			Email:          userEmail,
 			Token:          token,
 			InvitedBy:      "inviter-789",
 			Role:           MemberRoleAuthor,
@@ -616,9 +617,53 @@ func TestRespondToInvitation(t *testing.T) {
 				return nil
 			})
 
-		err := svc.RespondToInvitation(ctx, token, userId, true)
+		err := svc.RespondToInvitation(ctx, token, userId, userEmail, true)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("reject when email does not match", func(t *testing.T) {
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
+		token := "valid-token-123"
+		userId := "user-456"
+		userEmail := "different@example.com"
+
+		invite := &OrganizationInviteDTO{
+			Id:             "invite-id",
+			OrganizationId: "org-123",
+			Email:          "user@example.com",
+			Token:          token,
+			InvitedBy:      "inviter-789",
+			Role:           MemberRoleAuthor,
+			Status:         InviteStatusPending,
+			CreatedAt:      time.Now().UTC(),
+			ExpiresAt:      time.Now().UTC().AddDate(0, 0, 7),
+		}
+
+		mockRepo.EXPECT().
+			GetInviteByToken(ctx, token).
+			Return(invite, nil)
+
+		err := svc.RespondToInvitation(ctx, token, userId, userEmail, true)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		var connectErr *connect.Error
+		if !errors.As(err, &connectErr) {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
+
+		if connectErr.Code() != connect.CodePermissionDenied {
+			t.Errorf("expected CodePermissionDenied, got %v", connectErr.Code())
+		}
+
+		if !errors.Is(err, connect.NewError(connect.CodePermissionDenied, errors.New("this invitation is not for your email address"))) {
+			expectedMsg := "this invitation is not for your email address"
+			if connectErr.Message() != expectedMsg {
+				t.Errorf("expected message '%s', got '%s'", expectedMsg, connectErr.Message())
+			}
 		}
 	})
 
@@ -626,11 +671,12 @@ func TestRespondToInvitation(t *testing.T) {
 		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "valid-token-123"
 		userId := "user-456"
+		userEmail := "user@example.com"
 
 		invite := &OrganizationInviteDTO{
 			Id:             "invite-id",
 			OrganizationId: "org-123",
-			Email:          "user@example.com",
+			Email:          userEmail,
 			Token:          token,
 			InvitedBy:      "inviter-789",
 			Status:         InviteStatusPending,
@@ -646,7 +692,7 @@ func TestRespondToInvitation(t *testing.T) {
 			UpdateInviteStatus(ctx, invite.Id, InviteStatusCancelled, nil).
 			Return(nil)
 
-		err := svc.RespondToInvitation(ctx, token, userId, false)
+		err := svc.RespondToInvitation(ctx, token, userId, userEmail, false)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -656,12 +702,13 @@ func TestRespondToInvitation(t *testing.T) {
 		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "invalid-token"
 		userId := "user-456"
+		userEmail := "user@example.com"
 
 		mockRepo.EXPECT().
 			GetInviteByToken(ctx, token).
 			Return(nil, ErrInviteNotFound)
 
-		err := svc.RespondToInvitation(ctx, token, userId, true)
+		err := svc.RespondToInvitation(ctx, token, userId, userEmail, true)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -675,12 +722,13 @@ func TestRespondToInvitation(t *testing.T) {
 		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "valid-token-123"
 		userId := "user-456"
+		userEmail := "user@example.com"
 
 		acceptedAt := time.Now().UTC()
 		invite := &OrganizationInviteDTO{
 			Id:             "invite-id",
 			OrganizationId: "org-123",
-			Email:          "user@example.com",
+			Email:          userEmail,
 			Token:          token,
 			InvitedBy:      "inviter-789",
 			Status:         InviteStatusAccepted,
@@ -693,7 +741,7 @@ func TestRespondToInvitation(t *testing.T) {
 			GetInviteByToken(ctx, token).
 			Return(invite, nil)
 
-		err := svc.RespondToInvitation(ctx, token, userId, true)
+		err := svc.RespondToInvitation(ctx, token, userId, userEmail, true)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -712,16 +760,17 @@ func TestRespondToInvitation(t *testing.T) {
 		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "expired-token"
 		userId := "user-456"
+		userEmail := "user@example.com"
 
 		invite := &OrganizationInviteDTO{
 			Id:             "invite-id",
 			OrganizationId: "org-123",
-			Email:          "user@example.com",
+			Email:          userEmail,
 			Token:          token,
 			InvitedBy:      "inviter-789",
 			Status:         InviteStatusPending,
 			CreatedAt:      time.Now().UTC().AddDate(0, 0, -14),
-			ExpiresAt:      time.Now().UTC().AddDate(0, 0, -7), // Expired 7 days ago
+			ExpiresAt:      time.Now().UTC().AddDate(0, 0, -7),
 		}
 
 		mockRepo.EXPECT().
@@ -732,7 +781,7 @@ func TestRespondToInvitation(t *testing.T) {
 			UpdateInviteStatus(ctx, invite.Id, InviteStatusExpired, nil).
 			Return(nil)
 
-		err := svc.RespondToInvitation(ctx, token, userId, true)
+		err := svc.RespondToInvitation(ctx, token, userId, userEmail, true)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -751,11 +800,12 @@ func TestRespondToInvitation(t *testing.T) {
 		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "valid-token-123"
 		userId := "user-456"
+		userEmail := "user@example.com"
 
 		invite := &OrganizationInviteDTO{
 			Id:             "invite-id",
 			OrganizationId: "org-123",
-			Email:          "user@example.com",
+			Email:          userEmail,
 			Token:          token,
 			InvitedBy:      "inviter-789",
 			Status:         InviteStatusPending,
@@ -775,7 +825,7 @@ func TestRespondToInvitation(t *testing.T) {
 			AddMember(ctx, gomock.Any()).
 			Return(ErrMemberAlreadyExists)
 
-		err := svc.RespondToInvitation(ctx, token, userId, true)
+		err := svc.RespondToInvitation(ctx, token, userId, userEmail, true)
 		if err != nil {
 			t.Fatalf("expected no error when member already exists, got %v", err)
 		}
@@ -785,11 +835,12 @@ func TestRespondToInvitation(t *testing.T) {
 		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "valid-token-123"
 		userId := "user-456"
+		userEmail := "user@example.com"
 
 		invite := &OrganizationInviteDTO{
 			Id:             "invite-id",
 			OrganizationId: "org-123",
-			Email:          "user@example.com",
+			Email:          userEmail,
 			Token:          token,
 			InvitedBy:      "inviter-789",
 			Status:         InviteStatusPending,
@@ -805,7 +856,7 @@ func TestRespondToInvitation(t *testing.T) {
 			UpdateInviteStatus(ctx, invite.Id, InviteStatusAccepted, gomock.Any()).
 			Return(connect.NewError(connect.CodeInternal, errors.New("database error")))
 
-		err := svc.RespondToInvitation(ctx, token, userId, true)
+		err := svc.RespondToInvitation(ctx, token, userId, userEmail, true)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -824,11 +875,12 @@ func TestRespondToInvitation(t *testing.T) {
 		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "valid-token-123"
 		userId := "user-456"
+		userEmail := "user@example.com"
 
 		invite := &OrganizationInviteDTO{
 			Id:             "invite-id",
 			OrganizationId: "org-123",
-			Email:          "user@example.com",
+			Email:          userEmail,
 			Token:          token,
 			InvitedBy:      "inviter-789",
 			Status:         InviteStatusPending,
@@ -848,7 +900,7 @@ func TestRespondToInvitation(t *testing.T) {
 			AddMember(ctx, gomock.Any()).
 			Return(connect.NewError(connect.CodeInternal, errors.New("database error")))
 
-		err := svc.RespondToInvitation(ctx, token, userId, true)
+		err := svc.RespondToInvitation(ctx, token, userId, userEmail, true)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -867,11 +919,12 @@ func TestRespondToInvitation(t *testing.T) {
 		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		token := "cancelled-token"
 		userId := "user-456"
+		userEmail := "user@example.com"
 
 		invite := &OrganizationInviteDTO{
 			Id:             "invite-id",
 			OrganizationId: "org-123",
-			Email:          "user@example.com",
+			Email:          userEmail,
 			Token:          token,
 			InvitedBy:      "inviter-789",
 			Status:         InviteStatusCancelled,
@@ -883,7 +936,7 @@ func TestRespondToInvitation(t *testing.T) {
 			GetInviteByToken(ctx, token).
 			Return(invite, nil)
 
-		err := svc.RespondToInvitation(ctx, token, userId, true)
+		err := svc.RespondToInvitation(ctx, token, userId, userEmail, true)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -1240,7 +1293,7 @@ func TestUpdateMemberRole(t *testing.T) {
 		mockRepo.EXPECT().
 			GetMemberRole(ctx, orgID, ownerID).
 			Return(MemberRoleOwner, nil).
-			Times(2) // Called once for updater check, once for current member role check
+			Times(2)
 
 		err := svc.UpdateMemberRole(ctx, req, ownerID)
 		if err == nil {

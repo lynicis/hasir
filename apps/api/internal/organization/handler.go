@@ -200,10 +200,16 @@ func (h *handler) RespondToInvitation(
 		return nil, err
 	}
 
+	userEmail, err := authentication.MustGetUserEmail(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if err = h.service.RespondToInvitation(
 		ctx,
 		req.Msg.GetInvitationId(),
 		userId,
+		userEmail,
 		req.Msg.GetStatus(),
 	); err != nil {
 		return nil, err
@@ -216,11 +222,21 @@ func (h *handler) IsInvitationValid(
 	ctx context.Context,
 	req *connect.Request[organizationv1.IsInvitationValidRequest],
 ) (*connect.Response[emptypb.Empty], error) {
-	if _, err := h.repository.GetInviteByToken(
+	userEmail, err := authentication.MustGetUserEmail(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	invite, err := h.repository.GetInviteByToken(
 		ctx,
 		req.Msg.GetToken(),
-	); err != nil {
+	)
+	if err != nil {
 		return nil, err
+	}
+
+	if invite.Email != userEmail {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("this invitation is not for your email address"))
 	}
 
 	return connect.NewResponse(new(emptypb.Empty)), nil

@@ -24,6 +24,17 @@ func testAuthInterceptor(userID string) connect.UnaryInterceptorFunc {
 	return func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			ctx = context.WithValue(ctx, authentication.UserIDKey, userID)
+			ctx = context.WithValue(ctx, authentication.UserEmailKey, "user@example.com")
+			return next(ctx, req)
+		}
+	}
+}
+
+func testAuthInterceptorWithEmail(userID, email string) connect.UnaryInterceptorFunc {
+	return func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			ctx = context.WithValue(ctx, authentication.UserIDKey, userID)
+			ctx = context.WithValue(ctx, authentication.UserEmailKey, email)
 			return next(ctx, req)
 		}
 	}
@@ -1497,6 +1508,158 @@ func TestHandler_Search(t *testing.T) {
 
 		_, err := client.Search(context.Background(), connect.NewRequest(&organizationv1.SearchRequest{
 			Query: "test",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+	})
+}
+
+func TestHandler_IsInvitationValid(t *testing.T) {
+	t.Run("success - email matches", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		userEmail := "user@example.com"
+		token := "valid-token-123"
+
+		invite := &OrganizationInviteDTO{
+			Id:             "invite-id",
+			OrganizationId: "org-123",
+			Email:          userEmail,
+			Token:          token,
+		}
+
+		mockRepository.EXPECT().
+			GetInviteByToken(gomock.Any(), token).
+			Return(invite, nil)
+
+		handler := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptorWithEmail("user-123", userEmail))
+
+		mux := http.NewServeMux()
+		path, h := handler.RegisterRoutes()
+		mux.Handle(path, h)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.IsInvitationValid(context.Background(), connect.NewRequest(&organizationv1.IsInvitationValidRequest{
+			Token: token,
+		}))
+		require.NoError(t, err)
+	})
+
+	t.Run("permission denied - email does not match", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		userEmail := "different@example.com"
+		token := "valid-token-123"
+
+		invite := &OrganizationInviteDTO{
+			Id:             "invite-id",
+			OrganizationId: "org-123",
+			Email:          "invited@example.com",
+			Token:          token,
+		}
+
+		mockRepository.EXPECT().
+			GetInviteByToken(gomock.Any(), token).
+			Return(invite, nil)
+
+		handler := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptorWithEmail("user-123", userEmail))
+
+		mux := http.NewServeMux()
+		path, h := handler.RegisterRoutes()
+		mux.Handle(path, h)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.IsInvitationValid(context.Background(), connect.NewRequest(&organizationv1.IsInvitationValidRequest{
+			Token: token,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+	})
+
+	t.Run("invite not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		token := "invalid-token"
+
+		mockRepository.EXPECT().
+			GetInviteByToken(gomock.Any(), token).
+			Return(nil, connect.NewError(connect.CodeNotFound, errors.New("invite not found")))
+
+		handler := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptorWithEmail("user-123", "user@example.com"))
+
+		mux := http.NewServeMux()
+		path, h := handler.RegisterRoutes()
+		mux.Handle(path, h)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.IsInvitationValid(context.Background(), connect.NewRequest(&organizationv1.IsInvitationValidRequest{
+			Token: token,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+
+	t.Run("unauthenticated - missing user email", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		handler := NewHandler(mockService, mockRepository, mockRegistryRepository)
+
+		mux := http.NewServeMux()
+		path, h := handler.RegisterRoutes()
+		mux.Handle(path, h)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.IsInvitationValid(context.Background(), connect.NewRequest(&organizationv1.IsInvitationValidRequest{
+			Token: "some-token",
 		}))
 		require.Error(t, err)
 

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strings"
 
-	"buf.build/gen/go/hasir/hasir/connectrpc/go/organization/v1/organizationv1connect"
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
 	"connectrpc.com/connect"
 	"github.com/golang-jwt/jwt/v5"
@@ -34,12 +33,11 @@ func NewAuthInterceptor(jwtSecret []byte) *AuthInterceptor {
 	return &AuthInterceptor{
 		jwtSecret: jwtSecret,
 		publicMethods: map[string]bool{
-			userv1connect.UserServiceRegisterProcedure:                          true,
-			userv1connect.UserServiceLoginProcedure:                             true,
-			userv1connect.UserServiceRenewTokensProcedure:                       true,
-			userv1connect.UserServiceForgotPasswordProcedure:                    true,
-			userv1connect.UserServiceResetPasswordProcedure:                     true,
-			organizationv1connect.OrganizationServiceIsInvitationValidProcedure: true,
+			userv1connect.UserServiceRegisterProcedure:       true,
+			userv1connect.UserServiceLoginProcedure:          true,
+			userv1connect.UserServiceRenewTokensProcedure:    true,
+			userv1connect.UserServiceForgotPasswordProcedure: true,
+			userv1connect.UserServiceResetPasswordProcedure:  true,
 		},
 	}
 }
@@ -173,4 +171,13 @@ func MustGetUserID(ctx context.Context) (string, error) {
 		return "", connect.NewError(connect.CodeUnauthenticated, errors.New("user not authenticated"))
 	}
 	return userID, nil
+}
+
+func MustGetUserEmail(ctx context.Context) (string, error) {
+	email, ok := GetUserEmail(ctx)
+	if !ok {
+		return "", connect.NewError(connect.CodeUnauthenticated, errors.New("user not authenticated"))
+	}
+
+	return email, nil
 }

@@ -98,17 +98,17 @@ func (mr *MockServiceMockRecorder) InviteUser(ctx, req, invitedBy any) *gomock.C
 }
 
 // RespondToInvitation mocks base method.
-func (m *MockService) RespondToInvitation(ctx context.Context, token, userId string, accept bool) error {
+func (m *MockService) RespondToInvitation(ctx context.Context, token, userId, userEmail string, accept bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RespondToInvitation", ctx, token, userId, accept)
+	ret := m.ctrl.Call(m, "RespondToInvitation", ctx, token, userId, userEmail, accept)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RespondToInvitation indicates an expected call of RespondToInvitation.
-func (mr *MockServiceMockRecorder) RespondToInvitation(ctx, token, userId, accept any) *gomock.Call {
+func (mr *MockServiceMockRecorder) RespondToInvitation(ctx, token, userId, userEmail, accept any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RespondToInvitation", reflect.TypeOf((*MockService)(nil).RespondToInvitation), ctx, token, userId, accept)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RespondToInvitation", reflect.TypeOf((*MockService)(nil).RespondToInvitation), ctx, token, userId, userEmail, accept)
 }
 
 // UpdateMemberRole mocks base method.
