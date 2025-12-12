@@ -141,21 +141,6 @@ func (mr *MockRepositoryMockRecorder) GetMemberRole(ctx, organizationId, userId 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMemberRole", reflect.TypeOf((*MockRepository)(nil).GetMemberRole), ctx, organizationId, userId)
 }
 
-// GetMemberRoleString mocks base method.
-func (m *MockRepository) GetMemberRoleString(ctx context.Context, organizationId, userId string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMemberRoleString", ctx, organizationId, userId)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetMemberRoleString indicates an expected call of GetMemberRoleString.
-func (mr *MockRepositoryMockRecorder) GetMemberRoleString(ctx, organizationId, userId any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMemberRoleString", reflect.TypeOf((*MockRepository)(nil).GetMemberRoleString), ctx, organizationId, userId)
-}
-
 // GetMembers mocks base method.
 func (m *MockRepository) GetMembers(ctx context.Context, organizationId string) ([]*OrganizationMemberDTO, []string, []string, error) {
 	m.ctrl.T.Helper()
@@ -276,6 +261,22 @@ func (m *MockRepository) GetUserOrganizationsCount(ctx context.Context, userId s
 func (mr *MockRepositoryMockRecorder) GetUserOrganizationsCount(ctx, userId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserOrganizationsCount", reflect.TypeOf((*MockRepository)(nil).GetUserOrganizationsCount), ctx, userId)
+}
+
+// SearchItems mocks base method.
+func (m *MockRepository) SearchItems(ctx context.Context, userId, query string, page, pageSize int) (*[]SearchItemDTO, int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchItems", ctx, userId, query, page, pageSize)
+	ret0, _ := ret[0].(*[]SearchItemDTO)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// SearchItems indicates an expected call of SearchItems.
+func (mr *MockRepositoryMockRecorder) SearchItems(ctx, userId, query, page, pageSize any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchItems", reflect.TypeOf((*MockRepository)(nil).SearchItems), ctx, userId, query, page, pageSize)
 }
 
 // UpdateInviteStatus mocks base method.

@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"time"
@@ -73,7 +74,7 @@ func (s *service) CreateRepository(
 	repoId := uuid.NewString()
 	repoPath := filepath.Join(s.rootPath, repoId)
 
-	if err := os.MkdirAll(repoPath, 0o755); err != nil {
+	if err := os.MkdirAll(repoPath, 0o750); err != nil {
 		return connect.NewError(connect.CodeInternal, errors.New("failed to create repository directory"))
 	}
 
@@ -237,15 +238,21 @@ func (s *service) GetRepositories(
 	if totalPages == 0 {
 		totalPages = 1
 	}
-	nextPage := int32(page + 1)
-	if page >= totalPages {
-		nextPage = 0
+	if totalPages > math.MaxInt32 {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("total pages exceeds maximum value"))
+	}
+	nextPage := int32(0)
+	if page < totalPages {
+		if page+1 > math.MaxInt32 {
+			return nil, connect.NewError(connect.CodeInternal, errors.New("page number exceeds maximum value"))
+		}
+		nextPage = int32(page + 1) // #nosec G115 -- bounds checked above
 	}
 
 	return &registryv1.GetRepositoriesResponse{
 		Repositories: resp,
 		NextPage:     nextPage,
-		TotalPage:    int32(totalPages),
+		TotalPage:    int32(totalPages), // #nosec G115 -- bounds checked above
 	}, nil
 }
 

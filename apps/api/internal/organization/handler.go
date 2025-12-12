@@ -2,28 +2,34 @@ package organization
 
 import (
 	"context"
+	"errors"
+	"math"
 	"net/http"
 
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/organization/v1/organizationv1connect"
 	organizationv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/organization/v1"
+	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"hasir-api/internal/registry"
 	"hasir-api/pkg/authentication"
 	"hasir-api/pkg/proto"
 )
 
 type handler struct {
-	interceptors []connect.Interceptor
-	service      Service
-	repository   Repository
+	interceptors       []connect.Interceptor
+	service            Service
+	repository         Repository
+	registryRepository registry.Repository
 }
 
-func NewHandler(service Service, repository Repository, interceptors ...connect.Interceptor) *handler {
+func NewHandler(service Service, repository Repository, registryRepository registry.Repository, interceptors ...connect.Interceptor) *handler {
 	return &handler{
-		interceptors: interceptors,
-		service:      service,
-		repository:   repository,
+		interceptors:       interceptors,
+		service:            service,
+		repository:         repository,
+		registryRepository: registryRepository,
 	}
 }
 
@@ -101,15 +107,21 @@ func (h *handler) GetOrganizations(
 	if totalPages == 0 {
 		totalPages = 1
 	}
-	nextPage := int32(page + 1)
-	if page >= totalPages {
-		nextPage = 0
+	if totalPages > math.MaxInt32 {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("total pages exceeds maximum value"))
+	}
+	nextPage := int32(0)
+	if page < totalPages {
+		if page+1 > math.MaxInt32 {
+			return nil, connect.NewError(connect.CodeInternal, errors.New("page number exceeds maximum value"))
+		}
+		nextPage = int32(page + 1) // #nosec G115 -- bounds checked above
 	}
 
 	return connect.NewResponse(&organizationv1.GetOrganizationsResponse{
 		Organizations: resp,
 		NextPage:      nextPage,
-		TotalPage:     int32(totalPages),
+		TotalPage:     int32(totalPages), // #nosec G115 -- bounds checked above
 	}), nil
 }
 
@@ -269,4 +281,80 @@ func (h *handler) DeleteMember(
 	}
 
 	return connect.NewResponse(new(emptypb.Empty)), nil
+}
+
+func (h *handler) Search(
+	ctx context.Context,
+	req *connect.Request[organizationv1.SearchRequest],
+) (*connect.Response[organizationv1.SearchResponse], error) {
+	userId, err := authentication.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	page := 1
+	pageSize := 10
+
+	if req.Msg.Pagination.GetPage() > 0 {
+		page = int(req.Msg.Pagination.GetPage())
+	}
+	if req.Msg.Pagination.GetPageLimit() > 0 {
+		pageSize = int(req.Msg.Pagination.GetPageLimit())
+	}
+
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	if page < 1 {
+		page = 1
+	}
+
+	query := req.Msg.GetQuery()
+	items, totalCount, err := h.repository.SearchItems(ctx, userId, query, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	var respOrgs []*organizationv1.Organization
+	var respRepos []*registryv1.Repository
+
+	for _, item := range *items {
+		switch item.ItemType {
+		case SearchItemTypeOrganization:
+			respOrgs = append(respOrgs, &organizationv1.Organization{
+				Id:   item.Id,
+				Name: item.Name,
+			})
+		case SearchItemTypeRepository:
+			respRepos = append(respRepos, &registryv1.Repository{
+				Id:   item.Id,
+				Name: item.Name,
+			})
+		}
+	}
+
+	totalPages := (totalCount + pageSize - 1) / pageSize
+	if totalPages == 0 {
+		totalPages = 1
+	}
+	if totalPages > math.MaxInt32 {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("total pages exceeds maximum value"))
+	}
+	nextPage := int32(0)
+	if page < totalPages {
+		if page+1 > math.MaxInt32 {
+			return nil, connect.NewError(connect.CodeInternal, errors.New("page number exceeds maximum value"))
+		}
+		nextPage = int32(page + 1) // #nosec G115 -- bounds checked above
+	}
+
+	return connect.NewResponse(&organizationv1.SearchResponse{
+		Organizations: respOrgs,
+		Repositories:  respRepos,
+		NextPage:      nextPage,
+		TotalPage:     int32(totalPages), // #nosec G115 -- bounds checked above
+	}), nil
 }

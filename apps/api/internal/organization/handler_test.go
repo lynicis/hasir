@@ -15,6 +15,7 @@ import (
 	organizationv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/organization/v1"
 	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
 
+	"hasir-api/internal/registry"
 	"hasir-api/pkg/authentication"
 	"hasir-api/pkg/proto"
 )
@@ -33,8 +34,9 @@ func TestNewHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
 
 		require.NotNil(t, h)
 		require.Equal(t, mockService, h.service)
@@ -46,6 +48,7 @@ func TestNewHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		interceptor1 := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 			return next
@@ -54,7 +57,7 @@ func TestNewHandler(t *testing.T) {
 			return next
 		})
 
-		h := NewHandler(mockService, mockRepository, interceptor1, interceptor2)
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, interceptor1, interceptor2)
 
 		require.NotNil(t, h)
 		require.Len(t, h.interceptors, 2)
@@ -66,8 +69,9 @@ func TestHandler_RegisterRoutes(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
 		path, httpHandler := h.RegisterRoutes()
 
 		require.Equal(t, "/"+organizationv1connect.OrganizationServiceName+"/", path)
@@ -80,6 +84,7 @@ func TestHandler_CreateOrganization(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-123"
 
@@ -92,7 +97,7 @@ func TestHandler_CreateOrganization(t *testing.T) {
 				return nil
 			})
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -116,6 +121,7 @@ func TestHandler_CreateOrganization(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-456"
 
@@ -127,7 +133,7 @@ func TestHandler_CreateOrganization(t *testing.T) {
 				return nil
 			})
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -151,6 +157,7 @@ func TestHandler_CreateOrganization(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-789"
 
@@ -158,7 +165,7 @@ func TestHandler_CreateOrganization(t *testing.T) {
 			CreateOrganization(gomock.Any(), gomock.Any(), testUserID).
 			Return(connect.NewError(connect.CodeAlreadyExists, errors.New("organization already exists")))
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -186,8 +193,9 @@ func TestHandler_CreateOrganization(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -217,6 +225,7 @@ func TestHandler_GetOrganizations(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-123"
 
@@ -232,7 +241,7 @@ func TestHandler_GetOrganizations(t *testing.T) {
 			GetUserOrganizations(gomock.Any(), testUserID, 1, 10).
 			Return(orgs, nil)
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -258,6 +267,7 @@ func TestHandler_GetOrganizations(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-456"
 
@@ -270,7 +280,7 @@ func TestHandler_GetOrganizations(t *testing.T) {
 			GetUserOrganizations(gomock.Any(), testUserID, 1, 10).
 			Return(orgs, nil)
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -292,13 +302,14 @@ func TestHandler_GetOrganizations(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 		testUserID := "test-user-789"
 
 		mockRepository.EXPECT().
 			GetUserOrganizationsCount(gomock.Any(), testUserID).
 			Return(0, connect.NewError(connect.CodeInternal, errors.New("database error")))
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -323,8 +334,9 @@ func TestHandler_GetOrganizations(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -351,6 +363,7 @@ func TestHandler_DeleteOrganization(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-123"
 		orgID := "org-123"
@@ -359,7 +372,7 @@ func TestHandler_DeleteOrganization(t *testing.T) {
 			DeleteOrganization(gomock.Any(), orgID, testUserID).
 			Return(nil)
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -382,6 +395,7 @@ func TestHandler_DeleteOrganization(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-456"
 		orgID := "non-existent-org"
@@ -390,7 +404,7 @@ func TestHandler_DeleteOrganization(t *testing.T) {
 			DeleteOrganization(gomock.Any(), orgID, testUserID).
 			Return(ErrOrganizationNotFound)
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -417,6 +431,7 @@ func TestHandler_DeleteOrganization(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-789"
 		orgID := "org-456"
@@ -425,7 +440,7 @@ func TestHandler_DeleteOrganization(t *testing.T) {
 			DeleteOrganization(gomock.Any(), orgID, testUserID).
 			Return(connect.NewError(connect.CodePermissionDenied, errors.New("only the organization creator can delete it")))
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -452,8 +467,9 @@ func TestHandler_DeleteOrganization(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -482,6 +498,7 @@ func TestHandler_UpdateOrganization(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-123"
 		orgID := "org-123"
@@ -496,7 +513,7 @@ func TestHandler_UpdateOrganization(t *testing.T) {
 				return nil
 			})
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -521,6 +538,7 @@ func TestHandler_UpdateOrganization(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-456"
 		orgID := "org-456"
@@ -529,7 +547,7 @@ func TestHandler_UpdateOrganization(t *testing.T) {
 			UpdateOrganization(gomock.Any(), gomock.Any(), testUserID).
 			Return(connect.NewError(connect.CodePermissionDenied, errors.New("only the organization creator can update it")))
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -557,8 +575,9 @@ func TestHandler_UpdateOrganization(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -588,6 +607,7 @@ func TestHandler_InviteMember(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-123"
 		orgID := "org-123"
@@ -602,7 +622,7 @@ func TestHandler_InviteMember(t *testing.T) {
 				return nil
 			})
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -626,8 +646,9 @@ func TestHandler_InviteMember(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -657,6 +678,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-123"
 		orgID := "org-123"
@@ -672,7 +694,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 				return nil
 			})
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -697,6 +719,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-456"
 		orgID := "org-456"
@@ -706,7 +729,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 			UpdateMemberRole(gomock.Any(), gomock.Any(), testUserID).
 			Return(connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can update member roles")))
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -735,6 +758,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-123"
 		orgID := "org-123"
@@ -743,7 +767,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 			UpdateMemberRole(gomock.Any(), gomock.Any(), testUserID).
 			Return(connect.NewError(connect.CodePermissionDenied, errors.New("owners cannot decrease their own role")))
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -772,6 +796,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-123"
 		orgID := "org-123"
@@ -781,7 +806,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 			UpdateMemberRole(gomock.Any(), gomock.Any(), testUserID).
 			Return(connect.NewError(connect.CodeNotFound, errors.New("member not found")))
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -810,8 +835,9 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -842,6 +868,7 @@ func TestHandler_DeleteMember(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-123"
 		orgID := "org-123"
@@ -856,7 +883,7 @@ func TestHandler_DeleteMember(t *testing.T) {
 				return nil
 			})
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -880,6 +907,7 @@ func TestHandler_DeleteMember(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-456"
 		orgID := "org-456"
@@ -889,7 +917,7 @@ func TestHandler_DeleteMember(t *testing.T) {
 			DeleteMember(gomock.Any(), gomock.Any(), testUserID).
 			Return(connect.NewError(connect.CodePermissionDenied, errors.New("only organization owners can delete members")))
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -917,6 +945,7 @@ func TestHandler_DeleteMember(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-123"
 		orgID := "org-123"
@@ -926,7 +955,7 @@ func TestHandler_DeleteMember(t *testing.T) {
 			DeleteMember(gomock.Any(), gomock.Any(), testUserID).
 			Return(connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot delete the last owner")))
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -954,6 +983,7 @@ func TestHandler_DeleteMember(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
 		testUserID := "test-user-123"
 		orgID := "org-123"
@@ -963,7 +993,7 @@ func TestHandler_DeleteMember(t *testing.T) {
 			DeleteMember(gomock.Any(), gomock.Any(), testUserID).
 			Return(connect.NewError(connect.CodeNotFound, errors.New("member not found")))
 
-		h := NewHandler(mockService, mockRepository, testAuthInterceptor(testUserID))
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -991,8 +1021,9 @@ func TestHandler_DeleteMember(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
 
-		h := NewHandler(mockService, mockRepository)
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
 		mux := http.NewServeMux()
 		path, handler := h.RegisterRoutes()
 		mux.Handle(path, handler)
@@ -1008,6 +1039,464 @@ func TestHandler_DeleteMember(t *testing.T) {
 		_, err := client.DeleteMember(context.Background(), connect.NewRequest(&organizationv1.DeleteMemberRequest{
 			OrganizationId: "org-123",
 			MemberId:       "member-456",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+	})
+}
+
+func TestHandler_Search(t *testing.T) {
+	t.Run("success with mixed results", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		testUserID := "test-user-123"
+		query := "test"
+
+		orgId := "org-1"
+		searchItems := &[]SearchItemDTO{
+			{
+				Id:       "org-1",
+				Name:     "test-org",
+				ItemType: SearchItemTypeOrganization,
+			},
+			{
+				Id:             "repo-1",
+				Name:           "test-repo",
+				ItemType:       SearchItemTypeRepository,
+				OrganizationId: &orgId,
+			},
+		}
+
+		mockRepository.EXPECT().
+			SearchItems(gomock.Any(), testUserID, query, 1, 10).
+			Return(searchItems, 2, nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.Search(context.Background(), connect.NewRequest(&organizationv1.SearchRequest{
+			Query: query,
+		}))
+		require.NoError(t, err)
+		require.Len(t, resp.Msg.GetOrganizations(), 1)
+		require.Len(t, resp.Msg.GetRepositories(), 1)
+		require.Equal(t, "org-1", resp.Msg.GetOrganizations()[0].GetId())
+		require.Equal(t, "test-org", resp.Msg.GetOrganizations()[0].GetName())
+		require.Equal(t, "repo-1", resp.Msg.GetRepositories()[0].GetId())
+		require.Equal(t, "test-repo", resp.Msg.GetRepositories()[0].GetName())
+		require.Equal(t, int32(1), resp.Msg.GetTotalPage())
+		require.Equal(t, int32(0), resp.Msg.GetNextPage())
+	})
+
+	t.Run("success with only organizations", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		testUserID := "test-user-456"
+		query := "org"
+
+		searchItems := &[]SearchItemDTO{
+			{
+				Id:       "org-1",
+				Name:     "org-alpha",
+				ItemType: SearchItemTypeOrganization,
+			},
+			{
+				Id:       "org-2",
+				Name:     "org-beta",
+				ItemType: SearchItemTypeOrganization,
+			},
+		}
+
+		mockRepository.EXPECT().
+			SearchItems(gomock.Any(), testUserID, query, 1, 10).
+			Return(searchItems, 2, nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.Search(context.Background(), connect.NewRequest(&organizationv1.SearchRequest{
+			Query: query,
+		}))
+		require.NoError(t, err)
+		require.Len(t, resp.Msg.GetOrganizations(), 2)
+		require.Empty(t, resp.Msg.GetRepositories())
+	})
+
+	t.Run("success with only repositories", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		testUserID := "test-user-789"
+		query := "repo"
+
+		orgId := "org-1"
+		searchItems := &[]SearchItemDTO{
+			{
+				Id:             "repo-1",
+				Name:           "repo-alpha",
+				ItemType:       SearchItemTypeRepository,
+				OrganizationId: &orgId,
+			},
+		}
+
+		mockRepository.EXPECT().
+			SearchItems(gomock.Any(), testUserID, query, 1, 10).
+			Return(searchItems, 1, nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.Search(context.Background(), connect.NewRequest(&organizationv1.SearchRequest{
+			Query: query,
+		}))
+		require.NoError(t, err)
+		require.Empty(t, resp.Msg.GetOrganizations())
+		require.Len(t, resp.Msg.GetRepositories(), 1)
+	})
+
+	t.Run("success with empty results", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		testUserID := "test-user-empty"
+		query := "nonexistent"
+
+		searchItems := &[]SearchItemDTO{}
+
+		mockRepository.EXPECT().
+			SearchItems(gomock.Any(), testUserID, query, 1, 10).
+			Return(searchItems, 0, nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.Search(context.Background(), connect.NewRequest(&organizationv1.SearchRequest{
+			Query: query,
+		}))
+		require.NoError(t, err)
+		require.Empty(t, resp.Msg.GetOrganizations())
+		require.Empty(t, resp.Msg.GetRepositories())
+		require.Equal(t, int32(1), resp.Msg.GetTotalPage())
+		require.Equal(t, int32(0), resp.Msg.GetNextPage())
+	})
+
+	t.Run("success with pagination", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		testUserID := "test-user-pagination"
+		query := "test"
+		page := int32(2)
+		pageLimit := int32(5)
+
+		searchItems := &[]SearchItemDTO{
+			{
+				Id:       "org-6",
+				Name:     "test-org-6",
+				ItemType: SearchItemTypeOrganization,
+			},
+		}
+
+		mockRepository.EXPECT().
+			SearchItems(gomock.Any(), testUserID, query, int(page), int(pageLimit)).
+			Return(searchItems, 12, nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		req := &organizationv1.SearchRequest{
+			Query: query,
+		}
+		req.Pagination = &shared.Pagination{
+			Page:      page,
+			PageLimit: pageLimit,
+		}
+		resp, err := client.Search(context.Background(), connect.NewRequest(req))
+		require.NoError(t, err)
+		require.Equal(t, int32(3), resp.Msg.GetTotalPage())
+		require.Equal(t, int32(3), resp.Msg.GetNextPage())
+	})
+
+	t.Run("success with default pagination", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		testUserID := "test-user-default-page"
+		query := "test"
+
+		searchItems := &[]SearchItemDTO{}
+
+		mockRepository.EXPECT().
+			SearchItems(gomock.Any(), testUserID, query, 1, 10).
+			Return(searchItems, 0, nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.Search(context.Background(), connect.NewRequest(&organizationv1.SearchRequest{
+			Query: query,
+		}))
+		require.NoError(t, err)
+	})
+
+	t.Run("success with page limit constraints", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		testUserID := "test-user-limits"
+		query := "test"
+
+		searchItems := &[]SearchItemDTO{}
+
+		mockRepository.EXPECT().
+			SearchItems(gomock.Any(), testUserID, query, 1, 100).
+			Return(searchItems, 0, nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		req := &organizationv1.SearchRequest{
+			Query: query,
+		}
+		req.Pagination = &shared.Pagination{
+			PageLimit: 200,
+		}
+		_, err := client.Search(context.Background(), connect.NewRequest(req))
+		require.NoError(t, err)
+	})
+
+	t.Run("success with minimum page constraints", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		testUserID := "test-user-min"
+		query := "test"
+
+		searchItems := &[]SearchItemDTO{}
+
+		mockRepository.EXPECT().
+			SearchItems(gomock.Any(), testUserID, query, 1, 10).
+			Return(searchItems, 0, nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		req := &organizationv1.SearchRequest{
+			Query: query,
+		}
+		req.Pagination = &shared.Pagination{
+			Page:      0,
+			PageLimit: 0,
+		}
+		_, err := client.Search(context.Background(), connect.NewRequest(req))
+		require.NoError(t, err)
+	})
+
+	t.Run("success on last page", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		testUserID := "test-user-last"
+		query := "test"
+
+		searchItems := &[]SearchItemDTO{
+			{
+				Id:       "org-21",
+				Name:     "test-org-21",
+				ItemType: SearchItemTypeOrganization,
+			},
+		}
+
+		mockRepository.EXPECT().
+			SearchItems(gomock.Any(), testUserID, query, 3, 10).
+			Return(searchItems, 21, nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		req := &organizationv1.SearchRequest{
+			Query: query,
+		}
+		req.Pagination = &shared.Pagination{
+			Page:      3,
+			PageLimit: 10,
+		}
+		resp, err := client.Search(context.Background(), connect.NewRequest(req))
+		require.NoError(t, err)
+		require.Equal(t, int32(3), resp.Msg.GetTotalPage())
+		require.Equal(t, int32(0), resp.Msg.GetNextPage())
+	})
+
+	t.Run("repository error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		testUserID := "test-user-error"
+		query := "test"
+
+		mockRepository.EXPECT().
+			SearchItems(gomock.Any(), testUserID, query, 1, 10).
+			Return(nil, 0, connect.NewError(connect.CodeInternal, errors.New("database error")))
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.Search(context.Background(), connect.NewRequest(&organizationv1.SearchRequest{
+			Query: query,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		require.Equal(t, connect.CodeInternal, connectErr.Code())
+	})
+
+	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.Search(context.Background(), connect.NewRequest(&organizationv1.SearchRequest{
+			Query: "test",
 		}))
 		require.Error(t, err)
 

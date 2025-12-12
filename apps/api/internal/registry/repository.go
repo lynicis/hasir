@@ -12,7 +12,6 @@ type Repository interface {
 	GetRepositoryById(ctx context.Context, id string) (*RepositoryDTO, error)
 	GetRepositories(ctx context.Context, page, pageSize int) (*[]RepositoryDTO, error)
 	GetRepositoriesByOrganizationId(ctx context.Context, organizationId string) (*[]RepositoryDTO, error)
-	GetRepositoriesCount(ctx context.Context) (int, error)
 	GetRepositoriesByUser(ctx context.Context, userId string, page, pageSize int) (*[]RepositoryDTO, error)
 	GetRepositoriesByUserCount(ctx context.Context, userId string) (int, error)
 	GetRepositoriesByUserAndOrganization(ctx context.Context, userId, organizationId string, page, pageSize int) (*[]RepositoryDTO, error)

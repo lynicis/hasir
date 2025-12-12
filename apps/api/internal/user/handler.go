@@ -2,6 +2,8 @@ package user
 
 import (
 	"context"
+	"errors"
+	"math"
 	"net/http"
 
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
@@ -194,15 +196,21 @@ func (h *handler) GetApiKeys(
 	if totalPages == 0 {
 		totalPages = 1
 	}
-	nextPage := int32(page + 1)
-	if page >= totalPages {
-		nextPage = 0
+	if totalPages > math.MaxInt32 {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("total pages exceeds maximum value"))
+	}
+	nextPage := int32(0)
+	if page < totalPages {
+		if page+1 > math.MaxInt32 {
+			return nil, connect.NewError(connect.CodeInternal, errors.New("page number exceeds maximum value"))
+		}
+		nextPage = int32(page + 1) // #nosec G115 -- bounds checked above
 	}
 
 	return connect.NewResponse(&userv1.KeyResponse{
 		Keys:      keys,
 		NextPage:  nextPage,
-		TotalPage: int32(totalPages),
+		TotalPage: int32(totalPages), // #nosec G115 -- bounds checked above
 	}), nil
 }
 
@@ -273,15 +281,21 @@ func (h *handler) GetSshKeys(
 	if totalPages == 0 {
 		totalPages = 1
 	}
-	nextPage := int32(page + 1)
-	if page >= totalPages {
-		nextPage = 0
+	if totalPages > math.MaxInt32 {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("total pages exceeds maximum value"))
+	}
+	nextPage := int32(0)
+	if page < totalPages {
+		if page+1 > math.MaxInt32 {
+			return nil, connect.NewError(connect.CodeInternal, errors.New("page number exceeds maximum value"))
+		}
+		nextPage = int32(page + 1) // #nosec G115 -- bounds checked above
 	}
 
 	return connect.NewResponse(&userv1.KeyResponse{
 		Keys:      keys,
 		NextPage:  nextPage,
-		TotalPage: int32(totalPages),
+		TotalPage: int32(totalPages), // #nosec G115 -- bounds checked above
 	}), nil
 }
 

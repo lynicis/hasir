@@ -21,8 +21,8 @@ type Repository interface {
 	AddMember(ctx context.Context, member *OrganizationMemberDTO) error
 	GetMembers(ctx context.Context, organizationId string) ([]*OrganizationMemberDTO, []string, []string, error)
 	GetMemberRole(ctx context.Context, organizationId, userId string) (MemberRole, error)
-	GetMemberRoleString(ctx context.Context, organizationId, userId string) (string, error)
 	GetOwnerCount(ctx context.Context, organizationId string) (int, error)
 	UpdateMemberRole(ctx context.Context, organizationId, userId string, role MemberRole) error
 	DeleteMember(ctx context.Context, organizationId, userId string) error
+	SearchItems(ctx context.Context, userId, query string, page, pageSize int) (*[]SearchItemDTO, int, error)
 }

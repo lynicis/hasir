@@ -115,7 +115,7 @@ func main() {
 
 	userHandler := user.NewHandler(userService, userPgRepository, interceptors...)
 	registryHandler := registry.NewHandler(registryService, repositoryPgRepository, interceptors...)
-	organizationHandler := internalOrganization.NewHandler(organizationService, organizationPgRepository, interceptors...)
+	organizationHandler := internalOrganization.NewHandler(organizationService, organizationPgRepository, repositoryPgRepository, interceptors...)
 	handlers := []internal.GlobalHandler{
 		userHandler,
 		registryHandler,
@@ -136,9 +136,10 @@ func main() {
 	protocols.SetHTTP1(true)
 	protocols.SetUnencryptedHTTP2(true)
 	server := &http.Server{
-		Addr:      cfg.Server.GetServerAddress(),
-		Handler:   handler,
-		Protocols: protocols,
+		Addr:              cfg.Server.GetServerAddress(),
+		Handler:           handler,
+		Protocols:         protocols,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	go func() {
@@ -272,6 +273,7 @@ func startSshServer(cfg *config.Config, userRepo user.Repository, sshHandler *re
 }
 
 func loadOrGenerateHostKey(path string) (gossh.Signer, error) {
+	// #nosec G304 -- path is from application config, not user input
 	keyBytes, err := os.ReadFile(path)
 	if err == nil {
 		signer, err := gossh.ParsePrivateKey(keyBytes)

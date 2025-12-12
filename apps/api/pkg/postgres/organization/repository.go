@@ -862,3 +862,89 @@ func (r *OrganizationRepository) DeleteMember(ctx context.Context, organizationI
 
 	return nil
 }
+
+func (r *OrganizationRepository) SearchItems(
+	ctx context.Context,
+	userId, query string,
+	page, pageSize int,
+) (*[]organization.SearchItemDTO, int, error) {
+	var span trace.Span
+	ctx, span = r.tracer.Start(ctx, "SearchItems", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "userId",
+			Value: attribute.StringValue(userId),
+		},
+		attribute.KeyValue{
+			Key:   "query",
+			Value: attribute.StringValue(query),
+		},
+		attribute.KeyValue{
+			Key:   "page",
+			Value: attribute.IntValue(page),
+		},
+		attribute.KeyValue{
+			Key:   "pageSize",
+			Value: attribute.IntValue(pageSize),
+		},
+	))
+	defer span.End()
+
+	connection, err := r.connectionPool.Acquire(ctx)
+	if err != nil {
+		return nil, 0, ErrFailedAcquireConnection
+	}
+	defer connection.Release()
+
+	offset := (page - 1) * pageSize
+
+	countSql := `
+		SELECT COUNT(DISTINCT si.id)
+		FROM search_items si
+		LEFT JOIN organization_members om ON
+			(si.item_type = 'organization' AND si.id = om.organization_id) OR
+			(si.item_type = 'repository' AND si.organization_id = om.organization_id)
+		WHERE om.user_id = $1
+		  AND si.deleted_at IS NULL
+		  AND similarity(si.name, $2) > 0.1`
+
+	var totalCount int
+	err = connection.QueryRow(ctx, countSql, userId, query).Scan(&totalCount)
+	if err != nil {
+		span.RecordError(err)
+		return nil, 0, connect.NewError(connect.CodeInternal, errors.New("failed to count search items"))
+	}
+
+	sql := `
+		SELECT DISTINCT
+			si.id,
+			si.name,
+			si.item_type,
+			si.organization_id,
+			si.created_at,
+			si.deleted_at,
+			similarity(si.name, $2) AS score
+		FROM search_items si
+		LEFT JOIN organization_members om ON
+			(si.item_type = 'organization' AND si.id = om.organization_id) OR
+			(si.item_type = 'repository' AND si.organization_id = om.organization_id)
+		WHERE om.user_id = $1
+		  AND si.deleted_at IS NULL
+		  AND similarity(si.name, $2) > 0.1
+		ORDER BY score DESC, si.created_at DESC
+		LIMIT $3 OFFSET $4`
+
+	rows, err := connection.Query(ctx, sql, userId, query, pageSize, offset)
+	if err != nil {
+		span.RecordError(err)
+		return nil, 0, connect.NewError(connect.CodeInternal, errors.New("failed to search items"))
+	}
+	defer rows.Close()
+
+	items, err := pgx.CollectRows[organization.SearchItemDTO](rows, pgx.RowToStructByName)
+	if err != nil {
+		span.RecordError(err)
+		return nil, 0, connect.NewError(connect.CodeInternal, errors.New("failed to collect search item rows"))
+	}
+
+	return &items, totalCount, nil
+}

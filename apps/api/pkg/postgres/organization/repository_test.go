@@ -1,6 +1,7 @@
 package organization
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -71,6 +72,10 @@ func createOrganizationsTable(t *testing.T, connString string) {
 	_, err = conn.Exec(t.Context(), enumSQL)
 	require.NoError(t, err)
 
+	dropTableSQL := `DROP TABLE IF EXISTS organizations CASCADE`
+	_, err = conn.Exec(t.Context(), dropTableSQL)
+	require.NoError(t, err)
+
 	sql := `CREATE TABLE organizations (
 		id VARCHAR PRIMARY KEY,
 		name VARCHAR NOT NULL UNIQUE,
@@ -87,6 +92,7 @@ func createOrganizationsTable(t *testing.T, connString string) {
 func createOrganizationsAndMembersTables(t *testing.T, connString string) {
 	t.Helper()
 
+	createUsersTable(t, connString)
 	createOrganizationsTable(t, connString)
 
 	conn, err := pgx.Connect(t.Context(), connString)
@@ -101,7 +107,10 @@ func createOrganizationsAndMembersTables(t *testing.T, connString string) {
 		organization_id VARCHAR NOT NULL,
 		user_id VARCHAR NOT NULL,
 		role VARCHAR NOT NULL,
-		joined_at TIMESTAMP NOT NULL
+		joined_at TIMESTAMP NOT NULL,
+		FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+		CONSTRAINT uq_organization_member UNIQUE (organization_id, user_id)
 	)`
 
 	_, err = conn.Exec(t.Context(), sql)
@@ -586,6 +595,13 @@ func TestPgRepository_GetUserOrganizations(t *testing.T) {
 		}()
 
 		_, err = conn.Exec(t.Context(),
+			`INSERT INTO users (id, username, email, password)
+			 VALUES ($1, 'testuser', 'test@example.com', 'hashedpassword')`,
+			userID,
+		)
+		require.NoError(t, err)
+
+		_, err = conn.Exec(t.Context(),
 			`INSERT INTO organization_members (id, organization_id, user_id, role, joined_at)
 			 VALUES ($1, $2, $3, 'owner', NOW()),
 			        ($4, $5, $3, 'author', NOW())`,
@@ -796,8 +812,8 @@ func TestPgRepository_CreateInvites(t *testing.T) {
 		err = repo.CreateInvites(t.Context(), []*organization.OrganizationInviteDTO{existingInvite})
 		require.NoError(t, err)
 		invites := []*organization.OrganizationInviteDTO{
-			createTestInvite(t, org.Id, "existing@example.com", "new-token", user.Id, organization.MemberRoleAuthor), // Duplicate email
-			createTestInvite(t, org.Id, "new@example.com", "new-token-2", user.Id, organization.MemberRoleReader),    // New email
+			createTestInvite(t, org.Id, "existing@example.com", "new-token", user.Id, organization.MemberRoleAuthor),
+			createTestInvite(t, org.Id, "new@example.com", "new-token-2", user.Id, organization.MemberRoleReader),
 		}
 
 		err = repo.CreateInvites(t.Context(), invites)
@@ -1059,7 +1075,11 @@ func createUsersTable(t *testing.T, connString string) {
 		require.NoError(t, err)
 	}()
 
-	sql := `CREATE TABLE IF NOT EXISTS users (
+	dropTableSQL := `DROP TABLE IF EXISTS users CASCADE`
+	_, err = conn.Exec(t.Context(), dropTableSQL)
+	require.NoError(t, err)
+
+	sql := `CREATE TABLE users (
 		id VARCHAR(36) PRIMARY KEY,
 		username VARCHAR(255) NOT NULL,
 		email VARCHAR(255) NOT NULL UNIQUE,
@@ -1090,13 +1110,19 @@ func createOrganizationMembersTable(t *testing.T, connString string) {
 	_, err = conn.Exec(t.Context(), enumSQL)
 	require.NoError(t, err)
 
-	sql := `CREATE TABLE IF NOT EXISTS organization_members (
+	dropTableSQL := `DROP TABLE IF EXISTS organization_members CASCADE`
+	_, err = conn.Exec(t.Context(), dropTableSQL)
+	require.NoError(t, err)
+
+	sql := `CREATE TABLE organization_members (
 		id VARCHAR(36) PRIMARY KEY,
-		organization_id VARCHAR(36) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-		user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		organization_id VARCHAR(36) NOT NULL,
+		user_id VARCHAR(36) NOT NULL,
 		role VARCHAR(20) NOT NULL DEFAULT 'reader',
 		joined_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 		CONSTRAINT chk_member_role CHECK (role IN ('owner', 'author', 'reader')),
+		FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 		CONSTRAINT uq_organization_member UNIQUE (organization_id, user_id)
 	)`
 
@@ -2231,5 +2257,566 @@ func TestPgRepository_DeleteMember(t *testing.T) {
 		assert.True(t, userIds[user1.Id])
 		assert.False(t, userIds[user2.Id])
 		assert.True(t, userIds[user3.Id])
+	})
+}
+
+func createRepositoriesTable(t *testing.T, connString string) {
+	t.Helper()
+
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		err = conn.Close(t.Context())
+		require.NoError(t, err)
+	}()
+
+	enumSQL := `DO $$ BEGIN
+		CREATE TYPE visibility AS ENUM ('private', 'public');
+	EXCEPTION
+		WHEN duplicate_object THEN null;
+	END $$`
+	_, err = conn.Exec(t.Context(), enumSQL)
+	require.NoError(t, err)
+
+	sql := `CREATE TABLE repositories (
+		id VARCHAR PRIMARY KEY,
+		name VARCHAR NOT NULL,
+		visibility visibility NOT NULL DEFAULT 'private',
+		organization_id VARCHAR NOT NULL,
+		created_by VARCHAR NOT NULL,
+		created_at TIMESTAMP NOT NULL,
+		deleted_at TIMESTAMP
+	)`
+
+	_, err = conn.Exec(t.Context(), sql)
+	require.NoError(t, err)
+}
+
+func createSearchItemsView(t *testing.T, connString string) {
+	t.Helper()
+
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		err = conn.Close(t.Context())
+		require.NoError(t, err)
+	}()
+
+	_, err = conn.Exec(t.Context(), "CREATE EXTENSION IF NOT EXISTS pg_trgm")
+	require.NoError(t, err)
+
+	_, err = conn.Exec(t.Context(), "SET pg_trgm.similarity_threshold = 0.1")
+	require.NoError(t, err)
+
+	sql := `CREATE MATERIALIZED VIEW search_items AS
+		SELECT
+			o.id,
+			o.name,
+			'organization' AS item_type,
+			NULL::VARCHAR(36) AS organization_id,
+			o.created_at,
+			o.deleted_at
+		FROM organizations o
+		UNION ALL
+		SELECT
+			r.id,
+			r.name,
+			'repository' AS item_type,
+			r.organization_id,
+			r.created_at,
+			r.deleted_at
+		FROM repositories r`
+
+	_, err = conn.Exec(t.Context(), sql)
+	require.NoError(t, err)
+
+	_, err = conn.Exec(t.Context(), "CREATE INDEX idx_search_items_name_trgm ON search_items USING gin (name gin_trgm_ops)")
+	require.NoError(t, err)
+
+	_, err = conn.Exec(t.Context(), "CREATE INDEX idx_search_items_item_type ON search_items (item_type)")
+	require.NoError(t, err)
+
+	_, err = conn.Exec(t.Context(), "CREATE INDEX idx_search_items_organization_id ON search_items (organization_id)")
+	require.NoError(t, err)
+
+	_, err = conn.Exec(t.Context(), "CREATE INDEX idx_search_items_deleted_at ON search_items (deleted_at)")
+	require.NoError(t, err)
+
+	_, err = conn.Exec(t.Context(), "CREATE INDEX idx_search_items_created_at ON search_items (created_at DESC)")
+	require.NoError(t, err)
+
+	_, err = conn.Exec(t.Context(), "CREATE UNIQUE INDEX idx_search_items_id_type ON search_items (id, item_type)")
+	require.NoError(t, err)
+}
+
+func createTestRepository(t *testing.T, name, organizationId, createdBy string, visibility proto.Visibility) *struct {
+	Id             string
+	Name           string
+	Visibility     proto.Visibility
+	OrganizationId string
+	CreatedBy      string
+	CreatedAt      time.Time
+} {
+	t.Helper()
+	now := time.Now().UTC()
+	return &struct {
+		Id             string
+		Name           string
+		Visibility     proto.Visibility
+		OrganizationId string
+		CreatedBy      string
+		CreatedAt      time.Time
+	}{
+		Id:             uuid.NewString(),
+		Name:           name,
+		Visibility:     visibility,
+		OrganizationId: organizationId,
+		CreatedBy:      createdBy,
+		CreatedAt:      now,
+	}
+}
+
+func insertTestRepository(t *testing.T, connString string, repo *struct {
+	Id             string
+	Name           string
+	Visibility     proto.Visibility
+	OrganizationId string
+	CreatedBy      string
+	CreatedAt      time.Time
+}) {
+	t.Helper()
+
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		_ = conn.Close(t.Context())
+	}()
+
+	_, err = conn.Exec(t.Context(),
+		"INSERT INTO repositories (id, name, visibility, organization_id, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
+		repo.Id, repo.Name, repo.Visibility, repo.OrganizationId, repo.CreatedBy, repo.CreatedAt)
+	require.NoError(t, err)
+}
+
+func setupTestDatabase(t *testing.T, connString string) {
+	t.Helper()
+
+	createUsersTable(t, connString)
+	createOrganizationsTable(t, connString)
+	createRepositoriesTable(t, connString)
+	createOrganizationMembersTable(t, connString)
+
+	createSearchItemsView(t, connString)
+}
+
+func refreshSearchItemsView(t *testing.T, connString string) {
+	t.Helper()
+
+	conn, err := pgx.Connect(t.Context(), connString)
+	require.NoError(t, err)
+	defer func() {
+		_ = conn.Close(t.Context())
+	}()
+
+	_, err = conn.Exec(t.Context(), "REFRESH MATERIALIZED VIEW CONCURRENTLY search_items")
+	require.NoError(t, err)
+}
+
+func TestPgRepository_SearchItems(t *testing.T) {
+	t.Run("success with mixed organization and repository results", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		setupTestDatabase(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "test-org", proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "testuser", "test@example.com")
+		insertTestUser(t, connString, user)
+
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleOwner)
+		insertTestMember(t, connString, member)
+
+		repository := createTestRepository(t, "test-repo", org.Id, user.Id, proto.VisibilityPrivate)
+		insertTestRepository(t, connString, repository)
+
+		refreshSearchItemsView(t, connString)
+
+		items, totalCount, err := repo.SearchItems(t.Context(), user.Id, "test", 1, 10)
+		require.NoError(t, err)
+		require.NotNil(t, items)
+		require.Equal(t, 2, totalCount)
+		require.Len(t, *items, 2)
+
+		foundOrg := false
+		foundRepo := false
+		for _, item := range *items {
+			if item.ItemType == organization.SearchItemTypeOrganization {
+				foundOrg = true
+				assert.Equal(t, org.Id, item.Id)
+				assert.Equal(t, org.Name, item.Name)
+			}
+			if item.ItemType == organization.SearchItemTypeRepository {
+				foundRepo = true
+				assert.Equal(t, repository.Id, item.Id)
+				assert.Equal(t, repository.Name, item.Name)
+				assert.NotNil(t, item.OrganizationId)
+				assert.Equal(t, org.Id, *item.OrganizationId)
+			}
+		}
+		assert.True(t, foundOrg)
+		assert.True(t, foundRepo)
+	})
+
+	t.Run("success with only organization results", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		setupTestDatabase(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "my-organization", proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "testuser", "test@example.com")
+		insertTestUser(t, connString, user)
+
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleOwner)
+		insertTestMember(t, connString, member)
+
+		refreshSearchItemsView(t, connString)
+
+		items, totalCount, err := repo.SearchItems(t.Context(), user.Id, "organization", 1, 10)
+		require.NoError(t, err)
+		require.NotNil(t, items)
+		require.Equal(t, 1, totalCount)
+		require.Len(t, *items, 1)
+		assert.Equal(t, organization.SearchItemTypeOrganization, (*items)[0].ItemType)
+	})
+
+	t.Run("success with only repository results", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		setupTestDatabase(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "org", proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "testuser", "test@example.com")
+		insertTestUser(t, connString, user)
+
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleOwner)
+		insertTestMember(t, connString, member)
+
+		repository := createTestRepository(t, "my-repository", org.Id, user.Id, proto.VisibilityPrivate)
+		insertTestRepository(t, connString, repository)
+
+		refreshSearchItemsView(t, connString)
+
+		items, totalCount, err := repo.SearchItems(t.Context(), user.Id, "repository", 1, 10)
+		require.NoError(t, err)
+		require.NotNil(t, items)
+		require.Equal(t, 1, totalCount)
+		require.Len(t, *items, 1)
+		assert.Equal(t, organization.SearchItemTypeRepository, (*items)[0].ItemType)
+	})
+
+	t.Run("success with empty results", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		setupTestDatabase(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		userId := uuid.NewString()
+
+		items, totalCount, err := repo.SearchItems(t.Context(), userId, "nonexistent", 1, 10)
+		require.NoError(t, err)
+		require.NotNil(t, items)
+		require.Equal(t, 0, totalCount)
+		require.Empty(t, *items)
+	})
+
+	t.Run("success with pagination", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		setupTestDatabase(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		user := createTestUser(t, "testuser", "test@example.com")
+		insertTestUser(t, connString, user)
+
+		for i := 0; i < 15; i++ {
+			org := createTestOrganization(t, fmt.Sprintf("test-org-%d", i), proto.VisibilityPrivate)
+			err = repo.CreateOrganization(t.Context(), org)
+			require.NoError(t, err)
+
+			member := createTestMember(t, org.Id, user.Id, organization.MemberRoleOwner)
+			insertTestMember(t, connString, member)
+		}
+
+		refreshSearchItemsView(t, connString)
+
+		items, totalCount, err := repo.SearchItems(t.Context(), user.Id, "test", 2, 5)
+		require.NoError(t, err)
+		require.NotNil(t, items)
+		require.Equal(t, 15, totalCount)
+		require.Len(t, *items, 5)
+	})
+
+	t.Run("success with fuzzy matching", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		setupTestDatabase(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "example-organization", proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "testuser", "test@example.com")
+		insertTestUser(t, connString, user)
+
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleOwner)
+		insertTestMember(t, connString, member)
+
+		refreshSearchItemsView(t, connString)
+
+		items, totalCount, err := repo.SearchItems(t.Context(), user.Id, "exampl", 1, 10)
+		require.NoError(t, err)
+		require.NotNil(t, items)
+		require.GreaterOrEqual(t, totalCount, 1)
+		require.GreaterOrEqual(t, len(*items), 1)
+	})
+
+	t.Run("excludes deleted items", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		setupTestDatabase(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		activeOrg := createTestOrganization(t, "active-test-org", proto.VisibilityPrivate)
+		deletedOrg := createTestOrganization(t, "deleted-test-org", proto.VisibilityPrivate)
+
+		err = repo.CreateOrganization(t.Context(), activeOrg)
+		require.NoError(t, err)
+		err = repo.CreateOrganization(t.Context(), deletedOrg)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "testuser", "test@example.com")
+		insertTestUser(t, connString, user)
+
+		member1 := createTestMember(t, activeOrg.Id, user.Id, organization.MemberRoleOwner)
+		insertTestMember(t, connString, member1)
+
+		member2 := createTestMember(t, deletedOrg.Id, user.Id, organization.MemberRoleOwner)
+		insertTestMember(t, connString, member2)
+
+		err = repo.DeleteOrganization(t.Context(), deletedOrg.Id)
+		require.NoError(t, err)
+
+		refreshSearchItemsView(t, connString)
+
+		items, totalCount, err := repo.SearchItems(t.Context(), user.Id, "test", 1, 10)
+		require.NoError(t, err)
+		require.NotNil(t, items)
+		require.Equal(t, 1, totalCount)
+		require.Len(t, *items, 1)
+		assert.Equal(t, activeOrg.Id, (*items)[0].Id)
+	})
+
+	t.Run("only returns items from user's organizations", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		setupTestDatabase(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		user1 := createTestUser(t, "user1", "user1@example.com")
+		user2 := createTestUser(t, "user2", "user2@example.com")
+		insertTestUser(t, connString, user1)
+		insertTestUser(t, connString, user2)
+
+		org1 := createTestOrganization(t, "test-org-1", proto.VisibilityPrivate)
+		org2 := createTestOrganization(t, "test-org-2", proto.VisibilityPrivate)
+
+		err = repo.CreateOrganization(t.Context(), org1)
+		require.NoError(t, err)
+		err = repo.CreateOrganization(t.Context(), org2)
+		require.NoError(t, err)
+
+		member1 := createTestMember(t, org1.Id, user1.Id, organization.MemberRoleOwner)
+		insertTestMember(t, connString, member1)
+
+		member2 := createTestMember(t, org2.Id, user2.Id, organization.MemberRoleOwner)
+		insertTestMember(t, connString, member2)
+
+		refreshSearchItemsView(t, connString)
+
+		items, totalCount, err := repo.SearchItems(t.Context(), user1.Id, "test", 1, 10)
+		require.NoError(t, err)
+		require.NotNil(t, items)
+		require.Equal(t, 1, totalCount)
+		require.Len(t, *items, 1)
+		assert.Equal(t, org1.Id, (*items)[0].Id)
+	})
+
+	t.Run("returns results sorted by similarity", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		setupTestDatabase(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		user := createTestUser(t, "testuser", "test@example.com")
+		insertTestUser(t, connString, user)
+
+		exactMatch := createTestOrganization(t, "test", proto.VisibilityPrivate)
+		partialMatch := createTestOrganization(t, "testing-organization", proto.VisibilityPrivate)
+
+		err = repo.CreateOrganization(t.Context(), exactMatch)
+		require.NoError(t, err)
+		time.Sleep(10 * time.Millisecond)
+		err = repo.CreateOrganization(t.Context(), partialMatch)
+		require.NoError(t, err)
+
+		member1 := createTestMember(t, exactMatch.Id, user.Id, organization.MemberRoleOwner)
+		insertTestMember(t, connString, member1)
+
+		member2 := createTestMember(t, partialMatch.Id, user.Id, organization.MemberRoleOwner)
+		insertTestMember(t, connString, member2)
+
+		refreshSearchItemsView(t, connString)
+
+		items, totalCount, err := repo.SearchItems(t.Context(), user.Id, "test", 1, 10)
+		require.NoError(t, err)
+		require.NotNil(t, items)
+		require.Equal(t, 2, totalCount)
+		require.Len(t, *items, 2)
+		assert.Equal(t, exactMatch.Id, (*items)[0].Id)
+	})
+
+	t.Run("handles repository items with organization_id", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		setupTestDatabase(t, connString)
+
+		repo, pool := setupTestRepository(t, connString)
+		defer pool.Close()
+
+		org := createTestOrganization(t, "org", proto.VisibilityPrivate)
+		err = repo.CreateOrganization(t.Context(), org)
+		require.NoError(t, err)
+
+		user := createTestUser(t, "testuser", "test@example.com")
+		insertTestUser(t, connString, user)
+
+		member := createTestMember(t, org.Id, user.Id, organization.MemberRoleOwner)
+		insertTestMember(t, connString, member)
+
+		repository := createTestRepository(t, "test-repo", org.Id, user.Id, proto.VisibilityPrivate)
+		insertTestRepository(t, connString, repository)
+
+		refreshSearchItemsView(t, connString)
+
+		items, totalCount, err := repo.SearchItems(t.Context(), user.Id, "test", 1, 10)
+		require.NoError(t, err)
+		require.NotNil(t, items)
+		require.Equal(t, 1, totalCount)
+		require.Len(t, *items, 1)
+
+		item := (*items)[0]
+		assert.Equal(t, organization.SearchItemTypeRepository, item.ItemType)
+		assert.NotNil(t, item.OrganizationId)
+		assert.Equal(t, org.Id, *item.OrganizationId)
 	})
 }

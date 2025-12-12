@@ -42,7 +42,7 @@ func TestMigrations(t *testing.T) {
 		version, dirty, err := m.Version()
 		assert.NoError(t, err)
 		assert.False(t, dirty)
-		assert.Equal(t, uint(13), version, "Expected migration version to be 13")
+		assert.Equal(t, uint(15), version, "Expected migration version to be 15")
 	})
 
 	t.Run("idempotent - running migrations twice should not fail", func(t *testing.T) {
@@ -883,6 +883,473 @@ func TestMigrations(t *testing.T) {
 			`SELECT COUNT(*) FROM password_reset_tokens WHERE user_id = $1`, userId).Scan(&count)
 		require.NoError(t, err)
 		assert.Equal(t, 0, count, "Password reset token should be cascade deleted when user is deleted")
+	})
+
+	t.Run("verify pg_trgm extension is enabled", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+
+		var exists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT 1
+				FROM pg_extension
+				WHERE extname = 'pg_trgm'
+			)`).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists, "pg_trgm extension should be enabled")
+	})
+
+	t.Run("verify search_items materialized view is created", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+
+		var exists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT FROM pg_matviews
+				WHERE schemaname = 'public'
+				AND matviewname = 'search_items'
+			)`).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists, "Materialized view search_items should exist")
+	})
+
+	t.Run("verify search_items view has correct columns", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+
+		expectedColumns := []string{
+			"id",
+			"name",
+			"item_type",
+			"organization_id",
+			"created_at",
+			"deleted_at",
+		}
+
+		for _, columnName := range expectedColumns {
+			var exists bool
+			err = conn.QueryRow(context.Background(),
+				`SELECT EXISTS (
+					SELECT 1
+					FROM pg_attribute a
+					JOIN pg_class c ON a.attrelid = c.oid
+					JOIN pg_namespace n ON c.relnamespace = n.oid
+					WHERE n.nspname = 'public'
+					AND c.relname = 'search_items'
+					AND a.attname = $1
+					AND a.attnum > 0
+					AND NOT a.attisdropped
+				)`, columnName).Scan(&exists)
+			require.NoError(t, err)
+			assert.True(t, exists, "Column %s should exist in search_items view", columnName)
+		}
+	})
+
+	t.Run("verify search_items has GIN trigram index", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+
+		var exists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT 1
+				FROM pg_indexes
+				WHERE tablename = 'search_items'
+				AND indexname = 'idx_search_items_name_trgm'
+			)`).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists, "GIN trigram index on name should exist")
+
+		var indexDef string
+		err = conn.QueryRow(context.Background(),
+			`SELECT indexdef
+			FROM pg_indexes
+			WHERE tablename = 'search_items'
+			AND indexname = 'idx_search_items_name_trgm'`).Scan(&indexDef)
+		require.NoError(t, err)
+		assert.Contains(t, indexDef, "gin", "Index should use GIN")
+		assert.Contains(t, indexDef, "gin_trgm_ops", "Index should use gin_trgm_ops operator class")
+	})
+
+	t.Run("verify search_items has all required indexes", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+
+		expectedIndexes := []string{
+			"idx_search_items_name_trgm",
+			"idx_search_items_item_type",
+			"idx_search_items_organization_id",
+			"idx_search_items_deleted_at",
+			"idx_search_items_created_at",
+			"idx_search_items_id_type",
+		}
+
+		for _, indexName := range expectedIndexes {
+			var exists bool
+			err = conn.QueryRow(context.Background(),
+				`SELECT EXISTS (
+					SELECT 1
+					FROM pg_indexes
+					WHERE tablename = 'search_items'
+					AND indexname = $1
+				)`, indexName).Scan(&exists)
+			require.NoError(t, err)
+			assert.True(t, exists, "Index %s should exist", indexName)
+		}
+	})
+
+	t.Run("verify search_items unique index on id and item_type", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+
+		var indexDef string
+		err = conn.QueryRow(context.Background(),
+			`SELECT indexdef
+			FROM pg_indexes
+			WHERE tablename = 'search_items'
+			AND indexname = 'idx_search_items_id_type'`).Scan(&indexDef)
+		require.NoError(t, err)
+		assert.Contains(t, indexDef, "UNIQUE", "Index should be UNIQUE")
+		assert.Contains(t, indexDef, "id", "Index should include id column")
+		assert.Contains(t, indexDef, "item_type", "Index should include item_type column")
+	})
+
+	t.Run("verify search_items view returns data from organizations", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+
+		_, err = conn.Exec(context.Background(),
+			`INSERT INTO users (id, username, email, password, created_at)
+			VALUES ('user-id', 'testuser', 'test@example.com', 'password', NOW())`)
+		require.NoError(t, err)
+
+		_, err = conn.Exec(context.Background(),
+			`INSERT INTO organizations (id, name, visibility, created_by, created_at)
+			VALUES ('test-org-id', 'test-org', 'private', 'user-id', NOW())`)
+		require.NoError(t, err)
+
+		_, err = conn.Exec(context.Background(), "REFRESH MATERIALIZED VIEW search_items")
+		require.NoError(t, err)
+
+		var id, name, itemType string
+		err = conn.QueryRow(context.Background(),
+			`SELECT id, name, item_type
+			FROM search_items
+			WHERE id = 'test-org-id'`).Scan(&id, &name, &itemType)
+		require.NoError(t, err)
+		assert.Equal(t, "test-org-id", id)
+		assert.Equal(t, "test-org", name)
+		assert.Equal(t, "organization", itemType)
+	})
+
+	t.Run("verify search_items view returns data from repositories", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+
+		_, err = conn.Exec(context.Background(),
+			`INSERT INTO users (id, username, email, password, created_at)
+			VALUES ('user-id', 'testuser', 'test@example.com', 'password', NOW())`)
+		require.NoError(t, err)
+
+		_, err = conn.Exec(context.Background(),
+			`INSERT INTO organizations (id, name, visibility, created_by, created_at)
+			VALUES ('test-org-id', 'test-org', 'private', 'user-id', NOW())`)
+		require.NoError(t, err)
+
+		_, err = conn.Exec(context.Background(),
+			`INSERT INTO repositories (id, name, visibility, organization_id, created_by, path, created_at)
+			VALUES ('test-repo-id', 'test-repo', 'private', 'test-org-id', 'user-id', '/repos/test-repo', NOW())`)
+		require.NoError(t, err)
+
+		_, err = conn.Exec(context.Background(), "REFRESH MATERIALIZED VIEW search_items")
+		require.NoError(t, err)
+
+		var id, name, itemType, orgId string
+		err = conn.QueryRow(context.Background(),
+			`SELECT id, name, item_type, organization_id
+			FROM search_items
+			WHERE id = 'test-repo-id'`).Scan(&id, &name, &itemType, &orgId)
+		require.NoError(t, err)
+		assert.Equal(t, "test-repo-id", id)
+		assert.Equal(t, "test-repo", name)
+		assert.Equal(t, "repository", itemType)
+		assert.Equal(t, "test-org-id", orgId)
+	})
+
+	t.Run("verify pg_trgm similarity search works", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+
+		_, err = conn.Exec(context.Background(),
+			`INSERT INTO users (id, username, email, password, created_at)
+			VALUES ('user-id', 'testuser', 'test@example.com', 'password', NOW())`)
+		require.NoError(t, err)
+
+		_, err = conn.Exec(context.Background(),
+			`INSERT INTO organizations (id, name, visibility, created_by, created_at)
+			VALUES ('org-1', 'testing-org', 'private', 'user-id', NOW()),
+			       ('org-2', 'test', 'private', 'user-id', NOW()),
+			       ('org-3', 'production', 'private', 'user-id', NOW())`)
+		require.NoError(t, err)
+
+		_, err = conn.Exec(context.Background(), "REFRESH MATERIALIZED VIEW search_items")
+		require.NoError(t, err)
+
+		var count int
+		err = conn.QueryRow(context.Background(),
+			`SELECT COUNT(*)
+			FROM search_items
+			WHERE name % 'test'`).Scan(&count)
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, count, 2, "Should find at least 2 items matching 'test'")
+
+		var topResult string
+		err = conn.QueryRow(context.Background(),
+			`SELECT name
+			FROM search_items
+			WHERE name % 'test'
+			ORDER BY similarity(name, 'test') DESC
+			LIMIT 1`).Scan(&topResult)
+		require.NoError(t, err)
+		assert.Equal(t, "test", topResult, "Exact match should be ranked highest")
+	})
+
+	t.Run("verify search migrations can be rolled back", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+
+		var exists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT FROM pg_matviews
+				WHERE schemaname = 'public'
+				AND matviewname = 'search_items'
+			)`).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists, "search_items view should exist before rollback")
+
+		err = m.Steps(-2)
+		require.NoError(t, err)
+
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT FROM pg_matviews
+				WHERE schemaname = 'public'
+				AND matviewname = 'search_items'
+			)`).Scan(&exists)
+		require.NoError(t, err)
+		assert.False(t, exists, "search_items view should not exist after rollback")
+
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT 1
+				FROM pg_extension
+				WHERE extname = 'pg_trgm'
+			)`).Scan(&exists)
+		require.NoError(t, err)
+		assert.False(t, exists, "pg_trgm extension should not exist after rollback")
 	})
 }
 

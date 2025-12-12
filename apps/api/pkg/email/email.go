@@ -115,6 +115,7 @@ func (s *smtpService) sendEmail(to, subject, body string, isHTML bool) error {
 func (s *smtpService) sendWithTLS(addr string, auth smtp.Auth, from, to string, msg []byte) error {
 	tlsConfig := &tls.Config{
 		ServerName: s.config.Host,
+		MinVersion: tls.VersionTLS12,
 	}
 
 	conn, err := tls.Dial("tcp", addr, tlsConfig)
@@ -173,6 +174,7 @@ func (s *smtpService) sendWithSTARTTLS(addr string, auth smtp.Auth, from, to str
 	if ok, _ := conn.Extension("STARTTLS"); ok {
 		tlsConfig := &tls.Config{
 			ServerName: s.config.Host,
+			MinVersion: tls.VersionTLS12,
 		}
 		if err = conn.StartTLS(tlsConfig); err != nil {
 			return fmt.Errorf("failed to start TLS: %w", err)

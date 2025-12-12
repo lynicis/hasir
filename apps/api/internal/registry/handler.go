@@ -220,6 +220,7 @@ func (h *GitSshHandler) HandleSession(session ssh.Session, userId string) error 
 
 	zap.L().Info("Executing Git command", zap.String("userId", userId), zap.String("command", gitCmd))
 
+	// #nosec G204 -- gitCmd is validated against whitelist (git-upload-pack or git-receive-pack)
 	execCmd := exec.Command(gitCmd, fullRepoPath)
 	execCmd.Dir = fullRepoPath
 	execCmd.Stdin = session
@@ -332,6 +333,7 @@ func (h *GitHttpHandler) handleInfoRefs(w http.ResponseWriter, r *http.Request, 
 	_, _ = fmt.Fprintf(w, "%04x%s", len(pktLine)+4, pktLine)
 	_, _ = fmt.Fprint(w, "0000")
 
+	// #nosec G204 -- serviceName is validated against whitelist (git-upload-pack or git-receive-pack)
 	cmd := exec.Command(serviceName, "--stateless-rpc", "--advertise-refs", repoPath)
 	cmd.Stdout = w
 	cmd.Stderr = w

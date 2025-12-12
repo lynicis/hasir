@@ -91,3 +91,20 @@ type EmailJobDTO struct {
 	CompletedAt      *time.Time     `db:"completed_at"`
 	ErrorMessage     *string        `db:"error_message"`
 }
+
+type SearchItemType string
+
+const (
+	SearchItemTypeOrganization SearchItemType = "organization"
+	SearchItemTypeRepository   SearchItemType = "repository"
+)
+
+type SearchItemDTO struct {
+	Id             string         `db:"id"`
+	Name           string         `db:"name"`
+	ItemType       SearchItemType `db:"item_type"`
+	OrganizationId *string        `db:"organization_id"`
+	Score          float64        `db:"score"`
+	CreatedAt      time.Time      `db:"created_at"`
+	DeletedAt      *time.Time     `db:"deleted_at"`
+}
