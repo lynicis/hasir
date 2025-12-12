@@ -36,6 +36,7 @@ interface MemberItemProps {
   canEditPermissions: boolean;
   canRemove: boolean;
   getInitials: (name: string) => string;
+  ownerCount: number;
 }
 
 export function MemberItem({
@@ -45,8 +46,11 @@ export function MemberItem({
   canEditPermissions,
   canRemove,
   getInitials,
+  ownerCount,
 }: MemberItemProps) {
   const isOwner = member.permission === "owner";
+  const isLastOwner = isOwner && ownerCount === 1;
+  const canEditRole = canEditPermissions && !isLastOwner;
 
   return (
     <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card px-4 py-3 hover:bg-accent/50 transition-colors">
@@ -61,7 +65,7 @@ export function MemberItem({
         </div>
       </div>
       <div className="flex items-center gap-3">
-        {isOwner || !canEditPermissions ? (
+        {!canEditRole ? (
           <Button variant="outline" size="sm" disabled>
             {permissionLabels[member.permission]}
           </Button>

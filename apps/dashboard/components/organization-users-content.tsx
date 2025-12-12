@@ -1,7 +1,9 @@
 "use client";
 
 import { getMembers } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
+import { OrganizationService } from "@buf/hasir_hasir.bufbuild_es/organization/v1/organization_pb";
 import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
@@ -17,6 +19,7 @@ import { MembersList } from "@/components/members-list";
 import { useSession } from "@/lib/session-provider";
 import { customRetry } from "@/lib/query-retry";
 import { isNotFoundError } from "@/lib/utils";
+import { useClient } from "@/lib/use-client";
 
 const memberRoleMapper = new Map<Role, Permission>([
   [Role.OWNER, "owner"],
@@ -24,15 +27,26 @@ const memberRoleMapper = new Map<Role, Permission>([
   [Role.READER, "reader"],
 ]);
 
+const permissionRoleMapper = new Map<Permission, Role>([
+  ["owner", Role.OWNER],
+  ["author", Role.AUTHOR],
+  ["reader", Role.READER],
+]);
+
 export default function OrganizationUsersContent() {
   const params = useParams();
   const organizationId = params.id as string;
   const { session } = useSession();
+  const organizationApiClient = useClient(OrganizationService);
 
-  const { data: membersData, error: membersError } = useQuery(
+  const {
+    data: membersData,
+    error: membersError,
+    refetch: refetchMembers,
+  } = useQuery(
     getMembers,
     { id: organizationId },
-    { retry: customRetry }
+    { retry: customRetry },
   );
 
   const [members, setMembers] = useState<OrganizationMember[]>([]);
@@ -69,10 +83,14 @@ export default function OrganizationUsersContent() {
     return membersData.members.map((member) => ({
       id: member.id,
       email: member.email,
-      name: member.email.split("@")[0] || member.email,
+      name: member.username,
       permission: memberRoleMapper.get(member.role) as Permission,
     }));
   }, [membersData]);
+
+  const ownerCount = useMemo(() => {
+    return members.filter((member) => member.permission === "owner").length;
+  }, [members]);
 
   useEffect(() => {
     setMembers(fetchedMembers);
@@ -84,12 +102,22 @@ export default function OrganizationUsersContent() {
     }
   }, [membersError]);
 
-  function handlePermissionChange(memberId: string, newPermission: Permission) {
+  async function handlePermissionChange(
+    memberId: string,
+    newPermission: Permission
+  ) {
     if (!canEditPermissions) {
       toast.error("You don't have permission to change member roles.");
       return;
     }
 
+    const newRole = permissionRoleMapper.get(newPermission);
+    if (!newRole) {
+      toast.error("Invalid permission selected.");
+      return;
+    }
+
+    const previousMembers = members;
     setMembers((prev) =>
       prev.map((member) =>
         member.id === memberId
@@ -97,7 +125,37 @@ export default function OrganizationUsersContent() {
           : member
       )
     );
-    toast.success("Permission updated successfully");
+
+    try {
+      await organizationApiClient.updateMemberRole({
+        organizationId: organizationId,
+        memberId: memberId,
+        role: newRole,
+      });
+
+      toast.success("Permission updated successfully");
+      await refetchMembers();
+    } catch (error) {
+      setMembers(previousMembers);
+
+      if (error instanceof ConnectError) {
+        switch (error.code) {
+          case Code.PermissionDenied:
+            toast.error("You don't have permission to change member roles.");
+            break;
+          case Code.NotFound:
+            toast.error("Member not found.");
+            break;
+          case Code.InvalidArgument:
+            toast.error("Invalid role selected.");
+            break;
+          default:
+            toast.error("Failed to update permission. Please try again.");
+        }
+      } else {
+        toast.error("Failed to update permission. Please try again.");
+      }
+    }
   }
 
   function handleDeleteMember(member: OrganizationMember) {
@@ -109,16 +167,43 @@ export default function OrganizationUsersContent() {
     setDeleteMemberDialog({ open: true, member });
   }
 
-  function confirmDeleteMember() {
+  async function confirmDeleteMember() {
     if (!deleteMemberDialog.member) return;
 
-    setMembers((prev) =>
-      prev.filter((m) => m.id !== deleteMemberDialog.member!.id)
-    );
-    toast.success(
-      `${deleteMemberDialog.member.name} has been removed from the organization`
-    );
+    const memberToDelete = deleteMemberDialog.member;
+    const previousMembers = members;
+
+    setMembers((prev) => prev.filter((member) => member.id !== memberToDelete.id));
     setDeleteMemberDialog({ open: false, member: null });
+
+    try {
+      await organizationApiClient.deleteMember({
+        organizationId: organizationId,
+        memberId: memberToDelete.id,
+      });
+
+      toast.success(
+        `${memberToDelete.name} has been removed from the organization`
+      );
+      await refetchMembers();
+    } catch (error) {
+      setMembers(previousMembers);
+
+      if (error instanceof ConnectError) {
+        switch (error.code) {
+          case Code.PermissionDenied:
+            toast.error("You don't have permission to remove members.");
+            break;
+          case Code.NotFound:
+            toast.error("Member not found.");
+            break;
+          default:
+            toast.error("Failed to remove member. Please try again.");
+        }
+      } else {
+        toast.error("Failed to remove member. Please try again.");
+      }
+    }
   }
 
   function handleInviteMember() {
@@ -156,6 +241,7 @@ export default function OrganizationUsersContent() {
         canEditPermissions={canEditPermissions}
         canRemoveMembers={canRemoveMembers}
         getInitials={getInitials}
+        ownerCount={ownerCount}
       />
       <DeleteMemberDialog
         open={deleteMemberDialog.open}

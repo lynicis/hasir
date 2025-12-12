@@ -1,3 +1,4 @@
+import { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -9,17 +10,30 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ repositoryId: "repo-123" }),
 }));
 
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+  },
+}));
+
 vi.mock("@/lib/use-client", () => ({
   useClient: () => ({
     updateSdkPreferences: vi.fn().mockResolvedValue({}),
   }),
 }));
 
-const mockRepository = {
+const mockRepository: Repository = {
+  $typeName: "registry.v1.Repository",
   id: "repo-123",
   name: "test-repo",
   sdkPreferences: [],
-} as const;
+  organizationId: "org-123",
+  visibility: 1,
+  createdAt: undefined,
+  updatedAt: undefined,
+} as Repository;
 
 const contextValue = {
   repository: mockRepository,
@@ -131,21 +145,17 @@ describe("RepositorySdkPreferencesContent", () => {
       </RepositoryContext.Provider>
     );
 
-    // Get all switches (one for Go, one for JavaScript, plus sub-options)
     const switches = screen.getAllByRole("switch");
 
-    // The first switch should be for the Go language toggle
+  
     const goSwitch = switches[0];
     await user.click(goSwitch);
 
-    // After enabling Go, the sub-option switches should be enabled
-    // We can verify the state by checking if switches are not disabled
     const protocolBuffersSwitch = screen.getByLabelText(/protocol buffers/i);
     expect(protocolBuffersSwitch).not.toBeDisabled();
   });
 
   it("throws error when used outside RepositoryLayout", () => {
-    // Suppress console.error for this test
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     expect(() => {
@@ -153,5 +163,32 @@ describe("RepositorySdkPreferencesContent", () => {
     }).toThrow("SdkPreferencesPage must be used within RepositoryLayout");
 
     consoleError.mockRestore();
+  });
+
+  it("disables all toggles when Reset to Defaults button is clicked", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <RepositoryContext.Provider value={contextValue}>
+        <RepositorySdkPreferencesContent />
+      </RepositoryContext.Provider>
+    );
+
+    const switches = screen.getAllByRole("switch");
+
+    const goSwitch = switches[0];
+    await user.click(goSwitch);
+
+    const protocolBuffersSwitch = screen.getByLabelText(/protocol buffers/i);
+    await user.click(protocolBuffersSwitch);
+
+    expect(goSwitch).toBeChecked();
+    expect(protocolBuffersSwitch).toBeChecked();
+
+    const resetButton = screen.getByRole("button", { name: /reset to defaults/i });
+    await user.click(resetButton);
+
+    expect(goSwitch).not.toBeChecked();
+    expect(protocolBuffersSwitch).not.toBeChecked();
   });
 });

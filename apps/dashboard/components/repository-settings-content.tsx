@@ -157,28 +157,6 @@ export default function RepositorySettingsContent() {
         isLoading={isLoading || isSubmitting}
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Access Control</CardTitle>
-          <CardDescription>
-            Manage who can access this repository
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-muted-foreground max-w-2xl space-y-4">
-            <p className="text-sm">
-              Access control settings will be configured here, including:
-            </p>
-            <ul className="ml-6 list-disc space-y-1 text-sm">
-              <li>Team access permissions</li>
-              <li>Individual user permissions</li>
-              <li>API token access</li>
-              <li>Webhook configurations</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-
       <Card className="border-destructive">
         <CardHeader>
           <div className="flex items-center gap-2">

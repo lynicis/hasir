@@ -10,6 +10,7 @@ const { toastSuccess, toastError } = vi.hoisted(() => ({
 }));
 
 const mockUseQuery = vi.fn();
+const mockRefetch = vi.fn();
 vi.mock("@connectrpc/connect-query", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
@@ -17,6 +18,13 @@ vi.mock("@connectrpc/connect-query", () => ({
 const mockUseSession = vi.fn();
 vi.mock("@/lib/session-provider", () => ({
   useSession: () => mockUseSession(),
+}));
+
+const mockUpdateMemberRole = vi.fn();
+const mockDeleteMember = vi.fn();
+const mockUseClient = vi.fn();
+vi.mock("@/lib/use-client", () => ({
+  useClient: () => mockUseClient(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -34,8 +42,19 @@ describe("UsersPage", () => {
   beforeEach(() => {
     mockUseQuery.mockReset();
     mockUseSession.mockReset();
+    mockUseClient.mockReset();
+    mockUpdateMemberRole.mockReset();
+    mockDeleteMember.mockReset();
+    mockRefetch.mockReset();
     toastSuccess.mockReset();
     toastError.mockReset();
+
+    mockUseClient.mockReturnValue({
+      updateMemberRole: mockUpdateMemberRole,
+      deleteMember: mockDeleteMember,
+    });
+
+    mockRefetch.mockResolvedValue(undefined);
   });
 
   it("allows owners to invite, change roles and remove members", async () => {
@@ -48,11 +67,22 @@ describe("UsersPage", () => {
     mockUseQuery.mockReturnValue({
       data: {
         members: [
-          { id: "1", email: "owner@example.com", role: 2 },
-          { id: "2", email: "author@example.com", role: 1 },
+          {
+            id: "1",
+            username: "owner",
+            email: "owner@example.com",
+            role: 3,
+          },
+          {
+            id: "2",
+            username: "author",
+            email: "author@example.com",
+            role: 2,
+          },
         ],
       },
       error: null,
+      refetch: mockRefetch,
     });
 
     render(<UsersPage />);
@@ -73,11 +103,57 @@ describe("UsersPage", () => {
     mockUseQuery.mockReturnValue({
       data: {
         members: [
-          { id: "1", email: "owner@example.com", role: 2 },
-          { id: "2", email: "author@example.com", role: 1 },
+          {
+            id: "1",
+            username: "owner",
+            email: "owner@example.com",
+            role: 3,
+          },
+          {
+            id: "2",
+            username: "author",
+            email: "author@example.com",
+            role: 2,
+          },
         ],
       },
       error: null,
+      refetch: mockRefetch,
+    });
+
+    render(<UsersPage />);
+
+    const inviteButton = await screen.findByRole("button", {
+      name: /invite member/i,
+    });
+
+    expect(inviteButton).toBeEnabled();
+  });
+
+  it("prevents readers from inviting, changing roles or removing members", async () => {
+    mockUseSession.mockReturnValue({
+      session: { user: { email: "reader@example.com" } },
+    });
+
+    mockUseQuery.mockReturnValue({
+      data: {
+        members: [
+          {
+            id: "1",
+            username: "owner",
+            email: "owner@example.com",
+            role: 3,
+          },
+          {
+            id: "2",
+            username: "reader",
+            email: "reader@example.com",
+            role: 1,
+          },
+        ],
+      },
+      error: null,
+      refetch: mockRefetch,
     });
 
     render(<UsersPage />);
@@ -89,27 +165,228 @@ describe("UsersPage", () => {
     expect(inviteButton).toBeDisabled();
   });
 
-  it("prevents readers from inviting, changing roles or removing members", async () => {
+  it("successfully updates member role when owner changes permission", async () => {
+    const user = userEvent.setup();
+
     mockUseSession.mockReturnValue({
-      session: { user: { email: "reader@example.com" } },
+      session: { user: { email: "owner@example.com" } },
     });
 
     mockUseQuery.mockReturnValue({
       data: {
         members: [
-          { id: "1", email: "owner@example.com", role: 2 },
-          { id: "2", email: "reader@example.com", role: 0 },
+          {
+            id: "1",
+            username: "owner",
+            email: "owner@example.com",
+            role: 3,
+          },
+          {
+            id: "2",
+            username: "member",
+            email: "member@example.com",
+            role: 1,
+          },
         ],
       },
       error: null,
+      refetch: mockRefetch,
     });
+
+    mockUpdateMemberRole.mockResolvedValue({});
 
     render(<UsersPage />);
 
-    const inviteButton = await screen.findByRole("button", {
-      name: /invite member/i,
+    // Find all "Reader" buttons (the second one is for the member we want to change)
+    const readerButtons = await screen.findAllByRole("button", {
+      name: /reader/i,
+    });
+    expect(readerButtons.length).toBeGreaterThan(0);
+
+    // Click on the member's role button to open the dropdown
+    await user.click(readerButtons[0]);
+
+    // Find and click the "Author" option in the dropdown menu
+    const authorOption = await screen.findByRole("menuitem", {
+      name: /author/i,
+    });
+    await user.click(authorOption);
+
+    expect(mockUpdateMemberRole).toHaveBeenCalledWith({
+      organizationId: "org-123",
+      memberId: "2",
+      role: 2,
     });
 
-    expect(inviteButton).toBeDisabled();
+    expect(toastSuccess).toHaveBeenCalledWith("Permission updated successfully");
+    expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it("shows error when updating member role fails", async () => {
+    const user = userEvent.setup();
+
+    mockUseSession.mockReturnValue({
+      session: { user: { email: "owner@example.com" } },
+    });
+
+    mockUseQuery.mockReturnValue({
+      data: {
+        members: [
+          {
+            id: "1",
+            username: "owner",
+            email: "owner@example.com",
+            role: 3,
+          },
+          {
+            id: "2",
+            username: "member",
+            email: "member@example.com",
+            role: 1,
+          },
+        ],
+      },
+      error: null,
+      refetch: mockRefetch,
+    });
+
+    const error = new Error("Network error");
+    mockUpdateMemberRole.mockRejectedValue(error);
+
+    render(<UsersPage />);
+
+    // Find and click the "Reader" button to open the dropdown
+    const readerButtons = await screen.findAllByRole("button", {
+      name: /reader/i,
+    });
+    await user.click(readerButtons[0]);
+
+    // Find and click the "Author" option in the dropdown menu
+    const authorOption = await screen.findByRole("menuitem", {
+      name: /author/i,
+    });
+    await user.click(authorOption);
+
+    expect(toastError).toHaveBeenCalledWith(
+      "Failed to update permission. Please try again."
+    );
+    expect(mockRefetch).not.toHaveBeenCalled();
+  });
+
+  it("successfully deletes a member when owner confirms deletion", async () => {
+    const user = userEvent.setup();
+
+    mockUseSession.mockReturnValue({
+      session: { user: { email: "owner@example.com" } },
+    });
+
+    mockUseQuery.mockReturnValue({
+      data: {
+        members: [
+          {
+            id: "1",
+            username: "owner",
+            email: "owner@example.com",
+            role: 3,
+          },
+          {
+            id: "2",
+            username: "member",
+            email: "member@example.com",
+            role: 1,
+          },
+        ],
+      },
+      error: null,
+      refetch: mockRefetch,
+    });
+
+    mockDeleteMember.mockResolvedValue({});
+
+    render(<UsersPage />);
+
+    // Find the menu button (three dots) for the member
+    const menuButtons = screen.getAllByRole("button", { name: "" });
+    // The last button should be the menu button for the second member
+    const memberMenuButton = menuButtons[menuButtons.length - 1];
+    await user.click(memberMenuButton);
+
+    // Find and click "Remove from organization" menu item
+    const removeMenuItem = await screen.findByRole("menuitem", {
+      name: /remove from organization/i,
+    });
+    await user.click(removeMenuItem);
+
+    // Confirm deletion in the dialog
+    const confirmButton = await screen.findByRole("button", {
+      name: /remove member/i,
+    });
+    await user.click(confirmButton);
+
+    expect(mockDeleteMember).toHaveBeenCalledWith({
+      organizationId: "org-123",
+      memberId: "2",
+    });
+
+    expect(toastSuccess).toHaveBeenCalledWith(
+      "member has been removed from the organization"
+    );
+    expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it("shows error when deleting member fails", async () => {
+    const user = userEvent.setup();
+
+    mockUseSession.mockReturnValue({
+      session: { user: { email: "owner@example.com" } },
+    });
+
+    mockUseQuery.mockReturnValue({
+      data: {
+        members: [
+          {
+            id: "1",
+            username: "owner",
+            email: "owner@example.com",
+            role: 3,
+          },
+          {
+            id: "2",
+            username: "member",
+            email: "member@example.com",
+            role: 1,
+          },
+        ],
+      },
+      error: null,
+      refetch: mockRefetch,
+    });
+
+    const error = new Error("Network error");
+    mockDeleteMember.mockRejectedValue(error);
+
+    render(<UsersPage />);
+
+    // Find the menu button (three dots) for the member
+    const menuButtons = screen.getAllByRole("button", { name: "" });
+    const memberMenuButton = menuButtons[menuButtons.length - 1];
+    await user.click(memberMenuButton);
+
+    // Find and click "Remove from organization" menu item
+    const removeMenuItem = await screen.findByRole("menuitem", {
+      name: /remove from organization/i,
+    });
+    await user.click(removeMenuItem);
+
+    // Confirm deletion in the dialog
+    const confirmButton = await screen.findByRole("button", {
+      name: /remove member/i,
+    });
+    await user.click(confirmButton);
+
+    expect(toastError).toHaveBeenCalledWith(
+      "Failed to remove member. Please try again."
+    );
+    expect(mockRefetch).not.toHaveBeenCalled();
   });
 });

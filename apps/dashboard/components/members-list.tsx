@@ -26,6 +26,7 @@ interface MembersListProps {
   canEditPermissions: boolean;
   canRemoveMembers: boolean;
   getInitials: (name: string) => string;
+  ownerCount: number;
 }
 
 export function MembersList({
@@ -37,6 +38,7 @@ export function MembersList({
   canEditPermissions,
   canRemoveMembers,
   getInitials,
+  ownerCount,
 }: MembersListProps) {
   return (
     <Card>
@@ -65,6 +67,7 @@ export function MembersList({
               canEditPermissions={canEditPermissions}
               canRemove={canRemoveMembers}
               getInitials={getInitials}
+              ownerCount={ownerCount}
             />
           ))}
         </div>

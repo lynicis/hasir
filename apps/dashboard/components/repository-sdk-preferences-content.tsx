@@ -237,13 +237,8 @@ export default function RepositorySdkPreferencesContent() {
   };
 
   const handleReset = () => {
-    if (repository?.sdkPreferences) {
-      const mappedConfig = mapSdkPreferencesToConfig(repository.sdkPreferences);
-      setConfig(mappedConfig);
-    } else {
-      setConfig(getInitialConfig());
-    }
-    toast.info("Preferences reset to saved values");
+    setConfig(getInitialConfig());
+    toast.info("All SDK preferences disabled");
   };
 
   if (isLoading) {

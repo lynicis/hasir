@@ -176,7 +176,7 @@ export function Header() {
                   setIsSearchOpen(false);
                   setSearchQuery("");
                 }
-                
+
                 if (e.key === "Escape") {
                   if (currentResults) {
                     setLastSearchResults(currentResults);

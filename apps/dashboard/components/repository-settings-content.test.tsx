@@ -67,26 +67,6 @@ describe("RepositorySettingsContent", () => {
     expect(screen.getByTestId("repository-settings-form")).toBeInTheDocument();
   });
 
-  it("renders the Access Control card", () => {
-    render(<RepositorySettingsContent />);
-
-    expect(screen.getByText("Access Control")).toBeInTheDocument();
-    expect(
-      screen.getByText(/manage who can access this repository/i)
-    ).toBeInTheDocument();
-  });
-
-  it("lists access control features", () => {
-    render(<RepositorySettingsContent />);
-
-    expect(screen.getByText(/team access permissions/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/individual user permissions/i)
-    ).toBeInTheDocument();
-    expect(screen.getByText(/api token access/i)).toBeInTheDocument();
-    expect(screen.getByText(/webhook configurations/i)).toBeInTheDocument();
-  });
-
   it("renders the Danger Zone card", () => {
     render(<RepositorySettingsContent />);
 
