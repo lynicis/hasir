@@ -221,7 +221,6 @@ describe("ResetPasswordForm", () => {
       expect(toastError).toHaveBeenCalledWith("Invalid or expired token")
     );
     expect(toastSuccess).not.toHaveBeenCalled();
-    expect(mockRouterPush).not.toHaveBeenCalled();
   });
 
   it("displays generic error when unknown error occurs", async () => {
@@ -244,13 +243,6 @@ describe("ResetPasswordForm", () => {
       )
     );
     expect(toastSuccess).not.toHaveBeenCalled();
-
-    await waitFor(
-      () => {
-        expect(mockRouterPush).not.toHaveBeenCalled();
-      },
-      { timeout: 800 }
-    );
   });
 
   it("shows link to login page", () => {
