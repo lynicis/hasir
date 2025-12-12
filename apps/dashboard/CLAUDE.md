@@ -36,6 +36,10 @@ The application uses Connect-RPC (gRPC-web) to communicate with backend services
 - Tokens stored in cookies (7-day expiration by default)
 - User state managed via Zustand store (`stores/user-store.ts`)
 - Authentication context provided through `UserStoreProvider`
+- **Proxy Middleware**: `proxy.ts` handles authentication checks and redirects
+  - Unauthenticated users accessing protected routes are redirected to `/login?redirect={original-path}`
+  - After successful login, users are redirected back to their original destination
+  - Supports invitation links: `/invite/[token]` flow redirects to login, then back to accept invitation
 
 ### Routing Structure
 - Public routes: `/login`, `/register`

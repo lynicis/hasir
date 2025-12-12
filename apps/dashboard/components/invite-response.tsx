@@ -64,6 +64,9 @@ export function InviteResponse({
             case Code.PermissionDenied:
               setStatus("invalid");
               break;
+            case Code.FailedPrecondition:
+              setStatus("invalid");
+              break;
             default:
               setStatus("error");
           }
