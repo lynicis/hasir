@@ -765,7 +765,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
-	t.Run("service error - owner cannot decrease own role", func(t *testing.T) {
+	t.Run("service error - last owner cannot decrease own role", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockService := NewMockService(ctrl)
 		mockRepository := NewMockRepository(ctrl)
@@ -776,7 +776,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 
 		mockService.EXPECT().
 			UpdateMemberRole(gomock.Any(), gomock.Any(), testUserID).
-			Return(connect.NewError(connect.CodePermissionDenied, errors.New("owners cannot decrease their own role")))
+			Return(connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot change role of the last owner")))
 
 		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptor(testUserID))
 		mux := http.NewServeMux()
@@ -800,7 +800,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		require.Equal(t, connect.CodeFailedPrecondition, connectErr.Code())
 	})
 
 	t.Run("service error - member not found", func(t *testing.T) {

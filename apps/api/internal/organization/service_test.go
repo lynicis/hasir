@@ -377,6 +377,7 @@ func TestInviteUser(t *testing.T) {
 		req := &organizationv1.InviteMemberRequest{
 			Id:    "org-123",
 			Email: "friend1@example.com",
+			Role:  shared.Role_ROLE_READER,
 		}
 		invitedBy := "user-123"
 
@@ -411,6 +412,9 @@ func TestInviteUser(t *testing.T) {
 				}
 				if invites[0].Email != "friend1@example.com" {
 					t.Errorf("expected email 'friend1@example.com', got %s", invites[0].Email)
+				}
+				if invites[0].Role != MemberRoleReader {
+					t.Errorf("expected role 'reader', got %s", invites[0].Role)
 				}
 				return nil
 			})
@@ -1270,7 +1274,7 @@ func TestUpdateMemberRole(t *testing.T) {
 		}
 	})
 
-	t.Run("permission denied - owner trying to decrease their own role", func(t *testing.T) {
+	t.Run("success - owner can decrease their own role when multiple owners exist", func(t *testing.T) {
 		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
 		orgID := "org-123"
 		ownerID := "owner-123"
@@ -1295,6 +1299,49 @@ func TestUpdateMemberRole(t *testing.T) {
 			Return(MemberRoleOwner, nil).
 			Times(2)
 
+		mockRepo.EXPECT().
+			GetOwnerCount(ctx, orgID).
+			Return(2, nil)
+
+		mockRepo.EXPECT().
+			UpdateMemberRole(ctx, orgID, ownerID, MemberRoleAuthor).
+			Return(nil)
+
+		err := svc.UpdateMemberRole(ctx, req, ownerID)
+		if err != nil {
+			t.Fatalf("expected no error when multiple owners exist, got %v", err)
+		}
+	})
+
+	t.Run("failed precondition - last owner cannot decrease their own role", func(t *testing.T) {
+		svc, mockRepo, _, _, _, _, ctx := newTestService(t)
+		orgID := "org-123"
+		ownerID := "owner-123"
+
+		existingOrg := &OrganizationDTO{
+			Id:   orgID,
+			Name: "test-org",
+		}
+
+		req := &organizationv1.UpdateMemberRoleRequest{
+			OrganizationId: orgID,
+			MemberId:       ownerID,
+			Role:           shared.Role_ROLE_AUTHOR,
+		}
+
+		mockRepo.EXPECT().
+			GetOrganizationById(ctx, orgID).
+			Return(existingOrg, nil)
+
+		mockRepo.EXPECT().
+			GetMemberRole(ctx, orgID, ownerID).
+			Return(MemberRoleOwner, nil).
+			Times(2)
+
+		mockRepo.EXPECT().
+			GetOwnerCount(ctx, orgID).
+			Return(1, nil)
+
 		err := svc.UpdateMemberRole(ctx, req, ownerID)
 		if err == nil {
 			t.Fatal("expected error, got nil")
@@ -1305,8 +1352,12 @@ func TestUpdateMemberRole(t *testing.T) {
 			t.Fatalf("expected connect.Error, got %T", err)
 		}
 
-		if connectErr.Code() != connect.CodePermissionDenied {
-			t.Errorf("expected CodePermissionDenied, got %v", connectErr.Code())
+		if connectErr.Code() != connect.CodeFailedPrecondition {
+			t.Errorf("expected CodeFailedPrecondition, got %v", connectErr.Code())
+		}
+
+		if connectErr.Message() != errCannotChangeLastOwner {
+			t.Errorf("expected error message '%s', got '%s'", errCannotChangeLastOwner, connectErr.Message())
 		}
 	})
 

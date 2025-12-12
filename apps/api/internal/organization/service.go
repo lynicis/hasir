@@ -28,7 +28,6 @@ const (
 	errOnlyOwnersCanRemove   = "only organization owners can delete members"
 	errCannotModifyLastOwner = "cannot delete the last owner"
 	errCannotChangeLastOwner = "cannot change role of the last owner"
-	errOwnersCannotDemote    = "owners cannot decrease their own role"
 )
 
 type Service interface {
@@ -243,8 +242,9 @@ func (s *service) InviteUser(
 		return err
 	}
 
+	role := SharedRoleToMemberRoleMap[req.GetRole()]
 	invites := []inviteInfo{
-		{email: emailAddress, role: MemberRoleAuthor},
+		{email: emailAddress, role: role},
 	}
 
 	if err := s.sendInvites(ctx, org.Id, org.Name, invitedBy, invites); err != nil {
@@ -482,16 +482,9 @@ func (s *service) UpdateMemberRole(
 		return err
 	}
 
-	if updatedBy == memberUserId && currentMemberRole == MemberRoleOwner && newRole != MemberRoleOwner {
-		return connect.NewError(connect.CodePermissionDenied, errors.New(errOwnersCannotDemote))
-	}
-
 	if currentMemberRole == MemberRoleOwner && newRole != MemberRoleOwner {
 		if err := s.ensureNotLastOwner(ctx, organizationId, currentMemberRole); err != nil {
-			if connect.CodeOf(err) == connect.CodeFailedPrecondition {
-				return connect.NewError(connect.CodeFailedPrecondition, errors.New(errCannotChangeLastOwner))
-			}
-			return err
+			return connect.NewError(connect.CodeFailedPrecondition, errors.New(errCannotChangeLastOwner))
 		}
 	}
 
