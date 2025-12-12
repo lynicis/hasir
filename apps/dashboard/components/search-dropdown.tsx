@@ -4,6 +4,7 @@ import type { Organization } from "@buf/hasir_hasir.bufbuild_es/organization/v1/
 import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 
 import { Building2, Package, Search as SearchIcon } from "lucide-react";
+import { forwardRef } from "react";
 import Link from "next/link";
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,22 +18,21 @@ interface SearchDropdownProps {
   onResultClick: () => void;
 }
 
-export function SearchDropdown({
-  query,
-  organizations,
-  repositories,
-  isLoading,
-  error,
-  onResultClick,
-}: SearchDropdownProps) {
-  if (!query) {
-    return null;
-  }
+export const SearchDropdown = forwardRef<HTMLDivElement, SearchDropdownProps>(
+  function SearchDropdown(
+    { query, organizations, repositories, isLoading, error, onResultClick },
+    ref
+  ) {
+    const hasResults = organizations.length > 0 || repositories.length > 0;
+    if (!query && !hasResults) {
+      return null;
+    }
 
-  const hasResults = organizations.length > 0 || repositories.length > 0;
-
-  return (
-    <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[80vh] overflow-y-auto rounded-2xl border bg-card shadow-lg">
+    return (
+      <div
+        ref={ref}
+        className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[80vh] overflow-y-auto rounded-2xl border bg-card shadow-lg"
+      >
       <div className="p-4">
         {isLoading && (
           <div className="space-y-3">
@@ -48,7 +48,7 @@ export function SearchDropdown({
           </div>
         )}
 
-        {!isLoading && !error && !hasResults && (
+        {!isLoading && !error && !hasResults && query && (
           <div className="py-8 text-center">
             <SearchIcon className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
             <p className="text-muted-foreground text-sm">
@@ -137,4 +137,4 @@ export function SearchDropdown({
       </div>
     </div>
   );
-}
+});

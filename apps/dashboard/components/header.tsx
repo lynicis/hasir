@@ -1,5 +1,8 @@
 "use client";
 
+import type { Organization } from "@buf/hasir_hasir.bufbuild_es/organization/v1/organization_pb";
+import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+
 import { search } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
 import { useRef, useEffect, useState, useSyncExternalStore, useMemo } from "react";
 import { useQuery } from "@connectrpc/connect-query";
@@ -38,11 +41,17 @@ const SEARCH_DEBOUNCE_MS = 300;
 export function Header() {
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [isCreatePopoverOpen, setIsCreatePopoverOpen] = useState(false);
   const [isCreateRepoDialogOpen, setIsCreateRepoDialogOpen] = useState(false);
   const [isCreateOrgDialogOpen, setIsCreateOrgDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [lastSearchResults, setLastSearchResults] = useState<{
+    organizations: Organization[];
+    repositories: Repository[];
+    query: string;
+  } | null>(null);
   const isMac = useIsMac();
 
   const debouncedQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
@@ -87,23 +96,37 @@ export function Header() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  useEffect(() => {
-    setIsSearchOpen(debouncedQuery.length > 0);
-  }, [debouncedQuery]);
+  const currentResults = useMemo(() => {
+    if (searchResults && debouncedQuery.length > 0) {
+      return {
+        organizations: searchResults.organizations ?? [],
+        repositories: searchResults.repositories ?? [],
+        query: debouncedQuery,
+      };
+    }
+    return null;
+  }, [searchResults, debouncedQuery]);
+
+  const lastResultsToShow = currentResults || lastSearchResults;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        searchRef.current &&
-        !searchRef.current.contains(event.target as Node)
-      ) {
+      const target = event.target as Node;
+      const isOutsideSearch = searchRef.current && !searchRef.current.contains(target);
+      const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(target);
+
+      if (isOutsideSearch && isOutsideDropdown) {
+        if (currentResults) {
+          setLastSearchResults(currentResults);
+        }
         setIsSearchOpen(false);
+        setSearchQuery("");
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [currentResults]);
 
   return (
     <>
@@ -128,13 +151,36 @@ export function Header() {
               className="h-9 rounded-full border-0 bg-muted/60 pl-9 pr-16 text-sm shadow-none focus-visible:ring-1 [&::-webkit-search-cancel-button]:hidden"
               aria-label="Search"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setSearchQuery(newValue);
+                if (newValue.length === 0 && currentResults) {
+                  setLastSearchResults(currentResults);
+                }
+
+                if (newValue.length > 0) {
+                  setIsSearchOpen(true);
+                }
+              }}
+              onFocus={() => {
+                if (searchQuery.length === 0 && lastSearchResults) {
+                  setIsSearchOpen(true);
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && searchQuery.trim()) {
+                  if (currentResults) {
+                    setLastSearchResults(currentResults);
+                  }
                   router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
                   setIsSearchOpen(false);
+                  setSearchQuery("");
                 }
+                
                 if (e.key === "Escape") {
+                  if (currentResults) {
+                    setLastSearchResults(currentResults);
+                  }
                   setIsSearchOpen(false);
                   setSearchQuery("");
                 }
@@ -151,12 +197,16 @@ export function Header() {
             </InputGroupAddon>
             {isSearchOpen && (
               <SearchDropdown
-                query={debouncedQuery}
-                organizations={searchResults?.organizations ?? []}
-                repositories={searchResults?.repositories ?? []}
-                isLoading={isLoading}
-                error={error}
+                ref={dropdownRef}
+                query={lastResultsToShow?.query || ""}
+                organizations={lastResultsToShow?.organizations ?? []}
+                repositories={lastResultsToShow?.repositories ?? []}
+                isLoading={debouncedQuery.length > 0 && isLoading}
+                error={debouncedQuery.length > 0 ? error : null}
                 onResultClick={() => {
+                  if (currentResults) {
+                    setLastSearchResults(currentResults);
+                  }
                   setIsSearchOpen(false);
                   setSearchQuery("");
                 }}
