@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createConnectTransport } from "@connectrpc/connect-web";
+import { TransportProvider } from "@connectrpc/connect-query";
 
 import { RepositoryContext } from "@/components/repository-context";
 
@@ -22,10 +25,24 @@ vi.mock("next/navigation", () => ({
   useParams: () => mockParams,
 }));
 
-vi.mock("@connectrpc/connect-query", () => ({
-  useMutation: () => ({
-    mutateAsync: mockMutateAsync,
-    isPending: false,
+vi.mock("@connectrpc/connect-query", async () => {
+  const actual = await vi.importActual("@connectrpc/connect-query");
+  return {
+    ...actual,
+    useMutation: () => ({
+      mutateAsync: mockMutateAsync,
+      isPending: false,
+    }),
+    useQuery: vi.fn(() => ({
+      data: { id: "org-123" },
+      isLoading: false,
+    })),
+  };
+});
+
+vi.mock("@/lib/use-client", () => ({
+  useClient: () => ({
+    updateSdkPreferences: vi.fn().mockResolvedValue({}),
   }),
 }));
 
@@ -55,23 +72,43 @@ function RepositoryContextWrapper({
   );
 }
 
-function renderWithContext(
-  repository = mockRepositoryData,
-  isLoading = false,
-  error = null
-) {
-  return render(
-    <RepositoryContextWrapper
-      repository={repository}
-      isLoading={isLoading}
-      error={error}
-    >
-      <SdkPreferencesPage />
-    </RepositoryContextWrapper>
-  );
-}
-
 describe("SdkPreferencesPage", () => {
+  let queryClient: QueryClient;
+  const transport = createConnectTransport({
+    baseUrl: "http://localhost:3000",
+  });
+
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <TransportProvider transport={transport}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </TransportProvider>
+  );
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+  });
+
+  function renderWithContext(
+    repository = mockRepositoryData,
+    isLoading = false,
+    error = null
+  ) {
+    return render(
+      <RepositoryContextWrapper
+        repository={repository}
+        isLoading={isLoading}
+        error={error}
+      >
+        <SdkPreferencesPage />
+      </RepositoryContextWrapper>,
+      { wrapper }
+    );
+  }
+
   it("renders SDK preferences page with all SDK options", () => {
     renderWithContext();
 
@@ -152,12 +189,12 @@ describe("SdkPreferencesPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("displays available SDK targets information", () => {
+  it("displays SDK download section", () => {
     renderWithContext();
 
-    expect(screen.getByText("Available SDK Targets:")).toBeInTheDocument();
+    expect(screen.getByText("Download SDK")).toBeInTheDocument();
     expect(
-      screen.getByText(/Protocol Buffers, Connect-RPC, gRPC/i)
+      screen.getByText(/Copy the SDK URL to install the generated SDK package/i)
     ).toBeInTheDocument();
   });
 

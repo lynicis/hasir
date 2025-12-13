@@ -89,8 +89,8 @@ export default function RepositoryCommitsContent({
 
   const commits = data?.commits ?? [];
 
-  // Check if error is a 404 (NotFound) - treat it as "no commits found"
-  const isNotFound = error instanceof ConnectError && error.code === Code.NotFound;
+  const isNotFound =
+    error instanceof ConnectError && error.code === Code.NotFound;
 
   return (
     <div className="space-y-6">

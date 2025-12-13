@@ -14,21 +14,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 interface CloneUrlsProps {
-  repositoryName: string;
   repositoryId: string;
 }
 
-export function CloneUrls({ repositoryName, repositoryId }: CloneUrlsProps) {
+export function CloneUrls({ repositoryId }: CloneUrlsProps) {
   const [protocol, setProtocol] = useState<"HTTPS" | "SSH">("HTTPS");
   const [copied, setCopied] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-  const host = apiUrl.replace(/^https?:\/\//, "").split(":")[0];
+
+  const urlObj = new URL(apiUrl);
+  const host = urlObj.hostname;
+  const port = urlObj.port ? `:${urlObj.port}` : "";
 
   const url =
     protocol === "HTTPS"
       ? `${apiUrl}/git/${repositoryId}.git`
-      : `git@${host}:${repositoryName}.git`;
+      : `ssh://git@${host}${port}/${repositoryId}.git`;
 
   const handleCopy = async () => {
     try {

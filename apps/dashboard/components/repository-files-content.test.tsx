@@ -8,7 +8,6 @@ import userEvent from "@testing-library/user-event";
 import RepositoryFilesContent from "./repository-files-content";
 import { RepositoryContext } from "./repository-context";
 
-// Mock SyntaxHighlighter to avoid rendering issues in tests
 vi.mock("react-syntax-highlighter", () => ({
   Prism: ({ children }: { children: string }) => <pre>{children}</pre>,
 }));
@@ -208,7 +207,8 @@ describe("RepositoryFilesContent", () => {
 
   it("shows file preview when a file is selected", async () => {
     const user = userEvent.setup();
-    const mockFileContent = 'syntax = "proto3";\n\nmessage User {\n  string id = 1;\n}';
+    const mockFileContent =
+      'syntax = "proto3";\n\nmessage User {\n  string id = 1;\n}';
     mockGetFilePreview.mockResolvedValue({
       content: mockFileContent,
       mimeType: "text/plain",
@@ -290,7 +290,6 @@ describe("RepositoryFilesContent", () => {
       { timeout: 2000 }
     );
 
-    // Expand proto folder
     const protoFolder = screen.getByText("proto");
     await user.click(protoFolder);
 
@@ -301,11 +300,9 @@ describe("RepositoryFilesContent", () => {
       { timeout: 3000 }
     );
 
-    // Expand user folder to test lazy loading
     const userFolder = screen.getByText("user");
     await user.click(userFolder);
 
-    // Verify files are lazy-loaded when folder is expanded
     await waitFor(
       () => {
         expect(screen.getByText("user.proto")).toBeInTheDocument();
@@ -314,7 +311,6 @@ describe("RepositoryFilesContent", () => {
       { timeout: 3000 }
     );
 
-    // Verify other sibling folders are still present
     expect(screen.getByText("product")).toBeInTheDocument();
     expect(screen.getByText("common")).toBeInTheDocument();
   });
@@ -323,7 +319,6 @@ describe("RepositoryFilesContent", () => {
     const user = userEvent.setup();
     renderWithContext(<RepositoryFilesContent />);
 
-    // Wait for initial tree load
     await waitFor(
       () => {
         expect(screen.getByText("proto")).toBeInTheDocument();
@@ -332,11 +327,9 @@ describe("RepositoryFilesContent", () => {
       { timeout: 3000 }
     );
 
-    // Expand docs folder to test lazy loading
     const docsFolder = screen.getByText("docs");
     await user.click(docsFolder);
 
-    // Verify files are lazy-loaded when folder is expanded
     await waitFor(
       () => {
         expect(screen.getByText("README.md")).toBeInTheDocument();
@@ -424,7 +417,6 @@ describe("RepositoryFilesContent", () => {
     const file = screen.getByText("user.proto");
     await user.click(file);
 
-    // Should show skeleton while loading
     expect(document.querySelector(".animate-pulse")).toBeInTheDocument();
 
     await waitFor(

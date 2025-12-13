@@ -161,10 +161,9 @@ describe("RepositoryCommitsContent", () => {
       wrapper,
     });
 
-    // Check for avatar fallbacks with initials (multiple occurrences expected)
-    expect(screen.getAllByText("JD").length).toBeGreaterThan(0); // John Doe
-    expect(screen.getAllByText("JS").length).toBeGreaterThan(0); // Jane Smith
-    expect(screen.getAllByText("BJ").length).toBeGreaterThan(0); // Bob Johnson
+    expect(screen.getAllByText("JD").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("JS").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("BJ").length).toBeGreaterThan(0);
   });
 
   it("displays a note about sample data", () => {
@@ -185,7 +184,6 @@ describe("RepositoryCommitsContent", () => {
       wrapper,
     });
 
-    // Count the number of commit hash codes rendered
     const commitHashes = [
       "a1b2c3d",
       "e4f5g6h",
@@ -208,7 +206,6 @@ describe("RepositoryCommitsContent", () => {
       { wrapper }
     );
 
-    // GitCommit icon should be present
     const svgElements = container.querySelectorAll("svg");
     expect(svgElements.length).toBeGreaterThan(0);
   });

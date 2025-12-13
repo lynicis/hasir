@@ -1,6 +1,9 @@
 "use client";
 
-import { RegistryService, SDK } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import {
+  RegistryService,
+  SDK,
+} from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Wrench } from "lucide-react";
@@ -15,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { RepositoryContext } from "@/components/repository-context";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SdkUrls } from "@/components/sdk-urls";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -68,7 +72,8 @@ const SDK_LANGUAGES: Record<string, LanguageConfig> = {
   },
   javascript: {
     name: "JavaScript/Typescript",
-    description: "Generate JavaScript SDK with various protocol implementations",
+    description:
+      "Generate JavaScript SDK with various protocol implementations",
     options: [
       {
         key: "bufbuildEs",
@@ -131,9 +136,7 @@ export default function RepositorySdkPreferencesContent() {
   const registryApiClient = useClient(RegistryService);
 
   if (!context) {
-    throw new Error(
-      "SdkPreferencesPage must be used within RepositoryLayout"
-    );
+    throw new Error("SdkPreferencesPage must be used within RepositoryLayout");
   }
 
   const { repository, isLoading, error } = context;
@@ -167,13 +170,10 @@ export default function RepositorySdkPreferencesContent() {
         ...prev[language],
         enabled: !prev[language].enabled,
         ...(prev[language].enabled &&
-          Object.keys(prev[language]).reduce(
-            (acc, key) => {
-              if (key !== "enabled") acc[key] = false;
-              return acc;
-            },
-            {} as Record<string, boolean>
-          )),
+          Object.keys(prev[language]).reduce((acc, key) => {
+            if (key !== "enabled") acc[key] = false;
+            return acc;
+          }, {} as Record<string, boolean>)),
       },
     }));
   };
@@ -207,7 +207,10 @@ export default function RepositorySdkPreferencesContent() {
     const preferences: Array<{ sdk: SDK; status: boolean }> = [];
 
     Object.values(SDK)
-      .filter((val): val is SDK => typeof val === "number" && val !== SDK.SDK_UNSPECIFIED)
+      .filter(
+        (val): val is SDK =>
+          typeof val === "number" && val !== SDK.SDK_UNSPECIFIED
+      )
       .forEach((sdkVal) => {
         preferences.push({
           sdk: sdkVal,
@@ -230,9 +233,13 @@ export default function RepositorySdkPreferencesContent() {
 
       toast.success("SDK preferences saved successfully");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save SDK preferences");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to save SDK preferences"
+      );
     } finally {
-        setIsSaving(false);
+      setIsSaving(false);
     }
   };
 
@@ -247,7 +254,9 @@ export default function RepositorySdkPreferencesContent() {
         <div>
           <div className="flex items-center gap-2">
             <Wrench className="size-5 text-muted-foreground" />
-            <h2 className="text-xl font-semibold">SDK Generation Preferences</h2>
+            <h2 className="text-xl font-semibold">
+              SDK Generation Preferences
+            </h2>
           </div>
           <p className="text-muted-foreground mt-1 text-sm">
             Configure which SDKs to generate for this repository
@@ -323,9 +332,7 @@ export default function RepositorySdkPreferencesContent() {
                         handleSubOptionToggle(langKey, option.key)
                       }
                       disabled={
-                        !config[langKey]?.enabled ||
-                        isLoading ||
-                        isSaving
+                        !config[langKey]?.enabled || isLoading || isSaving
                       }
                     />
                   </div>
@@ -337,33 +344,27 @@ export default function RepositorySdkPreferencesContent() {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button
-          onClick={handleSave}
-          isLoading={isSaving}
-          disabled={isSaving}
-        >
+        <Button onClick={handleSave} isLoading={isSaving} disabled={isSaving}>
           Save Configuration
         </Button>
-        <Button
-          variant="outline"
-          onClick={handleReset}
-          disabled={isSaving}
-        >
+        <Button variant="outline" onClick={handleReset} disabled={isSaving}>
           Reset to Defaults
         </Button>
       </div>
 
-      <div className="text-muted-foreground rounded-lg border border-border bg-muted/50 p-4 text-sm">
-        <p className="font-medium">Available SDK Targets:</p>
-        <ul className="ml-4 mt-2 list-disc space-y-1">
-          {Object.entries(SDK_LANGUAGES).map(([langKey, langConfig]) => (
-            <li key={langKey}>
-              <strong>{langConfig.name}:</strong>{" "}
-              {langConfig.options.map((opt) => opt.label).join(", ")}
-            </li>
-          ))}
-        </ul>
-      </div>
+      {repository && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Download SDK</CardTitle>
+            <CardDescription>
+              Copy the SDK URL to install the generated SDK package
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SdkUrls repositoryId={repositoryId} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -197,16 +197,13 @@ describe("UsersPage", () => {
 
     render(<UsersPage />);
 
-    // Find all "Reader" buttons (the second one is for the member we want to change)
     const readerButtons = await screen.findAllByRole("button", {
       name: /reader/i,
     });
     expect(readerButtons.length).toBeGreaterThan(0);
 
-    // Click on the member's role button to open the dropdown
     await user.click(readerButtons[0]);
 
-    // Find and click the "Author" option in the dropdown menu
     const authorOption = await screen.findByRole("menuitem", {
       name: /author/i,
     });
@@ -218,7 +215,9 @@ describe("UsersPage", () => {
       role: 2,
     });
 
-    expect(toastSuccess).toHaveBeenCalledWith("Permission updated successfully");
+    expect(toastSuccess).toHaveBeenCalledWith(
+      "Permission updated successfully"
+    );
     expect(mockRefetch).toHaveBeenCalled();
   });
 
@@ -305,19 +304,15 @@ describe("UsersPage", () => {
 
     render(<UsersPage />);
 
-    // Find the menu button (three dots) for the member
     const menuButtons = screen.getAllByRole("button", { name: "" });
-    // The last button should be the menu button for the second member
     const memberMenuButton = menuButtons[menuButtons.length - 1];
     await user.click(memberMenuButton);
 
-    // Find and click "Remove from organization" menu item
     const removeMenuItem = await screen.findByRole("menuitem", {
       name: /remove from organization/i,
     });
     await user.click(removeMenuItem);
 
-    // Confirm deletion in the dialog
     const confirmButton = await screen.findByRole("button", {
       name: /remove member/i,
     });
@@ -367,18 +362,15 @@ describe("UsersPage", () => {
 
     render(<UsersPage />);
 
-    // Find the menu button (three dots) for the member
     const menuButtons = screen.getAllByRole("button", { name: "" });
     const memberMenuButton = menuButtons[menuButtons.length - 1];
     await user.click(memberMenuButton);
 
-    // Find and click "Remove from organization" menu item
     const removeMenuItem = await screen.findByRole("menuitem", {
       name: /remove from organization/i,
     });
     await user.click(removeMenuItem);
 
-    // Confirm deletion in the dialog
     const confirmButton = await screen.findByRole("button", {
       name: /remove member/i,
     });

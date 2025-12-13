@@ -1,11 +1,18 @@
 "use client";
 
 import { getRepository } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
-import { ArrowLeft, Book, Files, GitCommit, Settings, Wrench } from "lucide-react";
+import {
+  ArrowLeft,
+  Book,
+  Files,
+  GitCommit,
+  Settings,
+  Wrench,
+} from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useQuery } from "@connectrpc/connect-query";
-import {  useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +24,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { customRetry } from "@/lib/query-retry";
 
-type TabType = "documentation" | "files" | "commits" | "sdk-preferences" | "settings";
+type TabType =
+  | "documentation"
+  | "files"
+  | "commits"
+  | "sdk-preferences"
+  | "settings";
 
 export default function RepositoryLayout({
   children,
@@ -33,11 +45,7 @@ export default function RepositoryLayout({
     data: repositoryData,
     isLoading,
     error,
-  } = useQuery(
-    getRepository,
-    { id: repositoryId },
-    { retry: customRetry }
-  );
+  } = useQuery(getRepository, { id: repositoryId }, { retry: customRetry });
 
   const repository = useMemo((): OrganizationRepository | undefined => {
     if (!repositoryData) return undefined;
@@ -45,7 +53,8 @@ export default function RepositoryLayout({
     return {
       id: repositoryData.id,
       name: repositoryData.name,
-      visibility: reverseVisibilityMapper.get(repositoryData.visibility) || "private",
+      visibility:
+        reverseVisibilityMapper.get(repositoryData.visibility) || "private",
     };
   }, [repositoryData]);
 
@@ -211,7 +220,7 @@ export default function RepositoryLayout({
               </p>
             </div>
             <div className="ml-auto">
-              {repository && <CloneUrls repositoryName={repository.name} repositoryId={repository.id} />}
+              {repository && <CloneUrls repositoryId={repository.id} />}
             </div>
           </div>
 

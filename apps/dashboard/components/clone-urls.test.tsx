@@ -1,36 +1,45 @@
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { CloneUrls } from "./clone-urls";
 
-const writeTextMock = vi.fn();
-Object.defineProperty(navigator, "clipboard", {
-  value: {
-    writeText: writeTextMock,
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
   },
-  writable: true,
-  configurable: true,
-});
+}));
 
 describe("CloneUrls", () => {
   const defaultProps = {
-    repositoryName: "test-repo",
     repositoryId: "123e4567-e89b-12d3-a456-426614174000",
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    if (!navigator.clipboard) {
+      Object.defineProperty(navigator, "clipboard", {
+        value: {
+          writeText: vi.fn().mockResolvedValue(undefined),
+        },
+        writable: true,
+        configurable: true,
+      });
+    }
   });
 
   it("displays HTTPS URL by default using repository ID", () => {
     render(<CloneUrls {...defaultProps} />);
 
     const input = screen.getByRole("textbox");
-    expect(input).toHaveValue(`http://localhost:8080/git/${defaultProps.repositoryId}.git`);
+    expect(input).toHaveValue(
+      `http://localhost:8080/git/${defaultProps.repositoryId}.git`
+    );
   });
 
-  it("switches to SSH URL using repository name", async () => {
+  it("switches to SSH URL using repository ID", async () => {
     const user = userEvent.setup();
     render(<CloneUrls {...defaultProps} />);
 
@@ -41,27 +50,51 @@ describe("CloneUrls", () => {
     await user.click(sshOption);
 
     const input = screen.getByRole("textbox");
-    expect(input).toHaveValue(`git@localhost:${defaultProps.repositoryName}.git`);
+    expect(input).toHaveValue(
+      `ssh://git@localhost:8080/${defaultProps.repositoryId}.git`
+    );
   });
 
   it("copies URL to clipboard", async () => {
-    const user = userEvent.setup();
-    const writeTextSpy = vi.fn();
-    Object.defineProperty(navigator, "clipboard", {
-      value: {
-        writeText: writeTextSpy,
-      },
-      writable: true,
-      configurable: true,
-    });
+    const writeTextSpy = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
 
+    const user = userEvent.setup();
     render(<CloneUrls {...defaultProps} />);
 
-    const copyButton = screen.getByRole("button", { name: "Copy to clipboard" });
+    const copyButton = screen.getByRole("button", {
+      name: "Copy to clipboard",
+    });
     await user.click(copyButton);
 
-    expect(writeTextSpy).toHaveBeenCalledWith(
-      `http://localhost:8080/git/${defaultProps.repositoryId}.git`
+    await waitFor(() => {
+      expect(writeTextSpy).toHaveBeenCalledWith(
+        `http://localhost:8080/git/${defaultProps.repositoryId}.git`
+      );
+    });
+
+    writeTextSpy.mockRestore();
+  });
+
+  it("handles SSH URL without port", async () => {
+    const originalEnv = process.env.NEXT_PUBLIC_API_URL;
+    process.env.NEXT_PUBLIC_API_URL = "https://example.com";
+
+    const user = userEvent.setup();
+    render(<CloneUrls {...defaultProps} />);
+
+    const trigger = screen.getByRole("button", { name: "HTTPS" });
+    await user.click(trigger);
+
+    const sshOption = await screen.findByRole("menuitem", { name: "SSH" });
+    await user.click(sshOption);
+
+    const input = screen.getByRole("textbox");
+    expect(input).toHaveValue(
+      `ssh://git@example.com/${defaultProps.repositoryId}.git`
     );
+
+    process.env.NEXT_PUBLIC_API_URL = originalEnv;
   });
 });

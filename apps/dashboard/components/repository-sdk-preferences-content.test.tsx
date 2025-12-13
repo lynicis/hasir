@@ -1,7 +1,10 @@
 import { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createConnectTransport } from "@connectrpc/connect-web";
+import { TransportProvider } from "@connectrpc/connect-query";
 
 import RepositorySdkPreferencesContent from "./repository-sdk-preferences-content";
 import { RepositoryContext } from "./repository-context";
@@ -24,6 +27,17 @@ vi.mock("@/lib/use-client", () => ({
   }),
 }));
 
+vi.mock("@connectrpc/connect-query", async () => {
+  const actual = await vi.importActual("@connectrpc/connect-query");
+  return {
+    ...actual,
+    useQuery: vi.fn(() => ({
+      data: { id: "org-123" },
+      isLoading: false,
+    })),
+  };
+});
+
 const mockRepository: Repository = {
   $typeName: "registry.v1.Repository",
   id: "repo-123",
@@ -42,11 +56,31 @@ const contextValue = {
 };
 
 describe("RepositorySdkPreferencesContent", () => {
+  let queryClient: QueryClient;
+  const transport = createConnectTransport({
+    baseUrl: "http://localhost:3000",
+  });
+
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <TransportProvider transport={transport}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </TransportProvider>
+  );
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+  });
+
   it("renders the page heading and description", () => {
     render(
       <RepositoryContext.Provider value={contextValue}>
         <RepositorySdkPreferencesContent />
-      </RepositoryContext.Provider>
+      </RepositoryContext.Provider>,
+      { wrapper }
     );
 
     expect(
@@ -61,7 +95,8 @@ describe("RepositorySdkPreferencesContent", () => {
     render(
       <RepositoryContext.Provider value={contextValue}>
         <RepositorySdkPreferencesContent />
-      </RepositoryContext.Provider>
+      </RepositoryContext.Provider>,
+      { wrapper }
     );
 
     expect(screen.getByText("Go")).toBeInTheDocument();
@@ -72,7 +107,8 @@ describe("RepositorySdkPreferencesContent", () => {
     render(
       <RepositoryContext.Provider value={contextValue}>
         <RepositorySdkPreferencesContent />
-      </RepositoryContext.Provider>
+      </RepositoryContext.Provider>,
+      { wrapper }
     );
 
     expect(screen.getByText("Protocol Buffers")).toBeInTheDocument();
@@ -84,7 +120,8 @@ describe("RepositorySdkPreferencesContent", () => {
     render(
       <RepositoryContext.Provider value={contextValue}>
         <RepositorySdkPreferencesContent />
-      </RepositoryContext.Provider>
+      </RepositoryContext.Provider>,
+      { wrapper }
     );
 
     expect(screen.getByText("@bufbuild/es")).toBeInTheDocument();
@@ -96,7 +133,8 @@ describe("RepositorySdkPreferencesContent", () => {
     render(
       <RepositoryContext.Provider value={contextValue}>
         <RepositorySdkPreferencesContent />
-      </RepositoryContext.Provider>
+      </RepositoryContext.Provider>,
+      { wrapper }
     );
 
     expect(
@@ -105,16 +143,6 @@ describe("RepositorySdkPreferencesContent", () => {
     expect(
       screen.getByRole("button", { name: /reset to defaults/i })
     ).toBeInTheDocument();
-  });
-
-  it("displays the available SDK targets information", () => {
-    render(
-      <RepositoryContext.Provider value={contextValue}>
-        <RepositorySdkPreferencesContent />
-      </RepositoryContext.Provider>
-    );
-
-    expect(screen.getByText(/available sdk targets:/i)).toBeInTheDocument();
   });
 
   it("shows skeleton loading state when repository is loading", () => {
@@ -127,7 +155,8 @@ describe("RepositorySdkPreferencesContent", () => {
     const { container } = render(
       <RepositoryContext.Provider value={loadingContextValue}>
         <RepositorySdkPreferencesContent />
-      </RepositoryContext.Provider>
+      </RepositoryContext.Provider>,
+      { wrapper }
     );
 
     expect(screen.getByText("SDK Generation Preferences")).toBeInTheDocument();
@@ -142,7 +171,8 @@ describe("RepositorySdkPreferencesContent", () => {
     render(
       <RepositoryContext.Provider value={contextValue}>
         <RepositorySdkPreferencesContent />
-      </RepositoryContext.Provider>
+      </RepositoryContext.Provider>,
+      { wrapper }
     );
 
     const switches = screen.getAllByRole("switch");
@@ -171,7 +201,8 @@ describe("RepositorySdkPreferencesContent", () => {
     render(
       <RepositoryContext.Provider value={contextValue}>
         <RepositorySdkPreferencesContent />
-      </RepositoryContext.Provider>
+      </RepositoryContext.Provider>,
+      { wrapper }
     );
 
     const switches = screen.getAllByRole("switch");
