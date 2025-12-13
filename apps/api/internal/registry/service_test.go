@@ -6,12 +6,16 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"hasir-api/pkg/authentication"
 	"hasir-api/pkg/authorization"
+	"hasir-api/pkg/config"
 	"hasir-api/pkg/proto"
 
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
@@ -24,7 +28,7 @@ func TestNewService(t *testing.T) {
 		mockRepo := NewMockRepository(ctrl)
 		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
 
-		svc := NewService(mockRepo, mockOrgRepo)
+		svc := NewService(mockRepo, mockOrgRepo, nil, nil)
 		concrete, ok := svc.(*service)
 		require.True(t, ok, "NewService should return *service")
 		require.Equal(t, DefaultReposPath, concrete.rootPath)
@@ -1111,5 +1115,442 @@ func TestService_GetFilePreview(t *testing.T) {
 
 		require.Error(t, err)
 		require.ErrorContains(t, err, "file not found")
+	})
+}
+
+func TestService_TriggerSdkGeneration(t *testing.T) {
+	t.Run("success - enqueues jobs for enabled SDK preferences", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockQueue := NewMockSdkGenerationQueue(ctrl)
+
+		svc := &service{
+			repository: mockRepo,
+			sdkQueue:   mockQueue,
+		}
+
+		ctx := context.Background()
+		repoID := "repo-123"
+		commitHash := "abc123def456"
+
+		sdkPreferences := []SdkPreferencesDTO{
+			{
+				Id:           uuid.NewString(),
+				RepositoryId: repoID,
+				Sdk:          SdkGoProtobuf,
+				Status:       true,
+			},
+			{
+				Id:           uuid.NewString(),
+				RepositoryId: repoID,
+				Sdk:          SdkGoConnectRpc,
+				Status:       true,
+			},
+			{
+				Id:           uuid.NewString(),
+				RepositoryId: repoID,
+				Sdk:          SdkGoGrpc,
+				Status:       false,
+			},
+		}
+
+		mockRepo.EXPECT().
+			GetSdkPreferences(ctx, repoID).
+			Return(sdkPreferences, nil)
+
+		mockQueue.EXPECT().
+			EnqueueSdkGenerationJobs(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, jobs []*SdkGenerationJobDTO) error {
+				require.Len(t, jobs, 2)
+				assert.Equal(t, repoID, jobs[0].RepositoryId)
+				assert.Equal(t, commitHash, jobs[0].CommitHash)
+				assert.Equal(t, SdkGenerationJobStatusPending, jobs[0].Status)
+				assert.Equal(t, 0, jobs[0].Attempts)
+				assert.Equal(t, 5, jobs[0].MaxAttempts)
+				return nil
+			})
+
+		err := svc.TriggerSdkGeneration(ctx, repoID, commitHash)
+		require.NoError(t, err)
+	})
+
+	t.Run("success - no jobs when no SDK preferences enabled", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockQueue := NewMockSdkGenerationQueue(ctrl)
+
+		svc := &service{
+			repository: mockRepo,
+			sdkQueue:   mockQueue,
+		}
+
+		ctx := context.Background()
+		repoID := "repo-123"
+		commitHash := "abc123def456"
+
+		sdkPreferences := []SdkPreferencesDTO{
+			{
+				Id:           uuid.NewString(),
+				RepositoryId: repoID,
+				Sdk:          SdkGoProtobuf,
+				Status:       false,
+			},
+		}
+
+		mockRepo.EXPECT().
+			GetSdkPreferences(ctx, repoID).
+			Return(sdkPreferences, nil)
+
+		err := svc.TriggerSdkGeneration(ctx, repoID, commitHash)
+		require.NoError(t, err)
+	})
+
+	t.Run("error - failed to get SDK preferences", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockQueue := NewMockSdkGenerationQueue(ctrl)
+
+		svc := &service{
+			repository: mockRepo,
+			sdkQueue:   mockQueue,
+		}
+
+		ctx := context.Background()
+		repoID := "repo-123"
+		commitHash := "abc123def456"
+
+		mockRepo.EXPECT().
+			GetSdkPreferences(ctx, repoID).
+			Return(nil, errors.New("database error"))
+
+		err := svc.TriggerSdkGeneration(ctx, repoID, commitHash)
+		require.Error(t, err)
+	})
+
+	t.Run("success - queue not configured", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+
+		svc := &service{
+			repository: mockRepo,
+			sdkQueue:   nil,
+		}
+
+		ctx := context.Background()
+		repoID := "repo-123"
+		commitHash := "abc123def456"
+
+		err := svc.TriggerSdkGeneration(ctx, repoID, commitHash)
+		require.NoError(t, err)
+	})
+}
+
+func TestService_GenerateSDK(t *testing.T) {
+	t.Run("error - repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			sdkPath:    "./sdk",
+		}
+
+		ctx := context.Background()
+		repoID := "repo-123"
+		commitHash := "abc123"
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(nil, errors.New("repository not found"))
+
+		err := svc.GenerateSDK(ctx, repoID, commitHash, SdkGoProtobuf)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to fetch repository")
+	})
+
+	t.Run("error - no proto files found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		tmpDir := t.TempDir()
+		sdkDir := t.TempDir()
+
+		repoID := uuid.NewString()
+		repoPath := filepath.Join(tmpDir, repoID)
+		require.NoError(t, os.MkdirAll(repoPath, 0o750))
+
+		svc := &service{
+			rootPath:   tmpDir,
+			repository: mockRepo,
+			sdkPath:    sdkDir,
+		}
+
+		ctx := context.Background()
+		commitHash := "abc123"
+		orgID := "org-123"
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				OrganizationId: orgID,
+				Path:           repoPath,
+			}, nil)
+
+		err := svc.GenerateSDK(ctx, repoID, commitHash, SdkGoProtobuf)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no proto files found")
+	})
+
+	t.Run("error - unsupported SDK type", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		tmpDir := t.TempDir()
+		sdkDir := t.TempDir()
+
+		repoID := uuid.NewString()
+		repoPath := filepath.Join(tmpDir, repoID)
+		require.NoError(t, os.MkdirAll(repoPath, 0o750))
+
+		protoFile := filepath.Join(repoPath, "test.proto")
+		require.NoError(t, os.WriteFile(protoFile, []byte("syntax = \"proto3\";"), 0o644))
+
+		cfg := &config.Config{
+			SdkGeneration: config.SdkGenerationConfig{
+				OutputPath: sdkDir,
+			},
+		}
+
+		svc := NewService(mockRepo, nil, nil, cfg).(*service)
+		svc.rootPath = tmpDir
+
+		ctx := context.Background()
+		commitHash := "abc123"
+		orgID := "org-123"
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				OrganizationId: orgID,
+				Path:           repoPath,
+			}, nil)
+
+		err := svc.GenerateSDK(ctx, repoID, commitHash, SDK("INVALID_SDK"))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unsupported SDK type")
+	})
+}
+
+func TestService_FindProtoFiles(t *testing.T) {
+	t.Run("finds proto files in nested directories", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "proto", "v1"), 0o750))
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "proto", "user.proto"), []byte("syntax = \"proto3\";"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "proto", "v1", "api.proto"), []byte("syntax = \"proto3\";"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("# Test"), 0o644))
+
+		svc := &service{}
+
+		protoFiles, err := svc.findProtoFiles(tmpDir)
+		require.NoError(t, err)
+		require.Len(t, protoFiles, 2)
+
+		assert.Contains(t, protoFiles, filepath.Join("proto", "user.proto"))
+		assert.Contains(t, protoFiles, filepath.Join("proto", "v1", "api.proto"))
+	})
+
+	t.Run("returns empty when no proto files", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("# Test"), 0o644))
+
+		svc := &service{}
+
+		protoFiles, err := svc.findProtoFiles(tmpDir)
+		require.NoError(t, err)
+		require.Len(t, protoFiles, 0)
+	})
+
+	t.Run("error on invalid directory", func(t *testing.T) {
+		svc := &service{}
+
+		_, err := svc.findProtoFiles("/nonexistent/directory")
+		require.Error(t, err)
+	})
+}
+
+func TestService_GetSdkDirName(t *testing.T) {
+	cfg := &config.Config{
+		SdkGeneration: config.SdkGenerationConfig{
+			OutputPath: "./sdk",
+		},
+	}
+
+	svc := NewService(nil, nil, nil, cfg).(*service)
+
+	tests := []struct {
+		sdk      SDK
+		expected string
+	}{
+		{SdkGoProtobuf, "go-protobuf"},
+		{SdkGoConnectRpc, "go-connectrpc"},
+		{SdkGoGrpc, "go-grpc"},
+		{SdkJsBufbuildEs, "js-bufbuild-es"},
+		{SdkJsProtobuf, "js-protobuf"},
+		{SdkJsConnectrpc, "js-connectrpc"},
+		{SDK("UNKNOWN"), "unknown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.sdk), func(t *testing.T) {
+			result := svc.getSdkDirName(tt.sdk)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestService_GenerateDocumentation(t *testing.T) {
+	t.Run("error - no proto files found", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		sdkDir := t.TempDir()
+
+		svc := &service{
+			sdkPath: sdkDir,
+		}
+
+		ctx := context.Background()
+		repoID := "repo-123"
+		commitHash := "abc123"
+		orgID := "org-123"
+
+		err := svc.GenerateDocumentation(ctx, repoID, commitHash, tmpDir, orgID)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no proto files found")
+	})
+
+	t.Run("error - invalid directory", func(t *testing.T) {
+		sdkDir := t.TempDir()
+
+		svc := &service{
+			sdkPath: sdkDir,
+		}
+
+		ctx := context.Background()
+		repoID := "repo-123"
+		commitHash := "abc123"
+		orgID := "org-123"
+
+		err := svc.GenerateDocumentation(ctx, repoID, commitHash, "/nonexistent/path", orgID)
+		require.Error(t, err)
+	})
+}
+
+func TestNewService_WithConfig(t *testing.T) {
+	t.Run("uses default SDK path when config is nil", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+
+		svc := NewService(mockRepo, nil, nil, nil)
+		concrete, ok := svc.(*service)
+		require.True(t, ok)
+		assert.Equal(t, "./sdk", concrete.sdkPath)
+	})
+
+	t.Run("uses custom SDK path from config", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+
+		cfg := &config.Config{
+			SdkGeneration: config.SdkGenerationConfig{
+				OutputPath: "/custom/sdk/path",
+			},
+		}
+
+		svc := NewService(mockRepo, nil, nil, cfg)
+		concrete, ok := svc.(*service)
+		require.True(t, ok)
+		assert.Equal(t, "/custom/sdk/path", concrete.sdkPath)
+	})
+
+	t.Run("initializes SDK generators map", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+
+		cfg := &config.Config{
+			SdkGeneration: config.SdkGenerationConfig{
+				OutputPath: "./sdk",
+			},
+		}
+
+		svc := NewService(mockRepo, nil, nil, cfg)
+		concrete, ok := svc.(*service)
+		require.True(t, ok)
+
+		require.NotNil(t, concrete.sdkGenerators)
+		require.Len(t, concrete.sdkGenerators, 6)
+
+		_, ok = concrete.sdkGenerators[SdkGoProtobuf]
+		assert.True(t, ok)
+		_, ok = concrete.sdkGenerators[SdkGoConnectRpc]
+		assert.True(t, ok)
+		_, ok = concrete.sdkGenerators[SdkGoGrpc]
+		assert.True(t, ok)
+		_, ok = concrete.sdkGenerators[SdkJsBufbuildEs]
+		assert.True(t, ok)
+		_, ok = concrete.sdkGenerators[SdkJsProtobuf]
+		assert.True(t, ok)
+		_, ok = concrete.sdkGenerators[SdkJsConnectrpc]
+		assert.True(t, ok)
+	})
+
+	t.Run("initializes SDK dir names map", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+
+		cfg := &config.Config{
+			SdkGeneration: config.SdkGenerationConfig{
+				OutputPath: "./sdk",
+			},
+		}
+
+		svc := NewService(mockRepo, nil, nil, cfg)
+		concrete, ok := svc.(*service)
+		require.True(t, ok)
+
+		require.NotNil(t, concrete.sdkDirNames)
+		require.Len(t, concrete.sdkDirNames, 6)
+
+		assert.Equal(t, "go-protobuf", concrete.sdkDirNames[SdkGoProtobuf])
+		assert.Equal(t, "go-connectrpc", concrete.sdkDirNames[SdkGoConnectRpc])
+		assert.Equal(t, "go-grpc", concrete.sdkDirNames[SdkGoGrpc])
+		assert.Equal(t, "js-bufbuild-es", concrete.sdkDirNames[SdkJsBufbuildEs])
+		assert.Equal(t, "js-protobuf", concrete.sdkDirNames[SdkJsProtobuf])
+		assert.Equal(t, "js-connectrpc", concrete.sdkDirNames[SdkJsConnectrpc])
+	})
+}
+
+func TestSdkGenerationJobDTO(t *testing.T) {
+	t.Run("creates valid DTO", func(t *testing.T) {
+		now := time.Now().UTC()
+		dto := &SdkGenerationJobDTO{
+			Id:           uuid.NewString(),
+			RepositoryId: uuid.NewString(),
+			CommitHash:   "abc123def456",
+			Sdk:          SdkGoProtobuf,
+			Status:       SdkGenerationJobStatusPending,
+			Attempts:     0,
+			MaxAttempts:  5,
+			CreatedAt:    now,
+		}
+
+		assert.NotEmpty(t, dto.Id)
+		assert.NotEmpty(t, dto.RepositoryId)
+		assert.Equal(t, "abc123def456", dto.CommitHash)
+		assert.Equal(t, SdkGoProtobuf, dto.Sdk)
+		assert.Equal(t, SdkGenerationJobStatusPending, dto.Status)
+		assert.Equal(t, 0, dto.Attempts)
+		assert.Equal(t, 5, dto.MaxAttempts)
+		assert.Equal(t, now, dto.CreatedAt)
 	})
 }

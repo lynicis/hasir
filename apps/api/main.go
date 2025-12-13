@@ -90,8 +90,27 @@ func main() {
 
 	orgRepoAdapter := authorization.NewOrgRepositoryAdapter(organizationPgRepository)
 
+	var sdkGenerationQueue registry.SdkGenerationQueue
+	registryService := registry.NewService(repositoryPgRepository, orgRepoAdapter, sdkGenerationQueue, cfg)
+
+	sdkGenerationQueue = postgresRegistry.NewSdkGenerationJobQueue(
+		repositoryPgRepository.GetConnectionPool(),
+		repositoryPgRepository.GetTracer(),
+	)
+
+	pollInterval, err := time.ParseDuration(cfg.SdkGeneration.PollInterval)
+	if err != nil {
+		zap.L().Fatal("invalid SDK generation poll interval", zap.Error(err))
+	}
+
+	sdkGenerationQueue.Start(ctx, registryService, cfg.SdkGeneration.WorkerCount, pollInterval)
+	zap.L().Info(
+		"SDK generation queue listening",
+		zap.Int("workerCount", cfg.SdkGeneration.WorkerCount),
+		zap.Duration("pollInterval", pollInterval),
+	)
+
 	userService := user.NewService(cfg, userPgRepository, emailService)
-	registryService := registry.NewService(repositoryPgRepository, orgRepoAdapter)
 	organizationService := internalOrganization.NewService(
 		organizationPgRepository,
 		emailJobQueue,
@@ -155,10 +174,10 @@ func main() {
 		sshServer = startSshServer(cfg, userPgRepository, sshHandler)
 	}
 
-	gracefulShutdown(server, sshServer, traceProvider, emailJobQueue)
+	gracefulShutdown(server, sshServer, traceProvider, emailJobQueue, sdkGenerationQueue)
 }
 
-func gracefulShutdown(server *http.Server, sshServer *ssh.Server, traceProvider *sdktrace.TracerProvider, emailJobQueue internalOrganization.Queue) {
+func gracefulShutdown(server *http.Server, sshServer *ssh.Server, traceProvider *sdktrace.TracerProvider, emailJobQueue internalOrganization.Queue, sdkGenerationQueue registry.SdkGenerationQueue) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
@@ -169,6 +188,7 @@ func gracefulShutdown(server *http.Server, sshServer *ssh.Server, traceProvider 
 	defer shutdownRelease()
 
 	emailJobQueue.Stop()
+	sdkGenerationQueue.Stop()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		zap.L().Error("HTTP shutdown error", zap.Error(err))

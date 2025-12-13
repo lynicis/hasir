@@ -83,6 +83,20 @@ func (mr *MockServiceMockRecorder) DeleteRepository(ctx, req any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRepository", reflect.TypeOf((*MockService)(nil).DeleteRepository), ctx, req)
 }
 
+// GenerateSDK mocks base method.
+func (m *MockService) GenerateSDK(ctx context.Context, repositoryId, commitHash string, sdk SDK) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GenerateSDK", ctx, repositoryId, commitHash, sdk)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// GenerateSDK indicates an expected call of GenerateSDK.
+func (mr *MockServiceMockRecorder) GenerateSDK(ctx, repositoryId, commitHash, sdk any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateSDK", reflect.TypeOf((*MockService)(nil).GenerateSDK), ctx, repositoryId, commitHash, sdk)
+}
+
 // GetCommits mocks base method.
 func (m *MockService) GetCommits(ctx context.Context, req *registryv1.GetCommitsRequest) (*registryv1.GetCommitsResponse, error) {
 	m.ctrl.T.Helper()
@@ -156,6 +170,35 @@ func (m *MockService) GetRepository(ctx context.Context, req *registryv1.GetRepo
 func (mr *MockServiceMockRecorder) GetRepository(ctx, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepository", reflect.TypeOf((*MockService)(nil).GetRepository), ctx, req)
+}
+
+// HasProtoFiles mocks base method.
+func (m *MockService) HasProtoFiles(ctx context.Context, repoPath string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HasProtoFiles", ctx, repoPath)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HasProtoFiles indicates an expected call of HasProtoFiles.
+func (mr *MockServiceMockRecorder) HasProtoFiles(ctx, repoPath any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasProtoFiles", reflect.TypeOf((*MockService)(nil).HasProtoFiles), ctx, repoPath)
+}
+
+// TriggerSdkGeneration mocks base method.
+func (m *MockService) TriggerSdkGeneration(ctx context.Context, repositoryId, commitHash string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TriggerSdkGeneration", ctx, repositoryId, commitHash)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// TriggerSdkGeneration indicates an expected call of TriggerSdkGeneration.
+func (mr *MockServiceMockRecorder) TriggerSdkGeneration(ctx, repositoryId, commitHash any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TriggerSdkGeneration", reflect.TypeOf((*MockService)(nil).TriggerSdkGeneration), ctx, repositoryId, commitHash)
 }
 
 // UpdateRepository mocks base method.

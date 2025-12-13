@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251212092350-ff62f0f90e71.2
-	buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.10-20251212092350-ff62f0f90e71.1
+	buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20251212092350-ff62f0f90e71.1
 	connectrpc.com/connect v1.19.1
 	github.com/exaring/otelpgx v0.9.4
 	github.com/gliderlabs/ssh v0.3.8
@@ -115,7 +115,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20251209175733-2a1774d88802.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20251209175733-2a1774d88802.1 // indirect
 	buf.build/go/protovalidate v1.1.0 // indirect
 	cel.dev/expr v0.25.1 // indirect
 	connectrpc.com/otelconnect v0.8.0
@@ -126,6 +126,6 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.38.0 // indirect
 	golang.org/x/exp v0.0.0-20251209150349-8475f28825e9 // indirect
 	golang.org/x/text v0.32.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20251213004720-97cd9d5aeac2 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251213004720-97cd9d5aeac2 // indirect
 )

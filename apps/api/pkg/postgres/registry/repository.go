@@ -91,6 +91,14 @@ func NewPgRepository(
 	}
 }
 
+func (r *PgRepository) GetConnectionPool() *pgxpool.Pool {
+	return r.connectionPool
+}
+
+func (r *PgRepository) GetTracer() trace.Tracer {
+	return r.tracer
+}
+
 func (r *PgRepository) CreateRepository(ctx context.Context, repo *registry.RepositoryDTO) error {
 	var span trace.Span
 	ctx, span = r.tracer.Start(ctx, "CreateRepository", trace.WithAttributes(attribute.KeyValue{

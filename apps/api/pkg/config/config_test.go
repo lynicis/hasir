@@ -107,6 +107,9 @@ func TestEnvConfig_Read(t *testing.T) {
 			"HASIR_POSTGRESQL_USERNAME":         "dbuser",
 			"HASIR_POSTGRESQL_PASSWORD":         "dbpass",
 			"HASIR_POSTGRESQL_DATABASE":         "testdb",
+			"HASIR_SDKGENERATION_OUTPUTPATH":    "/var/sdk",
+			"HASIR_SDKGENERATION_POLLINTERVAL":  "5s",
+			"HASIR_SDKGENERATION_WORKERCOUNT":   "10",
 			"HASIR_DASHBOARDURL":                "https://dashboard.example.com",
 			"HASIR_SMTP_HOST":                   "smtp.example.com",
 			"HASIR_SMTP_PORT":                   "587",
@@ -140,6 +143,9 @@ func TestEnvConfig_Read(t *testing.T) {
 		assert.Equal(t, "dbpass", config.PostgresConfig.Password)
 		assert.Equal(t, "testdb", config.PostgresConfig.Database)
 		assert.Equal(t, "https://dashboard.example.com", config.DashboardUrl)
+		assert.Equal(t, "/var/sdk", config.SdkGeneration.OutputPath)
+		assert.Equal(t, "5s", config.SdkGeneration.PollInterval)
+		assert.Equal(t, 10, config.SdkGeneration.WorkerCount)
 		assert.Equal(t, "smtp.example.com", config.Smtp.Host)
 		assert.Equal(t, 587, config.Smtp.Port)
 		assert.Equal(t, "smtpuser", config.Smtp.Username)
@@ -167,7 +173,6 @@ func TestEnvConfig_Read(t *testing.T) {
 
 func TestJsonConfig_Read(t *testing.T) {
 	t.Run("reads config from json file", func(t *testing.T) {
-
 		tmpDir := t.TempDir()
 		configContent := `{
 			"server": {
@@ -186,6 +191,11 @@ func TestJsonConfig_Read(t *testing.T) {
 				"username": "dbuser",
 				"password": "dbpass",
 				"database": "testdb"
+			},
+			"sdkGeneration": {
+				"workerCount": 10,
+				"pollInterval": "5s",
+				"outputPath": "/var/sdk"
 			},
 			"smtp": {
 				"host": "smtp.example.com",
@@ -216,6 +226,9 @@ func TestJsonConfig_Read(t *testing.T) {
 		assert.Equal(t, "dbpass", config.PostgresConfig.Password)
 		assert.Equal(t, "testdb", config.PostgresConfig.Database)
 		assert.Equal(t, "https://dashboard.example.com", config.DashboardUrl)
+		assert.Equal(t, 10, config.SdkGeneration.WorkerCount)
+		assert.Equal(t, "5s", config.SdkGeneration.PollInterval)
+		assert.Equal(t, "/var/sdk", config.SdkGeneration.OutputPath)
 		assert.Equal(t, "smtp.example.com", config.Smtp.Host)
 		assert.Equal(t, 587, config.Smtp.Port)
 		assert.Equal(t, "smtpuser", config.Smtp.Username)
@@ -233,17 +246,63 @@ func TestJsonConfig_Read(t *testing.T) {
 	})
 }
 
-func TestConfigReader_Interface(t *testing.T) {
-	t.Run("EnvConfig implements ConfigReader", func(t *testing.T) {
-		var _ ConfigReader = &EnvConfig{}
-	})
-
-	t.Run("JsonConfig implements ConfigReader", func(t *testing.T) {
-		var _ ConfigReader = &JsonConfig{}
-	})
-}
-
 func TestGetCwd(t *testing.T) {
 	cwd := getCwd()
 	require.NotEmpty(t, cwd)
+}
+
+func TestSdkGenerationConfig(t *testing.T) {
+	t.Run("env config reads SDK generation settings", func(t *testing.T) {
+		envVars := map[string]string{
+			"HASIR_SDKGENERATION_WORKERCOUNT":  "5",
+			"HASIR_SDKGENERATION_POLLINTERVAL": "10s",
+			"HASIR_SDKGENERATION_OUTPUTPATH":   "/custom/sdk/path",
+		}
+
+		for k, v := range envVars {
+			_ = os.Setenv(k, v)
+		}
+		defer func() {
+			for k := range envVars {
+				_ = os.Unsetenv(k)
+			}
+		}()
+
+		reader := &EnvConfig{}
+		config := reader.Read()
+
+		assert.Equal(t, 5, config.SdkGeneration.WorkerCount)
+		assert.Equal(t, "10s", config.SdkGeneration.PollInterval)
+		assert.Equal(t, "/custom/sdk/path", config.SdkGeneration.OutputPath)
+	})
+
+	t.Run("json config reads SDK generation settings", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configContent := `{
+			"sdkGeneration": {
+				"workerCount": 10,
+				"pollInterval": "5s",
+				"outputPath": "/var/sdk"
+			}
+		}`
+		configPath := filepath.Join(tmpDir, "config.json")
+		err := os.WriteFile(configPath, []byte(configContent), 0644)
+		require.NoError(t, err)
+
+		reader := &JsonConfig{ConfigPath: configPath}
+		config := reader.Read()
+
+		assert.Equal(t, 10, config.SdkGeneration.WorkerCount)
+		assert.Equal(t, "5s", config.SdkGeneration.PollInterval)
+		assert.Equal(t, "/var/sdk", config.SdkGeneration.OutputPath)
+	})
+
+	t.Run("defaults when SDK generation not configured", func(t *testing.T) {
+		reader := &EnvConfig{}
+		config := reader.Read()
+
+		assert.Equal(t, 0, config.SdkGeneration.WorkerCount)
+		assert.Empty(t, config.SdkGeneration.PollInterval)
+		assert.Empty(t, config.SdkGeneration.OutputPath)
+	})
 }

@@ -30,6 +30,11 @@
     "port": "2222",
     "hostKeyPath": "./ssh_host_key"
   },
+  "sdkGeneration": {
+    "workerCount": 5,
+    "pollInterval": "10s",
+    "outputPath": "./sdk"
+  },
   "jwtSecret": "your-secret-key-here",
   "dashboardUrl": "http://localhost:3000"
 }

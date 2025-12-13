@@ -1,8 +1,9 @@
 package registry
 
 import (
-	"hasir-api/pkg/proto"
 	"time"
+
+	"hasir-api/pkg/proto"
 
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 )
@@ -63,3 +64,26 @@ const (
 	SshOperationRead  SshOperation = "read"
 	SshOperationWrite SshOperation = "write"
 )
+
+type SdkGenerationJobStatus string
+
+const (
+	SdkGenerationJobStatusPending    SdkGenerationJobStatus = "pending"
+	SdkGenerationJobStatusProcessing SdkGenerationJobStatus = "processing"
+	SdkGenerationJobStatusCompleted  SdkGenerationJobStatus = "completed"
+	SdkGenerationJobStatusFailed     SdkGenerationJobStatus = "failed"
+)
+
+type SdkGenerationJobDTO struct {
+	Id           string                 `db:"id"`
+	RepositoryId string                 `db:"repository_id"`
+	CommitHash   string                 `db:"commit_hash"`
+	Sdk          SDK                    `db:"sdk"`
+	Status       SdkGenerationJobStatus `db:"status"`
+	Attempts     int                    `db:"attempts"`
+	MaxAttempts  int                    `db:"max_attempts"`
+	CreatedAt    time.Time              `db:"created_at"`
+	ProcessedAt  *time.Time             `db:"processed_at"`
+	CompletedAt  *time.Time             `db:"completed_at"`
+	ErrorMessage *string                `db:"error_message"`
+}

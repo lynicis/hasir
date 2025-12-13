@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/registry/v1/registryv1connect"
@@ -16,6 +17,17 @@ import (
 
 	"hasir-api/internal/user"
 )
+
+const banner = `
+██╗  ██╗ █████╗ ███████╗██╗██████╗
+██║  ██║██╔══██╗██╔════╝██║██╔══██╗
+███████║███████║███████╗██║██████╔╝
+██╔══██║██╔══██║╚════██║██║██╔══██╗
+██║  ██║██║  ██║███████║██║██║  ██║
+╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝╚═╝  ╚═╝
+
+Protocol Buffer Schema Registry
+`
 
 type handler struct {
 	interceptors []connect.Interceptor
@@ -361,6 +373,10 @@ func (h *GitHttpHandler) handleReceivePack(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/x-git-receive-pack-result")
 	w.Header().Set("Cache-Control", "no-cache")
 
+	message := fmt.Sprintf("\x02%s", banner)
+	pktLine := fmt.Sprintf("%04x%s", len(message)+4, message)
+	_, _ = w.Write([]byte(pktLine))
+
 	cmd := exec.Command("git-receive-pack", "--stateless-rpc", repoPath)
 	cmd.Stdin = r.Body
 	cmd.Stdout = w
@@ -368,5 +384,49 @@ func (h *GitHttpHandler) handleReceivePack(w http.ResponseWriter, r *http.Reques
 
 	if err := cmd.Run(); err != nil {
 		zap.L().Error("git-receive-pack failed", zap.Error(err))
+		return
 	}
+
+	repoId := filepath.Base(repoPath)
+	commitHash, err := h.getLatestCommitHash(repoPath)
+	if err != nil {
+		zap.L().Warn("failed to get latest commit hash for SDK generation",
+			zap.String("repoId", repoId),
+			zap.Error(err))
+		return
+	}
+
+	hasProtoFiles, err := h.service.HasProtoFiles(r.Context(), repoPath)
+	if err != nil {
+		zap.L().Warn("failed to check for proto files",
+			zap.String("repoId", repoId),
+			zap.Error(err))
+		return
+	}
+
+	if !hasProtoFiles {
+		zap.L().Info("skipping SDK generation: repository contains no proto files",
+			zap.String("repoId", repoId),
+			zap.String("commitHash", commitHash))
+		return
+	}
+
+	if err := h.service.TriggerSdkGeneration(r.Context(), repoId, commitHash); err != nil {
+		zap.L().Error("failed to trigger SDK generation",
+			zap.String("repoId", repoId),
+			zap.String("commitHash", commitHash),
+			zap.Error(err))
+	}
+}
+
+func (h *GitHttpHandler) getLatestCommitHash(repoPath string) (string, error) {
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = repoPath
+
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(string(output)), nil
 }

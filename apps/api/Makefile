@@ -3,6 +3,7 @@ generate-mocks:
 	mockgen -package=user -destination=internal/user/repository_mock.go hasir-api/internal/user Repository
 	mockgen -package=registry -destination=internal/registry/service_mock.go hasir-api/internal/registry Service
 	mockgen -package=registry -destination=internal/registry/repository_mock.go hasir-api/internal/registry Repository
+	mockgen -package=registry -destination=internal/registry/queue_mock.go hasir-api/internal/registry SdkGenerationQueue
 	mockgen -package=organization -destination=internal/organization/service_mock.go hasir-api/internal/organization Service
 	mockgen -package=organization -destination=internal/organization/repository_mock.go hasir-api/internal/organization Repository
 	mockgen -package=organization -destination=internal/organization/queue_mock.go hasir-api/internal/organization Queue

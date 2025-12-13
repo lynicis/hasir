@@ -72,14 +72,21 @@ type SshConfig struct {
 	HostKeyPath string `koanf:"hostKeyPath"`
 }
 
+type SdkGenerationConfig struct {
+	WorkerCount  int    `koanf:"workerCount"`
+	PollInterval string `koanf:"pollInterval"`
+	OutputPath   string `koanf:"outputPath"`
+}
+
 type Config struct {
-	Server         ServerConfig   `koanf:"server"`
-	Otel           OtelConfig     `koanf:"otel"`
-	PostgresConfig PostgresConfig `koanf:"postgresql"`
-	Smtp           SmtpConfig     `koanf:"smtp"`
-	Ssh            SshConfig      `koanf:"ssh"`
-	JwtSecret      []byte         `koanf:"jwtSecret"`
-	DashboardUrl   string         `koanf:"dashboardUrl"`
+	Server         ServerConfig        `koanf:"server"`
+	Otel           OtelConfig          `koanf:"otel"`
+	PostgresConfig PostgresConfig      `koanf:"postgresql"`
+	Smtp           SmtpConfig          `koanf:"smtp"`
+	Ssh            SshConfig           `koanf:"ssh"`
+	SdkGeneration  SdkGenerationConfig `koanf:"sdkGeneration"`
+	JwtSecret      []byte              `koanf:"jwtSecret"`
+	DashboardUrl   string              `koanf:"dashboardUrl"`
 }
 
 type ConfigReader interface {

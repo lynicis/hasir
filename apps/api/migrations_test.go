@@ -42,7 +42,7 @@ func TestMigrations(t *testing.T) {
 		version, dirty, err := m.Version()
 		assert.NoError(t, err)
 		assert.False(t, dirty)
-		assert.Equal(t, uint(15), version, "Expected migration version to be 15")
+		assert.Equal(t, uint(16), version, "Expected migration version to be 16")
 	})
 
 	t.Run("idempotent - running migrations twice should not fail", func(t *testing.T) {
@@ -104,6 +104,7 @@ func TestMigrations(t *testing.T) {
 			"ssh_keys",
 			"sdk_preferences",
 			"password_reset_tokens",
+			"sdk_generation_jobs",
 		}
 
 		for _, tableName := range expectedTables {
@@ -462,6 +463,116 @@ func TestMigrations(t *testing.T) {
 		assert.True(t, cascadeExists, "ON DELETE CASCADE should be set for repository_id foreign key")
 	})
 
+	t.Run("verify sdk_generation_jobs table schema and indexes", func(t *testing.T) {
+		container := setupPostgresContainer(t)
+		defer func() {
+			err := container.Terminate(context.Background())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(context.Background())
+		require.NoError(t, err)
+
+		m := setupMigration(t, connString)
+		defer func() {
+			_, _ = m.Close()
+		}()
+
+		err = m.Up()
+		require.NoError(t, err)
+
+		conn, err := pgx.Connect(context.Background(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(context.Background())
+		}()
+
+		var exists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT FROM information_schema.tables
+				WHERE table_schema = 'public'
+				AND table_name = 'sdk_generation_jobs'
+			)`).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists, "Table sdk_generation_jobs should exist")
+
+		expectedColumns := map[string]string{
+			"id":            "character varying",
+			"repository_id": "character varying",
+			"commit_hash":   "character varying",
+			"sdk":           "USER-DEFINED",
+			"status":        "character varying",
+			"attempts":      "integer",
+			"max_attempts":  "integer",
+			"created_at":    "timestamp with time zone",
+			"processed_at":  "timestamp with time zone",
+			"completed_at":  "timestamp with time zone",
+			"error_message": "text",
+		}
+
+		for columnName, expectedType := range expectedColumns {
+			var dataType string
+			err = conn.QueryRow(context.Background(),
+				`SELECT data_type
+				FROM information_schema.columns
+				WHERE table_name = 'sdk_generation_jobs'
+				AND column_name = $1`, columnName).Scan(&dataType)
+			require.NoError(t, err, "Column %s should exist", columnName)
+			assert.Equal(t, expectedType, dataType, "Column %s should have type %s", columnName, expectedType)
+		}
+
+		var fkExists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT 1
+				FROM information_schema.table_constraints tc
+				JOIN information_schema.key_column_usage kcu
+				ON tc.constraint_name = kcu.constraint_name
+				WHERE tc.table_name = 'sdk_generation_jobs'
+				AND tc.constraint_type = 'FOREIGN KEY'
+				AND kcu.column_name = 'repository_id'
+			)`).Scan(&fkExists)
+		require.NoError(t, err)
+		assert.True(t, fkExists, "Foreign key on repository_id should exist")
+
+		expectedIndexes := []string{
+			"idx_sdk_generation_jobs_repository_id",
+			"idx_sdk_generation_jobs_status",
+			"idx_sdk_generation_jobs_commit_hash",
+			"idx_sdk_generation_jobs_created_at",
+		}
+
+		for _, indexName := range expectedIndexes {
+			var indexExists bool
+			err = conn.QueryRow(context.Background(),
+				`SELECT EXISTS (
+					SELECT 1
+					FROM pg_indexes
+					WHERE tablename = 'sdk_generation_jobs'
+					AND indexname = $1
+				)`, indexName).Scan(&indexExists)
+			require.NoError(t, err)
+			assert.True(t, indexExists, "Index %s should exist", indexName)
+		}
+
+		var cascadeExists bool
+		err = conn.QueryRow(context.Background(),
+			`SELECT EXISTS (
+				SELECT 1
+				FROM information_schema.referential_constraints rc
+				WHERE rc.constraint_name IN (
+					SELECT constraint_name
+					FROM information_schema.key_column_usage
+					WHERE table_name = 'sdk_generation_jobs'
+					AND column_name = 'repository_id'
+				)
+				AND rc.delete_rule = 'CASCADE'
+			)`).Scan(&cascadeExists)
+		require.NoError(t, err)
+		assert.True(t, cascadeExists, "ON DELETE CASCADE should be set for repository_id foreign key")
+	})
+
 	t.Run("verify password_reset_tokens table schema and indexes", func(t *testing.T) {
 		container := setupPostgresContainer(t)
 		defer func() {
@@ -627,6 +738,7 @@ func TestMigrations(t *testing.T) {
 			"ssh_keys",
 			"sdk_preferences",
 			"password_reset_tokens",
+			"sdk_generation_jobs",
 		}
 
 		for _, tableName := range expectedTables {
@@ -1330,7 +1442,7 @@ func TestMigrations(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, exists, "search_items view should exist before rollback")
 
-		err = m.Steps(-2)
+		err = m.Steps(-3)
 		require.NoError(t, err)
 
 		err = conn.QueryRow(context.Background(),
