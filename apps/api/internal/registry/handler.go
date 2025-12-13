@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -195,7 +196,10 @@ func NewGitSshHandler(service Service, reposPath string) *GitSshHandler {
 func (h *GitSshHandler) HandleSession(session ssh.Session, userId string) error {
 	cmd := session.RawCommand()
 	if cmd == "" {
-		return fmt.Errorf("interactive shell access is not supported, use git commands")
+		_, _ = fmt.Fprint(session, banner)
+		_, _ = fmt.Fprintf(session, "\n✅ SSH connection successful!\n")
+		_, _ = fmt.Fprintf(session, "🔐 Authentication completed.\n\n")
+		return nil
 	}
 
 	parts := strings.SplitN(cmd, " ", 2)
@@ -230,16 +234,40 @@ func (h *GitSshHandler) HandleSession(session ssh.Session, userId string) error 
 		return fmt.Errorf("permission denied")
 	}
 
-	zap.L().Info("Executing Git command", zap.String("userId", userId), zap.String("command", gitCmd))
+	absRepoPath, err := filepath.Abs(fullRepoPath)
+	if err != nil {
+		zap.L().Error("Failed to get absolute path", zap.String("path", fullRepoPath), zap.Error(err))
+		return fmt.Errorf("failed to resolve repository path: %w", err)
+	}
+
+	zap.L().Info("Executing Git command",
+		zap.String("userId", userId),
+		zap.String("command", gitCmd),
+		zap.String("repoPath", absRepoPath))
+
+	if _, err := os.Stat(absRepoPath); os.IsNotExist(err) {
+		zap.L().Error("Repository path does not exist", zap.String("path", absRepoPath))
+		return fmt.Errorf("repository not found: %s", absRepoPath)
+	}
+
+	if _, err := os.Stat(filepath.Join(absRepoPath, "HEAD")); os.IsNotExist(err) {
+		zap.L().Error("Not a valid git repository", zap.String("path", absRepoPath))
+		return fmt.Errorf("not a git repository: %s", absRepoPath)
+	}
 
 	// #nosec G204 -- gitCmd is validated against whitelist (git-upload-pack or git-receive-pack)
-	execCmd := exec.Command(gitCmd, fullRepoPath)
-	execCmd.Dir = fullRepoPath
+	execCmd := exec.Command(gitCmd, absRepoPath)
+	execCmd.Dir = filepath.Dir(absRepoPath)
 	execCmd.Stdin = session
 	execCmd.Stdout = session
 	execCmd.Stderr = session.Stderr()
 
+	zap.L().Debug("Starting git command",
+		zap.String("command", gitCmd),
+		zap.String("repoPath", absRepoPath))
+
 	if err := execCmd.Start(); err != nil {
+		zap.L().Error("Failed to start git command", zap.Error(err))
 		return fmt.Errorf("failed to start %s: %w", gitCmd, err)
 	}
 
