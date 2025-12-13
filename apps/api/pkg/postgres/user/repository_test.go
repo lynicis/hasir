@@ -1380,6 +1380,134 @@ func TestPgRepository_CreateSshKey(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 1, count)
 	})
+
+	t.Run("returns error when active key already exists", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createSshKeysTable(t, connString)
+
+		keyId := uuid.NewString()
+		publicKey := "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABexisting"
+		createFakeSshKey(t, connString, fakeId, keyId, publicKey)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		err = pgRepository.CreateSshKey(t.Context(), fakeId, "another-name", publicKey)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "already exists")
+	})
+
+	t.Run("restores soft-deleted key for same user (idempotent)", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createSshKeysTable(t, connString)
+
+		keyId := uuid.NewString()
+		publicKey := "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABrevoked"
+		createFakeSshKey(t, connString, fakeId, keyId, publicKey)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		_, err = conn.Exec(t.Context(), "UPDATE ssh_keys SET deleted_at = $1 WHERE id = $2", time.Now().UTC(), keyId)
+		require.NoError(t, err)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		err = pgRepository.CreateSshKey(t.Context(), fakeId, "restored-key", publicKey)
+		assert.NoError(t, err)
+
+		var deletedAt *time.Time
+		err = conn.QueryRow(t.Context(),
+			"SELECT deleted_at FROM ssh_keys WHERE id = $1", keyId).Scan(&deletedAt)
+		require.NoError(t, err)
+		assert.Nil(t, deletedAt, "Key should be restored (deleted_at should be NULL)")
+
+		var name string
+		err = conn.QueryRow(t.Context(),
+			"SELECT name FROM ssh_keys WHERE id = $1", keyId).Scan(&name)
+		require.NoError(t, err)
+		assert.Equal(t, "restored-key", name)
+	})
+
+	t.Run("returns error when soft-deleted key exists for different user", func(t *testing.T) {
+		container := setupPgContainer(t)
+		defer func() {
+			err := container.Terminate(t.Context())
+			require.NoError(t, err)
+		}()
+
+		connString, err := container.ConnectionString(t.Context())
+		require.NoError(t, err)
+
+		createUserTable(t, connString)
+		createFakeUser(t, connString)
+		createSshKeysTable(t, connString)
+
+		conn, err := pgx.Connect(t.Context(), connString)
+		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close(t.Context())
+		}()
+
+		otherUserId := uuid.NewString()
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+		require.NoError(t, err)
+		_, err = conn.Exec(t.Context(),
+			"INSERT INTO users (id, username, email, password, created_at) VALUES ($1, $2, $3, $4, $5)",
+			otherUserId, "otheruser", "other@example.com", string(hashedPassword), time.Now().UTC())
+		require.NoError(t, err)
+
+		keyId := uuid.NewString()
+		publicKey := "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABotheruser"
+		createFakeSshKey(t, connString, otherUserId, keyId, publicKey)
+
+		_, err = conn.Exec(t.Context(), "UPDATE ssh_keys SET deleted_at = $1 WHERE id = $2", time.Now().UTC(), keyId)
+		require.NoError(t, err)
+
+		traceProvider := sdktrace.NewTracerProvider()
+		pgRepository := NewPgRepository(&config.Config{
+			PostgresConfig: config.PostgresConfig{
+				ConnectionString: connString,
+			},
+		}, traceProvider)
+
+		err = pgRepository.CreateSshKey(t.Context(), fakeId, "new-key", publicKey)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "already exists for another user")
+	})
 }
 
 func TestPgRepository_GetSshKeys(t *testing.T) {

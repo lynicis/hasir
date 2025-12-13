@@ -627,6 +627,56 @@ func (r *PgRepository) CreateSshKey(ctx context.Context, userId, name, publicKey
 	}
 	defer connection.Release()
 
+	var activeKeyId string
+	activeCheckSQL := `
+		SELECT id
+		FROM ssh_keys
+		WHERE public_key = $1 AND deleted_at IS NULL
+		LIMIT 1
+	`
+	err = connection.QueryRow(ctx, activeCheckSQL, publicKey).Scan(&activeKeyId)
+	if err == nil {
+		return connect.NewError(connect.CodeAlreadyExists, errors.New("ssh key already exists"))
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		span.RecordError(err)
+		return ErrInternalServer
+	}
+
+	var existingKeyId string
+	var existingUserId string
+	checkSQL := `
+		SELECT id, user_id
+		FROM ssh_keys
+		WHERE public_key = $1 AND deleted_at IS NOT NULL
+		LIMIT 1
+	`
+	err = connection.QueryRow(ctx, checkSQL, publicKey).Scan(&existingKeyId, &existingUserId)
+	if err == nil {
+		if existingUserId == userId {
+			restoreSQL := `
+				UPDATE ssh_keys
+				SET deleted_at = NULL, name = $1
+				WHERE id = $2 AND deleted_at IS NOT NULL
+			`
+			result, err := connection.Exec(ctx, restoreSQL, name, existingKeyId)
+			if err != nil {
+				span.RecordError(err)
+				return ErrInternalServer
+			}
+			if result.RowsAffected() == 0 {
+				return nil
+			}
+			return nil
+		}
+
+		return connect.NewError(connect.CodeAlreadyExists, errors.New("ssh key already exists for another user"))
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		span.RecordError(err)
+		return ErrInternalServer
+	}
+
 	sql := `
 		INSERT INTO ssh_keys (id, user_id, name, public_key, created_at)
 		VALUES (gen_random_uuid(), $1, $2, $3, $4)
