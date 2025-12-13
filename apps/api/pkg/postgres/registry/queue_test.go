@@ -11,20 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace/noop"
+	"go.uber.org/mock/gomock"
 
 	"hasir-api/internal/registry"
 )
-
-type mockSdkGenerator struct {
-	generateSDKFunc func(ctx context.Context, repositoryId, commitHash string, sdk registry.SDK) error
-}
-
-func (m *mockSdkGenerator) GenerateSDK(ctx context.Context, repositoryId, commitHash string, sdk registry.SDK) error {
-	if m.generateSDKFunc != nil {
-		return m.generateSDKFunc(ctx, repositoryId, commitHash, sdk)
-	}
-	return nil
-}
 
 func setupQueueTestEnvironment(t *testing.T) (*SdkGenerationJobQueue, *pgxpool.Pool, func()) {
 	t.Helper()
@@ -397,13 +387,13 @@ func TestSdkGenerationJobQueue_StartStop(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
-	mockGen := &mockSdkGenerator{
-		generateSDKFunc: func(ctx context.Context, repositoryId, commitHash string, sdk registry.SDK) error {
-			return nil
-		},
-	}
+	ctrl := gomock.NewController(t)
+	mockService := registry.NewMockService(ctrl)
 
-	queue.Start(ctx, mockGen, 10, 100*time.Millisecond)
+	mockService.EXPECT().GenerateSDK(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockService.EXPECT().ProcessSdkTrigger(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	queue.Start(ctx, mockService, mockService, 10, 100*time.Millisecond)
 
 	time.Sleep(200 * time.Millisecond)
 
@@ -417,13 +407,16 @@ func TestProcessSdkGenerationJobs_Success(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
+	ctrl := gomock.NewController(t)
+	mockService := registry.NewMockService(ctrl)
+
 	generatedSDKs := make(map[string]bool)
-	mockGen := &mockSdkGenerator{
-		generateSDKFunc: func(ctx context.Context, repositoryId, commitHash string, sdk registry.SDK) error {
+	mockService.EXPECT().GenerateSDK(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, repositoryId, commitHash string, sdk registry.SDK) error {
 			generatedSDKs[repositoryId+"-"+commitHash+"-"+string(sdk)] = true
 			return nil
-		},
-	}
+		}).AnyTimes()
+	mockService.EXPECT().ProcessSdkTrigger(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	now := time.Now().UTC()
 	jobs := []*registry.SdkGenerationJobDTO{
@@ -442,7 +435,7 @@ func TestProcessSdkGenerationJobs_Success(t *testing.T) {
 	err := queue.EnqueueSdkGenerationJobs(ctx, jobs)
 	require.NoError(t, err)
 
-	queue.Start(ctx, mockGen, 10, 100*time.Millisecond)
+	queue.Start(ctx, mockService, mockService, 10, 100*time.Millisecond)
 	defer queue.Stop()
 
 	time.Sleep(500 * time.Millisecond)
@@ -461,13 +454,16 @@ func TestProcessSdkGenerationJobs_Retry(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
+	ctrl := gomock.NewController(t)
+	mockService := registry.NewMockService(ctrl)
+
 	attemptCount := 0
-	mockGen := &mockSdkGenerator{
-		generateSDKFunc: func(ctx context.Context, repositoryId, commitHash string, sdk registry.SDK) error {
+	mockService.EXPECT().GenerateSDK(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _, _ string, _ registry.SDK) error {
 			attemptCount++
 			return assert.AnError
-		},
-	}
+		}).AnyTimes()
+	mockService.EXPECT().ProcessSdkTrigger(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	now := time.Now().UTC()
 	jobId := uuid.NewString()
@@ -487,7 +483,7 @@ func TestProcessSdkGenerationJobs_Retry(t *testing.T) {
 	err := queue.EnqueueSdkGenerationJobs(ctx, jobs)
 	require.NoError(t, err)
 
-	queue.Start(ctx, mockGen, 10, 100*time.Millisecond)
+	queue.Start(ctx, mockService, mockService, 10, 100*time.Millisecond)
 	defer queue.Stop()
 
 	time.Sleep(1 * time.Second)

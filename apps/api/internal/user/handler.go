@@ -5,12 +5,14 @@ import (
 	"errors"
 	"math"
 	"net/http"
+	"strings"
 
 	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
 	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
 	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/ssh"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"hasir-api/pkg/authentication"
@@ -223,7 +225,14 @@ func (h *handler) CreateSshKey(
 		return nil, err
 	}
 
-	if err = h.userRepository.CreateSshKey(ctx, userId, req.Msg.GetName(), req.Msg.GetPublicKey()); err != nil {
+	publicKey := strings.TrimSpace(req.Msg.GetPublicKey())
+	parsedKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKey))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid SSH public key format"))
+	}
+
+	normalizedKey := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(parsedKey)))
+	if err = h.userRepository.CreateSshKey(ctx, userId, req.Msg.GetName(), normalizedKey); err != nil {
 		return nil, err
 	}
 

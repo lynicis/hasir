@@ -55,6 +55,20 @@ func (mr *MockSdkGenerationQueueMockRecorder) EnqueueSdkGenerationJobs(ctx, jobs
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueSdkGenerationJobs", reflect.TypeOf((*MockSdkGenerationQueue)(nil).EnqueueSdkGenerationJobs), ctx, jobs)
 }
 
+// EnqueueSdkTriggerJob mocks base method.
+func (m *MockSdkGenerationQueue) EnqueueSdkTriggerJob(ctx context.Context, job *SdkTriggerJobDTO) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnqueueSdkTriggerJob", ctx, job)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EnqueueSdkTriggerJob indicates an expected call of EnqueueSdkTriggerJob.
+func (mr *MockSdkGenerationQueueMockRecorder) EnqueueSdkTriggerJob(ctx, job any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueSdkTriggerJob", reflect.TypeOf((*MockSdkGenerationQueue)(nil).EnqueueSdkTriggerJob), ctx, job)
+}
+
 // GetPendingSdkGenerationJobs mocks base method.
 func (m *MockSdkGenerationQueue) GetPendingSdkGenerationJobs(ctx context.Context, limit int) ([]*SdkGenerationJobDTO, error) {
 	m.ctrl.T.Helper()
@@ -70,16 +84,31 @@ func (mr *MockSdkGenerationQueueMockRecorder) GetPendingSdkGenerationJobs(ctx, l
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingSdkGenerationJobs", reflect.TypeOf((*MockSdkGenerationQueue)(nil).GetPendingSdkGenerationJobs), ctx, limit)
 }
 
-// Start mocks base method.
-func (m *MockSdkGenerationQueue) Start(ctx context.Context, sdkGenerator SdkGenerator, batchSize int, pollInterval time.Duration) {
+// GetPendingSdkTriggerJobs mocks base method.
+func (m *MockSdkGenerationQueue) GetPendingSdkTriggerJobs(ctx context.Context, limit int) ([]*SdkTriggerJobDTO, error) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Start", ctx, sdkGenerator, batchSize, pollInterval)
+	ret := m.ctrl.Call(m, "GetPendingSdkTriggerJobs", ctx, limit)
+	ret0, _ := ret[0].([]*SdkTriggerJobDTO)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPendingSdkTriggerJobs indicates an expected call of GetPendingSdkTriggerJobs.
+func (mr *MockSdkGenerationQueueMockRecorder) GetPendingSdkTriggerJobs(ctx, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingSdkTriggerJobs", reflect.TypeOf((*MockSdkGenerationQueue)(nil).GetPendingSdkTriggerJobs), ctx, limit)
+}
+
+// Start mocks base method.
+func (m *MockSdkGenerationQueue) Start(ctx context.Context, sdkGenerator SdkGenerator, triggerProcessor SdkTriggerProcessor, batchSize int, pollInterval time.Duration) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Start", ctx, sdkGenerator, triggerProcessor, batchSize, pollInterval)
 }
 
 // Start indicates an expected call of Start.
-func (mr *MockSdkGenerationQueueMockRecorder) Start(ctx, sdkGenerator, batchSize, pollInterval any) *gomock.Call {
+func (mr *MockSdkGenerationQueueMockRecorder) Start(ctx, sdkGenerator, triggerProcessor, batchSize, pollInterval any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockSdkGenerationQueue)(nil).Start), ctx, sdkGenerator, batchSize, pollInterval)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockSdkGenerationQueue)(nil).Start), ctx, sdkGenerator, triggerProcessor, batchSize, pollInterval)
 }
 
 // Stop mocks base method.
@@ -106,4 +135,18 @@ func (m *MockSdkGenerationQueue) UpdateSdkGenerationJobStatus(ctx context.Contex
 func (mr *MockSdkGenerationQueueMockRecorder) UpdateSdkGenerationJobStatus(ctx, jobId, status, errorMsg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSdkGenerationJobStatus", reflect.TypeOf((*MockSdkGenerationQueue)(nil).UpdateSdkGenerationJobStatus), ctx, jobId, status, errorMsg)
+}
+
+// UpdateSdkTriggerJobStatus mocks base method.
+func (m *MockSdkGenerationQueue) UpdateSdkTriggerJobStatus(ctx context.Context, jobId string, status SdkGenerationJobStatus, errorMsg *string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSdkTriggerJobStatus", ctx, jobId, status, errorMsg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSdkTriggerJobStatus indicates an expected call of UpdateSdkTriggerJobStatus.
+func (mr *MockSdkGenerationQueueMockRecorder) UpdateSdkTriggerJobStatus(ctx, jobId, status, errorMsg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSdkTriggerJobStatus", reflect.TypeOf((*MockSdkGenerationQueue)(nil).UpdateSdkTriggerJobStatus), ctx, jobId, status, errorMsg)
 }

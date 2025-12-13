@@ -187,6 +187,20 @@ func (mr *MockServiceMockRecorder) HasProtoFiles(ctx, repoPath any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasProtoFiles", reflect.TypeOf((*MockService)(nil).HasProtoFiles), ctx, repoPath)
 }
 
+// ProcessSdkTrigger mocks base method.
+func (m *MockService) ProcessSdkTrigger(ctx context.Context, repositoryId, repoPath string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ProcessSdkTrigger", ctx, repositoryId, repoPath)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ProcessSdkTrigger indicates an expected call of ProcessSdkTrigger.
+func (mr *MockServiceMockRecorder) ProcessSdkTrigger(ctx, repositoryId, repoPath any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcessSdkTrigger", reflect.TypeOf((*MockService)(nil).ProcessSdkTrigger), ctx, repositoryId, repoPath)
+}
+
 // TriggerSdkGeneration mocks base method.
 func (m *MockService) TriggerSdkGeneration(ctx context.Context, repositoryId, commitHash string) error {
 	m.ctrl.T.Helper()

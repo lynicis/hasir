@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,10 +19,63 @@ import (
 	"hasir-api/pkg/authorization"
 	"hasir-api/pkg/config"
 	"hasir-api/pkg/proto"
+	"hasir-api/pkg/sdkgenerator"
 
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
 )
+
+func initGitRepoWithEmptyCommit(t *testing.T, repoPath string) string {
+	t.Helper()
+
+	cmds := [][]string{
+		{"git", "init"},
+		{"git", "config", "user.email", "test@test.com"},
+		{"git", "config", "user.name", "Test"},
+		{"git", "commit", "--allow-empty", "-m", "initial"},
+	}
+
+	for _, args := range cmds {
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = repoPath
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "command %v failed: %s", args, string(out))
+	}
+
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = repoPath
+	out, err := cmd.Output()
+	require.NoError(t, err)
+	return strings.TrimSpace(string(out))
+}
+
+func initGitRepoWithProtoFile(t *testing.T, repoPath string) string {
+	t.Helper()
+
+	protoFile := filepath.Join(repoPath, "test.proto")
+	require.NoError(t, os.WriteFile(protoFile, []byte("syntax = \"proto3\";"), 0o644))
+
+	cmds := [][]string{
+		{"git", "init"},
+		{"git", "config", "user.email", "test@test.com"},
+		{"git", "config", "user.name", "Test"},
+		{"git", "add", "."},
+		{"git", "commit", "-m", "add proto file"},
+	}
+
+	for _, args := range cmds {
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = repoPath
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "command %v failed: %s", args, string(out))
+	}
+
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = repoPath
+	out, err := cmd.Output()
+	require.NoError(t, err)
+	return strings.TrimSpace(string(out))
+}
 
 func TestNewService(t *testing.T) {
 	t.Run("default root path", func(t *testing.T) {
@@ -1279,14 +1334,17 @@ func TestService_GenerateSDK(t *testing.T) {
 		repoPath := filepath.Join(tmpDir, repoID)
 		require.NoError(t, os.MkdirAll(repoPath, 0o750))
 
+		// Initialize git repo with empty commit
+		commitHash := initGitRepoWithEmptyCommit(t, repoPath)
+
 		svc := &service{
-			rootPath:   tmpDir,
-			repository: mockRepo,
-			sdkPath:    sdkDir,
+			rootPath:    tmpDir,
+			repository:  mockRepo,
+			sdkPath:     sdkDir,
+			sdkRegistry: sdkgenerator.NewRegistry(nil),
 		}
 
 		ctx := context.Background()
-		commitHash := "abc123"
 		orgID := "org-123"
 
 		mockRepo.EXPECT().
@@ -1312,8 +1370,7 @@ func TestService_GenerateSDK(t *testing.T) {
 		repoPath := filepath.Join(tmpDir, repoID)
 		require.NoError(t, os.MkdirAll(repoPath, 0o750))
 
-		protoFile := filepath.Join(repoPath, "test.proto")
-		require.NoError(t, os.WriteFile(protoFile, []byte("syntax = \"proto3\";"), 0o644))
+		commitHash := initGitRepoWithProtoFile(t, repoPath)
 
 		cfg := &config.Config{
 			SdkGeneration: config.SdkGenerationConfig{
@@ -1325,7 +1382,6 @@ func TestService_GenerateSDK(t *testing.T) {
 		svc.rootPath = tmpDir
 
 		ctx := context.Background()
-		commitHash := "abc123"
 		orgID := "org-123"
 
 		mockRepo.EXPECT().
@@ -1381,14 +1437,6 @@ func TestService_FindProtoFiles(t *testing.T) {
 }
 
 func TestService_GetSdkDirName(t *testing.T) {
-	cfg := &config.Config{
-		SdkGeneration: config.SdkGenerationConfig{
-			OutputPath: "./sdk",
-		},
-	}
-
-	svc := NewService(nil, nil, nil, cfg).(*service)
-
 	tests := []struct {
 		sdk      SDK
 		expected string
@@ -1404,7 +1452,7 @@ func TestService_GetSdkDirName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.sdk), func(t *testing.T) {
-			result := svc.getSdkDirName(tt.sdk)
+			result := sdkgenerator.SDK(tt.sdk).DirName()
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -1473,7 +1521,7 @@ func TestNewService_WithConfig(t *testing.T) {
 		assert.Equal(t, "/custom/sdk/path", concrete.sdkPath)
 	})
 
-	t.Run("initializes SDK generators map", func(t *testing.T) {
+	t.Run("initializes SDK registry", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
 
@@ -1487,46 +1535,325 @@ func TestNewService_WithConfig(t *testing.T) {
 		concrete, ok := svc.(*service)
 		require.True(t, ok)
 
-		require.NotNil(t, concrete.sdkGenerators)
-		require.Len(t, concrete.sdkGenerators, 6)
+		require.NotNil(t, concrete.sdkRegistry)
 
-		_, ok = concrete.sdkGenerators[SdkGoProtobuf]
-		assert.True(t, ok)
-		_, ok = concrete.sdkGenerators[SdkGoConnectRpc]
-		assert.True(t, ok)
-		_, ok = concrete.sdkGenerators[SdkGoGrpc]
-		assert.True(t, ok)
-		_, ok = concrete.sdkGenerators[SdkJsBufbuildEs]
-		assert.True(t, ok)
-		_, ok = concrete.sdkGenerators[SdkJsProtobuf]
-		assert.True(t, ok)
-		_, ok = concrete.sdkGenerators[SdkJsConnectrpc]
-		assert.True(t, ok)
+		generators := concrete.sdkRegistry.List()
+		require.Len(t, generators, 6)
+
+		_, err := concrete.sdkRegistry.Get(sdkgenerator.SdkGoProtobuf)
+		assert.NoError(t, err)
+		_, err = concrete.sdkRegistry.Get(sdkgenerator.SdkGoConnectRpc)
+		assert.NoError(t, err)
+		_, err = concrete.sdkRegistry.Get(sdkgenerator.SdkGoGrpc)
+		assert.NoError(t, err)
+		_, err = concrete.sdkRegistry.Get(sdkgenerator.SdkJsBufbuildEs)
+		assert.NoError(t, err)
+		_, err = concrete.sdkRegistry.Get(sdkgenerator.SdkJsProtobuf)
+		assert.NoError(t, err)
+		_, err = concrete.sdkRegistry.Get(sdkgenerator.SdkJsConnectrpc)
+		assert.NoError(t, err)
 	})
 
-	t.Run("initializes SDK dir names map", func(t *testing.T) {
+	t.Run("SDK DirName returns correct values", func(t *testing.T) {
+		assert.Equal(t, "go-protobuf", sdkgenerator.SdkGoProtobuf.DirName())
+		assert.Equal(t, "go-connectrpc", sdkgenerator.SdkGoConnectRpc.DirName())
+		assert.Equal(t, "go-grpc", sdkgenerator.SdkGoGrpc.DirName())
+		assert.Equal(t, "js-bufbuild-es", sdkgenerator.SdkJsBufbuildEs.DirName())
+		assert.Equal(t, "js-protobuf", sdkgenerator.SdkJsProtobuf.DirName())
+		assert.Equal(t, "js-connectrpc", sdkgenerator.SdkJsConnectrpc.DirName())
+	})
+}
+
+func TestService_UpdateSdkPreferences(t *testing.T) {
+	t.Run("success - updates preferences and enqueues trigger job", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+		mockQueue := NewMockSdkGenerationQueue(ctrl)
 
-		cfg := &config.Config{
-			SdkGeneration: config.SdkGenerationConfig{
-				OutputPath: "./sdk",
-			},
+		svc := &service{
+			rootPath:   t.TempDir(),
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+			sdkQueue:   mockQueue,
 		}
 
-		svc := NewService(mockRepo, nil, nil, cfg)
-		concrete, ok := svc.(*service)
-		require.True(t, ok)
+		const repoID = "repo-123"
+		const orgID = "org-123"
+		const userID = "user-123"
+		const repoPath = "./repos/repo-123"
+		ctx := testAuthInterceptor(userID)
 
-		require.NotNil(t, concrete.sdkDirNames)
-		require.Len(t, concrete.sdkDirNames, 6)
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Path:           repoPath,
+			}, nil)
 
-		assert.Equal(t, "go-protobuf", concrete.sdkDirNames[SdkGoProtobuf])
-		assert.Equal(t, "go-connectrpc", concrete.sdkDirNames[SdkGoConnectRpc])
-		assert.Equal(t, "go-grpc", concrete.sdkDirNames[SdkGoGrpc])
-		assert.Equal(t, "js-bufbuild-es", concrete.sdkDirNames[SdkJsBufbuildEs])
-		assert.Equal(t, "js-protobuf", concrete.sdkDirNames[SdkJsProtobuf])
-		assert.Equal(t, "js-connectrpc", concrete.sdkDirNames[SdkJsConnectrpc])
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(authorization.MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			UpdateSdkPreferences(ctx, repoID, gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, prefs []SdkPreferencesDTO) error {
+				require.Len(t, prefs, 2)
+				return nil
+			})
+
+		mockQueue.EXPECT().
+			EnqueueSdkTriggerJob(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, job *SdkTriggerJobDTO) error {
+				require.Equal(t, repoID, job.RepositoryId)
+				require.Equal(t, repoPath, job.RepoPath)
+				require.Equal(t, SdkGenerationJobStatusPending, job.Status)
+				return nil
+			})
+
+		err := svc.UpdateSdkPreferences(ctx, &registryv1.UpdateSdkPreferencesRequest{
+			Id: repoID,
+			SdkPreferences: []*registryv1.SdkPreference{
+				{Sdk: registryv1.SDK_SDK_GO_PROTOBUF, Status: true},
+				{Sdk: registryv1.SDK_SDK_GO_CONNECTRPC, Status: true},
+			},
+		})
+		require.NoError(t, err)
+	})
+
+	t.Run("success - no trigger job when queue is nil", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   t.TempDir(),
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+			sdkQueue:   nil,
+		}
+
+		const repoID = "repo-123"
+		const orgID = "org-123"
+		const userID = "user-123"
+		const repoPath = "./repos/repo-123"
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Path:           repoPath,
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(authorization.MemberRoleOwner, nil)
+
+		mockRepo.EXPECT().
+			UpdateSdkPreferences(ctx, repoID, gomock.Any()).
+			Return(nil)
+
+		err := svc.UpdateSdkPreferences(ctx, &registryv1.UpdateSdkPreferencesRequest{
+			Id: repoID,
+			SdkPreferences: []*registryv1.SdkPreference{
+				{Sdk: registryv1.SDK_SDK_GO_PROTOBUF, Status: true},
+			},
+		})
+		require.NoError(t, err)
+	})
+
+	t.Run("error - repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   t.TempDir(),
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const repoID = "repo-123"
+		const userID = "user-123"
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(nil, ErrRepositoryNotFound)
+
+		err := svc.UpdateSdkPreferences(ctx, &registryv1.UpdateSdkPreferencesRequest{
+			Id: repoID,
+			SdkPreferences: []*registryv1.SdkPreference{
+				{Sdk: registryv1.SDK_SDK_GO_PROTOBUF, Status: true},
+			},
+		})
+		require.Error(t, err)
+		require.ErrorContains(t, err, "repository not found")
+	})
+
+	t.Run("error - user not owner", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   t.TempDir(),
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const repoID = "repo-123"
+		const orgID = "org-123"
+		const userID = "user-123"
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(authorization.MemberRoleReader, nil)
+
+		err := svc.UpdateSdkPreferences(ctx, &registryv1.UpdateSdkPreferencesRequest{
+			Id: repoID,
+			SdkPreferences: []*registryv1.SdkPreference{
+				{Sdk: registryv1.SDK_SDK_GO_PROTOBUF, Status: true},
+			},
+		})
+		require.Error(t, err)
+		require.ErrorContains(t, err, "only organization owners can perform this operation")
+	})
+}
+
+func TestService_ProcessSdkTrigger(t *testing.T) {
+	t.Run("success - creates SDK generation jobs for all commits", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockQueue := NewMockSdkGenerationQueue(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			sdkQueue:   mockQueue,
+		}
+
+		ctx := context.Background()
+		const repoID = "repo-123"
+		const repoPath = "./repos/repo-123"
+
+		mockRepo.EXPECT().
+			GetSdkPreferences(ctx, repoID).
+			Return([]SdkPreferencesDTO{
+				{Id: "pref-1", RepositoryId: repoID, Sdk: SdkGoProtobuf, Status: true},
+				{Id: "pref-2", RepositoryId: repoID, Sdk: SdkGoConnectRpc, Status: true},
+			}, nil)
+
+		mockRepo.EXPECT().
+			GetCommits(ctx, repoPath).
+			Return(&registryv1.GetCommitsResponse{
+				Commits: []*registryv1.Commit{
+					{Id: "commit-1", Message: "First commit"},
+					{Id: "commit-2", Message: "Second commit"},
+				},
+			}, nil)
+
+		mockQueue.EXPECT().
+			EnqueueSdkGenerationJobs(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, jobs []*SdkGenerationJobDTO) error {
+				// 2 commits x 2 enabled SDKs = 4 jobs
+				require.Len(t, jobs, 4)
+				return nil
+			})
+
+		err := svc.ProcessSdkTrigger(ctx, repoID, repoPath)
+		require.NoError(t, err)
+	})
+
+	t.Run("success - no jobs when no commits exist", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockQueue := NewMockSdkGenerationQueue(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			sdkQueue:   mockQueue,
+		}
+
+		ctx := context.Background()
+		const repoID = "repo-123"
+		const repoPath = "./repos/repo-123"
+
+		mockRepo.EXPECT().
+			GetSdkPreferences(ctx, repoID).
+			Return([]SdkPreferencesDTO{
+				{Id: "pref-1", RepositoryId: repoID, Sdk: SdkGoProtobuf, Status: true},
+			}, nil)
+
+		mockRepo.EXPECT().
+			GetCommits(ctx, repoPath).
+			Return(&registryv1.GetCommitsResponse{Commits: []*registryv1.Commit{}}, nil)
+
+		err := svc.ProcessSdkTrigger(ctx, repoID, repoPath)
+		require.NoError(t, err)
+	})
+
+	t.Run("success - no jobs when all preferences disabled", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockQueue := NewMockSdkGenerationQueue(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			sdkQueue:   mockQueue,
+		}
+
+		ctx := context.Background()
+		const repoID = "repo-123"
+		const repoPath = "./repos/repo-123"
+
+		mockRepo.EXPECT().
+			GetSdkPreferences(ctx, repoID).
+			Return([]SdkPreferencesDTO{
+				{Id: "pref-1", RepositoryId: repoID, Sdk: SdkGoProtobuf, Status: false},
+			}, nil)
+
+		err := svc.ProcessSdkTrigger(ctx, repoID, repoPath)
+		require.NoError(t, err)
+	})
+
+	t.Run("error - failed to get SDK preferences", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockQueue := NewMockSdkGenerationQueue(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			sdkQueue:   mockQueue,
+		}
+
+		ctx := context.Background()
+		const repoID = "repo-123"
+		const repoPath = "./repos/repo-123"
+
+		mockRepo.EXPECT().
+			GetSdkPreferences(ctx, repoID).
+			Return(nil, errors.New("database error"))
+
+		err := svc.ProcessSdkTrigger(ctx, repoID, repoPath)
+		require.Error(t, err)
 	})
 }
 

@@ -90,20 +90,19 @@ func main() {
 
 	orgRepoAdapter := authorization.NewOrgRepositoryAdapter(organizationPgRepository)
 
-	var sdkGenerationQueue registry.SdkGenerationQueue
-	registryService := registry.NewService(repositoryPgRepository, orgRepoAdapter, sdkGenerationQueue, cfg)
-
-	sdkGenerationQueue = postgresRegistry.NewSdkGenerationJobQueue(
+	sdkGenerationQueue := postgresRegistry.NewSdkGenerationJobQueue(
 		repositoryPgRepository.GetConnectionPool(),
 		repositoryPgRepository.GetTracer(),
 	)
+
+	registryService := registry.NewService(repositoryPgRepository, orgRepoAdapter, sdkGenerationQueue, cfg)
 
 	pollInterval, err := time.ParseDuration(cfg.SdkGeneration.PollInterval)
 	if err != nil {
 		zap.L().Fatal("invalid SDK generation poll interval", zap.Error(err))
 	}
 
-	sdkGenerationQueue.Start(ctx, registryService, cfg.SdkGeneration.WorkerCount, pollInterval)
+	sdkGenerationQueue.Start(ctx, registryService, registryService, cfg.SdkGeneration.WorkerCount, pollInterval)
 	zap.L().Info(
 		"SDK generation queue listening",
 		zap.Int("workerCount", cfg.SdkGeneration.WorkerCount),
@@ -151,6 +150,9 @@ func main() {
 	gitHttpHandler := registry.NewGitHttpHandler(registryService, userPgRepository, registry.DefaultReposPath)
 	mux.Handle("/git/", gitHttpHandler)
 
+	sdkHttpHandler := registry.NewSdkHttpHandler(cfg.SdkGeneration.OutputPath + "-repos")
+	mux.Handle("/sdk/", sdkHttpHandler)
+
 	protocols := new(http.Protocols)
 	protocols.SetHTTP1(true)
 	protocols.SetUnencryptedHTTP2(true)
@@ -170,8 +172,9 @@ func main() {
 
 	var sshServer *ssh.Server
 	if cfg.Ssh.Enabled {
-		sshHandler := registry.NewGitSshHandler(registryService, registry.DefaultReposPath)
-		sshServer = startSshServer(cfg, userPgRepository, sshHandler)
+		gitSshHandler := registry.NewGitSshHandler(registryService, registry.DefaultReposPath)
+		sdkSshHandler := registry.NewSdkSshHandler(cfg.SdkGeneration.OutputPath + "-repos")
+		sshServer = startSshServer(cfg, userPgRepository, gitSshHandler, sdkSshHandler)
 	}
 
 	gracefulShutdown(server, sshServer, traceProvider, emailJobQueue, sdkGenerationQueue)
@@ -246,7 +249,7 @@ func initTracer(cfg *config.Config) *sdktrace.TracerProvider {
 	return tracerProvider
 }
 
-func startSshServer(cfg *config.Config, userRepo user.Repository, sshHandler *registry.GitSshHandler) *ssh.Server {
+func startSshServer(cfg *config.Config, userRepo user.Repository, gitSshHandler *registry.GitSshHandler, sdkSshHandler *registry.SdkSshHandler) *ssh.Server {
 	hostKey, err := loadOrGenerateHostKey(cfg.Ssh.HostKeyPath)
 	if err != nil {
 		zap.L().Fatal("failed to load SSH host key", zap.Error(err))
@@ -272,8 +275,28 @@ func startSshServer(cfg *config.Config, userRepo user.Repository, sshHandler *re
 				_ = session.Exit(1)
 				return
 			}
-			if err := sshHandler.HandleSession(session, userId); err != nil {
-				_, _ = fmt.Fprintln(session.Stderr(), err.Error())
+
+			cmd := session.RawCommand()
+			var handlerErr error
+			if cmd != "" {
+				parts := strings.SplitN(cmd, " ", 2)
+				if len(parts) == 2 {
+					repoPath := strings.Trim(parts[1], "'\"")
+					repoPath = strings.TrimPrefix(repoPath, "/")
+					if strings.HasPrefix(repoPath, "sdk/") {
+						handlerErr = sdkSshHandler.HandleSession(session, userId)
+					} else {
+						handlerErr = gitSshHandler.HandleSession(session, userId)
+					}
+				} else {
+					handlerErr = gitSshHandler.HandleSession(session, userId)
+				}
+			} else {
+				handlerErr = gitSshHandler.HandleSession(session, userId)
+			}
+
+			if handlerErr != nil {
+				_, _ = fmt.Fprintln(session.Stderr(), handlerErr.Error())
 				_ = session.Exit(1)
 				return
 			}

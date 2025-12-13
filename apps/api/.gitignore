@@ -1,5 +1,6 @@
-hasir
+hasir-api
 config.json
 !config.example.json
 repos/
+sdk/
 ssh_host_key

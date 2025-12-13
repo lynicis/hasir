@@ -271,7 +271,62 @@ func (h *GitSshHandler) HandleSession(session ssh.Session, userId string) error 
 		return fmt.Errorf("failed to start %s: %w", gitCmd, err)
 	}
 
-	return execCmd.Wait()
+	if err := execCmd.Wait(); err != nil {
+		return err
+	}
+
+	if operation == SshOperationWrite {
+		h.triggerSdkGenerationAfterPush(absRepoPath)
+	}
+
+	return nil
+}
+
+func (h *GitSshHandler) triggerSdkGenerationAfterPush(repoPath string) {
+	ctx := context.Background()
+	repoId := filepath.Base(repoPath)
+
+	commitHash, err := h.getLatestCommitHash(repoPath)
+	if err != nil {
+		zap.L().Warn("failed to get latest commit hash for SDK generation",
+			zap.String("repoId", repoId),
+			zap.Error(err))
+		return
+	}
+
+	hasProtoFiles, err := h.service.HasProtoFiles(ctx, repoPath)
+	if err != nil {
+		zap.L().Warn("failed to check for proto files",
+			zap.String("repoId", repoId),
+			zap.Error(err))
+		return
+	}
+
+	if !hasProtoFiles {
+		zap.L().Info("skipping SDK generation: repository contains no proto files",
+			zap.String("repoId", repoId),
+			zap.String("commitHash", commitHash))
+		return
+	}
+
+	if err := h.service.TriggerSdkGeneration(ctx, repoId, commitHash); err != nil {
+		zap.L().Error("failed to trigger SDK generation",
+			zap.String("repoId", repoId),
+			zap.String("commitHash", commitHash),
+			zap.Error(err))
+	}
+}
+
+func (h *GitSshHandler) getLatestCommitHash(repoPath string) (string, error) {
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = repoPath
+
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(string(output)), nil
 }
 
 type GitHttpHandler struct {
@@ -457,4 +512,232 @@ func (h *GitHttpHandler) getLatestCommitHash(repoPath string) (string, error) {
 	}
 
 	return strings.TrimSpace(string(output)), nil
+}
+
+type SdkHttpHandler struct {
+	sdkReposPath string
+}
+
+func NewSdkHttpHandler(sdkReposPath string) *SdkHttpHandler {
+	return &SdkHttpHandler{
+		sdkReposPath: sdkReposPath,
+	}
+}
+
+func isValidPathComponent(component string) bool {
+	if strings.Contains(component, "..") {
+		return false
+	}
+
+	if filepath.IsAbs(component) {
+		return false
+	}
+
+	if strings.ContainsAny(component, "/\\") {
+		return false
+	}
+
+	cleaned := filepath.Clean(component)
+	if cleaned != component || cleaned == "." {
+		return false
+	}
+
+	return true
+}
+
+func (h *SdkHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/sdk/")
+	parts := strings.SplitN(path, "/", 4)
+
+	if len(parts) < 3 {
+		http.Error(w, "Invalid SDK path. Format: /sdk/{orgId}/{repoId}/{sdkType}/", http.StatusNotFound)
+		return
+	}
+
+	orgId := parts[0]
+	repoId := strings.TrimSuffix(parts[1], ".git")
+	sdkType := strings.TrimSuffix(parts[2], ".git")
+	if !isValidPathComponent(orgId) || !isValidPathComponent(repoId) || !isValidPathComponent(sdkType) {
+		http.Error(w, "Invalid path component", http.StatusBadRequest)
+		return
+	}
+
+	repoPath := filepath.Join(h.sdkReposPath, orgId, repoId, sdkType)
+	absRepoPath, err := filepath.Abs(repoPath)
+	if err != nil {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
+	absSdkReposPath, err := filepath.Abs(h.sdkReposPath)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if !strings.HasPrefix(absRepoPath, absSdkReposPath+string(filepath.Separator)) {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
+
+	if _, err := os.Stat(filepath.Join(repoPath, ".git")); os.IsNotExist(err) {
+		http.Error(w, "SDK repository not found", http.StatusNotFound)
+		return
+	}
+
+	subPath := ""
+	if len(parts) > 3 {
+		subPath = parts[3]
+	}
+
+	serviceName := r.URL.Query().Get("service")
+	if serviceName == "git-receive-pack" || subPath == "git-receive-pack" {
+		http.Error(w, "SDK repositories are read-only", http.StatusForbidden)
+		return
+	}
+
+	switch {
+	case subPath == "info/refs":
+		h.handleInfoRefs(w, r, repoPath)
+	case subPath == "git-upload-pack" && r.Method == http.MethodPost:
+		h.handleUploadPack(w, r, repoPath)
+	default:
+		http.Error(w, "Not found", http.StatusNotFound)
+	}
+}
+
+func (h *SdkHttpHandler) handleInfoRefs(w http.ResponseWriter, r *http.Request, repoPath string) {
+	serviceName := r.URL.Query().Get("service")
+	if serviceName != "git-upload-pack" {
+		http.Error(w, "Only git-upload-pack is supported for SDK repos", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", fmt.Sprintf("application/x-%s-advertisement", serviceName))
+	w.Header().Set("Cache-Control", "no-cache")
+
+	pktLine := fmt.Sprintf("# service=%s\n", serviceName)
+	_, _ = fmt.Fprintf(w, "%04x%s", len(pktLine)+4, pktLine)
+	_, _ = fmt.Fprint(w, "0000")
+
+	// #nosec G204 -- serviceName is validated to be "git-upload-pack" above
+	cmd := exec.Command(serviceName, "--stateless-rpc", "--advertise-refs", repoPath)
+	cmd.Stdout = w
+	cmd.Stderr = w
+
+	if err := cmd.Run(); err != nil {
+		zap.L().Error("Failed to run git command for SDK", zap.String("service", serviceName), zap.Error(err))
+	}
+}
+
+func (h *SdkHttpHandler) handleUploadPack(w http.ResponseWriter, r *http.Request, repoPath string) {
+	w.Header().Set("Content-Type", "application/x-git-upload-pack-result")
+	w.Header().Set("Cache-Control", "no-cache")
+
+	cmd := exec.Command("git-upload-pack", "--stateless-rpc", repoPath)
+	cmd.Stdin = r.Body
+	cmd.Stdout = w
+	cmd.Stderr = w
+
+	if err := cmd.Run(); err != nil {
+		zap.L().Error("git-upload-pack failed for SDK", zap.Error(err))
+	}
+}
+
+type SdkSshHandler struct {
+	sdkReposPath string
+}
+
+func NewSdkSshHandler(sdkReposPath string) *SdkSshHandler {
+	return &SdkSshHandler{
+		sdkReposPath: sdkReposPath,
+	}
+}
+
+func (h *SdkSshHandler) HandleSession(session ssh.Session, userId string) error {
+	cmd := session.RawCommand()
+	if cmd == "" {
+		_, _ = fmt.Fprint(session, banner)
+		_, _ = fmt.Fprintf(session, "\n✅ SSH connection successful!\n")
+		_, _ = fmt.Fprintf(session, "🔐 Authentication completed.\n\n")
+		return nil
+	}
+
+	parts := strings.SplitN(cmd, " ", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid command format: %s", cmd)
+	}
+
+	gitCmd := parts[0]
+	repoPath := strings.Trim(parts[1], "'\"")
+	repoPath = strings.TrimPrefix(repoPath, "/")
+
+	if gitCmd != "git-upload-pack" {
+		if gitCmd == "git-receive-pack" {
+			return fmt.Errorf("SDK repositories are read-only")
+		}
+		return fmt.Errorf("unsupported git command: %s", gitCmd)
+	}
+
+	if !strings.HasPrefix(repoPath, "sdk/") {
+		return fmt.Errorf("invalid SDK path format, must start with 'sdk/'")
+	}
+
+	path := strings.TrimPrefix(repoPath, "sdk/")
+	pathParts := strings.SplitN(path, "/", 4)
+	if len(pathParts) < 3 {
+		return fmt.Errorf("invalid SDK path format: sdk/{orgId}/{repoId}/{sdkType}")
+	}
+
+	orgId := pathParts[0]
+	repoId := strings.TrimSuffix(pathParts[1], ".git")
+	sdkType := strings.TrimSuffix(pathParts[2], ".git")
+	if !isValidPathComponent(orgId) || !isValidPathComponent(repoId) || !isValidPathComponent(sdkType) {
+		return fmt.Errorf("invalid path component")
+	}
+
+	fullRepoPath := filepath.Join(h.sdkReposPath, orgId, repoId, sdkType)
+
+	absRepoPath, err := filepath.Abs(fullRepoPath)
+	if err != nil {
+		return fmt.Errorf("invalid path")
+	}
+	absSdkReposPath, err := filepath.Abs(h.sdkReposPath)
+	if err != nil {
+		return fmt.Errorf("internal server error")
+	}
+	if !strings.HasPrefix(absRepoPath, absSdkReposPath+string(filepath.Separator)) {
+		return fmt.Errorf("invalid path")
+	}
+
+	zap.L().Info("Executing Git command for SDK",
+		zap.String("userId", userId),
+		zap.String("command", gitCmd),
+		zap.String("repoPath", absRepoPath))
+
+	if _, err := os.Stat(absRepoPath); os.IsNotExist(err) {
+		zap.L().Error("SDK repository path does not exist", zap.String("path", absRepoPath))
+		return fmt.Errorf("SDK repository not found: %s", absRepoPath)
+	}
+
+	if _, err := os.Stat(filepath.Join(absRepoPath, ".git")); os.IsNotExist(err) {
+		zap.L().Error("Not a valid git repository", zap.String("path", absRepoPath))
+		return fmt.Errorf("not a git repository: %s", absRepoPath)
+	}
+
+	// #nosec G204 -- gitCmd is validated to be "git-upload-pack" above
+	execCmd := exec.Command(gitCmd, absRepoPath)
+	execCmd.Dir = filepath.Dir(absRepoPath)
+	execCmd.Stdin = session
+	execCmd.Stdout = session
+	execCmd.Stderr = session.Stderr()
+
+	zap.L().Debug("Starting git command for SDK",
+		zap.String("command", gitCmd),
+		zap.String("repoPath", absRepoPath))
+
+	if err := execCmd.Start(); err != nil {
+		zap.L().Error("Failed to start git command", zap.Error(err))
+		return fmt.Errorf("failed to start %s: %w", gitCmd, err)
+	}
+
+	return execCmd.Wait()
 }

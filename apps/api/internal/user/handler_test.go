@@ -788,11 +788,12 @@ func TestHandler_CreateSshKey(t *testing.T) {
 
 		testUserID := "test-user-id"
 
-		publicKey := "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCs"
+		publicKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBhVLF+dcZbEWbWr1A+8YYLBxDGgmBdwk6IB/+W5v/Wh test@example.com"
+		expectedNormalizedKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBhVLF+dcZbEWbWr1A+8YYLBxDGgmBdwk6IB/+W5v/Wh"
 
 		mockUserRepository.
 			EXPECT().
-			CreateSshKey(gomock.Any(), testUserID, gomock.Any(), publicKey).
+			CreateSshKey(gomock.Any(), testUserID, gomock.Any(), expectedNormalizedKey).
 			Return(nil).
 			Times(1)
 
@@ -817,7 +818,7 @@ func TestHandler_CreateSshKey(t *testing.T) {
 		mockUserService := NewMockService(ctrl)
 		mockUserRepository := NewMockRepository(ctrl)
 
-		publicKey := "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCs"
+		publicKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBhVLF+dcZbEWbWr1A+8YYLBxDGgmBdwk6IB/+W5v/Wh test@example.com"
 
 		h := NewHandler(mockUserService, mockUserRepository, interceptors...)
 		server := setupTestServer(t, h)
@@ -840,11 +841,12 @@ func TestHandler_CreateSshKey(t *testing.T) {
 
 		testUserID := "test-user-id"
 
-		publicKey := "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCs"
+		publicKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBhVLF+dcZbEWbWr1A+8YYLBxDGgmBdwk6IB/+W5v/Wh test@example.com"
+		expectedNormalizedKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBhVLF+dcZbEWbWr1A+8YYLBxDGgmBdwk6IB/+W5v/Wh"
 
 		mockUserRepository.
 			EXPECT().
-			CreateSshKey(gomock.Any(), testUserID, gomock.Any(), publicKey).
+			CreateSshKey(gomock.Any(), testUserID, gomock.Any(), expectedNormalizedKey).
 			Return(errors.New("something went wrong")).
 			Times(1)
 

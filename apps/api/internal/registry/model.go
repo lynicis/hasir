@@ -87,3 +87,16 @@ type SdkGenerationJobDTO struct {
 	CompletedAt  *time.Time             `db:"completed_at"`
 	ErrorMessage *string                `db:"error_message"`
 }
+
+type SdkTriggerJobDTO struct {
+	Id           string                 `db:"id"`
+	RepositoryId string                 `db:"repository_id"`
+	RepoPath     string                 `db:"repo_path"`
+	Status       SdkGenerationJobStatus `db:"status"`
+	Attempts     int                    `db:"attempts"`
+	MaxAttempts  int                    `db:"max_attempts"`
+	CreatedAt    time.Time              `db:"created_at"`
+	ProcessedAt  *time.Time             `db:"processed_at"`
+	CompletedAt  *time.Time             `db:"completed_at"`
+	ErrorMessage *string                `db:"error_message"`
+}
