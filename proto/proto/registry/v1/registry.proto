@@ -26,8 +26,9 @@ message SdkPreference {
 message Repository {
   string id = 1;
   string name = 2;
-  shared.Visibility visibility = 3;
-  repeated SdkPreference sdk_preferences = 4;
+  string organization_id = 3;
+  shared.Visibility visibility = 4;
+  repeated SdkPreference sdk_preferences = 5;
 }
 
 message CreateRepositoryRequest {
