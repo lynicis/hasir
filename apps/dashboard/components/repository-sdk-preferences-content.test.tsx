@@ -9,8 +9,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { RepositoryContext } from "@/lib/repository-context";
+
 import RepositorySdkPreferencesContent from "./repository-sdk-preferences-content";
-import { RepositoryContext } from "./repository-context";
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ repositoryId: "repo-123" }),

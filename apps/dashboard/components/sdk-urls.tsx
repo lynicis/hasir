@@ -1,8 +1,6 @@
 "use client";
 
-import { getOrganizationId } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
 import { Check, ChevronDown, Copy, Package } from "lucide-react";
-import { useQuery } from "@connectrpc/connect-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -15,11 +13,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { customRetry } from "@/lib/query-retry";
 import { Input } from "@/components/ui/input";
 
 interface SdkUrlsProps {
+  organizationId: string;
   repositoryId: string;
+  commitHash: string;
 }
 
 type SdkType =
@@ -39,27 +38,18 @@ const SDK_OPTIONS: { value: SdkType; label: string; group: string }[] = [
   { value: "js-connectrpc", label: "JS / @connectrpc", group: "JavaScript" },
 ];
 
-export function SdkUrls({ repositoryId }: SdkUrlsProps) {
+export function SdkUrls({ organizationId, repositoryId, commitHash }: SdkUrlsProps) {
   const [protocol, setProtocol] = useState<"HTTPS" | "SSH">("HTTPS");
   const [sdkType, setSdkType] = useState<SdkType>("go-protobuf");
   const [copied, setCopied] = useState(false);
 
-  const { data: organizationData, isLoading: isLoadingOrganization } = useQuery(
-    getOrganizationId,
-    { repositoryId },
-    { retry: customRetry }
-  );
-
-  const organizationId = organizationData?.id;
-
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:2222";
   const urlObj = new URL(apiUrl);
   const host = urlObj.hostname;
   const port = urlObj.port ? `:${urlObj.port}` : "";
 
   const sdkPath = organizationId
-    ? `/sdk/${organizationId}/${repositoryId}/${sdkType}/`
+    ? `/sdk/${organizationId}/${repositoryId}/${commitHash}/${sdkType}/`
     : "";
 
   const url =
@@ -81,18 +71,6 @@ export function SdkUrls({ repositoryId }: SdkUrlsProps) {
   const selectedSdk = SDK_OPTIONS.find((opt) => opt.value === sdkType);
   const goOptions = SDK_OPTIONS.filter((opt) => opt.group === "Go");
   const jsOptions = SDK_OPTIONS.filter((opt) => opt.group === "JavaScript");
-
-  if (isLoadingOrganization || !organizationId) {
-    return (
-      <div className="flex w-full flex-col gap-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <Package className="size-4" />
-          <span>SDK Download URL</span>
-        </div>
-        <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex w-full flex-col gap-3">

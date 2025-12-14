@@ -5,8 +5,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
+import { RepositoryContext } from "@/lib/repository-context";
+
 import RepositoryFilesContent from "./repository-files-content";
-import { RepositoryContext } from "./repository-context";
 
 vi.mock("react-syntax-highlighter", () => ({
   Prism: ({ children }: { children: string }) => <pre>{children}</pre>,

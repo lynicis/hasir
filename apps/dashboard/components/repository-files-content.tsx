@@ -22,7 +22,7 @@ import {
   type ExtendedTreeViewElement,
 } from "@/components/ui/file-tree";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { RepositoryContext } from "@/components/repository-context";
+import { RepositoryContext } from "@/lib/repository-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useClient } from "@/lib/use-client";
 
@@ -258,7 +258,13 @@ export default function RepositoryFilesContent() {
         setFileTree((prev) => updateNodeLoading(prev, folderPath, false));
       }
     },
-    [repository?.id, client, updateNodeLoading, updateNodeChildren, findNodeInTree]
+    [
+      repository?.id,
+      client,
+      updateNodeLoading,
+      updateNodeChildren,
+      findNodeInTree,
+    ]
   );
 
   const loadFilePreview = useCallback(
@@ -401,7 +407,8 @@ export default function RepositoryFilesContent() {
                           <div className="rounded-lg border border-border overflow-hidden">
                             {filePreview.mimeType.startsWith("text/") ||
                             filePreview.mimeType === "application/json" ||
-                            filePreview.mimeType === "application/x-protobuf" ? (
+                            filePreview.mimeType ===
+                              "application/x-protobuf" ? (
                               <SyntaxHighlighter
                                 language={getLanguageFromPath(selectedFile)}
                                 style={vscDarkPlus}

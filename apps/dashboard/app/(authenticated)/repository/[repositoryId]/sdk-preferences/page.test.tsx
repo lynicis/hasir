@@ -7,7 +7,7 @@ import { TransportProvider } from "@connectrpc/connect-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { RepositoryContext } from "@/components/repository-context";
+import { RepositoryContext } from "@/lib/repository-context";
 
 import SdkPreferencesPage from "./page";
 
@@ -16,6 +16,7 @@ const mockMutateAsync = vi.fn();
 const mockRepositoryData = {
   id: "test-repo-id",
   name: "Test Repository",
+  organizationId: "test-org-id",
   visibility: 0,
   sdkPreferences: [],
   $typeName: "registry.v1.Repository" as const,
@@ -234,6 +235,7 @@ describe("SdkPreferencesPage", () => {
     const mockData = {
       id: "test-repo-id",
       name: "Test Repository",
+      organizationId: "test-org-id",
       visibility: 0,
       $typeName: "registry.v1.Repository" as const,
       // sdkPreferences is undefined

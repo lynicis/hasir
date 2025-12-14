@@ -11,19 +11,11 @@ vi.mock("sonner", () => ({
   },
 }));
 
-const mockUseQuery = vi.fn();
-
-vi.mock("@connectrpc/connect-query", () => ({
-  useQuery: (...args: unknown[]) => mockUseQuery(...args),
-}));
-
-vi.mock("@/lib/query-retry", () => ({
-  customRetry: vi.fn(),
-}));
-
 describe("SdkUrls", () => {
   const defaultProps = {
+    organizationId: "org-123",
     repositoryId: "repo-456",
+    commitHash: "commit-abc",
   };
 
   const originalEnv = process.env.NEXT_PUBLIC_API_URL;
@@ -31,11 +23,6 @@ describe("SdkUrls", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.NEXT_PUBLIC_API_URL = "http://localhost:8080";
-    mockUseQuery.mockReturnValue({
-      data: { id: "org-123" },
-      isLoading: false,
-      error: null,
-    });
   });
 
   afterEach(() => {
@@ -47,7 +34,7 @@ describe("SdkUrls", () => {
 
     const input = screen.getByRole("textbox");
     expect(input).toHaveValue(
-      `http://localhost:8080/sdk/org-123/${defaultProps.repositoryId}/go-protobuf/`
+      `http://localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/go-protobuf/`
     );
   });
 
@@ -63,7 +50,7 @@ describe("SdkUrls", () => {
 
     const input = screen.getByRole("textbox");
     expect(input).toHaveValue(
-      `ssh://git@localhost:8080/sdk/org-123/${defaultProps.repositoryId}/go-protobuf/`
+      `ssh://git@localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/go-protobuf/`
     );
   });
 
@@ -83,7 +70,7 @@ describe("SdkUrls", () => {
 
     const input = screen.getByRole("textbox");
     expect(input).toHaveValue(
-      `http://localhost:8080/sdk/org-123/${defaultProps.repositoryId}/js-bufbuild-es/`
+      `http://localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/js-bufbuild-es/`
     );
   });
 
@@ -101,7 +88,7 @@ describe("SdkUrls", () => {
     await user.click(copyButton);
 
     expect(writeTextSpy).toHaveBeenCalledWith(
-      `http://localhost:8080/sdk/org-123/${defaultProps.repositoryId}/go-protobuf/`
+      `http://localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/go-protobuf/`
     );
 
     writeTextSpy.mockRestore();
@@ -121,7 +108,7 @@ describe("SdkUrls", () => {
 
     const input = screen.getByRole("textbox");
     expect(input).toHaveValue(
-      `ssh://git@api.example.com/sdk/org-123/${defaultProps.repositoryId}/go-protobuf/`
+      `ssh://git@api.example.com/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/go-protobuf/`
     );
   });
 
@@ -131,40 +118,17 @@ describe("SdkUrls", () => {
     expect(screen.getByText("SDK Download URL")).toBeInTheDocument();
   });
 
-  it("calls getOrganizationId with correct repositoryId", () => {
-    render(<SdkUrls {...defaultProps} />);
-
-    expect(mockUseQuery).toHaveBeenCalledWith(
-      expect.anything(),
-      { repositoryId: defaultProps.repositoryId },
-      expect.anything()
+  it("shows empty URL when organization ID is not provided", () => {
+    render(
+      <SdkUrls
+        organizationId=""
+        repositoryId={defaultProps.repositoryId}
+        commitHash={defaultProps.commitHash}
+      />
     );
-  });
 
-  it("shows loading skeleton when organization ID is loading", () => {
-    mockUseQuery.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      error: null,
-    });
-
-    render(<SdkUrls {...defaultProps} />);
-
-    expect(screen.getByText("SDK Download URL")).toBeInTheDocument();
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-  });
-
-  it("shows loading skeleton when organization ID is not available", () => {
-    mockUseQuery.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: null,
-    });
-
-    render(<SdkUrls {...defaultProps} />);
-
-    expect(screen.getByText("SDK Download URL")).toBeInTheDocument();
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    const input = screen.getByRole("textbox");
+    expect(input).toHaveValue("http://localhost:8080");
   });
 
   it("handles all SDK types correctly", async () => {
@@ -190,7 +154,7 @@ describe("SdkUrls", () => {
 
       const input = screen.getByRole("textbox");
       expect(input).toHaveValue(
-        `http://localhost:8080/sdk/org-123/${defaultProps.repositoryId}/${expected}/`
+        `http://localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/${expected}/`
       );
 
       // Reopen dropdown for next selection

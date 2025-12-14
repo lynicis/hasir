@@ -17,8 +17,8 @@ import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type OrganizationRepository } from "@/components/repository-item";
-import { RepositoryContext } from "@/components/repository-context";
 import { reverseVisibilityMapper } from "@/lib/visibility-mapper";
+import { RepositoryContext } from "@/lib/repository-context";
 import { CloneUrls } from "@/components/clone-urls";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";

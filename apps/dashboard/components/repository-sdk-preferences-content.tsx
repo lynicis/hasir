@@ -1,10 +1,13 @@
 "use client";
 
+import { getRecentCommit } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
 import {
   RegistryService,
   SDK,
+  SdkPreference,
 } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { useContext, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@connectrpc/connect-query";
 import { useParams } from "next/navigation";
 import { Wrench } from "lucide-react";
 import { toast } from "sonner";
@@ -16,11 +19,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { RepositoryContext } from "@/components/repository-context";
+import { RepositoryContext } from "@/lib/repository-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SdkUrls } from "@/components/sdk-urls";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { customRetry } from "@/lib/query-retry";
 import { Label } from "@/components/ui/label";
 import { useClient } from "@/lib/use-client";
 
@@ -141,6 +145,14 @@ export default function RepositorySdkPreferencesContent() {
 
   const { repository, isLoading, error } = context;
 
+  const { data: recentCommit } = useQuery(
+    getRecentCommit,
+    { repositoryId },
+    { retry: customRetry }
+  );
+
+  const commitHash = recentCommit?.id ?? "latest";
+
   const serverConfig = useMemo(() => {
     if (repository?.sdkPreferences !== undefined) {
       return mapSdkPreferencesToConfig(repository.sdkPreferences);
@@ -209,7 +221,7 @@ export default function RepositorySdkPreferencesContent() {
     });
   };
 
-  const getSdkPreferences = () => {
+  const getSdkPreferences = (): SdkPreference[] => {
     const enabledSdkValues = new Set<SDK>();
     Object.entries(SDK_LANGUAGES).forEach(([langKey, langConfig]) => {
       langConfig.options.forEach((option) => {
@@ -219,7 +231,7 @@ export default function RepositorySdkPreferencesContent() {
       });
     });
 
-    const preferences: Array<{ sdk: SDK; status: boolean }> = [];
+    const preferences: SdkPreference[] = [];
 
     Object.values(SDK)
       .filter(
@@ -230,7 +242,7 @@ export default function RepositorySdkPreferencesContent() {
         preferences.push({
           sdk: sdkVal,
           status: enabledSdkValues.has(sdkVal) ?? false,
-        });
+        } as SdkPreference);
       });
 
     return preferences;
@@ -381,7 +393,11 @@ export default function RepositorySdkPreferencesContent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <SdkUrls repositoryId={repositoryId} />
+            <SdkUrls
+              organizationId={repository.organizationId}
+              repositoryId={repositoryId}
+              commitHash={commitHash}
+            />
           </CardContent>
         </Card>
       )}

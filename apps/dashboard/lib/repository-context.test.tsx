@@ -1,3 +1,5 @@
+import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useContext } from "react";
@@ -16,10 +18,14 @@ describe("RepositoryContext", () => {
   });
 
   it("provides context values when a provider is used", () => {
-    const mockRepository = {
+    const mockRepository: Repository = {
+      $typeName: "registry.v1.Repository",
       id: "test-repo-id",
       name: "test-repo",
-    } as const;
+      organizationId: "test-org-id",
+      visibility: 0,
+      sdkPreferences: [],
+    };
 
     const contextValue = {
       repository: mockRepository,
@@ -37,7 +43,6 @@ describe("RepositoryContext", () => {
         </div>
       );
     };
-
     render(
       <RepositoryContext.Provider value={contextValue}>
         <TestComponent />
