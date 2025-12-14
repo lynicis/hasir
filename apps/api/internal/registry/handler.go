@@ -212,11 +212,14 @@ func (h *GitSshHandler) HandleSession(session ssh.Session, userId string) error 
 	repoPath = strings.TrimPrefix(repoPath, "/")
 
 	var operation SshOperation
+	var safeGitCmd string
 	switch gitCmd {
 	case "git-upload-pack":
 		operation = SshOperationRead
+		safeGitCmd = "git-upload-pack"
 	case "git-receive-pack":
 		operation = SshOperationWrite
+		safeGitCmd = "git-receive-pack"
 	default:
 		return fmt.Errorf("unsupported git command: %s", gitCmd)
 	}
@@ -255,8 +258,20 @@ func (h *GitSshHandler) HandleSession(session ssh.Session, userId string) error 
 		return fmt.Errorf("not a git repository: %s", absRepoPath)
 	}
 
-	// #nosec G204 -- gitCmd is validated against whitelist (git-upload-pack or git-receive-pack)
-	execCmd := exec.Command(gitCmd, absRepoPath)
+	var execCmd *exec.Cmd
+	switch safeGitCmd {
+	case "git-upload-pack":
+		// absRepoPath is validated above (exists, is a git repo, within reposPath)
+		// #nosec G204 -- command is hardcoded, path is validated and sanitized
+		execCmd = exec.Command("git-upload-pack", absRepoPath)
+	case "git-receive-pack":
+		// absRepoPath is validated above (exists, is a git repo, within reposPath)
+		// #nosec G204 -- command is hardcoded, path is validated and sanitized
+		execCmd = exec.Command("git-receive-pack", absRepoPath)
+	default:
+		return fmt.Errorf("unsupported git command: %s", safeGitCmd)
+	}
+
 	execCmd.Dir = filepath.Dir(absRepoPath)
 	execCmd.Stdin = session
 	execCmd.Stdout = session
@@ -416,7 +431,14 @@ func (h *GitHttpHandler) authenticate(r *http.Request) (string, error) {
 
 func (h *GitHttpHandler) handleInfoRefs(w http.ResponseWriter, r *http.Request, repoPath string) {
 	serviceName := r.URL.Query().Get("service")
-	if serviceName != "git-upload-pack" && serviceName != "git-receive-pack" {
+
+	var gitCommand string
+	switch serviceName {
+	case "git-upload-pack":
+		gitCommand = "git-upload-pack"
+	case "git-receive-pack":
+		gitCommand = "git-receive-pack"
+	default:
 		http.Error(w, "Invalid service", http.StatusBadRequest)
 		return
 	}
@@ -428,8 +450,17 @@ func (h *GitHttpHandler) handleInfoRefs(w http.ResponseWriter, r *http.Request, 
 	_, _ = fmt.Fprintf(w, "%04x%s", len(pktLine)+4, pktLine)
 	_, _ = fmt.Fprint(w, "0000")
 
-	// #nosec G204 -- serviceName is validated against whitelist (git-upload-pack or git-receive-pack)
-	cmd := exec.Command(serviceName, "--stateless-rpc", "--advertise-refs", repoPath)
+	var cmd *exec.Cmd
+	switch gitCommand {
+	case "git-upload-pack":
+		cmd = exec.Command("git-upload-pack", "--stateless-rpc", "--advertise-refs", repoPath)
+	case "git-receive-pack":
+		cmd = exec.Command("git-receive-pack", "--stateless-rpc", "--advertise-refs", repoPath)
+	default:
+		http.Error(w, "Invalid service", http.StatusBadRequest)
+		return
+	}
+
 	cmd.Stdout = w
 	cmd.Stderr = w
 
@@ -618,8 +649,7 @@ func (h *SdkHttpHandler) handleInfoRefs(w http.ResponseWriter, r *http.Request, 
 	_, _ = fmt.Fprintf(w, "%04x%s", len(pktLine)+4, pktLine)
 	_, _ = fmt.Fprint(w, "0000")
 
-	// #nosec G204 -- serviceName is validated to be "git-upload-pack" above
-	cmd := exec.Command(serviceName, "--stateless-rpc", "--advertise-refs", repoPath)
+	cmd := exec.Command("git-upload-pack", "--stateless-rpc", "--advertise-refs", repoPath)
 	cmd.Stdout = w
 	cmd.Stderr = w
 
@@ -723,8 +753,9 @@ func (h *SdkSshHandler) HandleSession(session ssh.Session, userId string) error 
 		return fmt.Errorf("not a git repository: %s", absRepoPath)
 	}
 
-	// #nosec G204 -- gitCmd is validated to be "git-upload-pack" above
-	execCmd := exec.Command(gitCmd, absRepoPath)
+	// absRepoPath is validated above and constrained to be within sdkReposPath
+	// #nosec G204 -- command is hardcoded, path is validated and sanitized
+	execCmd := exec.Command("git-upload-pack", absRepoPath)
 	execCmd.Dir = filepath.Dir(absRepoPath)
 	execCmd.Stdin = session
 	execCmd.Stdout = session
