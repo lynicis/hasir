@@ -95,6 +95,10 @@ message GetCommitsResponse {
   int32 total_page = 3;
 }
 
+message GetRecentCommitRequest {
+  string repository_id = 1 [(buf.validate.field).required = true];
+}
+
 message GetFileTreeRequest {
   string id = 1 [(buf.validate.field).required = true];
   optional string path = 3;
@@ -135,6 +139,7 @@ service RegistryService {
   rpc UpdateRepository(UpdateRepositoryRequest) returns (google.protobuf.Empty);
   rpc GetRepository(GetRepositoryRequest) returns (Repository);
   rpc GetCommits(GetCommitsRequest) returns (GetCommitsResponse);
+  rpc GetRecentCommit(GetRecentCommitRequest) returns (Commit);
   rpc GetFileTree(GetFileTreeRequest) returns (GetFileTreeResponse);
   rpc GetFilePreview(GetFilePreviewRequest) returns (GetFilePreviewResponse);
   rpc UpdateSdkPreferences(UpdateSdkPreferencesRequest) returns (google.protobuf.Empty);
