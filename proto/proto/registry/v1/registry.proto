@@ -74,6 +74,7 @@ message UpdateRepositoryRequest {
 
 message GetCommitsRequest {
   string id = 1 [(buf.validate.field).required = true];
+  shared.Pagination pagination = 2 [(buf.validate.field).required = true];
 }
 
 message Commit {
@@ -90,6 +91,8 @@ message Commit {
 
 message GetCommitsResponse {
   repeated Commit commits = 1;
+  int32 next_page = 2;
+  int32 total_page = 3;
 }
 
 message GetFileTreeRequest {
