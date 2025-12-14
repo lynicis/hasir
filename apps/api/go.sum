@@ -2,8 +2,16 @@ buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-202512091757
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20251209175733-2a1774d88802.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
 buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251212092350-ff62f0f90e71.2 h1:Aa1SoBEEnmOT1ySyQe5WpU+OmhR6rDo3mXWSoDwkBxM=
 buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251212092350-ff62f0f90e71.2/go.mod h1:fMA3pFYhGsdXAUrR7XN7PUK97IZ/Z6rfxKnbs5aePc8=
+buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251213191713-6127cc10ed23.2 h1:Hj+KZSnJ1yC/f5nOAhtJWxw2CWZ/3Jy/1oAH1O2sF0Y=
+buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251213191713-6127cc10ed23.2/go.mod h1:anNO11YpsfXjbxXdWfpkxbAYKEnNZCmD3uRN2F4Gcpk=
+buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251214115811-2958a8d69da2.2 h1:KRIPKD9Tj8qav/rS8SmcM2fWbMEEVB74KZh1c8zS0Ak=
+buf.build/gen/go/hasir/hasir/connectrpc/go v1.19.1-20251214115811-2958a8d69da2.2/go.mod h1:xBrYht4+YjyizG5liNRWNtqbJZFN5kayHCMX2rLVcwc=
 buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20251212092350-ff62f0f90e71.1 h1:7rLJvup1c3TYMj8D617pNw8E5ChqvEUnGGfkvUWzcOA=
 buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20251212092350-ff62f0f90e71.1/go.mod h1:hsFJK3Nz9iNjCNmNiYNkiFvIvk5zlM4lUXFarCE+8d4=
+buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20251213191713-6127cc10ed23.1 h1:33z9HnGnb40mwMy4l4qOC51HShDWxMbSWhGeL8dP42M=
+buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20251213191713-6127cc10ed23.1/go.mod h1:hsFJK3Nz9iNjCNmNiYNkiFvIvk5zlM4lUXFarCE+8d4=
+buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20251214115811-2958a8d69da2.1 h1:4Mf50j//Dmbu7eLB2iesrLYqqU5WAE0ASEDbA8EKqEc=
+buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20251214115811-2958a8d69da2.1/go.mod h1:hsFJK3Nz9iNjCNmNiYNkiFvIvk5zlM4lUXFarCE+8d4=
 buf.build/go/protovalidate v1.1.0 h1:pQqEQRpOo4SqS60qkvmhLTTQU9JwzEvdyiqAtXa5SeY=
 buf.build/go/protovalidate v1.1.0/go.mod h1:bGZcPiAQDC3ErCHK3t74jSoJDFOs2JH3d7LWuTEIdss=
 cel.dev/expr v0.25.1 h1:1KrZg61W6TWSxuNZ37Xy49ps13NUovb66QLprthtwi4=

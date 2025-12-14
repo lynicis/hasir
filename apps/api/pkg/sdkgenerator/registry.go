@@ -11,10 +11,6 @@ type Registry struct {
 }
 
 func NewRegistry(runner CommandRunner) *Registry {
-	if runner == nil {
-		runner = NewDefaultCommandRunner()
-	}
-
 	r := &Registry{
 		generators: make(map[SDK]Generator),
 	}

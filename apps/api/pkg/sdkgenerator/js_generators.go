@@ -10,9 +10,6 @@ type JsBufbuildEsGenerator struct {
 }
 
 func NewJsBufbuildEsGenerator(runner CommandRunner) *JsBufbuildEsGenerator {
-	if runner == nil {
-		runner = NewDefaultCommandRunner()
-	}
 	return &JsBufbuildEsGenerator{
 		baseGenerator: baseGenerator{
 			sdk:    SdkJsBufbuildEs,
@@ -48,9 +45,6 @@ type JsProtobufGenerator struct {
 }
 
 func NewJsProtobufGenerator(runner CommandRunner) *JsProtobufGenerator {
-	if runner == nil {
-		runner = NewDefaultCommandRunner()
-	}
 	return &JsProtobufGenerator{
 		baseGenerator: baseGenerator{
 			sdk:    SdkJsProtobuf,
@@ -85,9 +79,6 @@ type JsConnectRpcGenerator struct {
 }
 
 func NewJsConnectRpcGenerator(runner CommandRunner) *JsConnectRpcGenerator {
-	if runner == nil {
-		runner = NewDefaultCommandRunner()
-	}
 	return &JsConnectRpcGenerator{
 		baseGenerator: baseGenerator{
 			sdk:    SdkJsConnectrpc,

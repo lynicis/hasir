@@ -10,9 +10,6 @@ type GoGrpcGenerator struct {
 }
 
 func NewGoGrpcGenerator(runner CommandRunner) *GoGrpcGenerator {
-	if runner == nil {
-		runner = NewDefaultCommandRunner()
-	}
 	return &GoGrpcGenerator{
 		baseGenerator: baseGenerator{
 			sdk:    SdkGoGrpc,

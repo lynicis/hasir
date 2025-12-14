@@ -10,9 +10,6 @@ type GoProtobufGenerator struct {
 }
 
 func NewGoProtobufGenerator(runner CommandRunner) *GoProtobufGenerator {
-	if runner == nil {
-		runner = NewDefaultCommandRunner()
-	}
 	return &GoProtobufGenerator{
 		baseGenerator: baseGenerator{
 			sdk:    SdkGoProtobuf,

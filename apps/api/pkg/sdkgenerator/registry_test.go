@@ -10,9 +10,8 @@ import (
 
 func TestNewRegistry(t *testing.T) {
 	r := NewRegistry(nil)
-	require.NotNil(t, r)
+	assert.NotNil(t, r)
 
-	// Should have all default generators
 	expectedSdks := []SDK{
 		SdkGoProtobuf,
 		SdkGoConnectRpc,
@@ -25,7 +24,7 @@ func TestNewRegistry(t *testing.T) {
 	for _, sdk := range expectedSdks {
 		g, err := r.Get(sdk)
 		require.NoError(t, err)
-		require.NotNil(t, g)
+		assert.NotNil(t, g)
 		assert.Equal(t, sdk, g.SDK())
 	}
 }
@@ -36,7 +35,7 @@ func TestRegistry_Get(t *testing.T) {
 	t.Run("existing generator", func(t *testing.T) {
 		g, err := r.Get(SdkGoProtobuf)
 		require.NoError(t, err)
-		require.NotNil(t, g)
+		assert.NotNil(t, g)
 		assert.Equal(t, SdkGoProtobuf, g.SDK())
 	})
 
@@ -54,7 +53,6 @@ func TestRegistry_List(t *testing.T) {
 	sdks := r.List()
 	assert.Len(t, sdks, 6)
 
-	// Check all SDKs are present
 	sdkMap := make(map[SDK]bool)
 	for _, sdk := range sdks {
 		sdkMap[sdk] = true
@@ -71,7 +69,6 @@ func TestRegistry_List(t *testing.T) {
 func TestRegistry_Register(t *testing.T) {
 	r := NewRegistry(NewMockCommandRunner())
 
-	// Create a custom mock generator
 	mockGenerator := &mockGenerator{sdk: SDK("CUSTOM")}
 	r.Register(mockGenerator)
 

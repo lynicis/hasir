@@ -318,7 +318,7 @@ func TestUpdateSdkGenerationJobStatus(t *testing.T) {
 
 		jobs, err := queue.GetPendingSdkGenerationJobs(t.Context(), 1)
 		require.NoError(t, err)
-		require.Len(t, jobs, 1)
+		assert.Len(t, jobs, 1)
 
 		err = queue.UpdateSdkGenerationJobStatus(t.Context(), jobs[0].Id, registry.SdkGenerationJobStatusCompleted, nil)
 		assert.NoError(t, err)
@@ -345,7 +345,7 @@ func TestUpdateSdkGenerationJobStatus(t *testing.T) {
 
 		jobs, err := queue.GetPendingSdkGenerationJobs(t.Context(), 1)
 		require.NoError(t, err)
-		require.Len(t, jobs, 1)
+		assert.Len(t, jobs, 1)
 
 		errorMsg := "generation failed"
 		err = queue.UpdateSdkGenerationJobStatus(t.Context(), jobs[0].Id, registry.SdkGenerationJobStatusFailed, &errorMsg)
@@ -373,7 +373,7 @@ func TestUpdateSdkGenerationJobStatus(t *testing.T) {
 
 		jobs, err := queue.GetPendingSdkGenerationJobs(t.Context(), 1)
 		require.NoError(t, err)
-		require.Len(t, jobs, 1)
+		assert.Len(t, jobs, 1)
 
 		err = queue.UpdateSdkGenerationJobStatus(t.Context(), jobs[0].Id, registry.SdkGenerationJobStatusPending, nil)
 		assert.NoError(t, err)

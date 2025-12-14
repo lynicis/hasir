@@ -34,9 +34,9 @@ func TestNewHandler(t *testing.T) {
 		h := NewHandler(mockService, mockRepository)
 
 		require.NotNil(t, h)
-		require.Equal(t, mockService, h.service)
-		require.Equal(t, mockRepository, h.repository)
-		require.Empty(t, h.interceptors)
+		assert.Equal(t, mockService, h.service)
+		assert.Equal(t, mockRepository, h.repository)
+		assert.Empty(t, h.interceptors)
 	})
 
 	t.Run("creates handler with interceptors", func(t *testing.T) {
@@ -54,7 +54,7 @@ func TestNewHandler(t *testing.T) {
 		h := NewHandler(mockService, mockRepository, interceptor1, interceptor2)
 
 		require.NotNil(t, h)
-		require.Len(t, h.interceptors, 2)
+		assert.Len(t, h.interceptors, 2)
 	})
 }
 
@@ -67,7 +67,7 @@ func TestHandler_RegisterRoutes(t *testing.T) {
 		h := NewHandler(mockService, mockRepository)
 		path, httpHandler := h.RegisterRoutes()
 
-		require.Equal(t, "/"+registryv1connect.RegistryServiceName+"/", path)
+		assert.Equal(t, "/"+registryv1connect.RegistryServiceName+"/", path)
 		require.NotNil(t, httpHandler)
 	})
 }
@@ -81,7 +81,7 @@ func TestHandler_CreateRepository(t *testing.T) {
 		mockService.EXPECT().
 			CreateRepository(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, req *registryv1.CreateRepositoryRequest) error {
-				require.Equal(t, "test-repo", req.GetName())
+				assert.Equal(t, "test-repo", req.GetName())
 				return nil
 			})
 
@@ -133,7 +133,7 @@ func TestHandler_CreateRepository(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeAlreadyExists, connectErr.Code())
+		assert.Equal(t, connect.CodeAlreadyExists, connectErr.Code())
 	})
 }
 
@@ -146,7 +146,7 @@ func TestHandler_GetRepository(t *testing.T) {
 		mockService.EXPECT().
 			GetRepository(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, req *registryv1.GetRepositoryRequest) (*registryv1.Repository, error) {
-				require.Equal(t, "test-repo-id", req.GetId())
+				assert.Equal(t, "test-repo-id", req.GetId())
 				return &registryv1.Repository{
 					Id:   "test-repo-id",
 					Name: "test-repo",
@@ -170,9 +170,9 @@ func TestHandler_GetRepository(t *testing.T) {
 			Id: "test-repo-id",
 		}))
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.Equal(t, "test-repo-id", resp.Msg.GetId())
-		require.Equal(t, "test-repo", resp.Msg.GetName())
+		assert.NotNil(t, resp)
+		assert.Equal(t, "test-repo-id", resp.Msg.GetId())
+		assert.Equal(t, "test-repo", resp.Msg.GetName())
 	})
 
 	t.Run("service error - repository not found", func(t *testing.T) {
@@ -204,7 +204,7 @@ func TestHandler_GetRepository(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 
 	t.Run("service error - permission denied", func(t *testing.T) {
@@ -236,7 +236,7 @@ func TestHandler_GetRepository(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 }
 
@@ -272,11 +272,11 @@ func TestHandler_GetRepositories(t *testing.T) {
 
 		resp, err := client.GetRepositories(context.Background(), connect.NewRequest(&registryv1.GetRepositoriesRequest{}))
 		require.NoError(t, err)
-		require.Len(t, resp.Msg.GetRepositories(), 2)
-		require.Equal(t, "repo-1", resp.Msg.GetRepositories()[0].GetId())
-		require.Equal(t, "first-repo", resp.Msg.GetRepositories()[0].GetName())
-		require.Equal(t, "repo-2", resp.Msg.GetRepositories()[1].GetId())
-		require.Equal(t, "second-repo", resp.Msg.GetRepositories()[1].GetName())
+		assert.Len(t, resp.Msg.GetRepositories(), 2)
+		assert.Equal(t, "repo-1", resp.Msg.GetRepositories()[0].GetId())
+		assert.Equal(t, "first-repo", resp.Msg.GetRepositories()[0].GetName())
+		assert.Equal(t, "repo-2", resp.Msg.GetRepositories()[1].GetId())
+		assert.Equal(t, "second-repo", resp.Msg.GetRepositories()[1].GetName())
 	})
 
 	t.Run("success with empty repositories", func(t *testing.T) {
@@ -307,7 +307,7 @@ func TestHandler_GetRepositories(t *testing.T) {
 
 		resp, err := client.GetRepositories(context.Background(), connect.NewRequest(&registryv1.GetRepositoriesRequest{}))
 		require.NoError(t, err)
-		require.Empty(t, resp.Msg.GetRepositories())
+		assert.Empty(t, resp.Msg.GetRepositories())
 	})
 
 	t.Run("repository error", func(t *testing.T) {
@@ -337,7 +337,7 @@ func TestHandler_GetRepositories(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeInternal, connectErr.Code())
+		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
 }
 
@@ -418,7 +418,7 @@ func TestHandler_DeleteRepository(t *testing.T) {
 		mockService.EXPECT().
 			DeleteRepository(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, req *registryv1.DeleteRepositoryRequest) error {
-				require.Equal(t, "test-repo-id", req.GetRepositoryId())
+				assert.Equal(t, "test-repo-id", req.GetRepositoryId())
 				return nil
 			})
 
@@ -470,7 +470,7 @@ func TestHandler_DeleteRepository(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 
 	t.Run("service error - internal error", func(t *testing.T) {
@@ -502,7 +502,7 @@ func TestHandler_DeleteRepository(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeInternal, connectErr.Code())
+		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
 }
 
@@ -514,8 +514,8 @@ func TestNewGitSshHandler(t *testing.T) {
 		h := NewGitSshHandler(mockService, DefaultReposPath)
 
 		require.NotNil(t, h)
-		require.Equal(t, mockService, h.service)
-		require.Equal(t, DefaultReposPath, h.reposPath)
+		assert.Equal(t, mockService, h.service)
+		assert.Equal(t, DefaultReposPath, h.reposPath)
 	})
 }
 
@@ -527,8 +527,8 @@ func TestNewGitHttpHandler(t *testing.T) {
 		h := NewGitHttpHandler(mockService, nil, DefaultReposPath)
 
 		require.NotNil(t, h)
-		require.Equal(t, mockService, h.service)
-		require.Equal(t, DefaultReposPath, h.reposPath)
+		assert.Equal(t, mockService, h.service)
+		assert.Equal(t, DefaultReposPath, h.reposPath)
 	})
 }
 
@@ -564,8 +564,8 @@ func TestGitHttpHandler_ServeHTTP(t *testing.T) {
 
 		h.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusUnauthorized, w.Code)
-		require.Contains(t, w.Header().Get("WWW-Authenticate"), "Basic")
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Contains(t, w.Header().Get("WWW-Authenticate"), "Basic")
 	})
 
 	t.Run("returns 401 for invalid API key", func(t *testing.T) {
@@ -769,12 +769,12 @@ func TestHandler_GetCommits(t *testing.T) {
 			Id: "test-repo-id",
 		}))
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.Len(t, resp.Msg.GetCommits(), 1)
-		require.Equal(t, "abc123", resp.Msg.GetCommits()[0].GetId())
-		require.Equal(t, "Initial commit", resp.Msg.GetCommits()[0].GetMessage())
-		require.Equal(t, "user@example.com", resp.Msg.GetCommits()[0].GetUser().GetId())
-		require.Equal(t, "Test User", resp.Msg.GetCommits()[0].GetUser().GetUsername())
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Msg.GetCommits(), 1)
+		assert.Equal(t, "abc123", resp.Msg.GetCommits()[0].GetId())
+		assert.Equal(t, "Initial commit", resp.Msg.GetCommits()[0].GetMessage())
+		assert.Equal(t, "user@example.com", resp.Msg.GetCommits()[0].GetUser().GetId())
+		assert.Equal(t, "Test User", resp.Msg.GetCommits()[0].GetUser().GetUsername())
 	})
 
 	t.Run("service error - repository not found", func(t *testing.T) {
@@ -806,7 +806,7 @@ func TestHandler_GetCommits(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 }
 
@@ -841,8 +841,8 @@ func TestHandler_GetFileTree(t *testing.T) {
 		mockService.EXPECT().
 			GetFileTree(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, req *registryv1.GetFileTreeRequest) (*registryv1.GetFileTreeResponse, error) {
-				require.Equal(t, "test-repo-id", req.GetId())
-				require.False(t, req.HasPath())
+				assert.Equal(t, "test-repo-id", req.GetId())
+				assert.False(t, req.HasPath())
 				return expectedFileTree, nil
 			})
 
@@ -863,13 +863,13 @@ func TestHandler_GetFileTree(t *testing.T) {
 			Id: "test-repo-id",
 		}))
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.Len(t, resp.Msg.GetNodes(), 2)
-		require.Equal(t, "README.md", resp.Msg.GetNodes()[0].GetName())
-		require.Equal(t, registryv1.NodeType_NODE_TYPE_FILE, resp.Msg.GetNodes()[0].GetType())
-		require.Equal(t, "src", resp.Msg.GetNodes()[1].GetName())
-		require.Equal(t, registryv1.NodeType_NODE_TYPE_DIRECTORY, resp.Msg.GetNodes()[1].GetType())
-		require.Len(t, resp.Msg.GetNodes()[1].GetChildren(), 1)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Msg.GetNodes(), 2)
+		assert.Equal(t, "README.md", resp.Msg.GetNodes()[0].GetName())
+		assert.Equal(t, registryv1.NodeType_NODE_TYPE_FILE, resp.Msg.GetNodes()[0].GetType())
+		assert.Equal(t, "src", resp.Msg.GetNodes()[1].GetName())
+		assert.Equal(t, registryv1.NodeType_NODE_TYPE_DIRECTORY, resp.Msg.GetNodes()[1].GetType())
+		assert.Len(t, resp.Msg.GetNodes()[1].GetChildren(), 1)
 	})
 
 	t.Run("success - subdirectory", func(t *testing.T) {
@@ -890,9 +890,9 @@ func TestHandler_GetFileTree(t *testing.T) {
 		mockService.EXPECT().
 			GetFileTree(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, req *registryv1.GetFileTreeRequest) (*registryv1.GetFileTreeResponse, error) {
-				require.Equal(t, "test-repo-id", req.GetId())
-				require.True(t, req.HasPath())
-				require.Equal(t, "src", req.GetPath())
+				assert.Equal(t, "test-repo-id", req.GetId())
+				assert.True(t, req.HasPath())
+				assert.Equal(t, "src", req.GetPath())
 				return expectedFileTree, nil
 			})
 
@@ -915,9 +915,9 @@ func TestHandler_GetFileTree(t *testing.T) {
 			Path: &subPath,
 		}))
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.Len(t, resp.Msg.GetNodes(), 1)
-		require.Equal(t, "main.go", resp.Msg.GetNodes()[0].GetName())
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Msg.GetNodes(), 1)
+		assert.Equal(t, "main.go", resp.Msg.GetNodes()[0].GetName())
 	})
 
 	t.Run("service error - repository not found", func(t *testing.T) {
@@ -949,7 +949,7 @@ func TestHandler_GetFileTree(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 }
 
@@ -966,8 +966,8 @@ func TestHandler_GetFilePreview(t *testing.T) {
 		mockService.EXPECT().
 			GetFilePreview(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, req *registryv1.GetFilePreviewRequest) (*registryv1.GetFilePreviewResponse, error) {
-				require.Equal(t, "test-repo-id", req.GetId())
-				require.Equal(t, "main.go", req.GetPath())
+				assert.Equal(t, "test-repo-id", req.GetId())
+				assert.Equal(t, "main.go", req.GetPath())
 				return expectedFilePreview, nil
 			})
 
@@ -989,8 +989,8 @@ func TestHandler_GetFilePreview(t *testing.T) {
 			Path: "main.go",
 		}))
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.Equal(t, "package main\n\nfunc main() {\n\tfmt.Println(\"Hello, World!\")\n}", resp.Msg.GetContent())
+		assert.NotNil(t, resp)
+		assert.Equal(t, "package main\n\nfunc main() {\n\tfmt.Println(\"Hello, World!\")\n}", resp.Msg.GetContent())
 	})
 
 	t.Run("success - file in subdirectory", func(t *testing.T) {
@@ -1005,8 +1005,8 @@ func TestHandler_GetFilePreview(t *testing.T) {
 		mockService.EXPECT().
 			GetFilePreview(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, req *registryv1.GetFilePreviewRequest) (*registryv1.GetFilePreviewResponse, error) {
-				require.Equal(t, "test-repo-id", req.GetId())
-				require.Equal(t, "docs/README.md", req.GetPath())
+				assert.Equal(t, "test-repo-id", req.GetId())
+				assert.Equal(t, "docs/README.md", req.GetPath())
 				return expectedFilePreview, nil
 			})
 
@@ -1028,8 +1028,8 @@ func TestHandler_GetFilePreview(t *testing.T) {
 			Path: "docs/README.md",
 		}))
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.Equal(t, "# Test README\n\nThis is a test file.", resp.Msg.GetContent())
+		assert.NotNil(t, resp)
+		assert.Equal(t, "# Test README\n\nThis is a test file.", resp.Msg.GetContent())
 	})
 
 	t.Run("success - empty file", func(t *testing.T) {
@@ -1044,8 +1044,8 @@ func TestHandler_GetFilePreview(t *testing.T) {
 		mockService.EXPECT().
 			GetFilePreview(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, req *registryv1.GetFilePreviewRequest) (*registryv1.GetFilePreviewResponse, error) {
-				require.Equal(t, "test-repo-id", req.GetId())
-				require.Equal(t, "empty.txt", req.GetPath())
+				assert.Equal(t, "test-repo-id", req.GetId())
+				assert.Equal(t, "empty.txt", req.GetPath())
 				return expectedFilePreview, nil
 			})
 
@@ -1067,8 +1067,8 @@ func TestHandler_GetFilePreview(t *testing.T) {
 			Path: "empty.txt",
 		}))
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.Empty(t, resp.Msg.GetContent())
+		assert.NotNil(t, resp)
+		assert.Empty(t, resp.Msg.GetContent())
 	})
 
 	t.Run("service error - repository not found", func(t *testing.T) {
@@ -1101,7 +1101,7 @@ func TestHandler_GetFilePreview(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 
 	t.Run("service error - file not found", func(t *testing.T) {
@@ -1134,7 +1134,7 @@ func TestHandler_GetFilePreview(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 
 	t.Run("service error - permission denied", func(t *testing.T) {
@@ -1167,7 +1167,7 @@ func TestHandler_GetFilePreview(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
 	t.Run("service error - internal error", func(t *testing.T) {
@@ -1200,7 +1200,7 @@ func TestHandler_GetFilePreview(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeInternal, connectErr.Code())
+		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
 
 	t.Run("success - file with unicode and special characters", func(t *testing.T) {
@@ -1216,8 +1216,8 @@ func TestHandler_GetFilePreview(t *testing.T) {
 		mockService.EXPECT().
 			GetFilePreview(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, req *registryv1.GetFilePreviewRequest) (*registryv1.GetFilePreviewResponse, error) {
-				require.Equal(t, "test-repo-id", req.GetId())
-				require.Equal(t, "special.txt", req.GetPath())
+				assert.Equal(t, "test-repo-id", req.GetId())
+				assert.Equal(t, "special.txt", req.GetPath())
 				return expectedFilePreview, nil
 			})
 
@@ -1239,7 +1239,7 @@ func TestHandler_GetFilePreview(t *testing.T) {
 			Path: "special.txt",
 		}))
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.Equal(t, specialContent, resp.Msg.GetContent())
+		assert.NotNil(t, resp)
+		assert.Equal(t, specialContent, resp.Msg.GetContent())
 	})
 }

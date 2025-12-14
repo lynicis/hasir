@@ -248,7 +248,7 @@ func TestJsonConfig_Read(t *testing.T) {
 
 func TestGetCwd(t *testing.T) {
 	cwd := getCwd()
-	require.NotEmpty(t, cwd)
+	assert.NotEmpty(t, cwd)
 }
 
 func TestSdkGenerationConfig(t *testing.T) {

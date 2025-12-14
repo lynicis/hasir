@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -50,9 +51,9 @@ func TestNewHandler(t *testing.T) {
 		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
 
 		require.NotNil(t, h)
-		require.Equal(t, mockService, h.service)
-		require.Equal(t, mockRepository, h.repository)
-		require.Empty(t, h.interceptors)
+		assert.Equal(t, mockService, h.service)
+		assert.Equal(t, mockRepository, h.repository)
+		assert.Empty(t, h.interceptors)
 	})
 
 	t.Run("creates handler with interceptors", func(t *testing.T) {
@@ -71,7 +72,7 @@ func TestNewHandler(t *testing.T) {
 		h := NewHandler(mockService, mockRepository, mockRegistryRepository, interceptor1, interceptor2)
 
 		require.NotNil(t, h)
-		require.Len(t, h.interceptors, 2)
+		assert.Len(t, h.interceptors, 2)
 	})
 }
 
@@ -85,7 +86,7 @@ func TestHandler_RegisterRoutes(t *testing.T) {
 		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
 		path, httpHandler := h.RegisterRoutes()
 
-		require.Equal(t, "/"+organizationv1connect.OrganizationServiceName+"/", path)
+		assert.Equal(t, "/"+organizationv1connect.OrganizationServiceName+"/", path)
 		require.NotNil(t, httpHandler)
 	})
 }
@@ -102,9 +103,9 @@ func TestHandler_CreateOrganization(t *testing.T) {
 		mockService.EXPECT().
 			CreateOrganization(gomock.Any(), gomock.Any(), testUserID).
 			DoAndReturn(func(_ context.Context, req *organizationv1.CreateOrganizationRequest, createdBy string) error {
-				require.Equal(t, "test-org", req.GetName())
-				require.Equal(t, shared.Visibility_VISIBILITY_PRIVATE, req.GetVisibility())
-				require.Equal(t, testUserID, createdBy)
+				assert.Equal(t, "test-org", req.GetName())
+				assert.Equal(t, shared.Visibility_VISIBILITY_PRIVATE, req.GetVisibility())
+				assert.Equal(t, testUserID, createdBy)
 				return nil
 			})
 
@@ -139,8 +140,8 @@ func TestHandler_CreateOrganization(t *testing.T) {
 		mockService.EXPECT().
 			CreateOrganization(gomock.Any(), gomock.Any(), testUserID).
 			DoAndReturn(func(_ context.Context, req *organizationv1.CreateOrganizationRequest, createdBy string) error {
-				require.Equal(t, "public-org", req.GetName())
-				require.Equal(t, shared.Visibility_VISIBILITY_PUBLIC, req.GetVisibility())
+				assert.Equal(t, "public-org", req.GetName())
+				assert.Equal(t, shared.Visibility_VISIBILITY_PUBLIC, req.GetVisibility())
 				return nil
 			})
 
@@ -197,7 +198,7 @@ func TestHandler_CreateOrganization(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeAlreadyExists, connectErr.Code())
+		assert.Equal(t, connect.CodeAlreadyExists, connectErr.Code())
 	})
 
 	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
@@ -227,7 +228,7 @@ func TestHandler_CreateOrganization(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
 
@@ -267,11 +268,11 @@ func TestHandler_GetOrganizations(t *testing.T) {
 
 		resp, err := client.GetOrganizations(context.Background(), connect.NewRequest(&organizationv1.GetOrganizationsRequest{}))
 		require.NoError(t, err)
-		require.Len(t, resp.Msg.GetOrganizations(), 2)
-		require.Equal(t, "org-1", resp.Msg.GetOrganizations()[0].GetId())
-		require.Equal(t, "first-org", resp.Msg.GetOrganizations()[0].GetName())
-		require.Equal(t, "org-2", resp.Msg.GetOrganizations()[1].GetId())
-		require.Equal(t, "second-org", resp.Msg.GetOrganizations()[1].GetName())
+		assert.Len(t, resp.Msg.GetOrganizations(), 2)
+		assert.Equal(t, "org-1", resp.Msg.GetOrganizations()[0].GetId())
+		assert.Equal(t, "first-org", resp.Msg.GetOrganizations()[0].GetName())
+		assert.Equal(t, "org-2", resp.Msg.GetOrganizations()[1].GetId())
+		assert.Equal(t, "second-org", resp.Msg.GetOrganizations()[1].GetName())
 	})
 
 	t.Run("success with empty organizations", func(t *testing.T) {
@@ -306,7 +307,7 @@ func TestHandler_GetOrganizations(t *testing.T) {
 
 		resp, err := client.GetOrganizations(context.Background(), connect.NewRequest(&organizationv1.GetOrganizationsRequest{}))
 		require.NoError(t, err)
-		require.Empty(t, resp.Msg.GetOrganizations())
+		assert.Empty(t, resp.Msg.GetOrganizations())
 	})
 
 	t.Run("repository error", func(t *testing.T) {
@@ -338,7 +339,7 @@ func TestHandler_GetOrganizations(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeInternal, connectErr.Code())
+		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
 
 	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
@@ -365,7 +366,7 @@ func TestHandler_GetOrganizations(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
 
@@ -435,7 +436,7 @@ func TestHandler_DeleteOrganization(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 
 	t.Run("service error - permission denied", func(t *testing.T) {
@@ -471,7 +472,7 @@ func TestHandler_DeleteOrganization(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
 	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
@@ -500,7 +501,7 @@ func TestHandler_DeleteOrganization(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
 
@@ -517,10 +518,10 @@ func TestHandler_UpdateOrganization(t *testing.T) {
 		mockService.EXPECT().
 			UpdateOrganization(gomock.Any(), gomock.Any(), testUserID).
 			DoAndReturn(func(_ context.Context, req *organizationv1.UpdateOrganizationRequest, userId string) error {
-				require.Equal(t, orgID, req.GetId())
-				require.Equal(t, "updated-name", req.GetName())
-				require.Equal(t, shared.Visibility_VISIBILITY_PUBLIC, req.GetVisibility())
-				require.Equal(t, testUserID, userId)
+				assert.Equal(t, orgID, req.GetId())
+				assert.Equal(t, "updated-name", req.GetName())
+				assert.Equal(t, shared.Visibility_VISIBILITY_PUBLIC, req.GetVisibility())
+				assert.Equal(t, testUserID, userId)
 				return nil
 			})
 
@@ -579,7 +580,7 @@ func TestHandler_UpdateOrganization(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
 	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
@@ -609,7 +610,7 @@ func TestHandler_UpdateOrganization(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
 
@@ -627,9 +628,9 @@ func TestHandler_InviteMember(t *testing.T) {
 		mockService.EXPECT().
 			InviteUser(gomock.Any(), gomock.Any(), testUserID).
 			DoAndReturn(func(_ context.Context, req *organizationv1.InviteMemberRequest, invitedBy string) error {
-				require.Equal(t, orgID, req.GetId())
-				require.Equal(t, email, req.GetEmail())
-				require.Equal(t, testUserID, invitedBy)
+				assert.Equal(t, orgID, req.GetId())
+				assert.Equal(t, email, req.GetEmail())
+				assert.Equal(t, testUserID, invitedBy)
 				return nil
 			})
 
@@ -680,7 +681,7 @@ func TestHandler_InviteMember(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
 
@@ -698,10 +699,10 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 		mockService.EXPECT().
 			UpdateMemberRole(gomock.Any(), gomock.Any(), testUserID).
 			DoAndReturn(func(_ context.Context, req *organizationv1.UpdateMemberRoleRequest, userId string) error {
-				require.Equal(t, orgID, req.GetOrganizationId())
-				require.Equal(t, memberID, req.GetMemberId())
-				require.Equal(t, shared.Role_ROLE_AUTHOR, req.GetRole())
-				require.Equal(t, testUserID, userId)
+				assert.Equal(t, orgID, req.GetOrganizationId())
+				assert.Equal(t, memberID, req.GetMemberId())
+				assert.Equal(t, shared.Role_ROLE_AUTHOR, req.GetRole())
+				assert.Equal(t, testUserID, userId)
 				return nil
 			})
 
@@ -762,7 +763,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
 	t.Run("service error - last owner cannot decrease own role", func(t *testing.T) {
@@ -800,7 +801,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeFailedPrecondition, connectErr.Code())
+		assert.Equal(t, connect.CodeFailedPrecondition, connectErr.Code())
 	})
 
 	t.Run("service error - member not found", func(t *testing.T) {
@@ -839,7 +840,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 
 	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
@@ -870,7 +871,7 @@ func TestHandler_UpdateMemberRole(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
 
@@ -888,9 +889,9 @@ func TestHandler_DeleteMember(t *testing.T) {
 		mockService.EXPECT().
 			DeleteMember(gomock.Any(), gomock.Any(), testUserID).
 			DoAndReturn(func(_ context.Context, req *organizationv1.DeleteMemberRequest, userId string) error {
-				require.Equal(t, orgID, req.GetOrganizationId())
-				require.Equal(t, memberID, req.GetMemberId())
-				require.Equal(t, testUserID, userId)
+				assert.Equal(t, orgID, req.GetOrganizationId())
+				assert.Equal(t, memberID, req.GetMemberId())
+				assert.Equal(t, testUserID, userId)
 				return nil
 			})
 
@@ -949,7 +950,7 @@ func TestHandler_DeleteMember(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
 	t.Run("service error - cannot delete last owner", func(t *testing.T) {
@@ -987,7 +988,7 @@ func TestHandler_DeleteMember(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeFailedPrecondition, connectErr.Code())
+		assert.Equal(t, connect.CodeFailedPrecondition, connectErr.Code())
 	})
 
 	t.Run("service error - member not found", func(t *testing.T) {
@@ -1025,7 +1026,7 @@ func TestHandler_DeleteMember(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 
 	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
@@ -1055,7 +1056,7 @@ func TestHandler_DeleteMember(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
 
@@ -1105,14 +1106,14 @@ func TestHandler_Search(t *testing.T) {
 			Query: query,
 		}))
 		require.NoError(t, err)
-		require.Len(t, resp.Msg.GetOrganizations(), 1)
-		require.Len(t, resp.Msg.GetRepositories(), 1)
-		require.Equal(t, "org-1", resp.Msg.GetOrganizations()[0].GetId())
-		require.Equal(t, "test-org", resp.Msg.GetOrganizations()[0].GetName())
-		require.Equal(t, "repo-1", resp.Msg.GetRepositories()[0].GetId())
-		require.Equal(t, "test-repo", resp.Msg.GetRepositories()[0].GetName())
-		require.Equal(t, int32(1), resp.Msg.GetTotalPage())
-		require.Equal(t, int32(0), resp.Msg.GetNextPage())
+		assert.Len(t, resp.Msg.GetOrganizations(), 1)
+		assert.Len(t, resp.Msg.GetRepositories(), 1)
+		assert.Equal(t, "org-1", resp.Msg.GetOrganizations()[0].GetId())
+		assert.Equal(t, "test-org", resp.Msg.GetOrganizations()[0].GetName())
+		assert.Equal(t, "repo-1", resp.Msg.GetRepositories()[0].GetId())
+		assert.Equal(t, "test-repo", resp.Msg.GetRepositories()[0].GetName())
+		assert.Equal(t, int32(1), resp.Msg.GetTotalPage())
+		assert.Equal(t, int32(0), resp.Msg.GetNextPage())
 	})
 
 	t.Run("success with only organizations", func(t *testing.T) {
@@ -1158,8 +1159,8 @@ func TestHandler_Search(t *testing.T) {
 			Query: query,
 		}))
 		require.NoError(t, err)
-		require.Len(t, resp.Msg.GetOrganizations(), 2)
-		require.Empty(t, resp.Msg.GetRepositories())
+		assert.Len(t, resp.Msg.GetOrganizations(), 2)
+		assert.Empty(t, resp.Msg.GetRepositories())
 	})
 
 	t.Run("success with only repositories", func(t *testing.T) {
@@ -1202,7 +1203,7 @@ func TestHandler_Search(t *testing.T) {
 			Query: query,
 		}))
 		require.NoError(t, err)
-		require.Empty(t, resp.Msg.GetOrganizations())
+		assert.Empty(t, resp.Msg.GetOrganizations())
 		require.Len(t, resp.Msg.GetRepositories(), 1)
 	})
 
@@ -1238,10 +1239,10 @@ func TestHandler_Search(t *testing.T) {
 			Query: query,
 		}))
 		require.NoError(t, err)
-		require.Empty(t, resp.Msg.GetOrganizations())
-		require.Empty(t, resp.Msg.GetRepositories())
-		require.Equal(t, int32(1), resp.Msg.GetTotalPage())
-		require.Equal(t, int32(0), resp.Msg.GetNextPage())
+		assert.Empty(t, resp.Msg.GetOrganizations())
+		assert.Empty(t, resp.Msg.GetRepositories())
+		assert.Equal(t, int32(1), resp.Msg.GetTotalPage())
+		assert.Equal(t, int32(0), resp.Msg.GetNextPage())
 	})
 
 	t.Run("success with pagination", func(t *testing.T) {
@@ -1289,8 +1290,8 @@ func TestHandler_Search(t *testing.T) {
 		}
 		resp, err := client.Search(context.Background(), connect.NewRequest(req))
 		require.NoError(t, err)
-		require.Equal(t, int32(3), resp.Msg.GetTotalPage())
-		require.Equal(t, int32(3), resp.Msg.GetNextPage())
+		assert.Equal(t, int32(3), resp.Msg.GetTotalPage())
+		assert.Equal(t, int32(3), resp.Msg.GetNextPage())
 	})
 
 	t.Run("success with default pagination", func(t *testing.T) {
@@ -1447,8 +1448,8 @@ func TestHandler_Search(t *testing.T) {
 		}
 		resp, err := client.Search(context.Background(), connect.NewRequest(req))
 		require.NoError(t, err)
-		require.Equal(t, int32(3), resp.Msg.GetTotalPage())
-		require.Equal(t, int32(0), resp.Msg.GetNextPage())
+		assert.Equal(t, int32(3), resp.Msg.GetTotalPage())
+		assert.Equal(t, int32(0), resp.Msg.GetNextPage())
 	})
 
 	t.Run("repository error", func(t *testing.T) {
@@ -1484,7 +1485,7 @@ func TestHandler_Search(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeInternal, connectErr.Code())
+		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
 
 	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
@@ -1513,7 +1514,7 @@ func TestHandler_Search(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
 
@@ -1599,7 +1600,7 @@ func TestHandler_IsInvitationValid(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodePermissionDenied, connectErr.Code())
+		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
 	t.Run("invite not found", func(t *testing.T) {
@@ -1635,7 +1636,7 @@ func TestHandler_IsInvitationValid(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeNotFound, connectErr.Code())
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 
 	t.Run("unauthenticated - missing user email", func(t *testing.T) {
@@ -1665,6 +1666,6 @@ func TestHandler_IsInvitationValid(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
-		require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }

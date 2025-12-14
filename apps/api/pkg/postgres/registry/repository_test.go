@@ -278,7 +278,7 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 
 		found, err := repo.GetRepositoryByName(t.Context(), testRepo.Name)
 		require.NoError(t, err)
-		require.NotNil(t, found)
+		assert.NotNil(t, found)
 		assert.Equal(t, testRepo.Id, found.Id)
 		assert.Equal(t, testRepo.Name, found.Name)
 		assert.Equal(t, testRepo.Path, found.Path)
@@ -359,7 +359,7 @@ func TestPgRepository_GetRepositoryByName(t *testing.T) {
 
 		found, err := repo.GetRepositoryByName(t.Context(), testRepo.Name)
 		require.NoError(t, err)
-		require.NotNil(t, found)
+		assert.NotNil(t, found)
 
 		assert.Equal(t, testRepo.Id, found.Id)
 		assert.Equal(t, testRepo.Name, found.Name)
@@ -399,8 +399,8 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 
 		repos, err := repo.GetRepositories(t.Context(), 1, 10)
 		require.NoError(t, err)
-		require.NotNil(t, repos)
-		require.Len(t, *repos, 2)
+		assert.NotNil(t, repos)
+		assert.Len(t, *repos, 2)
 
 		foundRepo1 := false
 		foundRepo2 := false
@@ -437,8 +437,8 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 
 		repos, err := repo.GetRepositories(t.Context(), 1, 10)
 		require.NoError(t, err)
-		require.NotNil(t, repos)
-		require.Empty(t, *repos)
+		assert.NotNil(t, repos)
+		assert.Empty(t, *repos)
 	})
 
 	t.Run("excludes deleted repositories", func(t *testing.T) {
@@ -475,8 +475,8 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 
 		repos, err := repo.GetRepositories(t.Context(), 1, 10)
 		require.NoError(t, err)
-		require.NotNil(t, repos)
-		require.Len(t, *repos, 1)
+		assert.NotNil(t, repos)
+		assert.Len(t, *repos, 1)
 		assert.Equal(t, activeRepo.Id, (*repos)[0].Id)
 	})
 
@@ -508,8 +508,8 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 
 		repos, err := repo.GetRepositories(t.Context(), 1, 10)
 		require.NoError(t, err)
-		require.NotNil(t, repos)
-		require.Len(t, *repos, 2)
+		assert.NotNil(t, repos)
+		assert.Len(t, *repos, 2)
 
 		assert.Equal(t, newerRepo.Id, (*repos)[0].Id)
 		assert.Equal(t, olderRepo.Id, (*repos)[1].Id)
@@ -538,8 +538,8 @@ func TestPgRepository_GetRepositories(t *testing.T) {
 
 		repos, err := repo.GetRepositories(t.Context(), 1, 10)
 		require.NoError(t, err)
-		require.NotNil(t, repos)
-		require.Len(t, *repos, 1)
+		assert.NotNil(t, repos)
+		assert.Len(t, *repos, 1)
 
 		found := (*repos)[0]
 		assert.Equal(t, testRepo.Id, found.Id)
@@ -604,8 +604,8 @@ func TestPgRepository_GetRepositoriesByUser(t *testing.T) {
 
 		repos, err := repo.GetRepositoriesByUser(t.Context(), userID, 1, 10)
 		require.NoError(t, err)
-		require.NotNil(t, repos)
-		require.Len(t, *repos, 2)
+		assert.NotNil(t, repos)
+		assert.Len(t, *repos, 2)
 	})
 }
 
@@ -1219,8 +1219,8 @@ func TestPgRepository_GetRepositoriesByOrganizationId(t *testing.T) {
 
 		repos, err := repo.GetRepositoriesByOrganizationId(t.Context(), orgID)
 		require.NoError(t, err)
-		require.NotNil(t, repos)
-		require.Len(t, *repos, 2)
+		assert.NotNil(t, repos)
+		assert.Len(t, *repos, 2)
 	})
 
 	t.Run("returns empty list for non-existent organization", func(t *testing.T) {
@@ -1240,8 +1240,8 @@ func TestPgRepository_GetRepositoriesByOrganizationId(t *testing.T) {
 
 		repos, err := repo.GetRepositoriesByOrganizationId(t.Context(), uuid.NewString())
 		require.NoError(t, err)
-		require.NotNil(t, repos)
-		require.Empty(t, *repos)
+		assert.NotNil(t, repos)
+		assert.Empty(t, *repos)
 	})
 }
 
@@ -1429,8 +1429,8 @@ func TestPgRepository_GetRepositoriesByUserAndOrganization(t *testing.T) {
 
 		repos, err := repo.GetRepositoriesByUserAndOrganization(t.Context(), userID, orgID, 1, 10)
 		require.NoError(t, err)
-		require.NotNil(t, repos)
-		require.Len(t, *repos, 2)
+		assert.NotNil(t, repos)
+		assert.Len(t, *repos, 2)
 	})
 }
 
@@ -1505,7 +1505,7 @@ func TestPgRepository_GetRepositoryById(t *testing.T) {
 
 		found, err := repo.GetRepositoryById(t.Context(), testRepo.Id)
 		require.NoError(t, err)
-		require.NotNil(t, found)
+		assert.NotNil(t, found)
 		assert.Equal(t, testRepo.Id, found.Id)
 		assert.Equal(t, testRepo.Name, found.Name)
 	})

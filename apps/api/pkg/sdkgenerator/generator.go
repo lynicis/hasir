@@ -75,12 +75,6 @@ func (g *baseGenerator) SDK() SDK {
 }
 
 func (g *baseGenerator) Validate(input GeneratorInput) error {
-	if input.RepoPath == "" {
-		return errors.New("repo path is required")
-	}
-	if input.OutputPath == "" {
-		return errors.New("output path is required")
-	}
 	if len(input.ProtoFiles) == 0 {
 		return errors.New("at least one proto file is required")
 	}

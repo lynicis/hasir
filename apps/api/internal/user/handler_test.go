@@ -213,8 +213,8 @@ func TestHandler_Login(t *testing.T) {
 		}))
 
 		assert.NoError(t, err)
-		require.NotNil(t, resp, "response should not be nil")
-		require.NotNil(t, resp.Msg, "response message should not be nil")
+		assert.NotNil(t, resp, "response should not be nil")
+		assert.NotNil(t, resp.Msg, "response message should not be nil")
 		assert.Equal(t, mockRespBody.AccessToken, resp.Msg.AccessToken)
 		assert.Equal(t, mockRespBody.RefreshToken, resp.Msg.RefreshToken)
 	})
@@ -322,8 +322,8 @@ func TestHandler_RenewTokens(t *testing.T) {
 		}))
 
 		assert.NoError(t, err)
-		require.NotNil(t, resp, "response should not be nil")
-		require.NotNil(t, resp.Msg, "response message should not be nil")
+		assert.NotNil(t, resp, "response should not be nil")
+		assert.NotNil(t, resp.Msg, "response message should not be nil")
 		assert.Equal(t, mockRespBody.AccessToken, resp.Msg.AccessToken)
 	})
 
@@ -389,8 +389,8 @@ func TestHandler_UpdateUser(t *testing.T) {
 		}))
 
 		assert.NoError(t, err)
-		require.NotNil(t, resp, "response should not be nil")
-		require.NotNil(t, resp.Msg, "response message should not be nil")
+		assert.NotNil(t, resp, "response should not be nil")
+		assert.NotNil(t, resp.Msg, "response message should not be nil")
 		assert.Equal(t, mockRespBody.AccessToken, resp.Msg.AccessToken)
 		assert.Equal(t, mockRespBody.RefreshToken, resp.Msg.RefreshToken)
 	})
@@ -587,8 +587,8 @@ func TestHandler_CreateApiKey(t *testing.T) {
 		}))
 
 		assert.NoError(t, err)
-		require.NotNil(t, resp)
-		require.NotNil(t, resp.Msg)
+		assert.NotNil(t, resp)
+		assert.NotNil(t, resp.Msg)
 		assert.NotEmpty(t, resp.Msg.Key)
 	})
 

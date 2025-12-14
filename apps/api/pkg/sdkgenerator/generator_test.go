@@ -67,16 +67,6 @@ func TestBaseGenerator_Validate(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:    "empty repo path",
-			input:   GeneratorInput{RepoPath: "", OutputPath: "/out", ProtoFiles: []string{"test.proto"}},
-			wantErr: "repo path is required",
-		},
-		{
-			name:    "empty output path",
-			input:   GeneratorInput{RepoPath: "/repo", OutputPath: "", ProtoFiles: []string{"test.proto"}},
-			wantErr: "output path is required",
-		},
-		{
 			name:    "no proto files",
 			input:   GeneratorInput{RepoPath: "/repo", OutputPath: "/out", ProtoFiles: []string{}},
 			wantErr: "at least one proto file is required",
@@ -144,7 +134,7 @@ func TestGoProtobufGenerator_Generate(t *testing.T) {
 	assert.Equal(t, 1, output.FilesCount)
 
 	// Verify protoc was called
-	require.Len(t, mockRunner.Calls, 1)
+	assert.Len(t, mockRunner.Calls, 1)
 	call := mockRunner.Calls[0]
 	assert.Equal(t, "protoc", call.Name)
 	assert.Equal(t, "/tmp/repo", call.WorkDir)
@@ -170,7 +160,7 @@ func TestGoConnectRpcGenerator_Generate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, output)
 
-	require.Len(t, mockRunner.Calls, 1)
+	assert.Len(t, mockRunner.Calls, 1)
 	call := mockRunner.Calls[0]
 	assert.Equal(t, "protoc", call.Name)
 	assert.Contains(t, call.Args, "--connect-go_out=/tmp/output")
@@ -193,7 +183,7 @@ func TestGoGrpcGenerator_Generate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, output)
 
-	require.Len(t, mockRunner.Calls, 1)
+	assert.Len(t, mockRunner.Calls, 1)
 	call := mockRunner.Calls[0]
 	assert.Equal(t, "protoc", call.Name)
 	assert.Contains(t, call.Args, "--go-grpc_out=/tmp/output")
@@ -223,22 +213,19 @@ func TestGenerator_GenerateError(t *testing.T) {
 }
 
 func TestGenerator_ValidationError(t *testing.T) {
-	ctx := context.Background()
 	mockRunner := NewMockCommandRunner()
 	g := NewGoProtobufGenerator(mockRunner)
 
 	input := GeneratorInput{
-		RepoPath:   "",
+		RepoPath:   "/tmp/repo",
 		OutputPath: "/tmp/output",
-		ProtoFiles: []string{"test.proto"},
+		ProtoFiles: []string{"test.txt", "test.cpp"},
 	}
 
-	output, err := g.Generate(ctx, input)
-	require.Error(t, err)
-	assert.Nil(t, output)
-	assert.Contains(t, err.Error(), "repo path is required")
+	output, err := g.Generate(t.Context(), input)
 
-	// Verify protoc was NOT called
+	assert.Error(t, err)
+	assert.Nil(t, output)
 	assert.Empty(t, mockRunner.Calls)
 }
 
@@ -276,7 +263,7 @@ func TestJsGenerators_Generate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			output, err := tt.generator.Generate(ctx, input)
 			require.NoError(t, err)
-			require.NotNil(t, output)
+			assert.NotNil(t, output)
 			assert.Equal(t, "/tmp/output", output.OutputPath)
 		})
 	}

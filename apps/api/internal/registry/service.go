@@ -180,6 +180,7 @@ func (s *service) GetRepository(
 	return &registryv1.Repository{
 		Id:             repo.Id,
 		Name:           repo.Name,
+		OrganizationId: repo.OrganizationId,
 		Visibility:     proto.ReverseVisibilityMap[repo.Visibility],
 		SdkPreferences: protoSdkPreferences,
 	}, nil

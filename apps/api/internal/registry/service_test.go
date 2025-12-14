@@ -86,7 +86,7 @@ func TestNewService(t *testing.T) {
 		svc := NewService(mockRepo, mockOrgRepo, nil, nil)
 		concrete, ok := svc.(*service)
 		require.True(t, ok, "NewService should return *service")
-		require.Equal(t, DefaultReposPath, concrete.rootPath)
+		assert.Equal(t, DefaultReposPath, concrete.rootPath)
 	})
 }
 
@@ -119,11 +119,11 @@ func TestService_CreateRepository(t *testing.T) {
 		mockRepo.EXPECT().
 			CreateRepository(ctx, gomock.Any()).
 			DoAndReturn(func(_ context.Context, repo *RepositoryDTO) error {
-				require.Equal(t, repoName, repo.Name)
-				require.Equal(t, filepath.Join(tmpDir, repo.Id), repo.Path)
-				require.Equal(t, userID, repo.CreatedBy)
-				require.Equal(t, proto.VisibilityPrivate, repo.Visibility)
-				require.NotEmpty(t, repo.Id)
+				assert.Equal(t, repoName, repo.Name)
+				assert.Equal(t, filepath.Join(tmpDir, repo.Id), repo.Path)
+				assert.Equal(t, userID, repo.CreatedBy)
+				assert.Equal(t, proto.VisibilityPrivate, repo.Visibility)
+				assert.NotEmpty(t, repo.Id)
 				return nil
 			})
 
@@ -133,15 +133,13 @@ func TestService_CreateRepository(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		require.NoError(t, err)
-
 		dirs, err := os.ReadDir(tmpDir)
 		require.NoError(t, err)
-		require.Len(t, dirs, 1)
+		assert.Len(t, dirs, 1)
 
 		repoPath := filepath.Join(tmpDir, dirs[0].Name())
-		require.DirExists(t, repoPath)
-		require.FileExists(t, filepath.Join(repoPath, "HEAD"))
+		assert.DirExists(t, repoPath)
+		assert.FileExists(t, filepath.Join(repoPath, "HEAD"))
 	})
 
 	t.Run("success with explicit public visibility", func(t *testing.T) {
@@ -168,11 +166,11 @@ func TestService_CreateRepository(t *testing.T) {
 		mockRepo.EXPECT().
 			CreateRepository(ctx, gomock.Any()).
 			DoAndReturn(func(_ context.Context, repo *RepositoryDTO) error {
-				require.Equal(t, repoName, repo.Name)
-				require.Equal(t, filepath.Join(tmpDir, repo.Id), repo.Path)
-				require.Equal(t, userID, repo.CreatedBy)
-				require.Equal(t, proto.VisibilityPublic, repo.Visibility)
-				require.NotEmpty(t, repo.Id)
+				assert.Equal(t, repoName, repo.Name)
+				assert.Equal(t, filepath.Join(tmpDir, repo.Id), repo.Path)
+				assert.Equal(t, userID, repo.CreatedBy)
+				assert.Equal(t, proto.VisibilityPublic, repo.Visibility)
+				assert.NotEmpty(t, repo.Id)
 				return nil
 			})
 
@@ -217,7 +215,7 @@ func TestService_CreateRepository(t *testing.T) {
 		require.ErrorContains(t, err, "failed to save repository to database")
 
 		repoPath := filepath.Join(tmpDir, repoName)
-		require.NoDirExists(t, repoPath)
+		assert.NoDirExists(t, repoPath)
 	})
 }
 
@@ -267,14 +265,15 @@ func TestService_GetRepository(t *testing.T) {
 		repo, err := svc.GetRepository(ctx, &registryv1.GetRepositoryRequest{
 			Id: repoID,
 		})
-		require.NoError(t, err)
-		require.NotNil(t, repo)
-		require.Equal(t, repoID, repo.GetId())
-		require.Equal(t, "test-repo", repo.GetName())
-		require.Equal(t, shared.Visibility_VISIBILITY_PRIVATE, repo.GetVisibility())
-		require.Len(t, repo.GetSdkPreferences(), 1)
-		require.Equal(t, registryv1.SDK_SDK_GO_CONNECTRPC, repo.GetSdkPreferences()[0].GetSdk())
-		require.True(t, repo.GetSdkPreferences()[0].GetStatus())
+		assert.NoError(t, err)
+		assert.NotNil(t, repo)
+		assert.Equal(t, repoID, repo.GetId())
+		assert.Equal(t, "test-repo", repo.GetName())
+		assert.Equal(t, orgID, repo.GetOrganizationId())
+		assert.Equal(t, shared.Visibility_VISIBILITY_PRIVATE, repo.GetVisibility())
+		assert.Len(t, repo.GetSdkPreferences(), 1)
+		assert.Equal(t, registryv1.SDK_SDK_GO_CONNECTRPC, repo.GetSdkPreferences()[0].GetSdk())
+		assert.True(t, repo.GetSdkPreferences()[0].GetStatus())
 	})
 
 	t.Run("repository not found", func(t *testing.T) {
@@ -299,9 +298,9 @@ func TestService_GetRepository(t *testing.T) {
 		repo, err := svc.GetRepository(ctx, &registryv1.GetRepositoryRequest{
 			Id: repoID,
 		})
-		require.Error(t, err)
-		require.Nil(t, repo)
-		require.ErrorContains(t, err, "repository not found")
+		assert.Error(t, err)
+		assert.Nil(t, repo)
+		assert.ErrorContains(t, err, "repository not found")
 	})
 
 	t.Run("user not member of organization", func(t *testing.T) {
@@ -336,9 +335,9 @@ func TestService_GetRepository(t *testing.T) {
 		repo, err := svc.GetRepository(ctx, &registryv1.GetRepositoryRequest{
 			Id: repoID,
 		})
-		require.Error(t, err)
-		require.Nil(t, repo)
-		require.ErrorContains(t, err, "you are not a member of this organization")
+		assert.Error(t, err)
+		assert.Nil(t, repo)
+		assert.ErrorContains(t, err, "you are not a member of this organization")
 	})
 
 	t.Run("missing user ID in context", func(t *testing.T) {
@@ -368,9 +367,9 @@ func TestService_GetRepository(t *testing.T) {
 		repo, err := svc.GetRepository(ctx, &registryv1.GetRepositoryRequest{
 			Id: repoID,
 		})
-		require.Error(t, err)
-		require.Nil(t, repo)
-		require.ErrorContains(t, err, "user not authenticated")
+		assert.Error(t, err)
+		assert.Nil(t, repo)
+		assert.ErrorContains(t, err, "user not authenticated")
 	})
 }
 
@@ -416,7 +415,7 @@ func TestService_UpdateRepository(t *testing.T) {
 			Name:       repoName,
 			Visibility: shared.Visibility_VISIBILITY_PRIVATE,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 }
 
@@ -462,9 +461,9 @@ func TestService_DeleteRepository(t *testing.T) {
 		err := svc.DeleteRepository(ctx, &registryv1.DeleteRepositoryRequest{
 			RepositoryId: repoId,
 		})
-		require.NoError(t, err)
 
-		require.NoDirExists(t, repoPath)
+		assert.NoError(t, err)
+		assert.NoDirExists(t, repoPath)
 	})
 
 	t.Run("repository not found", func(t *testing.T) {
@@ -490,7 +489,7 @@ func TestService_DeleteRepository(t *testing.T) {
 			RepositoryId: repoId,
 		})
 		require.Error(t, err)
-		require.ErrorContains(t, err, "repository not found")
+		assert.ErrorContains(t, err, "repository not found")
 	})
 
 	t.Run("database delete error", func(t *testing.T) {
@@ -537,10 +536,10 @@ func TestService_DeleteRepository(t *testing.T) {
 			RepositoryId: repoId,
 		})
 		require.Error(t, err)
-		require.ErrorContains(t, err, "database delete failed")
-		require.ErrorIs(t, err, dbErr)
+		assert.ErrorContains(t, err, "database delete failed")
+		assert.ErrorIs(t, err, dbErr)
 
-		require.DirExists(t, repoPath)
+		assert.DirExists(t, repoPath)
 	})
 
 	t.Run("filesystem removal failure returns error", func(t *testing.T) {
@@ -641,13 +640,13 @@ func TestService_DeleteRepository(t *testing.T) {
 
 		resp, err := svc.GetRepositories(ctx, nil, 1, 10)
 		require.NoError(t, err)
-		require.Len(t, resp.GetRepositories(), 2)
-		require.Equal(t, "repo-1", resp.GetRepositories()[0].GetId())
-		require.Equal(t, "first-repo", resp.GetRepositories()[0].GetName())
-		require.Len(t, resp.GetRepositories()[0].GetSdkPreferences(), 1)
-		require.Equal(t, "repo-2", resp.GetRepositories()[1].GetId())
-		require.Equal(t, "second-repo", resp.GetRepositories()[1].GetName())
-		require.Len(t, resp.GetRepositories()[1].GetSdkPreferences(), 0)
+		assert.Len(t, resp.GetRepositories(), 2)
+		assert.Equal(t, "repo-1", resp.GetRepositories()[0].GetId())
+		assert.Equal(t, "first-repo", resp.GetRepositories()[0].GetName())
+		assert.Len(t, resp.GetRepositories()[0].GetSdkPreferences(), 1)
+		assert.Equal(t, "repo-2", resp.GetRepositories()[1].GetId())
+		assert.Equal(t, "second-repo", resp.GetRepositories()[1].GetName())
+		assert.Len(t, resp.GetRepositories()[1].GetSdkPreferences(), 0)
 	})
 }
 
@@ -704,9 +703,9 @@ func TestService_GetCommits(t *testing.T) {
 		resp, err := svc.GetCommits(ctx, req)
 
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.Len(t, resp.GetCommits(), 1)
-		require.Equal(t, "abc123", resp.GetCommits()[0].GetId())
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.GetCommits(), 1)
+		assert.Equal(t, "abc123", resp.GetCommits()[0].GetId())
 	})
 
 	t.Run("repository not found", func(t *testing.T) {
@@ -824,11 +823,11 @@ func TestService_GetFileTree(t *testing.T) {
 		req := &registryv1.GetFileTreeRequest{Id: repoID}
 		resp, err := svc.GetFileTree(ctx, req)
 
-		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.Len(t, resp.GetNodes(), 2)
-		require.Equal(t, "README.md", resp.GetNodes()[0].GetName())
-		require.Equal(t, "src", resp.GetNodes()[1].GetName())
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.GetNodes(), 2)
+		assert.Equal(t, "README.md", resp.GetNodes()[0].GetName())
+		assert.Equal(t, "src", resp.GetNodes()[1].GetName())
 	})
 
 	t.Run("success - subdirectory", func(t *testing.T) {
@@ -884,9 +883,9 @@ func TestService_GetFileTree(t *testing.T) {
 		resp, err := svc.GetFileTree(ctx, req)
 
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.Len(t, resp.GetNodes(), 1)
-		require.Equal(t, "main.go", resp.GetNodes()[0].GetName())
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.GetNodes(), 1)
+		assert.Equal(t, "main.go", resp.GetNodes()[0].GetName())
 	})
 
 	t.Run("repository not found", func(t *testing.T) {
@@ -1000,10 +999,10 @@ func TestService_GetFilePreview(t *testing.T) {
 		resp, err := svc.GetFilePreview(ctx, req)
 
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.Equal(t, expectedPreview.GetContent(), resp.GetContent())
-		require.Equal(t, expectedPreview.GetMimeType(), resp.GetMimeType())
-		require.Equal(t, expectedPreview.GetSize(), resp.GetSize())
+		assert.NotNil(t, resp)
+		assert.Equal(t, expectedPreview.GetContent(), resp.GetContent())
+		assert.Equal(t, expectedPreview.GetMimeType(), resp.GetMimeType())
+		assert.Equal(t, expectedPreview.GetSize(), resp.GetSize())
 	})
 
 	t.Run("success - go file", func(t *testing.T) {
@@ -1055,9 +1054,9 @@ func TestService_GetFilePreview(t *testing.T) {
 		resp, err := svc.GetFilePreview(ctx, req)
 
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.Equal(t, expectedPreview.GetContent(), resp.GetContent())
-		require.Equal(t, expectedPreview.GetMimeType(), resp.GetMimeType())
+		assert.NotNil(t, resp)
+		assert.Equal(t, expectedPreview.GetContent(), resp.GetContent())
+		assert.Equal(t, expectedPreview.GetMimeType(), resp.GetMimeType())
 	})
 
 	t.Run("repository not found", func(t *testing.T) {
@@ -1169,7 +1168,7 @@ func TestService_GetFilePreview(t *testing.T) {
 		_, err := svc.GetFilePreview(ctx, req)
 
 		require.Error(t, err)
-		require.ErrorContains(t, err, "file not found")
+		assert.ErrorContains(t, err, "file not found")
 	})
 }
 
@@ -1216,7 +1215,7 @@ func TestService_TriggerSdkGeneration(t *testing.T) {
 		mockQueue.EXPECT().
 			EnqueueSdkGenerationJobs(ctx, gomock.Any()).
 			DoAndReturn(func(_ context.Context, jobs []*SdkGenerationJobDTO) error {
-				require.Len(t, jobs, 2)
+				assert.Len(t, jobs, 2)
 				assert.Equal(t, repoID, jobs[0].RepositoryId)
 				assert.Equal(t, commitHash, jobs[0].CommitHash)
 				assert.Equal(t, SdkGenerationJobStatusPending, jobs[0].Status)
@@ -1226,7 +1225,7 @@ func TestService_TriggerSdkGeneration(t *testing.T) {
 			})
 
 		err := svc.TriggerSdkGeneration(ctx, repoID, commitHash)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("success - no jobs when no SDK preferences enabled", func(t *testing.T) {
@@ -1411,7 +1410,7 @@ func TestService_FindProtoFiles(t *testing.T) {
 
 		protoFiles, err := svc.findProtoFiles(tmpDir)
 		require.NoError(t, err)
-		require.Len(t, protoFiles, 2)
+		assert.Len(t, protoFiles, 2)
 
 		assert.Contains(t, protoFiles, filepath.Join("proto", "user.proto"))
 		assert.Contains(t, protoFiles, filepath.Join("proto", "v1", "api.proto"))
@@ -1425,7 +1424,7 @@ func TestService_FindProtoFiles(t *testing.T) {
 
 		protoFiles, err := svc.findProtoFiles(tmpDir)
 		require.NoError(t, err)
-		require.Len(t, protoFiles, 0)
+		assert.Len(t, protoFiles, 0)
 	})
 
 	t.Run("error on invalid directory", func(t *testing.T) {
@@ -1538,7 +1537,7 @@ func TestNewService_WithConfig(t *testing.T) {
 		require.NotNil(t, concrete.sdkRegistry)
 
 		generators := concrete.sdkRegistry.List()
-		require.Len(t, generators, 6)
+		assert.Len(t, generators, 6)
 
 		_, err := concrete.sdkRegistry.Get(sdkgenerator.SdkGoProtobuf)
 		assert.NoError(t, err)
@@ -1600,16 +1599,16 @@ func TestService_UpdateSdkPreferences(t *testing.T) {
 		mockRepo.EXPECT().
 			UpdateSdkPreferences(ctx, repoID, gomock.Any()).
 			DoAndReturn(func(_ context.Context, _ string, prefs []SdkPreferencesDTO) error {
-				require.Len(t, prefs, 2)
+				assert.Len(t, prefs, 2)
 				return nil
 			})
 
 		mockQueue.EXPECT().
 			EnqueueSdkTriggerJob(ctx, gomock.Any()).
 			DoAndReturn(func(_ context.Context, job *SdkTriggerJobDTO) error {
-				require.Equal(t, repoID, job.RepositoryId)
-				require.Equal(t, repoPath, job.RepoPath)
-				require.Equal(t, SdkGenerationJobStatusPending, job.Status)
+				assert.Equal(t, repoID, job.RepositoryId)
+				assert.Equal(t, repoPath, job.RepoPath)
+				assert.Equal(t, SdkGenerationJobStatusPending, job.Status)
 				return nil
 			})
 
@@ -1693,7 +1692,7 @@ func TestService_UpdateSdkPreferences(t *testing.T) {
 			},
 		})
 		require.Error(t, err)
-		require.ErrorContains(t, err, "repository not found")
+		assert.ErrorContains(t, err, "repository not found")
 	})
 
 	t.Run("error - user not owner", func(t *testing.T) {
@@ -1731,7 +1730,7 @@ func TestService_UpdateSdkPreferences(t *testing.T) {
 			},
 		})
 		require.Error(t, err)
-		require.ErrorContains(t, err, "only organization owners can perform this operation")
+		assert.ErrorContains(t, err, "only organization owners can perform this operation")
 	})
 }
 
@@ -1770,7 +1769,6 @@ func TestService_ProcessSdkTrigger(t *testing.T) {
 		mockQueue.EXPECT().
 			EnqueueSdkGenerationJobs(ctx, gomock.Any()).
 			DoAndReturn(func(_ context.Context, jobs []*SdkGenerationJobDTO) error {
-				// 2 commits x 2 enabled SDKs = 4 jobs
 				require.Len(t, jobs, 4)
 				return nil
 			})

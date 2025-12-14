@@ -10,9 +10,6 @@ type GoConnectRpcGenerator struct {
 }
 
 func NewGoConnectRpcGenerator(runner CommandRunner) *GoConnectRpcGenerator {
-	if runner == nil {
-		runner = NewDefaultCommandRunner()
-	}
 	return &GoConnectRpcGenerator{
 		baseGenerator: baseGenerator{
 			sdk:    SdkGoConnectRpc,
