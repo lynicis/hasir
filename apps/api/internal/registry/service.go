@@ -39,6 +39,7 @@ type Service interface {
 	DeleteRepositoriesByOrganization(ctx context.Context, organizationId string) error
 	UpdateSdkPreferences(ctx context.Context, req *registryv1.UpdateSdkPreferencesRequest) error
 	GetCommits(ctx context.Context, req *registryv1.GetCommitsRequest) (*registryv1.GetCommitsResponse, error)
+	GetRecentCommit(ctx context.Context, req *registryv1.GetRecentCommitRequest) (*registryv1.Commit, error)
 	GetFileTree(ctx context.Context, req *registryv1.GetFileTreeRequest) (*registryv1.GetFileTreeResponse, error)
 	GetFilePreview(ctx context.Context, req *registryv1.GetFilePreviewRequest) (*registryv1.GetFilePreviewResponse, error)
 	ValidateSshAccess(ctx context.Context, userId, repoPath string, operation SshOperation) (bool, error)
@@ -499,7 +500,7 @@ func (s *service) ProcessSdkTrigger(ctx context.Context, repositoryId, repoPath 
 		return nil
 	}
 
-	commits, err := s.repository.GetCommits(ctx, repoPath)
+	commits, _, err := s.repository.GetCommits(ctx, repoPath, 1, 10000)
 	if err != nil {
 		zap.L().Debug("no commits found in repository, skipping SDK generation",
 			zap.String("repositoryId", repositoryId),
@@ -508,7 +509,7 @@ func (s *service) ProcessSdkTrigger(ctx context.Context, repositoryId, repoPath 
 		return nil
 	}
 
-	if len(commits.GetCommits()) == 0 {
+	if len(commits) == 0 {
 		zap.L().Debug("no commits in repository, skipping SDK generation",
 			zap.String("repositoryId", repositoryId),
 		)
@@ -518,7 +519,7 @@ func (s *service) ProcessSdkTrigger(ctx context.Context, repositoryId, repoPath 
 	var jobs []*SdkGenerationJobDTO
 	now := time.Now().UTC()
 
-	for _, commit := range commits.GetCommits() {
+	for _, commit := range commits {
 		for _, sdk := range enabledSdks {
 			job := &SdkGenerationJobDTO{
 				Id:           uuid.NewString(),
@@ -540,7 +541,7 @@ func (s *service) ProcessSdkTrigger(ctx context.Context, repositoryId, repoPath 
 
 	zap.L().Info("SDK generation jobs created from trigger",
 		zap.String("repositoryId", repositoryId),
-		zap.Int("commitCount", len(commits.GetCommits())),
+		zap.Int("commitCount", len(commits)),
 		zap.Int("jobCount", len(jobs)),
 	)
 
@@ -566,12 +567,80 @@ func (s *service) GetCommits(
 		return nil, err
 	}
 
-	commits, err := s.repository.GetCommits(ctx, repo.Path)
+	page := 1
+	pageSize := 10
+
+	if req.Pagination != nil {
+		if req.Pagination.GetPage() > 0 {
+			page = int(req.Pagination.GetPage())
+		}
+		if req.Pagination.GetPageLimit() > 0 {
+			pageSize = int(req.Pagination.GetPageLimit())
+		}
+	}
+
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	if page < 1 {
+		page = 1
+	}
+
+	commits, totalCount, err := s.repository.GetCommits(ctx, repo.Path, page, pageSize)
 	if err != nil {
 		return nil, err
 	}
 
-	return commits, nil
+	totalPages := (totalCount + pageSize - 1) / pageSize
+	if totalPages == 0 {
+		totalPages = 1
+	}
+	if totalPages > math.MaxInt32 {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("total pages exceeds maximum value"))
+	}
+	nextPage := int32(0)
+	if page < totalPages {
+		if page+1 > math.MaxInt32 {
+			return nil, connect.NewError(connect.CodeInternal, errors.New("page number exceeds maximum value"))
+		}
+		nextPage = int32(page + 1) // #nosec G115 -- bounds checked above
+	}
+
+	return &registryv1.GetCommitsResponse{
+		Commits:   commits,
+		NextPage:  nextPage,
+		TotalPage: int32(totalPages), // #nosec G115 -- bounds checked above
+	}, nil
+}
+
+func (s *service) GetRecentCommit(
+	ctx context.Context,
+	req *registryv1.GetRecentCommitRequest,
+) (*registryv1.Commit, error) {
+	userId, err := authentication.MustGetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	repoId := req.GetRepositoryId()
+	repo, err := s.repository.GetRepositoryById(ctx, repoId)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := authorization.IsUserMember(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
+		return nil, err
+	}
+
+	commit, err := s.repository.GetRecentCommit(ctx, repo.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	return commit, nil
 }
 
 func (s *service) GetFileTree(

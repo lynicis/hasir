@@ -157,6 +157,18 @@ func (h *handler) GetCommits(
 	return connect.NewResponse(commits), nil
 }
 
+func (h *handler) GetRecentCommit(
+	ctx context.Context,
+	req *connect.Request[registryv1.GetRecentCommitRequest],
+) (*connect.Response[registryv1.Commit], error) {
+	commit, err := h.service.GetRecentCommit(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(commit), nil
+}
+
 func (h *handler) GetFileTree(
 	ctx context.Context,
 	req *connect.Request[registryv1.GetFileTreeRequest],

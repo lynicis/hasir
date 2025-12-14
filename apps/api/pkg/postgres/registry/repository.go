@@ -763,9 +763,98 @@ func (r *PgRepository) GetSdkPreferencesByRepositoryIds(
 	return preferencesMap, nil
 }
 
-func (r *PgRepository) GetCommits(ctx context.Context, repoPath string) (*registryv1.GetCommitsResponse, error) {
+func (r *PgRepository) GetCommits(ctx context.Context, repoPath string, page, pageSize int) ([]*registryv1.Commit, int, error) {
 	var span trace.Span
 	_, span = r.tracer.Start(ctx, "GetCommits", trace.WithAttributes(
+		attribute.KeyValue{
+			Key:   "repoPath",
+			Value: attribute.StringValue(repoPath),
+		},
+		attribute.KeyValue{
+			Key:   "page",
+			Value: attribute.IntValue(page),
+		},
+		attribute.KeyValue{
+			Key:   "pageSize",
+			Value: attribute.IntValue(pageSize),
+		},
+	))
+	defer span.End()
+
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		span.RecordError(err)
+		return nil, 0, connect.NewError(connect.CodeNotFound, errors.New("failed to open git repository"))
+	}
+
+	ref, err := repo.Head()
+	if err != nil {
+		span.RecordError(err)
+		return nil, 0, connect.NewError(connect.CodeNotFound, errors.New("failed to get repository HEAD"))
+	}
+
+	commitIter, err := repo.Log(&git.LogOptions{From: ref.Hash()})
+	if err != nil {
+		span.RecordError(err)
+		return nil, 0, connect.NewError(connect.CodeInternal, errors.New("failed to get commit log"))
+	}
+	defer commitIter.Close()
+
+	totalCount := 0
+	err = commitIter.ForEach(func(c *object.Commit) error {
+		totalCount++
+		return nil
+	})
+	if err != nil {
+		span.RecordError(err)
+		return nil, 0, connect.NewError(connect.CodeInternal, errors.New("failed to count commits"))
+	}
+
+	commitIter, err = repo.Log(&git.LogOptions{From: ref.Hash()})
+	if err != nil {
+		span.RecordError(err)
+		return nil, 0, connect.NewError(connect.CodeInternal, errors.New("failed to get commit log"))
+	}
+	defer commitIter.Close()
+
+	offset := (page - 1) * pageSize
+	var commits []*registryv1.Commit
+	currentIndex := 0
+
+	var errStopIteration = errors.New("stop iteration")
+	err = commitIter.ForEach(func(c *object.Commit) error {
+		if currentIndex < offset {
+			currentIndex++
+			return nil
+		}
+		if len(commits) >= pageSize {
+			return errStopIteration
+		}
+
+		commit := &registryv1.Commit{
+			Id:      c.Hash.String(),
+			Message: c.Message,
+			User: &registryv1.Commit_User{
+				Id:       c.Author.Email,
+				Username: c.Author.Name,
+			},
+			CommitedAt: timestamppb.New(c.Author.When),
+		}
+		commits = append(commits, commit)
+		currentIndex++
+		return nil
+	})
+	if err != nil && err != errStopIteration {
+		span.RecordError(err)
+		return nil, 0, connect.NewError(connect.CodeInternal, errors.New("failed to iterate commits"))
+	}
+
+	return commits, totalCount, nil
+}
+
+func (r *PgRepository) GetRecentCommit(ctx context.Context, repoPath string) (*registryv1.Commit, error) {
+	var span trace.Span
+	_, span = r.tracer.Start(ctx, "GetRecentCommit", trace.WithAttributes(
 		attribute.KeyValue{
 			Key:   "repoPath",
 			Value: attribute.StringValue(repoPath),
@@ -785,34 +874,20 @@ func (r *PgRepository) GetCommits(ctx context.Context, repoPath string) (*regist
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("failed to get repository HEAD"))
 	}
 
-	commitIter, err := repo.Log(&git.LogOptions{From: ref.Hash()})
+	commit, err := repo.CommitObject(ref.Hash())
 	if err != nil {
 		span.RecordError(err)
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get commit log"))
-	}
-	defer commitIter.Close()
-
-	var commits []*registryv1.Commit
-	err = commitIter.ForEach(func(c *object.Commit) error {
-		commit := &registryv1.Commit{
-			Id:      c.Hash.String(),
-			Message: c.Message,
-			User: &registryv1.Commit_User{
-				Id:       c.Author.Email,
-				Username: c.Author.Name,
-			},
-			CommitedAt: timestamppb.New(c.Author.When),
-		}
-		commits = append(commits, commit)
-		return nil
-	})
-	if err != nil {
-		span.RecordError(err)
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to iterate commits"))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get commit object"))
 	}
 
-	return &registryv1.GetCommitsResponse{
-		Commits: commits,
+	return &registryv1.Commit{
+		Id:      commit.Hash.String(),
+		Message: commit.Message,
+		User: &registryv1.Commit_User{
+			Id:       commit.Author.Email,
+			Username: commit.Author.Name,
+		},
+		CommitedAt: timestamppb.New(commit.Author.When),
 	}, nil
 }
 

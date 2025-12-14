@@ -743,6 +743,8 @@ func TestHandler_GetCommits(t *testing.T) {
 					},
 				},
 			},
+			NextPage:  int32(0),
+			TotalPage: int32(1),
 		}
 
 		mockService.EXPECT().

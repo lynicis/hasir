@@ -142,6 +142,21 @@ func (mr *MockServiceMockRecorder) GetFileTree(ctx, req any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileTree", reflect.TypeOf((*MockService)(nil).GetFileTree), ctx, req)
 }
 
+// GetRecentCommit mocks base method.
+func (m *MockService) GetRecentCommit(ctx context.Context, req *registryv1.GetRecentCommitRequest) (*registryv1.Commit, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRecentCommit", ctx, req)
+	ret0, _ := ret[0].(*registryv1.Commit)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRecentCommit indicates an expected call of GetRecentCommit.
+func (mr *MockServiceMockRecorder) GetRecentCommit(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecentCommit", reflect.TypeOf((*MockService)(nil).GetRecentCommit), ctx, req)
+}
+
 // GetRepositories mocks base method.
 func (m *MockService) GetRepositories(ctx context.Context, organizationId *string, page, pageSize int) (*registryv1.GetRepositoriesResponse, error) {
 	m.ctrl.T.Helper()

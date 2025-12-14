@@ -84,18 +84,19 @@ func (mr *MockRepositoryMockRecorder) DeleteRepository(ctx, id any) *gomock.Call
 }
 
 // GetCommits mocks base method.
-func (m *MockRepository) GetCommits(ctx context.Context, repoPath string) (*registryv1.GetCommitsResponse, error) {
+func (m *MockRepository) GetCommits(ctx context.Context, repoPath string, page, pageSize int) ([]*registryv1.Commit, int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCommits", ctx, repoPath)
-	ret0, _ := ret[0].(*registryv1.GetCommitsResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "GetCommits", ctx, repoPath, page, pageSize)
+	ret0, _ := ret[0].([]*registryv1.Commit)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // GetCommits indicates an expected call of GetCommits.
-func (mr *MockRepositoryMockRecorder) GetCommits(ctx, repoPath any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) GetCommits(ctx, repoPath, page, pageSize any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommits", reflect.TypeOf((*MockRepository)(nil).GetCommits), ctx, repoPath)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommits", reflect.TypeOf((*MockRepository)(nil).GetCommits), ctx, repoPath, page, pageSize)
 }
 
 // GetFilePreview mocks base method.
@@ -126,6 +127,21 @@ func (m *MockRepository) GetFileTree(ctx context.Context, repoPath string, subPa
 func (mr *MockRepositoryMockRecorder) GetFileTree(ctx, repoPath, subPath any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileTree", reflect.TypeOf((*MockRepository)(nil).GetFileTree), ctx, repoPath, subPath)
+}
+
+// GetRecentCommit mocks base method.
+func (m *MockRepository) GetRecentCommit(ctx context.Context, repoPath string) (*registryv1.Commit, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRecentCommit", ctx, repoPath)
+	ret0, _ := ret[0].(*registryv1.Commit)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRecentCommit indicates an expected call of GetRecentCommit.
+func (mr *MockRepositoryMockRecorder) GetRecentCommit(ctx, repoPath any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecentCommit", reflect.TypeOf((*MockRepository)(nil).GetRecentCommit), ctx, repoPath)
 }
 
 // GetRepositories mocks base method.

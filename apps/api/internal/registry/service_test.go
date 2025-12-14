@@ -682,22 +682,20 @@ func TestService_GetCommits(t *testing.T) {
 			GetMemberRole(ctx, orgID, userID).
 			Return(authorization.MemberRoleReader, nil)
 
-		expectedCommits := &registryv1.GetCommitsResponse{
-			Commits: []*registryv1.Commit{
-				{
-					Id:      "abc123",
-					Message: "Initial commit",
-					User: &registryv1.Commit_User{
-						Id:       "user@example.com",
-						Username: "Test User",
-					},
+		expectedCommits := []*registryv1.Commit{
+			{
+				Id:      "abc123",
+				Message: "Initial commit",
+				User: &registryv1.Commit_User{
+					Id:       "user@example.com",
+					Username: "Test User",
 				},
 			},
 		}
 
 		mockRepo.EXPECT().
-			GetCommits(ctx, repoPath).
-			Return(expectedCommits, nil)
+			GetCommits(ctx, repoPath, 1, 10).
+			Return(expectedCommits, 1, nil)
 
 		req := &registryv1.GetCommitsRequest{Id: repoID}
 		resp, err := svc.GetCommits(ctx, req)
@@ -706,6 +704,8 @@ func TestService_GetCommits(t *testing.T) {
 		assert.NotNil(t, resp)
 		assert.Len(t, resp.GetCommits(), 1)
 		assert.Equal(t, "abc123", resp.GetCommits()[0].GetId())
+		assert.Equal(t, int32(1), resp.GetTotalPage())
+		assert.Equal(t, int32(0), resp.GetNextPage())
 	})
 
 	t.Run("repository not found", func(t *testing.T) {
@@ -766,6 +766,76 @@ func TestService_GetCommits(t *testing.T) {
 		_, err := svc.GetCommits(ctx, req)
 
 		require.Error(t, err)
+	})
+
+	t.Run("success with pagination", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockOrgRepo := authorization.NewMockMemberRoleChecker(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			orgRepo:    mockOrgRepo,
+		}
+
+		const userID = "user-123"
+		const orgID = "org-123"
+		const repoID = "repo-123"
+		repoPath := filepath.Join("./repos", repoID)
+
+		ctx := testAuthInterceptor(userID)
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				Name:           "test-repo",
+				OrganizationId: orgID,
+				Path:           repoPath,
+			}, nil)
+
+		mockOrgRepo.EXPECT().
+			GetMemberRole(ctx, orgID, userID).
+			Return(authorization.MemberRoleReader, nil)
+
+		expectedCommits := []*registryv1.Commit{
+			{
+				Id:      "commit-1",
+				Message: "First commit",
+				User: &registryv1.Commit_User{
+					Id:       "user1@example.com",
+					Username: "User 1",
+				},
+			},
+			{
+				Id:      "commit-2",
+				Message: "Second commit",
+				User: &registryv1.Commit_User{
+					Id:       "user2@example.com",
+					Username: "User 2",
+				},
+			},
+		}
+
+		mockRepo.EXPECT().
+			GetCommits(ctx, repoPath, 2, 5).
+			Return(expectedCommits, 12, nil)
+
+		req := &registryv1.GetCommitsRequest{
+			Id: repoID,
+			Pagination: &shared.Pagination{
+				Page:      2,
+				PageLimit: 5,
+			},
+		}
+		resp, err := svc.GetCommits(ctx, req)
+
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.GetCommits(), 2)
+		assert.Equal(t, int32(3), resp.GetTotalPage()) // 12 commits / 5 per page = 3 pages
+		assert.Equal(t, int32(3), resp.GetNextPage())  // page 2 < total pages, so next is 3
 	})
 }
 
@@ -1758,13 +1828,11 @@ func TestService_ProcessSdkTrigger(t *testing.T) {
 			}, nil)
 
 		mockRepo.EXPECT().
-			GetCommits(ctx, repoPath).
-			Return(&registryv1.GetCommitsResponse{
-				Commits: []*registryv1.Commit{
-					{Id: "commit-1", Message: "First commit"},
-					{Id: "commit-2", Message: "Second commit"},
-				},
-			}, nil)
+			GetCommits(ctx, repoPath, 1, 10000).
+			Return([]*registryv1.Commit{
+				{Id: "commit-1", Message: "First commit"},
+				{Id: "commit-2", Message: "Second commit"},
+			}, 2, nil)
 
 		mockQueue.EXPECT().
 			EnqueueSdkGenerationJobs(ctx, gomock.Any()).
@@ -1799,8 +1867,8 @@ func TestService_ProcessSdkTrigger(t *testing.T) {
 			}, nil)
 
 		mockRepo.EXPECT().
-			GetCommits(ctx, repoPath).
-			Return(&registryv1.GetCommitsResponse{Commits: []*registryv1.Commit{}}, nil)
+			GetCommits(ctx, repoPath, 1, 10000).
+			Return([]*registryv1.Commit{}, 0, nil)
 
 		err := svc.ProcessSdkTrigger(ctx, repoID, repoPath)
 		require.NoError(t, err)

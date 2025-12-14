@@ -22,7 +22,8 @@ type Repository interface {
 	UpdateSdkPreferences(ctx context.Context, repositoryId string, preferences []SdkPreferencesDTO) error
 	GetSdkPreferences(ctx context.Context, repositoryId string) ([]SdkPreferencesDTO, error)
 	GetSdkPreferencesByRepositoryIds(ctx context.Context, repositoryIds []string) (map[string][]SdkPreferencesDTO, error)
-	GetCommits(ctx context.Context, repoPath string) (*registryv1.GetCommitsResponse, error)
+	GetCommits(ctx context.Context, repoPath string, page, pageSize int) ([]*registryv1.Commit, int, error)
+	GetRecentCommit(ctx context.Context, repoPath string) (*registryv1.Commit, error)
 	GetFileTree(ctx context.Context, repoPath string, subPath *string) (*registryv1.GetFileTreeResponse, error)
 	GetFilePreview(ctx context.Context, repoPath, filePath string) (*registryv1.GetFilePreviewResponse, error)
 }
