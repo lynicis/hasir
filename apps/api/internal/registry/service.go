@@ -965,7 +965,7 @@ func (s *service) GenerateDocumentation(ctx context.Context, repositoryId, commi
 	args := []string{
 		"--proto_path=" + filepath.Clean(repoPath),
 		"--doc_out=" + filepath.Clean(absOutputPath),
-		"--doc_opt=html,index.html",
+		"--doc_opt=markdown,index.md",
 	}
 	args = append(args, validatedFiles...)
 
