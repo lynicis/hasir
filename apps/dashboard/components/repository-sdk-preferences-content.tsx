@@ -157,6 +157,21 @@ export default function RepositorySdkPreferencesContent() {
     setConfig(serverConfig);
   }
 
+  const hasChanges = useMemo(() => {
+    return Object.keys(config).some((langKey) => {
+      const configLang = config[langKey];
+      const serverLang = serverConfig[langKey];
+
+      if (!serverLang) {
+        return true;
+      }
+
+      return Object.keys(configLang).some(
+        (key) => configLang[key] !== serverLang[key]
+      );
+    });
+  }, [config, serverConfig]);
+
   useEffect(() => {
     if (error && !repository) {
       toast.error("Failed to load repository data");
@@ -231,6 +246,7 @@ export default function RepositorySdkPreferencesContent() {
         sdkPreferences,
       });
 
+      setPrevServerConfig(config);
       toast.success("SDK preferences saved successfully");
     } catch (error) {
       toast.error(
@@ -344,7 +360,11 @@ export default function RepositorySdkPreferencesContent() {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave} isLoading={isSaving} disabled={isSaving}>
+        <Button
+          onClick={handleSave}
+          isLoading={isSaving}
+          disabled={isSaving || !hasChanges}
+        >
           Save Configuration
         </Button>
         <Button variant="outline" onClick={handleReset} disabled={isSaving}>

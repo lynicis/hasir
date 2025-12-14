@@ -1,10 +1,13 @@
-import { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import {
+  Repository,
+  SDK,
+} from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { TransportProvider } from "@connectrpc/connect-query";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import RepositorySdkPreferencesContent from "./repository-sdk-preferences-content";
 import { RepositoryContext } from "./repository-context";
@@ -21,9 +24,11 @@ vi.mock("sonner", () => ({
   },
 }));
 
+const mockUpdateSdkPreferences = vi.fn().mockResolvedValue({});
+
 vi.mock("@/lib/use-client", () => ({
   useClient: () => ({
-    updateSdkPreferences: vi.fn().mockResolvedValue({}),
+    updateSdkPreferences: mockUpdateSdkPreferences,
   }),
 }));
 
@@ -73,6 +78,8 @@ describe("RepositorySdkPreferencesContent", () => {
         queries: { retry: false },
       },
     });
+    mockUpdateSdkPreferences.mockClear();
+    mockUpdateSdkPreferences.mockResolvedValue({});
   });
 
   it("renders the page heading and description", () => {
@@ -177,7 +184,6 @@ describe("RepositorySdkPreferencesContent", () => {
 
     const switches = screen.getAllByRole("switch");
 
-  
     const goSwitch = switches[0];
     await user.click(goSwitch);
 
@@ -186,7 +192,9 @@ describe("RepositorySdkPreferencesContent", () => {
   });
 
   it("throws error when used outside RepositoryLayout", () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     expect(() => {
       render(<RepositorySdkPreferencesContent />);
@@ -216,10 +224,161 @@ describe("RepositorySdkPreferencesContent", () => {
     expect(goSwitch).toBeChecked();
     expect(protocolBuffersSwitch).toBeChecked();
 
-    const resetButton = screen.getByRole("button", { name: /reset to defaults/i });
+    const resetButton = screen.getByRole("button", {
+      name: /reset to defaults/i,
+    });
     await user.click(resetButton);
 
     expect(goSwitch).not.toBeChecked();
     expect(protocolBuffersSwitch).not.toBeChecked();
+  });
+
+  it("disables Save Configuration button when there are no changes", () => {
+    render(
+      <RepositoryContext.Provider value={contextValue}>
+        <RepositorySdkPreferencesContent />
+      </RepositoryContext.Provider>,
+      { wrapper }
+    );
+
+    const saveButton = screen.getByRole("button", {
+      name: /save configuration/i,
+    });
+    expect(saveButton).toBeDisabled();
+  });
+
+  it("enables Save Configuration button when changes are made", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <RepositoryContext.Provider value={contextValue}>
+        <RepositorySdkPreferencesContent />
+      </RepositoryContext.Provider>,
+      { wrapper }
+    );
+
+    const saveButton = screen.getByRole("button", {
+      name: /save configuration/i,
+    });
+    expect(saveButton).toBeDisabled();
+
+    const switches = screen.getAllByRole("switch");
+    const goSwitch = switches[0];
+    await user.click(goSwitch);
+
+    expect(saveButton).not.toBeDisabled();
+  });
+
+  it("disables Save Configuration button after successful save", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <RepositoryContext.Provider value={contextValue}>
+        <RepositorySdkPreferencesContent />
+      </RepositoryContext.Provider>,
+      { wrapper }
+    );
+
+    const saveButton = screen.getByRole("button", {
+      name: /save configuration/i,
+    });
+    expect(saveButton).toBeDisabled();
+
+    // Make a change
+    const switches = screen.getAllByRole("switch");
+    const goSwitch = switches[0];
+    await user.click(goSwitch);
+
+    expect(saveButton).not.toBeDisabled();
+
+    // Save the changes
+    await user.click(saveButton);
+
+    // Wait for the save to complete
+    await screen.findByRole("button", { name: /save configuration/i });
+
+    // Button should be disabled again after save
+    const updatedSaveButton = screen.getByRole("button", {
+      name: /save configuration/i,
+    });
+    expect(updatedSaveButton).toBeDisabled();
+  });
+
+  it("disables Save Configuration button after Reset to Defaults when no initial changes", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <RepositoryContext.Provider value={contextValue}>
+        <RepositorySdkPreferencesContent />
+      </RepositoryContext.Provider>,
+      { wrapper }
+    );
+
+    const saveButton = screen.getByRole("button", {
+      name: /save configuration/i,
+    });
+    expect(saveButton).toBeDisabled();
+
+    // Make a change
+    const switches = screen.getAllByRole("switch");
+    const goSwitch = switches[0];
+    await user.click(goSwitch);
+
+    expect(saveButton).not.toBeDisabled();
+
+    // Reset to defaults
+    const resetButton = screen.getByRole("button", {
+      name: /reset to defaults/i,
+    });
+    await user.click(resetButton);
+
+    // Button should be disabled again after reset
+    expect(saveButton).toBeDisabled();
+  });
+
+  it("keeps Save Configuration button enabled when changes exist after reset", async () => {
+    const user = userEvent.setup();
+
+    // Create a repository with existing SDK preferences
+    const repositoryWithPreferences: Repository = {
+      ...mockRepository,
+      sdkPreferences: [{ sdk: SDK.SDK_GO_PROTOBUF, status: true }],
+    } as Repository;
+
+    const contextWithPreferences = {
+      repository: repositoryWithPreferences,
+      isLoading: false,
+      error: null,
+    };
+
+    render(
+      <RepositoryContext.Provider value={contextWithPreferences}>
+        <RepositorySdkPreferencesContent />
+      </RepositoryContext.Provider>,
+      { wrapper }
+    );
+
+    const saveButton = screen.getByRole("button", {
+      name: /save configuration/i,
+    });
+    // Initially disabled because no changes from server state
+    expect(saveButton).toBeDisabled();
+
+    // Make a change (toggle off the existing preference)
+    const switches = screen.getAllByRole("switch");
+    const goSwitch = switches[0];
+    await user.click(goSwitch);
+
+    // Button should be enabled because we made a change
+    expect(saveButton).not.toBeDisabled();
+
+    // Reset to defaults
+    const resetButton = screen.getByRole("button", {
+      name: /reset to defaults/i,
+    });
+    await user.click(resetButton);
+
+    // Button should still be enabled because reset changed from server state
+    expect(saveButton).not.toBeDisabled();
   });
 });
