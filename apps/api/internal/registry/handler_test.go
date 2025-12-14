@@ -1245,3 +1245,223 @@ func TestHandler_GetFilePreview(t *testing.T) {
 		assert.Equal(t, specialContent, resp.Msg.GetContent())
 	})
 }
+
+func TestHandler_UpdateSdkPreferences(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			UpdateSdkPreferences(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, req *registryv1.UpdateSdkPreferencesRequest) error {
+				assert.Equal(t, "test-repo-id", req.GetId())
+				return nil
+			})
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.UpdateSdkPreferences(context.Background(), connect.NewRequest(&registryv1.UpdateSdkPreferencesRequest{
+			Id: "test-repo-id",
+			SdkPreferences: []*registryv1.SdkPreference{
+				{
+					Sdk:    registryv1.SDK_SDK_GO_PROTOBUF,
+					Status: true,
+				},
+			},
+		}))
+		require.NoError(t, err)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			UpdateSdkPreferences(gomock.Any(), gomock.Any()).
+			Return(connect.NewError(connect.CodeNotFound, errors.New("repository not found")))
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.UpdateSdkPreferences(context.Background(), connect.NewRequest(&registryv1.UpdateSdkPreferencesRequest{
+			Id: "nonexistent-repo-id",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+}
+
+func TestHandler_GetRecentCommit(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		expectedCommit := &registryv1.Commit{
+			Id:      "abc123",
+			Message: "Recent commit",
+			User: &registryv1.Commit_User{
+				Id:       "user@example.com",
+				Username: "Test User",
+			},
+		}
+
+		mockService.EXPECT().
+			GetRecentCommit(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, req *registryv1.GetRecentCommitRequest) (*registryv1.Commit, error) {
+				assert.Equal(t, "test-repo-id", req.GetRepositoryId())
+				return expectedCommit, nil
+			})
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.GetRecentCommit(context.Background(), connect.NewRequest(&registryv1.GetRecentCommitRequest{
+			RepositoryId: "test-repo-id",
+		}))
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Equal(t, "abc123", resp.Msg.GetId())
+		assert.Equal(t, "Recent commit", resp.Msg.GetMessage())
+	})
+
+	t.Run("service error - repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockService.EXPECT().
+			GetRecentCommit(gomock.Any(), gomock.Any()).
+			Return(nil, ErrRepositoryNotFound)
+
+		h := NewHandler(mockService, mockRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := registryv1connect.NewRegistryServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.GetRecentCommit(context.Background(), connect.NewRequest(&registryv1.GetRecentCommitRequest{
+			RepositoryId: "non-existent-repo",
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+}
+
+func TestNewSdkHttpHandler(t *testing.T) {
+	t.Run("creates handler with sdk repos path", func(t *testing.T) {
+		h := NewSdkHttpHandler("/sdk/repos")
+		require.NotNil(t, h)
+		assert.Equal(t, "/sdk/repos", h.sdkReposPath)
+	})
+}
+
+func TestNewSdkSshHandler(t *testing.T) {
+	t.Run("creates handler with sdk repos path", func(t *testing.T) {
+		h := NewSdkSshHandler("/sdk/repos")
+		require.NotNil(t, h)
+		assert.Equal(t, "/sdk/repos", h.sdkReposPath)
+	})
+}
+
+func TestIsValidPathComponent(t *testing.T) {
+	tests := []struct {
+		name      string
+		component string
+		want      bool
+	}{
+		{
+			name:      "valid component",
+			component: "valid-name",
+			want:      true,
+		},
+		{
+			name:      "contains ..",
+			component: "../invalid",
+			want:      false,
+		},
+		{
+			name:      "absolute path",
+			component: "/absolute/path",
+			want:      false,
+		},
+		{
+			name:      "contains slash",
+			component: "path/with/slash",
+			want:      false,
+		},
+		{
+			name:      "contains backslash",
+			component: "path\\with\\backslash",
+			want:      false,
+		},
+		{
+			name:      "cleaned path differs",
+			component: "path/../other",
+			want:      false,
+		},
+		{
+			name:      "current directory",
+			component: ".",
+			want:      false,
+		},
+		{
+			name:      "empty string",
+			component: "",
+			want:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isValidPathComponent(tt.component)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

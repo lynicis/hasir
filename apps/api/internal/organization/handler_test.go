@@ -41,6 +41,16 @@ func testAuthInterceptorWithEmail(userID, email string) connect.UnaryInterceptor
 	}
 }
 
+func testAuthInterceptorWithoutEmail(userID string) connect.UnaryInterceptorFunc {
+	return func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			ctx = context.WithValue(ctx, authentication.UserIDKey, userID)
+
+			return next(ctx, req)
+		}
+	}
+}
+
 func TestNewHandler(t *testing.T) {
 	t.Run("creates handler with service and repository", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -1667,5 +1677,370 @@ func TestHandler_IsInvitationValid(t *testing.T) {
 		var connectErr *connect.Error
 		require.True(t, errors.As(err, &connectErr))
 		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+	})
+}
+
+func TestHandler_GetOrganization(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		orgID := "org-123"
+		orgDTO := &OrganizationDTO{
+			Id:         orgID,
+			Name:       "test-org",
+			Visibility: proto.VisibilityPrivate,
+		}
+
+		mockRepository.EXPECT().
+			GetOrganizationById(gomock.Any(), orgID).
+			Return(orgDTO, nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.GetOrganization(context.Background(), connect.NewRequest(&organizationv1.GetOrganizationRequest{
+			Id: orgID,
+		}))
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Equal(t, orgID, resp.Msg.GetOrganization().GetId())
+		assert.Equal(t, "test-org", resp.Msg.GetOrganization().GetName())
+		assert.Equal(t, shared.Visibility_VISIBILITY_PRIVATE, resp.Msg.GetOrganization().GetVisibility())
+	})
+
+	t.Run("organization not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		orgID := "non-existent-org"
+
+		mockRepository.EXPECT().
+			GetOrganizationById(gomock.Any(), orgID).
+			Return(nil, ErrOrganizationNotFound)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.GetOrganization(context.Background(), connect.NewRequest(&organizationv1.GetOrganizationRequest{
+			Id: orgID,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+}
+
+func TestHandler_RespondToInvitation(t *testing.T) {
+	t.Run("success - accept", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		testUserID := "test-user-123"
+		userEmail := "user@example.com"
+		invitationID := "invite-123"
+
+		mockService.EXPECT().
+			RespondToInvitation(gomock.Any(), invitationID, testUserID, userEmail, true).
+			Return(nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptorWithEmail(testUserID, userEmail))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.RespondToInvitation(context.Background(), connect.NewRequest(&organizationv1.RespondToInvitationRequest{
+			InvitationId: invitationID,
+			Status:       true,
+		}))
+		require.NoError(t, err)
+	})
+
+	t.Run("success - reject", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		testUserID := "test-user-456"
+		userEmail := "user@example.com"
+		invitationID := "invite-456"
+
+		mockService.EXPECT().
+			RespondToInvitation(gomock.Any(), invitationID, testUserID, userEmail, false).
+			Return(nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptorWithEmail(testUserID, userEmail))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.RespondToInvitation(context.Background(), connect.NewRequest(&organizationv1.RespondToInvitationRequest{
+			InvitationId: invitationID,
+			Status:       false,
+		}))
+		require.NoError(t, err)
+	})
+
+	t.Run("service error - invitation not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		testUserID := "test-user-789"
+		userEmail := "user@example.com"
+		invitationID := "non-existent-invite"
+
+		mockService.EXPECT().
+			RespondToInvitation(gomock.Any(), invitationID, testUserID, userEmail, true).
+			Return(connect.NewError(connect.CodeNotFound, errors.New("invitation not found")))
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptorWithEmail(testUserID, userEmail))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.RespondToInvitation(context.Background(), connect.NewRequest(&organizationv1.RespondToInvitationRequest{
+			InvitationId: invitationID,
+			Status:       true,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
+	})
+
+	t.Run("unauthenticated - missing user ID", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.RespondToInvitation(context.Background(), connect.NewRequest(&organizationv1.RespondToInvitationRequest{
+			InvitationId: "invite-123",
+			Status:       true,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+	})
+
+	t.Run("unauthenticated - missing user email", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository, testAuthInterceptorWithoutEmail("user-123"))
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.RespondToInvitation(context.Background(), connect.NewRequest(&organizationv1.RespondToInvitationRequest{
+			InvitationId: "invite-123",
+			Status:       true,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+	})
+}
+
+func TestHandler_GetMembers(t *testing.T) {
+	t.Run("success with members", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		orgID := "org-123"
+		members := []*OrganizationMemberDTO{
+			{UserId: "user-1", Role: "owner"},
+			{UserId: "user-2", Role: "author"},
+		}
+		usernames := []string{"user1", "user2"}
+		emails := []string{"user1@example.com", "user2@example.com"}
+
+		mockRepository.EXPECT().
+			GetMembers(gomock.Any(), orgID).
+			Return(members, usernames, emails, nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.GetMembers(context.Background(), connect.NewRequest(&organizationv1.GetMembersRequest{
+			Id: orgID,
+		}))
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Msg.GetMembers(), 2)
+		assert.Equal(t, "user-1", resp.Msg.GetMembers()[0].GetId())
+		assert.Equal(t, "user1", resp.Msg.GetMembers()[0].GetUsername())
+		assert.Equal(t, "user1@example.com", resp.Msg.GetMembers()[0].GetEmail())
+		assert.Equal(t, shared.Role_ROLE_OWNER, resp.Msg.GetMembers()[0].GetRole())
+		assert.Equal(t, "user-2", resp.Msg.GetMembers()[1].GetId())
+		assert.Equal(t, "user2", resp.Msg.GetMembers()[1].GetUsername())
+		assert.Equal(t, "user2@example.com", resp.Msg.GetMembers()[1].GetEmail())
+		assert.Equal(t, shared.Role_ROLE_AUTHOR, resp.Msg.GetMembers()[1].GetRole())
+	})
+
+	t.Run("success with empty members", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		orgID := "org-456"
+		members := []*OrganizationMemberDTO{}
+		usernames := []string{}
+		emails := []string{}
+
+		mockRepository.EXPECT().
+			GetMembers(gomock.Any(), orgID).
+			Return(members, usernames, emails, nil)
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		resp, err := client.GetMembers(context.Background(), connect.NewRequest(&organizationv1.GetMembersRequest{
+			Id: orgID,
+		}))
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Empty(t, resp.Msg.GetMembers())
+	})
+
+	t.Run("repository error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+		mockRegistryRepository := registry.NewMockRepository(ctrl)
+
+		orgID := "org-789"
+
+		mockRepository.EXPECT().
+			GetMembers(gomock.Any(), orgID).
+			Return(nil, nil, nil, connect.NewError(connect.CodeNotFound, errors.New("organization not found")))
+
+		h := NewHandler(mockService, mockRepository, mockRegistryRepository)
+		mux := http.NewServeMux()
+		path, handler := h.RegisterRoutes()
+		mux.Handle(path, handler)
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		client := organizationv1connect.NewOrganizationServiceClient(
+			http.DefaultClient,
+			server.URL,
+		)
+
+		_, err := client.GetMembers(context.Background(), connect.NewRequest(&organizationv1.GetMembersRequest{
+			Id: orgID,
+		}))
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.True(t, errors.As(err, &connectErr))
+		assert.Equal(t, connect.CodeNotFound, connectErr.Code())
 	})
 }
