@@ -759,7 +759,8 @@ func (s *service) GenerateSDK(ctx context.Context, repositoryId, commitHash stri
 		}
 	}()
 
-	outputPath := filepath.Join(s.sdkPath, repo.OrganizationId, repositoryId, commitHash, sdkgenerator.SDK(sdk).DirName())
+	sdkDirName := sdkgenerator.SDK(sdk).DirName()
+	outputPath := filepath.Join(s.sdkPath, repo.OrganizationId, repositoryId, commitHash, sdkDirName)
 	absOutputPath, err := filepath.Abs(outputPath)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute output path: %w", err)
@@ -802,13 +803,13 @@ func (s *service) GenerateSDK(ctx context.Context, repositoryId, commitHash stri
 		zap.String("sdk", string(sdk)),
 		zap.String("outputPath", absOutputPath))
 
-	if err := s.commitSdkToRepo(ctx, repo.OrganizationId, repositoryId, commitHash, sdk); err != nil {
-		zap.L().Warn("failed to commit SDK to git repo, but SDK generation succeeded",
+	if err := s.installSdkDependencies(ctx, absOutputPath, sdk); err != nil {
+		zap.L().Warn("failed to install SDK dependencies, but SDK generation succeeded",
 			zap.Error(err))
 	}
 
-	if err := s.installSdkDependencies(ctx, absOutputPath, sdk); err != nil {
-		zap.L().Warn("failed to install SDK dependencies, but SDK generation succeeded",
+	if err := s.commitSdkToRepo(ctx, repo.OrganizationId, repositoryId, commitHash, sdk); err != nil {
+		zap.L().Warn("failed to commit SDK to git repo, but SDK generation succeeded",
 			zap.Error(err))
 	}
 
@@ -983,23 +984,13 @@ func (s *service) sanitizeProtocArgs(repoPath, outputPath string, protoFiles []s
 
 func (s *service) commitSdkToRepo(ctx context.Context, orgId, repoId, commitHash string, sdk SDK) error {
 	sdkDirName := sdkgenerator.SDK(sdk).DirName()
-	sdkRepoPath := filepath.Join(s.sdkPath+"-repos", orgId, repoId, sdkDirName)
+	sdkRepoPath := filepath.Join(s.sdkPath, orgId, repoId, commitHash, sdkDirName)
 	absSdkRepoPath, err := filepath.Abs(sdkRepoPath)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute SDK repo path: %w", err)
 	}
 
-	sourcePath := filepath.Join(s.sdkPath, orgId, repoId, commitHash, sdkDirName)
-	absSourcePath, err := filepath.Abs(sourcePath)
-	if err != nil {
-		return fmt.Errorf("failed to get absolute source path: %w", err)
-	}
-
 	if _, err = os.Stat(filepath.Join(absSdkRepoPath, ".git")); os.IsNotExist(err) {
-		if err := os.MkdirAll(absSdkRepoPath, 0o750); err != nil {
-			return fmt.Errorf("failed to create SDK repo directory: %w", err)
-		}
-
 		initCmd := exec.CommandContext(ctx, "git", "init")
 		initCmd.Dir = absSdkRepoPath
 		if output, err := initCmd.CombinedOutput(); err != nil {
@@ -1021,23 +1012,6 @@ func (s *service) commitSdkToRepo(ctx context.Context, orgId, repoId, commitHash
 
 		zap.L().Info("initialized SDK git repository",
 			zap.String("path", absSdkRepoPath))
-	}
-
-	entries, err := os.ReadDir(absSdkRepoPath)
-	if err != nil {
-		return fmt.Errorf("failed to read SDK repo directory: %w", err)
-	}
-	for _, entry := range entries {
-		if entry.Name() == ".git" {
-			continue
-		}
-		if err := os.RemoveAll(filepath.Join(absSdkRepoPath, entry.Name())); err != nil {
-			return fmt.Errorf("failed to clear SDK repo: %w", err)
-		}
-	}
-
-	if err := s.copyDir(absSourcePath, absSdkRepoPath); err != nil {
-		return fmt.Errorf("failed to copy SDK files: %w", err)
 	}
 
 	addCmd := exec.CommandContext(ctx, "git", "add", "-A")
@@ -1170,52 +1144,4 @@ func (s *service) installJsDependencies(ctx context.Context, sdkRepoPath string)
 
 	zap.L().Info("JS dependencies installed", zap.String("path", sdkRepoPath))
 	return nil
-}
-
-func (s *service) copyDir(src, dst string) error {
-	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		relPath, err := filepath.Rel(src, path)
-		if err != nil {
-			return err
-		}
-
-		dstPath := filepath.Join(dst, relPath)
-
-		if info.IsDir() {
-			return os.MkdirAll(dstPath, info.Mode())
-		}
-
-		return s.copyFile(path, dstPath)
-	})
-}
-
-func (s *service) copyFile(src, dst string) error {
-	// #nosec G304 -- src and dst paths are validated and constructed via filepath.Join
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = srcFile.Close() }()
-
-	// #nosec G304 -- dst path is validated and constructed via filepath.Join
-	dstFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = dstFile.Close() }()
-
-	if _, err := dstFile.ReadFrom(srcFile); err != nil {
-		return err
-	}
-
-	srcInfo, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-
-	return os.Chmod(dst, srcInfo.Mode())
 }

@@ -150,7 +150,7 @@ func main() {
 	gitHttpHandler := registry.NewGitHttpHandler(registryService, userPgRepository, registry.DefaultReposPath)
 	mux.Handle("/git/", gitHttpHandler)
 
-	sdkHttpHandler := registry.NewSdkHttpHandler(cfg.SdkGeneration.OutputPath + "-repos")
+	sdkHttpHandler := registry.NewSdkHttpHandler(cfg.SdkGeneration.OutputPath)
 	mux.Handle("/sdk/", sdkHttpHandler)
 
 	protocols := new(http.Protocols)
@@ -173,7 +173,7 @@ func main() {
 	var sshServer *ssh.Server
 	if cfg.Ssh.Enabled {
 		gitSshHandler := registry.NewGitSshHandler(registryService, registry.DefaultReposPath)
-		sdkSshHandler := registry.NewSdkSshHandler(cfg.SdkGeneration.OutputPath + "-repos")
+		sdkSshHandler := registry.NewSdkSshHandler(cfg.SdkGeneration.OutputPath)
 		sshServer = startSshServer(cfg, userPgRepository, gitSshHandler, sdkSshHandler)
 	}
 
