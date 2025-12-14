@@ -6,6 +6,7 @@ import { getCommits } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/reg
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useQuery } from "@connectrpc/connect-query";
 import { GitCommit, User } from "lucide-react";
+import { useMemo, useState } from "react";
 import { DateTime } from "luxon";
 
 import {
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Pagination } from "@/components/ui/pagination";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { customRetry } from "@/lib/query-retry";
@@ -78,16 +80,30 @@ function CommitSkeleton() {
   );
 }
 
+const PAGE_SIZE = 10;
+
 export default function RepositoryCommitsContent({
   repositoryId,
 }: RepositoryCommitsContentProps) {
-  const { data, isLoading, error } = useQuery(
-    getCommits,
-    { id: repositoryId },
-    { retry: customRetry }
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const queryParams = useMemo(
+    () => ({
+      id: repositoryId,
+      pagination: {
+        page: currentPage,
+        pageLimit: PAGE_SIZE,
+      },
+    }),
+    [repositoryId, currentPage]
   );
 
+  const { data, isLoading, error } = useQuery(getCommits, queryParams, {
+    retry: customRetry,
+  });
+
   const commits = data?.commits ?? [];
+  const totalPages = data?.totalPage ?? 1;
 
   const isNotFound =
     error instanceof ConnectError && error.code === Code.NotFound;
@@ -127,57 +143,73 @@ export default function RepositoryCommitsContent({
               No commits found for this repository.
             </div>
           ) : (
-            <div className="space-y-4">
-              {commits.map((commit, index) => (
-                <div key={commit.id}>
-                  <div className="flex items-start gap-4">
-                    <Avatar className="mt-1 size-10">
-                      <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                        {commit.user ? getInitials(commit.user.username) : "??"}
-                      </AvatarFallback>
-                    </Avatar>
+            <>
+              <div className="space-y-4">
+                {commits.map((commit, index) => (
+                  <div key={commit.id}>
+                    <div className="flex items-start gap-4">
+                      <Avatar className="mt-1 size-10">
+                        <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                          {commit.user
+                            ? getInitials(commit.user.username)
+                            : "??"}
+                        </AvatarFallback>
+                      </Avatar>
 
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <p className="font-medium leading-tight">
-                            {commit.message}
-                          </p>
-                          <div className="text-muted-foreground mt-1 flex items-center gap-2 text-sm">
-                            <User className="size-3" />
-                            <span>
-                              {commit.user?.username || "Unknown user"}
-                            </span>
-                            {commit.commitedAt && (
-                              <>
-                                <span>&middot;</span>
-                                <span
-                                  title={formatAbsoluteTime(
-                                    timestampToDate(commit.commitedAt)
-                                  )}
-                                  className="cursor-help"
-                                >
-                                  {formatRelativeTime(
-                                    timestampToDate(commit.commitedAt)
-                                  )}
-                                </span>
-                              </>
-                            )}
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="font-medium leading-tight">
+                              {commit.message}
+                            </p>
+                            <div className="text-muted-foreground mt-1 flex items-center gap-2 text-sm">
+                              <User className="size-3" />
+                              <span>
+                                {commit.user?.username || "Unknown user"}
+                              </span>
+                              {commit.commitedAt && (
+                                <>
+                                  <span>&middot;</span>
+                                  <span
+                                    title={formatAbsoluteTime(
+                                      timestampToDate(commit.commitedAt)
+                                    )}
+                                    className="cursor-help"
+                                  >
+                                    {formatRelativeTime(
+                                      timestampToDate(commit.commitedAt)
+                                    )}
+                                  </span>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-muted-foreground flex items-center gap-2 text-xs">
-                          <code className="rounded bg-muted px-2 py-1 font-mono">
-                            {commit.id.slice(0, 7)}
-                          </code>
+                          <div className="text-muted-foreground flex items-center gap-2 text-xs">
+                            <code className="rounded bg-muted px-2 py-1 font-mono">
+                              {commit.id.slice(0, 7)}
+                            </code>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {index < commits.length - 1 && <Separator className="mt-4" />}
+                    {index < commits.length - 1 && (
+                      <Separator className="mt-4" />
+                    )}
+                  </div>
+                ))}
+              </div>
+              {commits.length > 0 && (
+                <div className="mt-6 flex justify-center">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    disabled={isLoading}
+                  />
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
