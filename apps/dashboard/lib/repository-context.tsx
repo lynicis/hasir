@@ -7,4 +7,5 @@ export const RepositoryContext = createContext<{
   repository: Repository | undefined;
   isLoading: boolean;
   error: unknown;
+  refetch?: () => Promise<unknown>;
 } | null>(null);

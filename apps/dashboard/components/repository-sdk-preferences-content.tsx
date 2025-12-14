@@ -143,7 +143,7 @@ export default function RepositorySdkPreferencesContent() {
     throw new Error("SdkPreferencesPage must be used within RepositoryLayout");
   }
 
-  const { repository, isLoading, error } = context;
+  const { repository, isLoading, error, refetch } = context;
 
   const { data: recentCommit } = useQuery(
     getRecentCommit,
@@ -257,6 +257,10 @@ export default function RepositorySdkPreferencesContent() {
         id: repositoryId,
         sdkPreferences,
       });
+
+      if (refetch) {
+        await refetch();
+      }
 
       setPrevServerConfig(config);
       toast.success("SDK preferences saved successfully");

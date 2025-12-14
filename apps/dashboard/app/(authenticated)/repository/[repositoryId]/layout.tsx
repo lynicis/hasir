@@ -45,6 +45,7 @@ export default function RepositoryLayout({
     data: repositoryData,
     isLoading,
     error,
+    refetch,
   } = useQuery(getRepository, { id: repositoryId }, { retry: customRetry });
 
   const repository = useMemo((): OrganizationRepository | undefined => {
@@ -225,7 +226,7 @@ export default function RepositoryLayout({
           </div>
 
           <RepositoryContext.Provider
-            value={{ repository: repositoryData, isLoading, error }}
+            value={{ repository: repositoryData, isLoading, error, refetch }}
           >
             <div>{children}</div>
           </RepositoryContext.Provider>
