@@ -1049,13 +1049,9 @@ func (s *service) installSdkDependencies(ctx context.Context, sdkRepoPath string
 
 func (s *service) installGoDependencies(ctx context.Context, sdkRepoPath string, organizationId, repositoryId string) error {
 	if _, err := os.Stat(filepath.Join(sdkRepoPath, "go.mod")); os.IsNotExist(err) {
-		moduleBasePath := "local"
-		if s.cfg != nil && s.cfg.SdkGeneration.ModuleBasePath != "" {
-			moduleBasePath = s.cfg.SdkGeneration.ModuleBasePath
-		}
-
+		moduleBasePath := s.cfg.SdkGeneration.GetModuleBasePath()
 		moduleName := fmt.Sprintf("%s/sdk/%s/%s", moduleBasePath, organizationId, repositoryId)
-		// #nosec G204 -- moduleName is constructed from validated inputs: moduleBasePath from config (or "local"),
+		// #nosec G204 -- moduleName is constructed from validated inputs: moduleBasePath from config
 		initCmd := exec.CommandContext(ctx, "go", "mod", "init", moduleName)
 		initCmd.Dir = sdkRepoPath
 		if output, err := initCmd.CombinedOutput(); err != nil {

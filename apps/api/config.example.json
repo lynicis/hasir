@@ -34,7 +34,7 @@
     "workerCount": 5,
     "pollInterval": "10s",
     "outputPath": "./sdk",
-    "moduleBasePath": "local"
+    "moduleBasePath": "localhost"
   },
   "jwtSecret": "your-secret-key-here",
   "dashboardUrl": "http://localhost:3000"

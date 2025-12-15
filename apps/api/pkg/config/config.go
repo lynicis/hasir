@@ -79,6 +79,22 @@ type SdkGenerationConfig struct {
 	ModuleBasePath string `koanf:"moduleBasePath"`
 }
 
+func (sdk SdkGenerationConfig) GetModuleBasePath() string {
+	if sdk.ModuleBasePath != "" {
+		return sdk.ModuleBasePath
+	}
+
+	return "localhost"
+}
+
+func (sdk SdkGenerationConfig) GetOutputPath() string {
+	if sdk.OutputPath != "" {
+		return sdk.OutputPath
+	}
+
+	return "./sdk"
+}
+
 type Config struct {
 	Server         ServerConfig        `koanf:"server"`
 	Otel           OtelConfig          `koanf:"otel"`

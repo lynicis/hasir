@@ -153,12 +153,13 @@ func main() {
 	sdkHttpHandler := registry.NewSdkHttpHandler(cfg.SdkGeneration.OutputPath)
 	mux.Handle("/sdk/", sdkHttpHandler)
 
-	sdkPath := "./sdk"
-	if cfg.SdkGeneration.OutputPath != "" {
-		sdkPath = cfg.SdkGeneration.OutputPath
-	}
-
-	docHttpHandler := registry.NewDocumentationHttpHandler(registryService, repositoryPgRepository, cfg.JwtSecret, sdkPath)
+	sdkPath := cfg.SdkGeneration.GetOutputPath()
+	docHttpHandler := registry.NewDocumentationHttpHandler(
+		registryService,
+		repositoryPgRepository,
+		cfg.JwtSecret,
+		sdkPath,
+	)
 	mux.Handle("/docs/", docHttpHandler)
 
 	protocols := new(http.Protocols)
