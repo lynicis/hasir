@@ -1055,6 +1055,7 @@ func (s *service) installGoDependencies(ctx context.Context, sdkRepoPath string,
 		}
 
 		moduleName := fmt.Sprintf("%s/sdk/%s/%s", moduleBasePath, organizationId, repositoryId)
+		// #nosec G204 -- moduleName is constructed from validated inputs: moduleBasePath from config (or "local"),
 		initCmd := exec.CommandContext(ctx, "go", "mod", "init", moduleName)
 		initCmd.Dir = sdkRepoPath
 		if output, err := initCmd.CombinedOutput(); err != nil {

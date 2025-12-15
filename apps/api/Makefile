@@ -13,6 +13,9 @@ generate-mocks:
 dev:
 	MODE=development go run main.go
 
+sec:
+	gosec -exclude-dir=sdk -exclude-dir=repos ./...
+
 lint:
 	golangci-lint run ./...
 

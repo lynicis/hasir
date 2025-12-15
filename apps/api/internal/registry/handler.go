@@ -880,6 +880,7 @@ func (h *DocumentationHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// #nosec G304 -- absDocPath is validated on line 846 to ensure it's within absSdkPath, preventing directory traversal
 	markdownContent, err := os.ReadFile(absDocPath)
 	if err != nil {
 		zap.L().Error("Failed to read documentation file", zap.Error(err))
