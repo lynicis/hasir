@@ -7,7 +7,6 @@
       "dependencies": {
         "@buf/hasir_hasir.bufbuild_es": "2.10.1-20251214134142-000a3d343e30.1",
         "@buf/hasir_hasir.connectrpc_query-es": "2.2.0-20251214134142-000a3d343e30.1",
-        "@bufbuild/protovalidate": "^1.1.0",
         "@connectrpc/connect": "^2.1.1",
         "@connectrpc/connect-query": "^2.2.0",
         "@connectrpc/connect-web": "^2.1.1",
@@ -172,13 +171,7 @@
 
     "@buf/protocolbuffers_wellknowntypes.connectrpc_query-es": ["@buf/protocolbuffers_wellknowntypes.connectrpc_query-es@2.2.0-20251020202132-9220c3cb4fac.1", "https://buf.build/gen/npm/v1/@buf/protocolbuffers_wellknowntypes.connectrpc_query-es/-/protocolbuffers_wellknowntypes.connectrpc_query-es-2.2.0-20251020202132-9220c3cb4fac.1.tgz", { "dependencies": { "@buf/protocolbuffers_wellknowntypes.bufbuild_es": "2.7.0-20251020202132-9220c3cb4fac.1" }, "peerDependencies": { "@bufbuild/protobuf": "^2.7.0", "@connectrpc/connect-query": "^2.2.0" } }, ""],
 
-    "@bufbuild/cel": ["@bufbuild/cel@0.3.0", "", { "dependencies": { "@bufbuild/cel-spec": "0.3.0" }, "peerDependencies": { "@bufbuild/protobuf": "^2.6.2" } }, "sha512-vIdcn0Ot6XDKakcDqEQvvlCtMlYwLlxc++SrVjjCmYIiZRH+tlr1GRYpe5R9kguSiTS3BLh7C+I7ZoektVPICQ=="],
-
-    "@bufbuild/cel-spec": ["@bufbuild/cel-spec@0.3.0", "", { "peerDependencies": { "@bufbuild/protobuf": "^2.6.2" } }, "sha512-mN669LGlXkYNco6NzSTpFoW52UwGb0h5UJNct43nkOjk9YrgUtzcBn9PfjrwbyAe3OlUtasvXAFf1Tjs3NQLOg=="],
-
     "@bufbuild/protobuf": ["@bufbuild/protobuf@2.10.1", "", {}, "sha512-ckS3+vyJb5qGpEYv/s1OebUHDi/xSNtfgw1wqKZo7MR9F2z+qXr0q5XagafAG/9O0QPVIUfST0smluYSTpYFkg=="],
-
-    "@bufbuild/protovalidate": ["@bufbuild/protovalidate@1.1.0", "", { "dependencies": { "@bufbuild/cel": "0.3.0" }, "peerDependencies": { "@bufbuild/protobuf": "^2.8.0" } }, "sha512-oC1sYAr9eQucZsLb0M7cIk3TftZ/cOBbKT1XBIL9Aypm5e0IcC8/HlfN+NrwPVhw9JI4bOQM1Ar1E6x7L71nbA=="],
 
     "@connectrpc/connect": ["@connectrpc/connect@2.1.1", "", { "peerDependencies": { "@bufbuild/protobuf": "^2.7.0" } }, "sha512-JzhkaTvM73m2K1URT6tv53k2RwngSmCXLZJgK580qNQOXRzZRR/BCMfZw3h+90JpnG6XksP5bYT+cz0rpUzUWQ=="],
 
