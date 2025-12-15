@@ -297,7 +297,6 @@ describe("SessionProvider", () => {
         expect(toast.error).toHaveBeenCalledWith("Failed to refresh session");
       });
 
-      // After error, session should be null
       await waitFor(() => {
         expect(screen.getByText("Token: none")).toBeInTheDocument();
       });

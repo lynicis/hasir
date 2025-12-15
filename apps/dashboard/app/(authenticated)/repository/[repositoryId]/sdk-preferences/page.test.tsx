@@ -238,7 +238,6 @@ describe("SdkPreferencesPage", () => {
       organizationId: "test-org-id",
       visibility: 0,
       $typeName: "registry.v1.Repository" as const,
-      // sdkPreferences is undefined
     };
 
     renderWithContext(mockData as typeof mockRepositoryData);

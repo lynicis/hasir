@@ -13,12 +13,10 @@ import {
   type SessionData,
 } from "./session";
 
-// Mock next/headers
 vi.mock("next/headers", () => ({
   cookies: vi.fn(),
 }));
 
-// Mock iron-session
 vi.mock("iron-session", () => ({
   getIronSession: vi.fn(),
 }));
@@ -108,9 +106,8 @@ describe("session", () => {
 
     it("should return true when exp is exactly now", () => {
       const now = DateTime.utc().toSeconds();
-      // Since we're checking if now > exp, and now === exp, it should return false
-      // But due to timing, let's test with a slightly past time
       const slightlyPast = now - 1;
+
       expect(isExpiredSeconds(slightlyPast)).toBe(true);
     });
   });
@@ -134,9 +131,8 @@ describe("session", () => {
 
     it("should return true when timestamp is exactly now", () => {
       const now = DateTime.utc().toMillis();
-      // Since we're checking if now > timestamp, and now === timestamp, it should return false
-      // But due to timing, let's test with a slightly past time
       const slightlyPast = now - 1;
+      
       expect(isExpiredMillis(slightlyPast)).toBe(true);
     });
   });

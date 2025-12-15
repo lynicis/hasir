@@ -157,7 +157,6 @@ describe("SdkUrls", () => {
         `http://localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/${expected}/`
       );
 
-      // Reopen dropdown for next selection
       await user.click(sdkTrigger);
     }
   });

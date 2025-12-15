@@ -254,13 +254,11 @@ describe("UsersPage", () => {
 
     render(<UsersPage />);
 
-    // Find and click the "Reader" button to open the dropdown
     const readerButtons = await screen.findAllByRole("button", {
       name: /reader/i,
     });
     await user.click(readerButtons[0]);
 
-    // Find and click the "Author" option in the dropdown menu
     const authorOption = await screen.findByRole("menuitem", {
       name: /author/i,
     });

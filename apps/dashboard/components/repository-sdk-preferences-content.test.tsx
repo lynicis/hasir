@@ -285,20 +285,15 @@ describe("RepositorySdkPreferencesContent", () => {
     });
     expect(saveButton).toBeDisabled();
 
-    // Make a change
     const switches = screen.getAllByRole("switch");
     const goSwitch = switches[0];
     await user.click(goSwitch);
 
     expect(saveButton).not.toBeDisabled();
 
-    // Save the changes
     await user.click(saveButton);
-
-    // Wait for the save to complete
     await screen.findByRole("button", { name: /save configuration/i });
 
-    // Button should be disabled again after save
     const updatedSaveButton = screen.getByRole("button", {
       name: /save configuration/i,
     });
@@ -320,27 +315,23 @@ describe("RepositorySdkPreferencesContent", () => {
     });
     expect(saveButton).toBeDisabled();
 
-    // Make a change
     const switches = screen.getAllByRole("switch");
     const goSwitch = switches[0];
     await user.click(goSwitch);
 
     expect(saveButton).not.toBeDisabled();
 
-    // Reset to defaults
     const resetButton = screen.getByRole("button", {
       name: /reset to defaults/i,
     });
     await user.click(resetButton);
 
-    // Button should be disabled again after reset
     expect(saveButton).toBeDisabled();
   });
 
   it("keeps Save Configuration button enabled when changes exist after reset", async () => {
     const user = userEvent.setup();
 
-    // Create a repository with existing SDK preferences
     const repositoryWithPreferences: Repository = {
       ...mockRepository,
       sdkPreferences: [{ sdk: SDK.SDK_GO_PROTOBUF, status: true }],
@@ -362,24 +353,19 @@ describe("RepositorySdkPreferencesContent", () => {
     const saveButton = screen.getByRole("button", {
       name: /save configuration/i,
     });
-    // Initially disabled because no changes from server state
     expect(saveButton).toBeDisabled();
 
-    // Make a change (toggle off the existing preference)
     const switches = screen.getAllByRole("switch");
     const goSwitch = switches[0];
     await user.click(goSwitch);
 
-    // Button should be enabled because we made a change
     expect(saveButton).not.toBeDisabled();
 
-    // Reset to defaults
     const resetButton = screen.getByRole("button", {
       name: /reset to defaults/i,
     });
     await user.click(resetButton);
 
-    // Button should still be enabled because reset changed from server state
     expect(saveButton).not.toBeDisabled();
   });
 });
