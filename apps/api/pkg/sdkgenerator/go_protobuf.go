@@ -1,28 +1,20 @@
 package sdkgenerator
 
 import (
-	"context"
 	"path/filepath"
 )
 
 type GoProtobufGenerator struct {
-	baseGenerator
+	*protocGenerator
 }
 
 func NewGoProtobufGenerator(runner CommandRunner) *GoProtobufGenerator {
 	return &GoProtobufGenerator{
-		baseGenerator: baseGenerator{
-			sdk:    SdkGoProtobuf,
-			runner: runner,
-		},
+		protocGenerator: newProtocGenerator(SdkGoProtobuf, "go-protobuf", runner, buildGoProtobufArgs),
 	}
 }
 
-func (g *GoProtobufGenerator) Generate(ctx context.Context, input GeneratorInput) (*GeneratorOutput, error) {
-	if err := g.Validate(input); err != nil {
-		return nil, err
-	}
-
+func buildGoProtobufArgs(input GeneratorInput) []string {
 	args := []string{
 		"--proto_path=" + filepath.Clean(input.RepoPath),
 		"--go_out=" + filepath.Clean(input.OutputPath),
@@ -34,13 +26,5 @@ func (g *GoProtobufGenerator) Generate(ctx context.Context, input GeneratorInput
 	}
 
 	args = append(args, input.ProtoFiles...)
-
-	if _, err := g.runner.Run(ctx, "protoc", args, input.RepoPath); err != nil {
-		return nil, err
-	}
-
-	return &GeneratorOutput{
-		OutputPath: input.OutputPath,
-		FilesCount: len(input.ProtoFiles),
-	}, nil
+	return args
 }

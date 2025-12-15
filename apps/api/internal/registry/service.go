@@ -48,13 +48,14 @@ type Service interface {
 }
 
 type service struct {
-	rootPath    string
-	repository  Repository
-	orgRepo     authorization.MemberRoleChecker
-	sdkQueue    SdkGenerationQueue
-	cfg         *config.Config
-	sdkPath     string
-	sdkRegistry *sdkgenerator.Registry
+	rootPath     string
+	repository   Repository
+	orgRepo      authorization.MemberRoleChecker
+	sdkQueue     SdkGenerationQueue
+	cfg          *config.Config
+	sdkPath      string
+	sdkRegistry  *sdkgenerator.Registry
+	docGenerator *sdkgenerator.DocumentationGenerator
 }
 
 func NewService(repository Repository, orgRepo authorization.MemberRoleChecker, sdkQueue SdkGenerationQueue, cfg *config.Config) Service {
@@ -63,14 +64,16 @@ func NewService(repository Repository, orgRepo authorization.MemberRoleChecker, 
 		sdkPath = cfg.SdkGeneration.OutputPath
 	}
 
+	runner := sdkgenerator.NewDefaultCommandRunner()
 	return &service{
-		rootPath:    DefaultReposPath,
-		repository:  repository,
-		orgRepo:     orgRepo,
-		sdkQueue:    sdkQueue,
-		cfg:         cfg,
-		sdkPath:     sdkPath,
-		sdkRegistry: sdkgenerator.NewRegistry(nil),
+		rootPath:     DefaultReposPath,
+		repository:   repository,
+		orgRepo:      orgRepo,
+		sdkQueue:     sdkQueue,
+		cfg:          cfg,
+		sdkPath:      sdkPath,
+		sdkRegistry:  sdkgenerator.NewRegistry(runner),
+		docGenerator: sdkgenerator.NewDocumentationGenerator(runner),
 	}
 }
 
@@ -443,6 +446,20 @@ func (s *service) UpdateSdkPreferences(
 		zap.Int("count", len(preferences)),
 	)
 
+	hasEnabledPreference := false
+	for _, pref := range preferences {
+		if pref.Status {
+			hasEnabledPreference = true
+			break
+		}
+	}
+
+	if !hasEnabledPreference {
+		zap.L().Debug("no enabled SDK preferences, skipping SDK trigger job",
+			zap.String("repositoryId", repositoryId))
+		return nil
+	}
+
 	if err := s.enqueueSdkTriggerJob(ctx, repositoryId, repo.Path); err != nil {
 		zap.L().Warn("failed to enqueue SDK trigger job",
 			zap.String("repositoryId", repositoryId),
@@ -754,7 +771,7 @@ func (s *service) ValidateSshAccess(
 }
 
 func (s *service) HasProtoFiles(ctx context.Context, repoPath string) (bool, error) {
-	protoFiles, err := s.findProtoFiles(repoPath)
+	protoFiles, err := sdkgenerator.FindProtoFiles(repoPath)
 	if err != nil {
 		return false, err
 	}
@@ -829,38 +846,15 @@ func (s *service) GenerateSDK(ctx context.Context, repositoryId, commitHash stri
 		}
 	}()
 
-	sdkDirName := sdkgenerator.SDK(sdk).DirName()
-	outputPath := filepath.Join(s.sdkPath, repo.OrganizationId, repositoryId, commitHash, sdkDirName)
-	absOutputPath, err := filepath.Abs(outputPath)
-	if err != nil {
-		return fmt.Errorf("failed to get absolute output path: %w", err)
-	}
-
-	if err := os.MkdirAll(absOutputPath, 0o750); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
-	}
-
-	protoFiles, err := s.findProtoFilesFromFilesystem(workDir)
-	if err != nil {
-		return fmt.Errorf("failed to find proto files: %w", err)
-	}
-
-	if len(protoFiles) == 0 {
-		return errors.New("no proto files found in repository")
-	}
-
 	generator, err := s.sdkRegistry.Get(sdkgenerator.SDK(sdk))
 	if err != nil {
 		return fmt.Errorf("unsupported SDK type: %s", sdk)
 	}
 
-	input := sdkgenerator.GeneratorInput{
-		RepoPath:   workDir,
-		OutputPath: absOutputPath,
-		ProtoFiles: protoFiles,
-	}
-
-	if _, err := generator.Generate(ctx, input); err != nil {
+	sdkDirName := generator.DirName()
+	outputPath := filepath.Join(s.sdkPath, repo.OrganizationId, repositoryId, commitHash, sdkDirName)
+	output, err := sdkgenerator.GenerateFromRepo(ctx, generator, workDir, outputPath)
+	if err != nil {
 		zap.L().Error("SDK generation failed",
 			zap.String("sdk", string(sdk)),
 			zap.Error(err))
@@ -871,9 +865,9 @@ func (s *service) GenerateSDK(ctx context.Context, repositoryId, commitHash stri
 		zap.String("repositoryId", repositoryId),
 		zap.String("commitHash", commitHash),
 		zap.String("sdk", string(sdk)),
-		zap.String("outputPath", absOutputPath))
+		zap.String("outputPath", output.OutputPath))
 
-	if err := s.installSdkDependencies(ctx, absOutputPath, sdk); err != nil {
+	if err := s.installSdkDependencies(ctx, output.OutputPath, sdk, repo.OrganizationId, repositoryId); err != nil {
 		zap.L().Warn("failed to install SDK dependencies, but SDK generation succeeded",
 			zap.Error(err))
 	}
@@ -939,121 +933,28 @@ func (s *service) checkoutCommitToTempDir(ctx context.Context, repoPath, commitH
 func (s *service) GenerateDocumentation(ctx context.Context, repositoryId, commitHash, repoPath, organizationId string) error {
 	outputPath := filepath.Join(s.sdkPath, organizationId, repositoryId, commitHash, "docs")
 
-	absOutputPath, err := filepath.Abs(outputPath)
-	if err != nil {
-		return fmt.Errorf("failed to get absolute output path: %w", err)
-	}
-
-	if err := os.MkdirAll(absOutputPath, 0o750); err != nil {
-		return fmt.Errorf("failed to create docs directory: %w", err)
-	}
-
-	protoFiles, err := s.findProtoFilesFromFilesystem(repoPath)
-	if err != nil {
-		return fmt.Errorf("failed to find proto files: %w", err)
-	}
-
-	if len(protoFiles) == 0 {
-		return errors.New("no proto files found in repository")
-	}
-
-	validatedFiles, err := s.sanitizeProtocArgs(repoPath, absOutputPath, protoFiles)
-	if err != nil {
-		return fmt.Errorf("invalid proto arguments: %w", err)
-	}
-
-	args := []string{
-		"--proto_path=" + filepath.Clean(repoPath),
-		"--doc_out=" + filepath.Clean(absOutputPath),
-		"--doc_opt=markdown,index.md",
-	}
-	args = append(args, validatedFiles...)
-
-	// #nosec G204 -- Command is hardcoded "protoc", args are sanitized via sanitizeProtocArgs
-	cmd := exec.CommandContext(ctx, "protoc", args...)
-	cmd.Dir = filepath.Clean(repoPath)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
+	if _, err := sdkgenerator.GenerateFromRepo(ctx, s.docGenerator, repoPath, outputPath); err != nil {
 		zap.L().Error("documentation generation failed",
-			zap.String("output", string(output)),
+			zap.String("repositoryId", repositoryId),
+			zap.String("commitHash", commitHash),
 			zap.Error(err))
-		return fmt.Errorf("protoc-gen-doc failed: %w: %s", err, string(output))
+		return fmt.Errorf("documentation generation failed: %w", err)
 	}
 
 	zap.L().Info("documentation generated successfully",
 		zap.String("repositoryId", repositoryId),
 		zap.String("commitHash", commitHash),
-		zap.String("outputPath", absOutputPath))
+		zap.String("outputPath", outputPath))
 
 	return nil
 }
 
-func (s *service) findProtoFiles(repoPath string) ([]string, error) {
-	// #nosec G204 -- repoPath is validated before calling this function
-	cmd := exec.Command("git", "ls-tree", "-r", "HEAD", "--name-only")
-	cmd.Dir = repoPath
-
-	output, err := cmd.Output()
-	if err != nil {
-		return s.findProtoFilesFromFilesystem(repoPath)
-	}
-
-	var protoFiles []string
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	for _, line := range lines {
-		if strings.HasSuffix(line, ".proto") {
-			protoFiles = append(protoFiles, line)
-		}
-	}
-
-	return protoFiles, nil
-}
-
-func (s *service) findProtoFilesFromFilesystem(repoPath string) ([]string, error) {
-	var protoFiles []string
-	err := filepath.Walk(repoPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if !info.IsDir() && filepath.Ext(path) == ".proto" {
-			relPath, err := filepath.Rel(repoPath, path)
-			if err != nil {
-				return err
-			}
-			protoFiles = append(protoFiles, relPath)
-		}
-
-		return nil
-	})
-
-	return protoFiles, err
-}
-
-func (s *service) sanitizeProtocArgs(repoPath, outputPath string, protoFiles []string) ([]string, error) {
-	cleanRepoPath := filepath.Clean(repoPath)
-	cleanOutputPath := filepath.Clean(outputPath)
-
-	if strings.Contains(cleanRepoPath, "..") || strings.Contains(cleanOutputPath, "..") {
-		return nil, errors.New("path traversal detected in repository or output path")
-	}
-
-	for _, file := range protoFiles {
-		cleanFile := filepath.Clean(file)
-		if strings.Contains(cleanFile, "..") || filepath.IsAbs(cleanFile) {
-			return nil, fmt.Errorf("invalid proto file path: %s", file)
-		}
-		if !strings.HasSuffix(cleanFile, ".proto") {
-			return nil, fmt.Errorf("invalid proto file extension: %s", file)
-		}
-	}
-
-	return protoFiles, nil
-}
-
 func (s *service) commitSdkToRepo(ctx context.Context, orgId, repoId, commitHash string, sdk SDK) error {
-	sdkDirName := sdkgenerator.SDK(sdk).DirName()
+	generator, err := s.sdkRegistry.Get(sdkgenerator.SDK(sdk))
+	if err != nil {
+		return fmt.Errorf("unsupported SDK type: %s", sdk)
+	}
+	sdkDirName := generator.DirName()
 	sdkRepoPath := filepath.Join(s.sdkPath, orgId, repoId, commitHash, sdkDirName)
 	absSdkRepoPath, err := filepath.Abs(sdkRepoPath)
 	if err != nil {
@@ -1127,7 +1028,7 @@ func (s *service) commitSdkToRepo(ctx context.Context, orgId, repoId, commitHash
 	return nil
 }
 
-func (s *service) installSdkDependencies(ctx context.Context, sdkRepoPath string, sdk SDK) error {
+func (s *service) installSdkDependencies(ctx context.Context, sdkRepoPath string, sdk SDK, organizationId, repositoryId string) error {
 	absSdkRepoPath, err := filepath.Abs(sdkRepoPath)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute SDK repo path: %w", err)
@@ -1136,7 +1037,7 @@ func (s *service) installSdkDependencies(ctx context.Context, sdkRepoPath string
 	sdkType := sdkgenerator.SDK(sdk)
 
 	if sdkType.IsGo() {
-		return s.installGoDependencies(ctx, absSdkRepoPath)
+		return s.installGoDependencies(ctx, absSdkRepoPath, organizationId, repositoryId)
 	}
 
 	if sdkType.IsJs() {
@@ -1146,21 +1047,21 @@ func (s *service) installSdkDependencies(ctx context.Context, sdkRepoPath string
 	return nil
 }
 
-func (s *service) installGoDependencies(ctx context.Context, sdkRepoPath string) error {
+func (s *service) installGoDependencies(ctx context.Context, sdkRepoPath string, organizationId, repositoryId string) error {
 	if _, err := os.Stat(filepath.Join(sdkRepoPath, "go.mod")); os.IsNotExist(err) {
-		moduleName := "sdk"
+		moduleBasePath := "local"
+		if s.cfg != nil && s.cfg.SdkGeneration.ModuleBasePath != "" {
+			moduleBasePath = s.cfg.SdkGeneration.ModuleBasePath
+		}
+
+		moduleName := fmt.Sprintf("%s/sdk/%s/%s", moduleBasePath, organizationId, repositoryId)
 		initCmd := exec.CommandContext(ctx, "go", "mod", "init", moduleName)
 		initCmd.Dir = sdkRepoPath
 		if output, err := initCmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("go mod init failed: %w: %s", err, string(output))
 		}
-		zap.L().Debug("go.mod initialized", zap.String("path", sdkRepoPath))
-	}
 
-	getCmd := exec.CommandContext(ctx, "go", "get", "./...")
-	getCmd.Dir = sdkRepoPath
-	if output, err := getCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("go get failed: %w: %s", err, string(output))
+		zap.L().Debug("go.mod initialized", zap.String("path", sdkRepoPath), zap.String("module", moduleName))
 	}
 
 	tidyCmd := exec.CommandContext(ctx, "go", "mod", "tidy")

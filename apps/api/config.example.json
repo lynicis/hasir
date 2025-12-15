@@ -33,7 +33,8 @@
   "sdkGeneration": {
     "workerCount": 5,
     "pollInterval": "10s",
-    "outputPath": "./sdk"
+    "outputPath": "./sdk",
+    "moduleBasePath": "local"
   },
   "jwtSecret": "your-secret-key-here",
   "dashboardUrl": "http://localhost:3000"

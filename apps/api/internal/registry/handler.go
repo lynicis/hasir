@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -13,10 +14,12 @@ import (
 	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	"connectrpc.com/connect"
 	"github.com/gliderlabs/ssh"
+	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"hasir-api/internal/user"
+	"hasir-api/pkg/authentication"
 )
 
 const banner = `
@@ -765,7 +768,6 @@ func (h *SdkSshHandler) HandleSession(session ssh.Session, userId string) error 
 		return fmt.Errorf("not a git repository: %s", absRepoPath)
 	}
 
-	// absRepoPath is validated above and constrained to be within sdkReposPath
 	// #nosec G204 -- command is hardcoded, path is validated and sanitized
 	execCmd := exec.Command("git-upload-pack", absRepoPath)
 	execCmd.Dir = filepath.Dir(absRepoPath)
@@ -783,4 +785,156 @@ func (h *SdkSshHandler) HandleSession(session ssh.Session, userId string) error 
 	}
 
 	return execCmd.Wait()
+}
+
+type DocumentationHttpHandler struct {
+	service    Service
+	repository Repository
+	jwtSecret  []byte
+	sdkPath    string
+}
+
+func NewDocumentationHttpHandler(
+	service Service,
+	repository Repository,
+	jwtSecret []byte,
+	sdkPath string,
+) *DocumentationHttpHandler {
+	return &DocumentationHttpHandler{
+		service:    service,
+		repository: repository,
+		jwtSecret:  jwtSecret,
+		sdkPath:    sdkPath,
+	}
+}
+
+func (h *DocumentationHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	userId, err := h.authenticate(r)
+	if err != nil {
+		h.requireAuth(w)
+		return
+	}
+
+	path := strings.TrimPrefix(r.URL.Path, "/docs/")
+	parts := strings.SplitN(path, "/", 3)
+
+	if len(parts) < 3 {
+		http.Error(w, "Invalid documentation path. Format: /docs/{orgId}/{repoId}/{commitHash}", http.StatusBadRequest)
+		return
+	}
+
+	orgId := parts[0]
+	repoId := parts[1]
+	commitHash := parts[2]
+
+	if !isValidPathComponent(orgId) || !isValidPathComponent(repoId) || !isValidPathComponent(commitHash) {
+		http.Error(w, "Invalid path component", http.StatusBadRequest)
+		return
+	}
+
+	docPath := filepath.Join(h.sdkPath, orgId, repoId, commitHash, "docs", "index.md")
+	absDocPath, err := filepath.Abs(docPath)
+	if err != nil {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
+	absSdkPath, err := filepath.Abs(h.sdkPath)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if !strings.HasPrefix(absDocPath, absSdkPath+string(filepath.Separator)) {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
+
+	repo, err := h.repository.GetRepositoryById(r.Context(), repoId)
+	if err != nil {
+		zap.L().Error("Failed to get repository", zap.Error(err))
+		http.Error(w, "Repository not found", http.StatusNotFound)
+		return
+	}
+
+	if repo.OrganizationId != orgId {
+		http.Error(w, "Repository not found", http.StatusNotFound)
+		return
+	}
+
+	repoPath := repo.Path
+	if repoPath == "" {
+		repoPath = filepath.Join(DefaultReposPath, repoId)
+	}
+	hasAccess, err := h.service.ValidateSshAccess(r.Context(), userId, repoPath, SshOperationRead)
+	if err != nil {
+		zap.L().Error("Access validation failed", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if !hasAccess {
+		http.Error(w, "Permission denied", http.StatusForbidden)
+		return
+	}
+
+	if _, err := os.Stat(absDocPath); os.IsNotExist(err) {
+		http.Error(w, "Documentation not found", http.StatusNotFound)
+		return
+	}
+
+	markdownContent, err := os.ReadFile(absDocPath)
+	if err != nil {
+		zap.L().Error("Failed to read documentation file", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(markdownContent)
+}
+
+func (h *DocumentationHttpHandler) requireAuth(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", `Bearer realm="Documentation"`)
+	http.Error(w, "Authentication required", http.StatusUnauthorized)
+}
+
+func (h *DocumentationHttpHandler) authenticate(r *http.Request) (string, error) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return "", errors.New("missing authorization header")
+	}
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == authHeader {
+		return "", errors.New("invalid authorization format")
+	}
+
+	token, err := jwt.ParseWithClaims(tokenString, &authentication.JwtClaims{}, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return h.jwtSecret, nil
+	})
+
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return "", errors.New("token has expired")
+		}
+		return "", fmt.Errorf("invalid token: %w", err)
+	}
+
+	if !token.Valid {
+		return "", errors.New("invalid token")
+	}
+
+	claims, ok := token.Claims.(*authentication.JwtClaims)
+	if !ok {
+		return "", errors.New("invalid token claims")
+	}
+
+	userID, err := claims.GetSubject()
+	if err != nil {
+		return "", errors.New("invalid token claims")
+	}
+
+	return userID, nil
 }

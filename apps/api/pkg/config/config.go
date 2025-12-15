@@ -73,9 +73,10 @@ type SshConfig struct {
 }
 
 type SdkGenerationConfig struct {
-	WorkerCount  int    `koanf:"workerCount"`
-	PollInterval string `koanf:"pollInterval"`
-	OutputPath   string `koanf:"outputPath"`
+	WorkerCount    int    `koanf:"workerCount"`
+	PollInterval   string `koanf:"pollInterval"`
+	OutputPath     string `koanf:"outputPath"`
+	ModuleBasePath string `koanf:"moduleBasePath"`
 }
 
 type Config struct {

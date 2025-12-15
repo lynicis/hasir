@@ -1,28 +1,20 @@
 package sdkgenerator
 
 import (
-	"context"
 	"path/filepath"
 )
 
 type GoGrpcGenerator struct {
-	baseGenerator
+	*protocGenerator
 }
 
 func NewGoGrpcGenerator(runner CommandRunner) *GoGrpcGenerator {
 	return &GoGrpcGenerator{
-		baseGenerator: baseGenerator{
-			sdk:    SdkGoGrpc,
-			runner: runner,
-		},
+		protocGenerator: newProtocGenerator(SdkGoGrpc, "go-grpc", runner, buildGoGrpcArgs),
 	}
 }
 
-func (g *GoGrpcGenerator) Generate(ctx context.Context, input GeneratorInput) (*GeneratorOutput, error) {
-	if err := g.Validate(input); err != nil {
-		return nil, err
-	}
-
+func buildGoGrpcArgs(input GeneratorInput) []string {
 	args := []string{
 		"--proto_path=" + filepath.Clean(input.RepoPath),
 		"--go_out=" + filepath.Clean(input.OutputPath),
@@ -37,13 +29,5 @@ func (g *GoGrpcGenerator) Generate(ctx context.Context, input GeneratorInput) (*
 	}
 
 	args = append(args, input.ProtoFiles...)
-
-	if _, err := g.runner.Run(ctx, "protoc", args, input.RepoPath); err != nil {
-		return nil, err
-	}
-
-	return &GeneratorOutput{
-		OutputPath: input.OutputPath,
-		FilesCount: len(input.ProtoFiles),
-	}, nil
+	return args
 }

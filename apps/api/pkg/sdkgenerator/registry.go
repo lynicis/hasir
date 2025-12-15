@@ -10,19 +10,47 @@ type Registry struct {
 	generators map[SDK]Generator
 }
 
-func NewRegistry(runner CommandRunner) *Registry {
+type RegistryBuilder struct {
+	runner     CommandRunner
+	generators []Generator
+}
+
+func NewRegistryBuilder(runner CommandRunner) *RegistryBuilder {
+	return &RegistryBuilder{
+		runner:     runner,
+		generators: []Generator{},
+	}
+}
+
+func (b *RegistryBuilder) WithGenerator(g Generator) *RegistryBuilder {
+	b.generators = append(b.generators, g)
+	return b
+}
+
+func (b *RegistryBuilder) WithDefaultGenerators() *RegistryBuilder {
+	b.generators = append(b.generators,
+		NewGoProtobufGenerator(b.runner),
+		NewGoConnectRpcGenerator(b.runner),
+		NewGoGrpcGenerator(b.runner),
+		NewJsBufbuildEsGenerator(b.runner),
+		NewJsProtobufGenerator(b.runner),
+		NewJsConnectRpcGenerator(b.runner),
+	)
+	return b
+}
+
+func (b *RegistryBuilder) Build() *Registry {
 	r := &Registry{
 		generators: make(map[SDK]Generator),
 	}
-
-	r.Register(NewGoProtobufGenerator(runner))
-	r.Register(NewGoConnectRpcGenerator(runner))
-	r.Register(NewGoGrpcGenerator(runner))
-	r.Register(NewJsBufbuildEsGenerator(runner))
-	r.Register(NewJsProtobufGenerator(runner))
-	r.Register(NewJsConnectRpcGenerator(runner))
-
+	for _, gen := range b.generators {
+		r.Register(gen)
+	}
 	return r
+}
+
+func NewRegistry(runner CommandRunner) *Registry {
+	return NewRegistryBuilder(runner).WithDefaultGenerators().Build()
 }
 
 func (r *Registry) Register(g Generator) {

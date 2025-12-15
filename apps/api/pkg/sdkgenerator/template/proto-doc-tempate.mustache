@@ -1,0 +1,12 @@
+{{#files}}
+File: {{file_name}}
+{{#file_messages}}
+  Message: {{message_name}}
+  Description: {{message_description}}
+  Fields:
+  {{#message_fields}}
+    {{field_name}}
+      {{field_description}}
+  {{/message_fields}}
+{{/file_messages}}
+{{/files}}

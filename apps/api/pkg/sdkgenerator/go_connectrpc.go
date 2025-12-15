@@ -1,28 +1,20 @@
 package sdkgenerator
 
 import (
-	"context"
 	"path/filepath"
 )
 
 type GoConnectRpcGenerator struct {
-	baseGenerator
+	*protocGenerator
 }
 
 func NewGoConnectRpcGenerator(runner CommandRunner) *GoConnectRpcGenerator {
 	return &GoConnectRpcGenerator{
-		baseGenerator: baseGenerator{
-			sdk:    SdkGoConnectRpc,
-			runner: runner,
-		},
+		protocGenerator: newProtocGenerator(SdkGoConnectRpc, "go-connectrpc", runner, buildGoConnectRpcArgs),
 	}
 }
 
-func (g *GoConnectRpcGenerator) Generate(ctx context.Context, input GeneratorInput) (*GeneratorOutput, error) {
-	if err := g.Validate(input); err != nil {
-		return nil, err
-	}
-
+func buildGoConnectRpcArgs(input GeneratorInput) []string {
 	args := []string{
 		"--proto_path=" + filepath.Clean(input.RepoPath),
 		"--go_out=" + filepath.Clean(input.OutputPath),
@@ -37,13 +29,5 @@ func (g *GoConnectRpcGenerator) Generate(ctx context.Context, input GeneratorInp
 	}
 
 	args = append(args, input.ProtoFiles...)
-
-	if _, err := g.runner.Run(ctx, "protoc", args, input.RepoPath); err != nil {
-		return nil, err
-	}
-
-	return &GeneratorOutput{
-		OutputPath: input.OutputPath,
-		FilesCount: len(input.ProtoFiles),
-	}, nil
+	return args
 }

@@ -1,97 +1,59 @@
 package sdkgenerator
 
 import (
-	"context"
 	"path/filepath"
 )
 
 type JsBufbuildEsGenerator struct {
-	baseGenerator
+	*protocGenerator
 }
 
 func NewJsBufbuildEsGenerator(runner CommandRunner) *JsBufbuildEsGenerator {
 	return &JsBufbuildEsGenerator{
-		baseGenerator: baseGenerator{
-			sdk:    SdkJsBufbuildEs,
-			runner: runner,
-		},
+		protocGenerator: newProtocGenerator(SdkJsBufbuildEs, "js-bufbuild-es", runner, buildJsBufbuildEsArgs),
 	}
 }
 
-func (g *JsBufbuildEsGenerator) Generate(ctx context.Context, input GeneratorInput) (*GeneratorOutput, error) {
-	if err := g.Validate(input); err != nil {
-		return nil, err
-	}
-
+func buildJsBufbuildEsArgs(input GeneratorInput) []string {
 	args := []string{
 		"--proto_path=" + filepath.Clean(input.RepoPath),
 		"--es_out=" + filepath.Clean(input.OutputPath),
 		"--es_opt=target=ts",
 	}
 	args = append(args, input.ProtoFiles...)
-
-	if _, err := g.runner.Run(ctx, "protoc", args, input.RepoPath); err != nil {
-		return nil, err
-	}
-
-	return &GeneratorOutput{
-		OutputPath: input.OutputPath,
-		FilesCount: len(input.ProtoFiles),
-	}, nil
+	return args
 }
 
 type JsProtobufGenerator struct {
-	baseGenerator
+	*protocGenerator
 }
 
 func NewJsProtobufGenerator(runner CommandRunner) *JsProtobufGenerator {
 	return &JsProtobufGenerator{
-		baseGenerator: baseGenerator{
-			sdk:    SdkJsProtobuf,
-			runner: runner,
-		},
+		protocGenerator: newProtocGenerator(SdkJsProtobuf, "js-protobuf", runner, buildJsProtobufArgs),
 	}
 }
 
-func (g *JsProtobufGenerator) Generate(ctx context.Context, input GeneratorInput) (*GeneratorOutput, error) {
-	if err := g.Validate(input); err != nil {
-		return nil, err
-	}
-
+func buildJsProtobufArgs(input GeneratorInput) []string {
 	args := []string{
 		"--proto_path=" + filepath.Clean(input.RepoPath),
 		"--js_out=import_style=commonjs,binary:" + filepath.Clean(input.OutputPath),
 	}
 	args = append(args, input.ProtoFiles...)
-
-	if _, err := g.runner.Run(ctx, "protoc", args, input.RepoPath); err != nil {
-		return nil, err
-	}
-
-	return &GeneratorOutput{
-		OutputPath: input.OutputPath,
-		FilesCount: len(input.ProtoFiles),
-	}, nil
+	return args
 }
 
 type JsConnectRpcGenerator struct {
-	baseGenerator
+	*protocGenerator
 }
 
 func NewJsConnectRpcGenerator(runner CommandRunner) *JsConnectRpcGenerator {
 	return &JsConnectRpcGenerator{
-		baseGenerator: baseGenerator{
-			sdk:    SdkJsConnectrpc,
-			runner: runner,
-		},
+		protocGenerator: newProtocGenerator(SdkJsConnectrpc, "js-connectrpc", runner, buildJsConnectRpcArgs),
 	}
 }
 
-func (g *JsConnectRpcGenerator) Generate(ctx context.Context, input GeneratorInput) (*GeneratorOutput, error) {
-	if err := g.Validate(input); err != nil {
-		return nil, err
-	}
-
+func buildJsConnectRpcArgs(input GeneratorInput) []string {
 	args := []string{
 		"--proto_path=" + filepath.Clean(input.RepoPath),
 		"--es_out=" + filepath.Clean(input.OutputPath),
@@ -100,13 +62,5 @@ func (g *JsConnectRpcGenerator) Generate(ctx context.Context, input GeneratorInp
 		"--connect-es_opt=target=ts",
 	}
 	args = append(args, input.ProtoFiles...)
-
-	if _, err := g.runner.Run(ctx, "protoc", args, input.RepoPath); err != nil {
-		return nil, err
-	}
-
-	return &GeneratorOutput{
-		OutputPath: input.OutputPath,
-		FilesCount: len(input.ProtoFiles),
-	}, nil
+	return args
 }

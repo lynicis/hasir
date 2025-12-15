@@ -1476,9 +1476,7 @@ func TestService_FindProtoFiles(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "proto", "v1", "api.proto"), []byte("syntax = \"proto3\";"), 0o644))
 		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("# Test"), 0o644))
 
-		svc := &service{}
-
-		protoFiles, err := svc.findProtoFiles(tmpDir)
+		protoFiles, err := sdkgenerator.FindProtoFiles(tmpDir)
 		require.NoError(t, err)
 		assert.Len(t, protoFiles, 2)
 
@@ -1490,17 +1488,13 @@ func TestService_FindProtoFiles(t *testing.T) {
 		tmpDir := t.TempDir()
 		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("# Test"), 0o644))
 
-		svc := &service{}
-
-		protoFiles, err := svc.findProtoFiles(tmpDir)
+		protoFiles, err := sdkgenerator.FindProtoFiles(tmpDir)
 		require.NoError(t, err)
 		assert.Len(t, protoFiles, 0)
 	})
 
 	t.Run("error on invalid directory", func(t *testing.T) {
-		svc := &service{}
-
-		_, err := svc.findProtoFiles("/nonexistent/directory")
+		_, err := sdkgenerator.FindProtoFiles("/nonexistent/directory")
 		require.Error(t, err)
 	})
 }

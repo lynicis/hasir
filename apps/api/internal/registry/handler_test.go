@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -21,6 +23,7 @@ import (
 	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
 
 	"hasir-api/internal/user"
+	"hasir-api/pkg/authentication"
 )
 
 var ErrRepositoryNotFound = connect.NewError(connect.CodeNotFound, errors.New("repository not found"))
@@ -1464,4 +1467,233 @@ func TestIsValidPathComponent(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestDocumentationHttpHandler(t *testing.T) {
+	t.Run("requires auth", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		handler := NewDocumentationHttpHandler(mockService, mockRepository, []byte("secret"), t.TempDir())
+
+		req := httptest.NewRequest(http.MethodGet, "/docs/org/repo/commit", nil)
+		rec := httptest.NewRecorder()
+
+		handler.ServeHTTP(rec, req)
+
+		res := rec.Result()
+		require.Equal(t, http.StatusUnauthorized, res.StatusCode)
+		assert.Equal(t, `Bearer realm="Documentation"`, res.Header.Get("WWW-Authenticate"))
+	})
+
+	t.Run("invalid path", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		handler := NewDocumentationHttpHandler(mockService, mockRepository, []byte("secret"), t.TempDir())
+
+		req := httptest.NewRequest(http.MethodGet, "/docs/org/repo", nil)
+		req.Header.Set("Authorization", bearerToken(t, "secret", "user-1"))
+
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		res := rec.Result()
+		assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+	})
+
+	t.Run("invalid path component", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		handler := NewDocumentationHttpHandler(mockService, mockRepository, []byte("secret"), t.TempDir())
+
+		req := httptest.NewRequest(http.MethodGet, "/docs/org/repo/../../etc", nil)
+		req.Header.Set("Authorization", bearerToken(t, "secret", "user-1"))
+
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		res := rec.Result()
+		assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+	})
+
+	t.Run("repository not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockRepository.EXPECT().
+			GetRepositoryById(gomock.Any(), "repo-1").
+			Return(nil, errors.New("not found"))
+
+		handler := NewDocumentationHttpHandler(mockService, mockRepository, []byte("secret"), t.TempDir())
+
+		req := httptest.NewRequest(http.MethodGet, "/docs/org-1/repo-1/commit-1", nil)
+		req.Header.Set("Authorization", bearerToken(t, "secret", "user-1"))
+
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		res := rec.Result()
+		assert.Equal(t, http.StatusNotFound, res.StatusCode)
+	})
+
+	t.Run("organization mismatch", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		mockRepository.EXPECT().
+			GetRepositoryById(gomock.Any(), "repo-1").
+			Return(&RepositoryDTO{Id: "repo-1", OrganizationId: "other-org"}, nil)
+
+		handler := NewDocumentationHttpHandler(mockService, mockRepository, []byte("secret"), t.TempDir())
+
+		req := httptest.NewRequest(http.MethodGet, "/docs/org-1/repo-1/commit-1", nil)
+		req.Header.Set("Authorization", bearerToken(t, "secret", "user-1"))
+
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		res := rec.Result()
+		assert.Equal(t, http.StatusNotFound, res.StatusCode)
+	})
+
+	t.Run("access validation error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		repoPath := filepath.Join(DefaultReposPath, "repo-1")
+
+		mockRepository.EXPECT().
+			GetRepositoryById(gomock.Any(), "repo-1").
+			Return(&RepositoryDTO{Id: "repo-1", OrganizationId: "org-1", Path: repoPath}, nil)
+		mockService.EXPECT().
+			ValidateSshAccess(gomock.Any(), "user-1", repoPath, SshOperationRead).
+			Return(false, errors.New("validation error"))
+
+		handler := NewDocumentationHttpHandler(mockService, mockRepository, []byte("secret"), t.TempDir())
+
+		req := httptest.NewRequest(http.MethodGet, "/docs/org-1/repo-1/commit-1", nil)
+		req.Header.Set("Authorization", bearerToken(t, "secret", "user-1"))
+
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		res := rec.Result()
+		assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
+	})
+
+	t.Run("access denied", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		repoPath := filepath.Join(DefaultReposPath, "repo-1")
+
+		mockRepository.EXPECT().
+			GetRepositoryById(gomock.Any(), "repo-1").
+			Return(&RepositoryDTO{Id: "repo-1", OrganizationId: "org-1", Path: repoPath}, nil)
+		mockService.EXPECT().
+			ValidateSshAccess(gomock.Any(), "user-1", repoPath, SshOperationRead).
+			Return(false, nil)
+
+		handler := NewDocumentationHttpHandler(mockService, mockRepository, []byte("secret"), t.TempDir())
+
+		req := httptest.NewRequest(http.MethodGet, "/docs/org-1/repo-1/commit-1", nil)
+		req.Header.Set("Authorization", bearerToken(t, "secret", "user-1"))
+
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		res := rec.Result()
+		assert.Equal(t, http.StatusForbidden, res.StatusCode)
+	})
+
+	t.Run("documentation not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		sdkPath := t.TempDir()
+		repoPath := filepath.Join(DefaultReposPath, "repo-1")
+
+		mockRepository.EXPECT().
+			GetRepositoryById(gomock.Any(), "repo-1").
+			Return(&RepositoryDTO{Id: "repo-1", OrganizationId: "org-1", Path: repoPath}, nil)
+		mockService.EXPECT().
+			ValidateSshAccess(gomock.Any(), "user-1", repoPath, SshOperationRead).
+			Return(true, nil)
+
+		handler := NewDocumentationHttpHandler(mockService, mockRepository, []byte("secret"), sdkPath)
+
+		req := httptest.NewRequest(http.MethodGet, "/docs/org-1/repo-1/commit-1", nil)
+		req.Header.Set("Authorization", bearerToken(t, "secret", "user-1"))
+
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		res := rec.Result()
+		assert.Equal(t, http.StatusNotFound, res.StatusCode)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockService := NewMockService(ctrl)
+		mockRepository := NewMockRepository(ctrl)
+
+		sdkPath := t.TempDir()
+		docDir := filepath.Join(sdkPath, "org-1", "repo-1", "commit-1", "docs")
+		require.NoError(t, os.MkdirAll(docDir, 0o755))
+
+		docPath := filepath.Join(docDir, "index.md")
+		content := []byte("# Hello Docs")
+		require.NoError(t, os.WriteFile(docPath, content, 0o644))
+
+		repoPath := filepath.Join(DefaultReposPath, "repo-1")
+
+		mockRepository.EXPECT().
+			GetRepositoryById(gomock.Any(), "repo-1").
+			Return(&RepositoryDTO{Id: "repo-1", OrganizationId: "org-1", Path: repoPath}, nil)
+		mockService.EXPECT().
+			ValidateSshAccess(gomock.Any(), "user-1", repoPath, SshOperationRead).
+			Return(true, nil)
+
+		handler := NewDocumentationHttpHandler(mockService, mockRepository, []byte("secret"), sdkPath)
+
+		req := httptest.NewRequest(http.MethodGet, "/docs/org-1/repo-1/commit-1", nil)
+		req.Header.Set("Authorization", bearerToken(t, "secret", "user-1"))
+
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		res := rec.Result()
+		body, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+		assert.Equal(t, "text/markdown; charset=utf-8", res.Header.Get("Content-Type"))
+		assert.Equal(t, content, body)
+	})
+}
+
+func bearerToken(t *testing.T, secret string, subject string) string {
+	t.Helper()
+
+	claims := &authentication.JwtClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject: subject,
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString([]byte(secret))
+	require.NoError(t, err)
+
+	return "Bearer " + signed
 }

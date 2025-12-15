@@ -78,7 +78,8 @@ func TestRegistry_Register(t *testing.T) {
 }
 
 type mockGenerator struct {
-	sdk SDK
+	sdk     SDK
+	dirName string
 }
 
 func (m *mockGenerator) Generate(_ context.Context, _ GeneratorInput) (*GeneratorOutput, error) {
@@ -89,6 +90,60 @@ func (m *mockGenerator) SDK() SDK {
 	return m.sdk
 }
 
+func (m *mockGenerator) DirName() string {
+	if m.dirName != "" {
+		return m.dirName
+	}
+	return "custom"
+}
+
 func (m *mockGenerator) Validate(_ GeneratorInput) error {
 	return nil
+}
+
+func TestRegistryBuilder(t *testing.T) {
+	runner := NewMockCommandRunner()
+
+	t.Run("build registry with custom generators", func(t *testing.T) {
+		customGen := &mockGenerator{sdk: SDK("CUSTOM"), dirName: "custom-sdk"}
+
+		r := NewRegistryBuilder(runner).
+			WithGenerator(NewGoProtobufGenerator(runner)).
+			WithGenerator(customGen).
+			Build()
+
+		g1, err := r.Get(SdkGoProtobuf)
+		require.NoError(t, err)
+		assert.NotNil(t, g1)
+
+		g2, err := r.Get(SDK("CUSTOM"))
+		require.NoError(t, err)
+		assert.NotNil(t, g2)
+		assert.Equal(t, "custom-sdk", g2.DirName())
+	})
+
+	t.Run("build registry with default generators", func(t *testing.T) {
+		r := NewRegistryBuilder(runner).
+			WithDefaultGenerators().
+			Build()
+
+		sdks := r.List()
+		assert.Len(t, sdks, 6)
+	})
+
+	t.Run("build registry with mix of default and custom", func(t *testing.T) {
+		customGen := &mockGenerator{sdk: SDK("CUSTOM"), dirName: "custom"}
+
+		r := NewRegistryBuilder(runner).
+			WithDefaultGenerators().
+			WithGenerator(customGen).
+			Build()
+
+		sdks := r.List()
+		assert.Len(t, sdks, 7)
+
+		g, err := r.Get(SDK("CUSTOM"))
+		require.NoError(t, err)
+		assert.Equal(t, "custom", g.DirName())
+	})
 }
