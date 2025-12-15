@@ -3,6 +3,8 @@ package sdkgenerator
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -133,7 +135,6 @@ func TestGoProtobufGenerator_Generate(t *testing.T) {
 	assert.Equal(t, "/tmp/output", output.OutputPath)
 	assert.Equal(t, 1, output.FilesCount)
 
-	// Verify protoc was called
 	assert.Len(t, mockRunner.Calls, 1)
 	call := mockRunner.Calls[0]
 	assert.Equal(t, "protoc", call.Name)
@@ -267,4 +268,354 @@ func TestJsGenerators_Generate(t *testing.T) {
 			assert.Equal(t, "/tmp/output", output.OutputPath)
 		})
 	}
+}
+
+func TestRemoveScalarValueTypesSection(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name: "removes scalar value types section with ## header",
+			input: `# API Documentation
+
+## Messages
+
+### User
+User message description
+
+## Scalar Value Types
+
+| .proto Type | Notes | C++ Type | Java Type |
+|-------------|-------|----------|-----------|
+| double |  | double | double |
+
+## Services
+
+### UserService
+Service description
+`,
+			expected: `# API Documentation
+
+## Messages
+
+### User
+User message description
+
+## Services
+
+### UserService
+Service description
+`,
+		},
+		{
+			name: "removes scalar value types section with # header",
+			input: `# API Documentation
+
+# Scalar Value Types
+
+| .proto Type | Notes |
+|-------------|-------|
+| double |  |
+
+## Messages
+`,
+			expected: `# API Documentation
+
+## Messages
+`,
+		},
+		{
+			name: "removes scalar value types section with ### header",
+			input: `# API Documentation
+
+### Scalar Value Types
+
+Content here
+
+## Next Section
+`,
+			expected: `# API Documentation
+
+## Next Section
+`,
+		},
+		{
+			name: "case insensitive matching",
+			input: `# API Documentation
+
+## Scalar value types
+
+| Type | Notes |
+|------|-------|
+| double |  |
+
+## Messages
+`,
+			expected: `# API Documentation
+
+## Messages
+`,
+		},
+		{
+			name: "removes scalar value type (singular)",
+			input: `# API Documentation
+
+## Scalar Value Type
+
+| Type | Notes |
+|------|-------|
+| double |  |
+
+## Messages
+`,
+			expected: `# API Documentation
+
+## Messages
+`,
+		},
+		{
+			name: "no scalar section - unchanged",
+			input: `# API Documentation
+
+## Messages
+
+### User
+User message description
+
+## Services
+`,
+			expected: `# API Documentation
+
+## Messages
+
+### User
+User message description
+
+## Services
+`,
+		},
+		{
+			name: "scalar section at the end",
+			input: `# API Documentation
+
+## Messages
+
+## Scalar Value Types
+
+| Type | Notes |
+|------|-------|
+| double |  |
+`,
+			expected: `# API Documentation
+
+## Messages
+`,
+		},
+		{
+			name: "preserves newline at end",
+			input: `# API Documentation
+
+## Scalar Value Types
+
+| Type | Notes |
+|------|-------|
+| double |  |
+
+## Messages
+`,
+			expected: `# API Documentation
+
+## Messages
+`,
+		},
+		{
+			name: "multiple sections with scalar in middle",
+			input: `# API Documentation
+
+## Section 1
+Content 1
+
+## Scalar Value Types
+
+| Type | Notes |
+|------|-------|
+| double |  |
+
+## Section 2
+Content 2
+
+## Section 3
+Content 3
+`,
+			expected: `# API Documentation
+
+## Section 1
+Content 1
+
+## Section 2
+Content 2
+
+## Section 3
+Content 3
+`,
+		},
+		{
+			name: "scalar section with empty lines",
+			input: `# API Documentation
+
+## Scalar Value Types
+
+
+| Type | Notes |
+|------|-------|
+| double |  |
+
+
+## Messages
+`,
+			expected: `# API Documentation
+
+## Messages
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			filePath := filepath.Join(tmpDir, "index.md")
+
+			err := os.WriteFile(filePath, []byte(tt.input), 0o644)
+			require.NoError(t, err)
+
+			err = removeScalarValueTypesSection(filePath)
+			require.NoError(t, err)
+
+			content, err := os.ReadFile(filePath)
+			require.NoError(t, err)
+
+			actual := string(content)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestDocumentationGenerator_Generate(t *testing.T) {
+	ctx := context.Background()
+	mockRunner := NewMockCommandRunner()
+	g := NewDocumentationGenerator(mockRunner)
+
+	tmpDir := t.TempDir()
+	outputPath := filepath.Join(tmpDir, "docs")
+
+	input := GeneratorInput{
+		RepoPath:   "/tmp/repo",
+		OutputPath: outputPath,
+		ProtoFiles: []string{"user/v1/user.proto"},
+	}
+
+	err := os.MkdirAll(outputPath, 0o750)
+	require.NoError(t, err)
+
+	indexMdPath := filepath.Join(outputPath, "index.md")
+	markdownContent := `# API Documentation
+
+## Messages
+
+### User
+User message description
+
+## Scalar Value Types
+
+| .proto Type | Notes | C++ Type |
+|-------------|-------|----------|
+| double |  | double |
+
+## Services
+
+### UserService
+Service description
+`
+	err = os.WriteFile(indexMdPath, []byte(markdownContent), 0o644)
+	require.NoError(t, err)
+
+	output, err := g.Generate(ctx, input)
+	require.NoError(t, err)
+	require.NotNil(t, output)
+
+	assert.Len(t, mockRunner.Calls, 1)
+	call := mockRunner.Calls[0]
+	assert.Equal(t, "protoc", call.Name)
+	assert.Equal(t, "/tmp/repo", call.WorkDir)
+	assert.Contains(t, call.Args, "--doc_out="+outputPath)
+	assert.Contains(t, call.Args, "--doc_opt=markdown,index.md")
+
+	content, err := os.ReadFile(indexMdPath)
+	require.NoError(t, err)
+	result := string(content)
+	assert.NotContains(t, result, "Scalar Value Types")
+	assert.Contains(t, result, "API Documentation")
+	assert.Contains(t, result, "Messages")
+	assert.Contains(t, result, "Services")
+}
+
+func TestDocumentationGenerator_Generate_NoScalarSection(t *testing.T) {
+	ctx := context.Background()
+	mockRunner := NewMockCommandRunner()
+	g := NewDocumentationGenerator(mockRunner)
+
+	tmpDir := t.TempDir()
+	outputPath := filepath.Join(tmpDir, "docs")
+
+	input := GeneratorInput{
+		RepoPath:   "/tmp/repo",
+		OutputPath: outputPath,
+		ProtoFiles: []string{"user/v1/user.proto"},
+	}
+
+	err := os.MkdirAll(outputPath, 0o750)
+	require.NoError(t, err)
+
+	indexMdPath := filepath.Join(outputPath, "index.md")
+	markdownContent := `# API Documentation
+
+## Messages
+
+### User
+User message description
+`
+	err = os.WriteFile(indexMdPath, []byte(markdownContent), 0o644)
+	require.NoError(t, err)
+
+	output, err := g.Generate(ctx, input)
+	require.NoError(t, err)
+	require.NotNil(t, output)
+
+	content, err := os.ReadFile(indexMdPath)
+	require.NoError(t, err)
+	result := string(content)
+	assert.Equal(t, markdownContent, result)
+}
+
+func TestDocumentationGenerator_Generate_ProtocError(t *testing.T) {
+	ctx := context.Background()
+	mockRunner := NewMockCommandRunner()
+	mockRunner.RunFunc = func(ctx context.Context, name string, args []string, workDir string) ([]byte, error) {
+		return nil, errors.New("protoc failed")
+	}
+
+	g := NewDocumentationGenerator(mockRunner)
+
+	input := GeneratorInput{
+		RepoPath:   "/tmp/repo",
+		OutputPath: "/tmp/output",
+		ProtoFiles: []string{"user/v1/user.proto"},
+	}
+
+	output, err := g.Generate(ctx, input)
+	require.Error(t, err)
+	assert.Nil(t, output)
+	assert.Contains(t, err.Error(), "protoc failed")
 }
