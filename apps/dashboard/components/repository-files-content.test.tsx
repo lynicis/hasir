@@ -32,6 +32,7 @@ vi.mock("@/lib/use-client", () => ({
 const mockRepository: Repository = {
   $typeName: "registry.v1.Repository",
   id: "test-repo-id",
+  organizationId: "test-organization-id",
   name: "Test Repository",
   visibility: 0,
   sdkPreferences: [],

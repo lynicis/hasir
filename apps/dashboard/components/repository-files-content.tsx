@@ -104,6 +104,24 @@ function getLanguageFromPath(path: string): string {
   return languageMap[extension] || "text";
 }
 
+function isTextFile(mimeType: string): boolean {
+  if (mimeType && mimeType.startsWith("text/")) return true;
+
+  const textLikeTypes = new Set([
+    "application/json",
+    "application/xml",
+    "application/javascript",
+    "application/x-sh",
+    "application/yaml",
+    "application/x-yaml",
+    "text/x-yaml",
+  ]);
+
+  if (mimeType && textLikeTypes.has(mimeType)) return true;
+
+  return false;
+}
+
 function formatFileSize(bytes: bigint): string {
   const sizes = ["B", "KB", "MB", "GB"];
   if (bytes === BigInt(0)) return "0 B";
@@ -405,10 +423,7 @@ export default function RepositoryFilesContent() {
                             </p>
                           </div>
                           <div className="rounded-lg border border-border overflow-hidden">
-                            {filePreview.mimeType.startsWith("text/") ||
-                            filePreview.mimeType === "application/json" ||
-                            filePreview.mimeType ===
-                              "application/x-protobuf" ? (
+                            {isTextFile(filePreview.mimeType) ? (
                               <SyntaxHighlighter
                                 language={getLanguageFromPath(selectedFile)}
                                 style={vscDarkPlus}
@@ -426,9 +441,6 @@ export default function RepositoryFilesContent() {
                                 <FileText className="mx-auto mb-4 size-12 text-muted-foreground" />
                                 <p className="text-muted-foreground text-sm">
                                   Preview not available for this file type
-                                </p>
-                                <p className="text-muted-foreground mt-1 text-xs">
-                                  Use the download button to view the file
                                 </p>
                               </div>
                             )}
