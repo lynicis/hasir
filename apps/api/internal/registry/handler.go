@@ -324,7 +324,7 @@ func (h *GitSshHandler) triggerSdkGenerationAfterPush(repoPath string) {
 		return
 	}
 
-	hasProtoFiles, err := h.service.HasProtoFiles(ctx, repoPath)
+	hasProtoFiles, err := h.service.HasProtoFiles(ctx, repoPath, commitHash)
 	if err != nil {
 		zap.L().Warn("failed to check for proto files",
 			zap.String("repoId", repoId),
@@ -525,7 +525,7 @@ func (h *GitHttpHandler) handleReceivePack(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	hasProtoFiles, err := h.service.HasProtoFiles(r.Context(), repoPath)
+	hasProtoFiles, err := h.service.HasProtoFiles(r.Context(), repoPath, commitHash)
 	if err != nil {
 		zap.L().Warn("failed to check for proto files",
 			zap.String("repoId", repoId),

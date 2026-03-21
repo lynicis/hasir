@@ -43,7 +43,7 @@ type Service interface {
 	GetFileTree(ctx context.Context, req *registryv1.GetFileTreeRequest) (*registryv1.GetFileTreeResponse, error)
 	GetFilePreview(ctx context.Context, req *registryv1.GetFilePreviewRequest) (*registryv1.GetFilePreviewResponse, error)
 	ValidateSshAccess(ctx context.Context, userId, repoPath string, operation SshOperation) (bool, error)
-	HasProtoFiles(ctx context.Context, repoPath string) (bool, error)
+	HasProtoFiles(ctx context.Context, repoPath, commitHash string) (bool, error)
 	TriggerSdkGeneration(ctx context.Context, repositoryId, commitHash string) error
 }
 
@@ -770,8 +770,8 @@ func (s *service) ValidateSshAccess(
 	}
 }
 
-func (s *service) HasProtoFiles(ctx context.Context, repoPath string) (bool, error) {
-	protoFiles, err := sdkgenerator.FindProtoFiles(repoPath)
+func (s *service) HasProtoFiles(ctx context.Context, repoPath, commitHash string) (bool, error) {
+	protoFiles, err := sdkgenerator.FindProtoFilesInBareRepo(repoPath, commitHash)
 	if err != nil {
 		return false, err
 	}

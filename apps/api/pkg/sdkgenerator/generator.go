@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -204,4 +205,36 @@ func FindProtoFiles(repoPath string) ([]string, error) {
 	})
 
 	return protoFiles, err
+}
+
+// FindProtoFilesInBareRepo lists .proto files in a bare git repository
+// using git ls-tree. This works without a working tree, unlike FindProtoFiles
+// which requires files to exist on the filesystem.
+func FindProtoFilesInBareRepo(repoPath, commitHash string) ([]string, error) {
+	if commitHash == "" {
+		commitHash = "HEAD"
+	}
+
+	// #nosec G204 -- commitHash is validated as a git ref by git itself
+	cmd := exec.Command("git", "ls-tree", "-r", "--name-only", commitHash)
+	cmd.Dir = repoPath
+
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git ls-tree failed: %w", err)
+	}
+
+	trimmed := strings.TrimSpace(string(output))
+	if trimmed == "" {
+		return nil, nil
+	}
+
+	var protoFiles []string
+	for _, line := range strings.Split(trimmed, "\n") {
+		if filepath.Ext(line) == ".proto" {
+			protoFiles = append(protoFiles, line)
+		}
+	}
+
+	return protoFiles, nil
 }

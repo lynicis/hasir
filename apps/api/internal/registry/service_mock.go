@@ -188,18 +188,18 @@ func (mr *MockServiceMockRecorder) GetRepository(ctx, req any) *gomock.Call {
 }
 
 // HasProtoFiles mocks base method.
-func (m *MockService) HasProtoFiles(ctx context.Context, repoPath string) (bool, error) {
+func (m *MockService) HasProtoFiles(ctx context.Context, repoPath, commitHash string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "HasProtoFiles", ctx, repoPath)
+	ret := m.ctrl.Call(m, "HasProtoFiles", ctx, repoPath, commitHash)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // HasProtoFiles indicates an expected call of HasProtoFiles.
-func (mr *MockServiceMockRecorder) HasProtoFiles(ctx, repoPath any) *gomock.Call {
+func (mr *MockServiceMockRecorder) HasProtoFiles(ctx, repoPath, commitHash any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasProtoFiles", reflect.TypeOf((*MockService)(nil).HasProtoFiles), ctx, repoPath)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasProtoFiles", reflect.TypeOf((*MockService)(nil).HasProtoFiles), ctx, repoPath, commitHash)
 }
 
 // ProcessSdkTrigger mocks base method.

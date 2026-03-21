@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -618,4 +619,107 @@ func TestDocumentationGenerator_Generate_ProtocError(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, output)
 	assert.Contains(t, err.Error(), "protoc failed")
+}
+
+func initBareRepoWithFiles(t *testing.T, files map[string]string) string {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+	workDir := filepath.Join(tmpDir, "work")
+	bareDir := filepath.Join(tmpDir, "bare")
+
+	require.NoError(t, os.MkdirAll(workDir, 0o750))
+
+	cmds := [][]string{
+		{"git", "init", workDir},
+		{"git", "-C", workDir, "config", "user.email", "test@test.com"},
+		{"git", "-C", workDir, "config", "user.name", "Test"},
+		{"git", "-C", workDir, "config", "commit.gpgsign", "false"},
+	}
+
+	for _, args := range cmds {
+		cmd := exec.Command(args[0], args[1:]...)
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "command %v failed: %s", args, string(out))
+	}
+
+	for path, content := range files {
+		fullPath := filepath.Join(workDir, path)
+		require.NoError(t, os.MkdirAll(filepath.Dir(fullPath), 0o750))
+		require.NoError(t, os.WriteFile(fullPath, []byte(content), 0o644))
+	}
+
+	commitCmds := [][]string{
+		{"git", "-C", workDir, "add", "."},
+		{"git", "-C", workDir, "commit", "-m", "initial"},
+		{"git", "clone", "--bare", workDir, bareDir},
+	}
+
+	for _, args := range commitCmds {
+		cmd := exec.Command(args[0], args[1:]...)
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "command %v failed: %s", args, string(out))
+	}
+
+	return bareDir
+}
+
+func TestFindProtoFilesInBareRepo(t *testing.T) {
+	t.Run("finds proto files in bare repo", func(t *testing.T) {
+		bareDir := initBareRepoWithFiles(t, map[string]string{
+			"proto/organization/v1/organization.proto": "syntax = \"proto3\";",
+			"proto/user/v1/user.proto":                 "syntax = \"proto3\";",
+			"README.md":                                "# Test",
+		})
+
+		protoFiles, err := FindProtoFilesInBareRepo(bareDir, "HEAD")
+		require.NoError(t, err)
+		assert.Len(t, protoFiles, 2)
+		assert.Contains(t, protoFiles, "proto/organization/v1/organization.proto")
+		assert.Contains(t, protoFiles, "proto/user/v1/user.proto")
+	})
+
+	t.Run("returns empty when bare repo has no proto files", func(t *testing.T) {
+		bareDir := initBareRepoWithFiles(t, map[string]string{
+			"README.md": "# Test",
+			"main.go":   "package main",
+		})
+
+		protoFiles, err := FindProtoFilesInBareRepo(bareDir, "HEAD")
+		require.NoError(t, err)
+		assert.Empty(t, protoFiles)
+	})
+
+	t.Run("works with specific commit hash", func(t *testing.T) {
+		bareDir := initBareRepoWithFiles(t, map[string]string{
+			"proto/v1/api.proto": "syntax = \"proto3\";",
+		})
+
+		cmd := exec.Command("git", "rev-parse", "HEAD")
+		cmd.Dir = bareDir
+		out, err := cmd.Output()
+		require.NoError(t, err)
+		commitHash := string(out[:len(out)-1])
+
+		protoFiles, err := FindProtoFilesInBareRepo(bareDir, commitHash)
+		require.NoError(t, err)
+		assert.Len(t, protoFiles, 1)
+		assert.Contains(t, protoFiles, "proto/v1/api.proto")
+	})
+
+	t.Run("defaults to HEAD when commit hash is empty", func(t *testing.T) {
+		bareDir := initBareRepoWithFiles(t, map[string]string{
+			"service.proto": "syntax = \"proto3\";",
+		})
+
+		protoFiles, err := FindProtoFilesInBareRepo(bareDir, "")
+		require.NoError(t, err)
+		assert.Len(t, protoFiles, 1)
+		assert.Contains(t, protoFiles, "service.proto")
+	})
+
+	t.Run("error on invalid repo path", func(t *testing.T) {
+		_, err := FindProtoFilesInBareRepo("/nonexistent/repo", "HEAD")
+		require.Error(t, err)
+	})
 }
