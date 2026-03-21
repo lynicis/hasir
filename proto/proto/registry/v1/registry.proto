@@ -29,6 +29,7 @@ message Repository {
   string organization_id = 3;
   shared.Visibility visibility = 4;
   repeated SdkPreference sdk_preferences = 5;
+  bool managed_by_buf = 6;
 }
 
 message CreateRepositoryRequest {
