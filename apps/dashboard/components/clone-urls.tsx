@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, HelpCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 import {
   DropdownMenu,
@@ -44,40 +45,51 @@ export function CloneUrls({ repositoryId }: CloneUrlsProps) {
   };
 
   return (
-    <div className="flex w-full max-w-lg items-center gap-2">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-[80px]">
-            {protocol}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem onClick={() => setProtocol("HTTPS")}>
-            HTTPS
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setProtocol("SSH")}>
-            SSH
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+    <div className="flex w-full max-w-lg flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-[80px]">
+              {protocol}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => setProtocol("HTTPS")}>
+              HTTPS
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setProtocol("SSH")}>
+              SSH
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-      <div className="relative flex-1">
-        <Input
-          readOnly
-          value={url}
-          className="pr-20 font-mono text-sm"
-          onClick={(e) => e.currentTarget.select()}
-        />
-        <Button
-          size="icon"
-          variant="ghost"
-          className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:text-foreground"
-          onClick={handleCopy}
-          aria-label="Copy to clipboard"
-        >
-          {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-        </Button>
+        <div className="relative flex-1">
+          <Input
+            readOnly
+            value={url}
+            className="pr-20 font-mono text-sm"
+            onClick={(e) => e.currentTarget.select()}
+          />
+          <Button
+            size="icon"
+            variant="ghost"
+            className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:text-foreground"
+            onClick={handleCopy}
+            aria-label="Copy to clipboard"
+          >
+            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+          </Button>
+        </div>
       </div>
+      {protocol === "SSH" && (
+        <Link
+          href="/docs/ssh-configuration"
+          className="flex items-center gap-1 self-end text-xs text-muted-foreground transition-colors hover:text-primary"
+        >
+          <HelpCircle className="size-3" />
+          <span>How to configure SSH?</span>
+        </Link>
+      )}
     </div>
   );
 }

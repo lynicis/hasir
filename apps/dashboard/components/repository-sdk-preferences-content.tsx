@@ -335,7 +335,6 @@ export default function RepositorySdkPreferencesContent() {
                 <Switch
                   checked={config[langKey]?.enabled || false}
                   onCheckedChange={() => handleLanguageToggle(langKey)}
-                  disabled={isLoading || isSaving}
                 />
               </CardTitle>
               <CardDescription>{langConfig.description}</CardDescription>
@@ -349,9 +348,8 @@ export default function RepositorySdkPreferencesContent() {
                   >
                     <Label
                       htmlFor={option.htmlId}
-                      className={`text-sm ${
-                        !config[langKey]?.enabled ? "text-muted-foreground" : ""
-                      }`}
+                      className={`text-sm ${!config[langKey]?.enabled ? "text-muted-foreground" : ""
+                        }`}
                     >
                       {option.label}
                     </Label>
@@ -364,7 +362,9 @@ export default function RepositorySdkPreferencesContent() {
                         handleSubOptionToggle(langKey, option.key)
                       }
                       disabled={
-                        !config[langKey]?.enabled || isLoading || isSaving
+                        !config[langKey]?.enabled ||
+                        isLoading ||
+                        isSaving
                       }
                     />
                   </div>
@@ -373,19 +373,6 @@ export default function RepositorySdkPreferencesContent() {
             </CardContent>
           </Card>
         ))}
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Button
-          onClick={handleSave}
-          isLoading={isSaving}
-          disabled={isSaving || !hasChanges}
-        >
-          Save Configuration
-        </Button>
-        <Button variant="outline" onClick={handleReset} disabled={isSaving}>
-          Reset to Defaults
-        </Button>
       </div>
 
       {repository && (

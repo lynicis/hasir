@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 
 import { OrganizationDialogForm } from "@/components/organization-dialog-form";
+import { reverseVisibilityMapper } from "@/lib/visibility-mapper";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRegistryStore } from "@/stores/registry-store";
 import { Pagination } from "@/components/ui/pagination";
@@ -238,17 +239,33 @@ export function Dashboard() {
                     No repositories found
                   </div>
                 ) : (
-                  repositoriesList.map((repo) => (
-                    <Link
-                      href={`/repository/${repo.id}`}
-                      key={repo.id}
-                      className="hover:bg-accent/60 flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 text-sm transition-colors"
-                    >
-                      <div className="flex flex-col">
-                        <span className="font-medium">{repo.name}</span>
-                      </div>
-                    </Link>
-                  ))
+                  repositoriesList.map((repo) => {
+                    const visibility = reverseVisibilityMapper.get(
+                      repo.visibility,
+                    );
+                    return (
+                      <Link
+                        href={`/repository/${repo.id}`}
+                        key={repo.id}
+                        className="hover:bg-accent/60 flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 text-sm transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{repo.name}</span>
+                          {visibility && (
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded-full ${
+                                visibility === "public"
+                                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                  : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                              }`}
+                            >
+                              {visibility}
+                            </span>
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })
                 )}
               </div>
             </div>

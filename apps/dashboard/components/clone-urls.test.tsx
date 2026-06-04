@@ -18,6 +18,7 @@ describe("CloneUrls", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.NEXT_PUBLIC_API_URL;
 
     if (!navigator.clipboard) {
       Object.defineProperty(navigator, "clipboard", {
@@ -96,5 +97,40 @@ describe("CloneUrls", () => {
     );
 
     process.env.NEXT_PUBLIC_API_URL = originalEnv;
+  });
+
+  it("does not show SSH guide link when HTTPS is selected", () => {
+    render(<CloneUrls {...defaultProps} />);
+
+    const link = screen.queryByRole("link", { name: /how to configure ssh/i });
+    expect(link).not.toBeInTheDocument();
+  });
+
+  it("shows SSH guide link when SSH protocol is selected", async () => {
+    const user = userEvent.setup();
+    render(<CloneUrls {...defaultProps} />);
+
+    const trigger = screen.getByRole("button", { name: "HTTPS" });
+    await user.click(trigger);
+
+    const sshOption = await screen.findByRole("menuitem", { name: "SSH" });
+    await user.click(sshOption);
+
+    const link = screen.getByRole("link", { name: /how to configure ssh/i });
+    expect(link).toBeInTheDocument();
+  });
+
+  it("SSH guide link points to /docs/ssh-configuration", async () => {
+    const user = userEvent.setup();
+    render(<CloneUrls {...defaultProps} />);
+
+    const trigger = screen.getByRole("button", { name: "HTTPS" });
+    await user.click(trigger);
+
+    const sshOption = await screen.findByRole("menuitem", { name: "SSH" });
+    await user.click(sshOption);
+
+    const link = screen.getByRole("link", { name: /how to configure ssh/i });
+    expect(link).toHaveAttribute("href", "/docs/ssh-configuration");
   });
 });

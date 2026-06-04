@@ -51,6 +51,7 @@ const mockRepository: Repository = {
   sdkPreferences: [],
   organizationId: "org-123",
   visibility: 1,
+  managedByBuf: false,
   createdAt: undefined,
   updatedAt: undefined,
 } as Repository;
@@ -367,5 +368,119 @@ describe("RepositorySdkPreferencesContent", () => {
     await user.click(resetButton);
 
     expect(saveButton).not.toBeDisabled();
+  });
+
+  describe("when repository is managed by Buf", () => {
+    const managedRepository: Repository = {
+      ...mockRepository,
+      managedByBuf: true,
+    } as Repository;
+
+    const managedContextValue = {
+      repository: managedRepository,
+      isLoading: false,
+      error: null,
+    };
+
+    it("shows the managed by Buf alert banner", () => {
+      render(
+        <RepositoryContext.Provider value={managedContextValue}>
+          <RepositorySdkPreferencesContent />
+        </RepositoryContext.Provider>,
+        { wrapper }
+      );
+
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(screen.getByText("Managed by Buf")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /sdk generation preferences are configured externally and cannot be modified here/i
+        )
+      ).toBeInTheDocument();
+    });
+
+    it("disables all language toggle switches", () => {
+      render(
+        <RepositoryContext.Provider value={managedContextValue}>
+          <RepositorySdkPreferencesContent />
+        </RepositoryContext.Provider>,
+        { wrapper }
+      );
+
+      const switches = screen.getAllByRole("switch");
+
+      for (const switchEl of switches) {
+        expect(switchEl).toBeDisabled();
+      }
+    });
+
+    it("does not render Save Configuration or Reset to Defaults buttons", () => {
+      render(
+        <RepositoryContext.Provider value={managedContextValue}>
+          <RepositorySdkPreferencesContent />
+        </RepositoryContext.Provider>,
+        { wrapper }
+      );
+
+      expect(
+        screen.queryByRole("button", { name: /save configuration/i })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /reset to defaults/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it("still renders the Download SDK section", () => {
+      render(
+        <RepositoryContext.Provider value={managedContextValue}>
+          <RepositorySdkPreferencesContent />
+        </RepositoryContext.Provider>,
+        { wrapper }
+      );
+
+      expect(screen.getByText("Download SDK")).toBeInTheDocument();
+    });
+
+    it("displays existing SDK preferences as read-only", () => {
+      const managedWithPreferences: Repository = {
+        ...mockRepository,
+        managedByBuf: true,
+        sdkPreferences: [
+          { sdk: SDK.SDK_GO_PROTOBUF, status: true },
+          { sdk: SDK.SDK_GO_CONNECTRPC, status: true },
+        ],
+      } as Repository;
+
+      render(
+        <RepositoryContext.Provider
+          value={{
+            repository: managedWithPreferences,
+            isLoading: false,
+            error: null,
+          }}
+        >
+          <RepositorySdkPreferencesContent />
+        </RepositoryContext.Provider>,
+        { wrapper }
+      );
+
+      const switches = screen.getAllByRole("switch");
+      const goSwitch = switches[0];
+
+      expect(goSwitch).toBeChecked();
+      expect(goSwitch).toBeDisabled();
+    });
+
+    it("does not show alert banner when managedByBuf is false", () => {
+      render(
+        <RepositoryContext.Provider value={contextValue}>
+          <RepositorySdkPreferencesContent />
+        </RepositoryContext.Provider>,
+        { wrapper }
+      );
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByText("Managed by Buf")).not.toBeInTheDocument();
+    });
   });
 });

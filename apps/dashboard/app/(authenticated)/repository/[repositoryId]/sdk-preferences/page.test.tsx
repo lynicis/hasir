@@ -19,6 +19,7 @@ const mockRepositoryData = {
   organizationId: "test-org-id",
   visibility: 0,
   sdkPreferences: [],
+  managedByBuf: false,
   $typeName: "registry.v1.Repository" as const,
 };
 
