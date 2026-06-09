@@ -165,3 +165,21 @@ func TestBufGoGrpcGenerator(t *testing.T) {
 	assert.Equal(t, SdkGoGrpc, g.SDK())
 	assert.Equal(t, "go-grpc", g.DirName())
 }
+
+func TestBufJsBufbuildEsGenerator(t *testing.T) {
+	g := NewBufJsBufbuildEsGenerator(NewMockCommandRunner())
+	assert.Equal(t, SdkJsBufbuildEs, g.SDK())
+	assert.Equal(t, "js-bufbuild-es", g.DirName())
+}
+
+func TestBufJsProtobufGenerator(t *testing.T) {
+	g := NewBufJsProtobufGenerator(NewMockCommandRunner())
+	assert.Equal(t, SdkJsProtobuf, g.SDK())
+	assert.Equal(t, "js-protobuf", g.DirName())
+}
+
+func TestBufJsConnectRpcGenerator(t *testing.T) {
+	g := NewBufJsConnectRpcGenerator(NewMockCommandRunner())
+	assert.Equal(t, SdkJsConnectrpc, g.SDK())
+	assert.Equal(t, "js-connectrpc", g.DirName())
+}
