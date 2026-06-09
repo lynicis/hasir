@@ -109,3 +109,41 @@ func GenerateBufYaml(dir string, modules []string) error {
 	// #nosec G306 -- buf.yaml needs to be readable by buf CLI
 	return os.WriteFile(filepath.Join(dir, "buf.yaml"), []byte(sb.String()), 0o644)
 }
+
+type BufGenPlugin struct {
+	Remote string
+	Out    string
+	Opt    string
+	Opts   []string
+}
+
+func GenerateBufGenYaml(dir string, plugins []BufGenPlugin) error {
+	var sb strings.Builder
+	sb.WriteString("version: v2\n")
+	sb.WriteString("managed:\n")
+	sb.WriteString("  enabled: true\n")
+	sb.WriteString("  disable:\n")
+	sb.WriteString("    - file_option: go_package\n")
+	sb.WriteString("      module: buf.build/bufbuild/protovalidate\n")
+	sb.WriteString("plugins:\n")
+
+	for _, plugin := range plugins {
+		sb.WriteString("  - remote: " + plugin.Remote + "\n")
+		sb.WriteString("    out: " + plugin.Out + "\n")
+
+		opts := plugin.Opts
+		if plugin.Opt != "" && len(opts) == 0 {
+			opts = []string{plugin.Opt}
+		}
+
+		if len(opts) > 0 {
+			sb.WriteString("    opt:\n")
+			for _, opt := range opts {
+				sb.WriteString("      - " + opt + "\n")
+			}
+		}
+	}
+
+	// #nosec G306 -- buf.gen.yaml needs to be readable by buf CLI
+	return os.WriteFile(filepath.Join(dir, "buf.gen.yaml"), []byte(sb.String()), 0o644)
+}

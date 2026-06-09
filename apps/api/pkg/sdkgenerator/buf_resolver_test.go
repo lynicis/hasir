@@ -230,3 +230,83 @@ func TestGenerateBufYaml_ExistingFile(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(content), "buf.build/protocolbuffers/wellknowntypes")
 }
+
+func TestGenerateBufGenYaml_GoProtobuf(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	plugins := []BufGenPlugin{
+		{Remote: "buf.build/protocolbuffers/go", Out: ".", Opt: "paths=source_relative"},
+	}
+
+	err := GenerateBufGenYaml(tmpDir, plugins)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
+	require.NoError(t, err)
+
+	expected := `version: v2
+managed:
+  enabled: true
+  disable:
+    - file_option: go_package
+      module: buf.build/bufbuild/protovalidate
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: .
+    opt:
+      - paths=source_relative
+`
+	assert.Equal(t, expected, string(content))
+}
+
+func TestGenerateBufGenYaml_GoConnectRpc(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	plugins := []BufGenPlugin{
+		{Remote: "buf.build/protocolbuffers/go", Out: ".", Opt: "paths=source_relative"},
+		{Remote: "buf.build/connectrpc/go", Out: ".", Opt: "paths=source_relative"},
+	}
+
+	err := GenerateBufGenYaml(tmpDir, plugins)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
+	require.NoError(t, err)
+
+	assert.Contains(t, string(content), "buf.build/protocolbuffers/go")
+	assert.Contains(t, string(content), "buf.build/connectrpc/go")
+}
+
+func TestGenerateBufGenYaml_JsEs(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	plugins := []BufGenPlugin{
+		{Remote: "buf.build/bufbuild/es", Out: ".", Opt: "target=ts"},
+	}
+
+	err := GenerateBufGenYaml(tmpDir, plugins)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
+	require.NoError(t, err)
+
+	assert.Contains(t, string(content), "buf.build/bufbuild/es")
+	assert.Contains(t, string(content), "target=ts")
+}
+
+func TestGenerateBufGenYaml_MultipleOpts(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	plugins := []BufGenPlugin{
+		{Remote: "buf.build/protocolbuffers/js", Out: ".", Opts: []string{"import_style=commonjs", "binary"}},
+	}
+
+	err := GenerateBufGenYaml(tmpDir, plugins)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
+	require.NoError(t, err)
+
+	assert.Contains(t, string(content), "import_style=commonjs")
+	assert.Contains(t, string(content), "binary")
+}
