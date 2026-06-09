@@ -3,8 +3,8 @@ module hasir-api
 go 1.26
 
 require (
-	buf.build/gen/go/hasir/hasir/connectrpc/go v1.20.0-20260321093945-f14824ccdbf6.1
-	buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20260321093945-f14824ccdbf6.1
+	buf.build/gen/go/hasir/hasir/connectrpc/go v1.20.0-20260604170842-91f895a9e4c4.1
+	buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20260604170842-91f895a9e4c4.1
 	connectrpc.com/connect v1.20.0
 	github.com/exaring/otelpgx v0.11.1
 	github.com/gliderlabs/ssh v0.3.8
@@ -26,8 +26,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.44.0
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.28.0
-	golang.org/x/crypto v0.52.0
-	golang.org/x/sync v0.20.0
+	golang.org/x/crypto v0.53.0
+	golang.org/x/sync v0.21.0
 	google.golang.org/protobuf v1.36.11
 )
 
@@ -109,7 +109,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
 	google.golang.org/grpc v1.81.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
@@ -125,7 +125,7 @@ require (
 	github.com/google/cel-go v0.28.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.38.0 // indirect
 	golang.org/x/exp v0.0.0-20260603202125-055de637280b // indirect
-	golang.org/x/text v0.37.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
+	golang.org/x/text v0.38.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260608224507-4308a22a1bab // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260608224507-4308a22a1bab // indirect
 )
