@@ -15,6 +15,7 @@ type RepositoryDTO struct {
 	OrganizationId string           `db:"organization_id"`
 	Path           string           `db:"path"`
 	Visibility     proto.Visibility `db:"visibility"`
+	ManagedByBuf   bool             `db:"managed_by_buf"`
 	CreatedAt      time.Time        `db:"created_at"`
 	UpdatedAt      *time.Time       `db:"updated_at"`
 	DeletedAt      *time.Time       `db:"deleted_at"`
