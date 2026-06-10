@@ -38,6 +38,7 @@ message CreateRepositoryRequest {
   shared.Visibility visibility = 3 [(buf.validate.field).enum = {
     not_in: [0]
   }];
+  bool managed_by_buf = 4;
 }
 
 message GetRepositoriesRequest {
@@ -71,6 +72,7 @@ message UpdateRepositoryRequest {
   string id = 1 [(buf.validate.field).required = true];
   string name = 2 [(buf.validate.field).required = true];
   shared.Visibility visibility = 3 [(buf.validate.field).required = true];
+  bool managed_by_buf = 4;
 }
 
 message GetCommitsRequest {
