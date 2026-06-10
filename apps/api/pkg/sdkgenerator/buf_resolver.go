@@ -30,6 +30,7 @@ func ParseProtoImportsFromFiles(repoPath string, protoFiles []string) ([]string,
 
 	for _, protoFile := range protoFiles {
 		fullPath := filepath.Join(repoPath, protoFile)
+		// #nosec G304 -- repoPath is from config, protoFile validated by Validate() which checks path traversal
 		content, err := os.ReadFile(fullPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read proto file %s: %w", protoFile, err)
