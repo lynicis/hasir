@@ -253,6 +253,7 @@ describe("RepositorySettingsForm", () => {
         expect(mockOnSubmit.mock.calls[0][0]).toEqual({
           name: "test-repository",
           visibility: "private",
+          managedByBuf: false,
         });
       });
     });
@@ -282,6 +283,7 @@ describe("RepositorySettingsForm", () => {
         expect(mockOnSubmit.mock.calls[0][0]).toEqual({
           name: "test-repo",
           visibility: "public",
+          managedByBuf: false,
         });
       });
     });
@@ -307,6 +309,7 @@ describe("RepositorySettingsForm", () => {
         expect(mockOnSubmit.mock.calls[0][0]).toEqual({
           name: "existing-repo",
           visibility: "private",
+          managedByBuf: false,
         });
       });
     });
@@ -499,6 +502,64 @@ describe("RepositorySettingsForm", () => {
         expect(mockOnSubmit.mock.calls[0][0]).toEqual({
           name: "test-repo",
           visibility: "private",
+          managedByBuf: false,
+        });
+      });
+    });
+  });
+
+  describe("managedByBuf", () => {
+    it("renders the managed by Buf switch", () => {
+      render(<RepositorySettingsForm {...defaultProps} />);
+
+      expect(
+        screen.getByRole("switch", { name: /managed by buf/i })
+      ).toBeInTheDocument();
+    });
+
+    it("submits managedByBuf as false when not toggled", async () => {
+      const user = userEvent.setup();
+      mockOnSubmit.mockResolvedValue(undefined);
+
+      render(<RepositorySettingsForm {...defaultProps} />);
+
+      await user.type(screen.getByLabelText("Repository Name"), "test-repo");
+
+      const submitButton = screen.getByRole("button", { name: /save changes/i });
+      await user.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockOnSubmit).toHaveBeenCalled();
+        expect(mockOnSubmit.mock.calls[0][0]).toEqual({
+          name: "test-repo",
+          visibility: "private",
+          managedByBuf: false,
+        });
+      });
+    });
+
+    it("submits managedByBuf as true when toggled", async () => {
+      const user = userEvent.setup();
+      mockOnSubmit.mockResolvedValue(undefined);
+
+      render(<RepositorySettingsForm {...defaultProps} />);
+
+      await user.type(screen.getByLabelText("Repository Name"), "buf-repo");
+
+      const managedByBufSwitch = screen.getByRole("switch", {
+        name: /managed by buf/i,
+      });
+      await user.click(managedByBufSwitch);
+
+      const submitButton = screen.getByRole("button", { name: /save changes/i });
+      await user.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockOnSubmit).toHaveBeenCalled();
+        expect(mockOnSubmit.mock.calls[0][0]).toEqual({
+          name: "buf-repo",
+          visibility: "private",
+          managedByBuf: true,
         });
       });
     });
@@ -510,6 +571,9 @@ describe("RepositorySettingsForm", () => {
 
       expect(screen.getByLabelText("Repository Name")).toBeInTheDocument();
       expect(screen.getByLabelText("Visibility")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Managed by Buf")
+      ).toBeInTheDocument();
     });
 
     it("has proper form structure", () => {
@@ -583,6 +647,7 @@ describe("RepositorySettingsForm", () => {
         expect(mockOnSubmit.mock.calls[0][0]).toEqual({
           name: maxLengthName,
           visibility: "private",
+          managedByBuf: false,
         });
       });
     });

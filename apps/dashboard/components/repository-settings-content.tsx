@@ -56,6 +56,7 @@ export default function RepositorySettingsContent() {
       name: repositoryData.name,
       visibility:
         reverseVisibilityMapper.get(repositoryData.visibility) || "private",
+      managedByBuf: repositoryData.managedByBuf,
     };
   }, [repositoryData]);
 
@@ -80,6 +81,7 @@ export default function RepositorySettingsContent() {
   const handleFormSubmit = async (data: {
     name: string;
     visibility: "private" | "public";
+    managedByBuf?: boolean;
     description?: string;
   }) => {
     try {
@@ -88,6 +90,7 @@ export default function RepositorySettingsContent() {
         id: repositoryId,
         name: data.name,
         visibility: visibilityMapper.get(data.visibility) || Visibility.PRIVATE,
+        managedByBuf: data.managedByBuf ?? false,
       });
       toast.success("Repository settings updated successfully");
       invalidateRepositories();
@@ -152,6 +155,7 @@ export default function RepositorySettingsContent() {
         initialData={{
           name: repository?.name || "",
           visibility: repository?.visibility || "private",
+          managedByBuf: repository?.managedByBuf ?? false,
         }}
         onSubmit={handleFormSubmit}
         isLoading={isLoading || isSubmitting}

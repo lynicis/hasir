@@ -150,6 +150,7 @@ describe("RepositoryDialogForm", () => {
         name: "awesome-repository-example",
         organizationId: "org-2",
         visibility: Visibility.PUBLIC,
+        managedByBuf: false,
       })
     );
 
@@ -194,6 +195,49 @@ describe("RepositoryDialogForm", () => {
         name: "secret-repository",
         organizationId: "org-3",
         visibility: Visibility.PRIVATE,
+        managedByBuf: false,
+      })
+    );
+  });
+
+  it("creates a repository with managedByBuf enabled when switch is toggled", async () => {
+    const user = userEvent.setup();
+
+    setup(true);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: /create repository/i })
+      ).toBeInTheDocument()
+    );
+
+    const organizationSelect = screen.getByRole("combobox", {
+      name: /organization/i,
+    });
+    await user.click(organizationSelect);
+
+    await waitFor(() => {
+      const options = screen.getAllByText("Acme Corp");
+      return options.length > 0;
+    });
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Enter}");
+
+    await user.type(screen.getByLabelText(/name/i), "buf-repo");
+
+    const managedByBufSwitch = screen.getByRole("switch", {
+      name: /use buf cli/i,
+    });
+    await user.click(managedByBufSwitch);
+
+    await user.click(screen.getByRole("button", { name: /create/i }));
+
+    await waitFor(() =>
+      expect(mockCreateRepository).toHaveBeenCalledWith({
+        name: "buf-repo",
+        organizationId: "org-2",
+        visibility: Visibility.PUBLIC,
+        managedByBuf: true,
       })
     );
   });

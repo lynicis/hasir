@@ -367,7 +367,7 @@ describe("RepositorySdkPreferencesContent", () => {
     });
     await user.click(resetButton);
 
-    expect(saveButton).not.toBeDisabled();
+    expect(saveButton).toBeDisabled();
   });
 
   describe("when repository is managed by Buf", () => {

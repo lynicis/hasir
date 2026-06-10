@@ -9,6 +9,7 @@ export interface OrganizationRepository {
   id: string;
   name: string;
   visibility: "public" | "private";
+  managedByBuf?: boolean;
 }
 
 interface RepositoryItemProps {

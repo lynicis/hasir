@@ -1,11 +1,11 @@
 "use client";
 
 import { getRecentCommit } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
-import { SDK } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { RegistryService, SDK } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@connectrpc/connect-query";
+import { AlertTriangle, Wrench } from "lucide-react";
 import { useParams } from "next/navigation";
-import { Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -15,12 +15,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 import { RepositoryContext } from "@/lib/repository-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SdkUrls } from "@/components/sdk-urls";
 import { Switch } from "@/components/ui/switch";
 import { customRetry } from "@/lib/query-retry";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { useClient } from "@/lib/use-client";
 
 interface SdkOption {
   key: string;
@@ -127,9 +134,30 @@ const mapSdkPreferencesToConfig = (
   return config;
 };
 
+const configsAreEqual = (a: SdkConfig, b: SdkConfig): boolean => {
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+
+  for (const key of keys) {
+    const aObj = a[key];
+    const bObj = b[key];
+    if (!bObj) return false;
+
+    const objKeys = Object.keys(aObj);
+    if (objKeys.length !== Object.keys(bObj).length) return false;
+
+    for (const objKey of objKeys) {
+      if (aObj[objKey] !== bObj[objKey]) return false;
+    }
+  }
+
+  return true;
+};
+
 export default function RepositorySdkPreferencesContent() {
   const params = useParams();
   const repositoryId = params.repositoryId as string;
+  const registryApiClient = useClient(RegistryService);
   const context = useContext(RepositoryContext);
 
   if (!context) {
@@ -137,6 +165,7 @@ export default function RepositorySdkPreferencesContent() {
   }
 
   const { repository, isLoading, error } = context;
+  const isManagedByBuf = repository?.managedByBuf ?? false;
 
   const { data: recentCommit } = useQuery(
     getRecentCommit,
@@ -154,13 +183,17 @@ export default function RepositorySdkPreferencesContent() {
   }, [repository]);
 
   const [config, setConfig] = useState<SdkConfig>(serverConfig);
-  const [prevServerConfig, setPrevServerConfig] = useState(serverConfig);
-  
+  const [isSaving, setIsSaving] = useState(false);
+  const syncedRef = useRef(serverConfig);
 
-  if (serverConfig !== prevServerConfig) {
-    setPrevServerConfig(serverConfig);
-    setConfig(serverConfig);
+  if (serverConfig !== syncedRef.current) {
+    syncedRef.current = serverConfig;
+    if (!isSaving) {
+      setConfig(serverConfig);
+    }
   }
+
+  const hasChanges = useMemo(() => !configsAreEqual(config, serverConfig), [config, serverConfig]);
 
   useEffect(() => {
     if (error && !repository) {
@@ -169,6 +202,7 @@ export default function RepositorySdkPreferencesContent() {
   }, [error, repository]);
 
   const handleLanguageToggle = (language: string) => {
+    if (isManagedByBuf) return;
     setConfig((prev) => ({
       ...prev,
       [language]: {
@@ -184,6 +218,7 @@ export default function RepositorySdkPreferencesContent() {
   };
 
   const handleSubOptionToggle = (language: string, option: string) => {
+    if (isManagedByBuf) return;
     setConfig((prev) => {
       const currentValue = (prev[language] as Record<string, boolean>)[option];
       const newValue = !currentValue;
@@ -198,6 +233,38 @@ export default function RepositorySdkPreferencesContent() {
       };
     });
   };
+
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+
+      const sdkPreferences: Array<{ sdk: SDK; status: boolean }> = [];
+      Object.entries(SDK_LANGUAGES).forEach(([langKey, langConfig]) => {
+        langConfig.options.forEach((option) => {
+          const isEnabled = (config[langKey]?.[option.key] as boolean) ?? false;
+          sdkPreferences.push({ sdk: option.sdkValue, status: isEnabled });
+        });
+      });
+
+      await registryApiClient.updateSdkPreferences({
+        id: repositoryId,
+        sdkPreferences,
+      });
+
+      setConfig(serverConfig);
+      toast.success("SDK preferences saved successfully");
+    } catch {
+      toast.error("Failed to save SDK preferences");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setConfig(serverConfig);
+  };
+
+  const isSubmitting = isLoading || isSaving;
 
   if (isLoading) {
     return (
@@ -245,6 +312,18 @@ export default function RepositorySdkPreferencesContent() {
         </p>
       </div>
 
+      {isManagedByBuf && (
+        <Alert role="alert">
+          <AlertTriangle className="size-4" />
+          <AlertTitle>Managed by Buf</AlertTitle>
+          <AlertDescription>
+            SDK generation preferences are configured externally and cannot be
+            modified here. Use the Buf Schema Registry to configure SDK
+            generation for this repository.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {Object.entries(SDK_LANGUAGES).map(([langKey, langConfig]) => (
           <Card key={langKey}>
@@ -254,6 +333,7 @@ export default function RepositorySdkPreferencesContent() {
                 <Switch
                   checked={config[langKey]?.enabled || false}
                   onCheckedChange={() => handleLanguageToggle(langKey)}
+                  disabled={isManagedByBuf || isSubmitting}
                 />
               </CardTitle>
               <CardDescription>{langConfig.description}</CardDescription>
@@ -281,8 +361,9 @@ export default function RepositorySdkPreferencesContent() {
                         handleSubOptionToggle(langKey, option.key)
                       }
                       disabled={
+                        isManagedByBuf ||
                         !config[langKey]?.enabled ||
-                        isLoading
+                        isSubmitting
                       }
                     />
                   </div>
@@ -292,6 +373,27 @@ export default function RepositorySdkPreferencesContent() {
           </Card>
         ))}
       </div>
+
+      {!isManagedByBuf && (
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={!hasChanges || isSaving}
+            isLoading={isSaving}
+          >
+            Save Configuration
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleReset}
+            disabled={!hasChanges || isSaving}
+          >
+            Reset to Defaults
+          </Button>
+        </div>
+      )}
 
       {repository && (
         <Card>

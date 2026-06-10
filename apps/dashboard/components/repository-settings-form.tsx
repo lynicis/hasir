@@ -27,6 +27,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -40,6 +41,7 @@ const schema = z.object({
       "Repository name can only contain letters, numbers, hyphens and underscores"
     ),
   visibility: z.enum(["private", "public"]),
+  managedByBuf: z.boolean(),
 });
 
 type RepositorySettingsFormData = z.infer<typeof schema>;
@@ -61,6 +63,7 @@ export function RepositorySettingsForm({
       defaultValues: {
         name: initialData?.name || "",
         visibility: initialData?.visibility || "private",
+        managedByBuf: initialData?.managedByBuf ?? false,
       },
     });
 
@@ -69,6 +72,7 @@ export function RepositorySettingsForm({
       reset({
         name: initialData.name || "",
         visibility: initialData.visibility || "private",
+        managedByBuf: initialData.managedByBuf ?? false,
       });
     }
   }, [initialData, reset]);
@@ -137,6 +141,30 @@ export function RepositorySettingsForm({
               )}
             />
           </FieldGroup>
+
+          <Controller
+            control={control}
+            name="managedByBuf"
+            render={({ field }) => (
+              <Field>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    id={field.name}
+                    disabled={isLoading || formState.isSubmitting}
+                  />
+                  <FieldLabel htmlFor={field.name}>
+                    Managed by Buf
+                  </FieldLabel>
+                </div>
+                <FieldDescription>
+                  When enabled, SDK generation uses Buf CLI instead of protoc.
+                  Proto imports are resolved from the Buf Schema Registry.
+                </FieldDescription>
+              </Field>
+            )}
+          />
 
           <div className="flex items-center gap-3">
             <Button

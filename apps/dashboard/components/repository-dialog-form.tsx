@@ -34,6 +34,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { visibilityMapper } from "@/lib/visibility-mapper";
 import { useRegistryStore } from "@/stores/registry-store";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { customRetry } from "@/lib/query-retry";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,7 @@ const repositorySchema = z.object({
   visibility: z.enum(["public", "private"], {
     error: "Please select a visibility.",
   }),
+  managedByBuf: z.boolean(),
 });
 
 export type RepositoryFormValues = z.infer<typeof repositorySchema>;
@@ -107,6 +109,7 @@ export function RepositoryDialogForm({
       name: "",
       organizationId: "",
       visibility: "public",
+      managedByBuf: false,
     },
   });
 
@@ -117,6 +120,7 @@ export function RepositoryDialogForm({
         organizationId: values.organizationId,
         visibility:
           visibilityMapper.get(values.visibility) || Visibility.PRIVATE,
+        managedByBuf: values.managedByBuf,
       });
 
       invalidateRepositories();
@@ -229,6 +233,30 @@ export function RepositoryDialogForm({
                   {fieldState.error && (
                     <FieldError errors={[fieldState.error]} />
                   )}
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="managedByBuf"
+              render={({ field }) => (
+                <Field>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <FieldLabel htmlFor={field.name}>
+                        Use Buf CLI
+                      </FieldLabel>
+                      <p className="text-muted-foreground text-xs">
+                        Generate SDKs via Buf Schema Registry instead of protoc
+                      </p>
+                    </div>
+                    <Switch
+                      id={field.name}
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isSubmitting}
+                    />
+                  </div>
                 </Field>
               )}
             />
