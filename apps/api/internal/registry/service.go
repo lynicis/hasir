@@ -23,6 +23,7 @@ import (
 	"hasir-api/pkg/authorization"
 	"hasir-api/pkg/config"
 	"hasir-api/pkg/proto"
+	"hasir-api/pkg/sanitize"
 	"hasir-api/pkg/sdkgenerator"
 )
 
@@ -83,7 +84,7 @@ func (s *service) CreateRepository(
 	ctx context.Context,
 	req *registryv1.CreateRepositoryRequest,
 ) error {
-	repoName := req.GetName()
+	repoName := sanitize.EscapeHTML(req.GetName())
 	organizationId := req.GetOrganizationId()
 
 	visibility, ok := proto.VisibilityMap[req.GetVisibility()]
@@ -308,7 +309,7 @@ func (s *service) UpdateRepository(
 		return err
 	}
 
-	repo.Name = req.GetName()
+	repo.Name = sanitize.EscapeHTML(req.GetName())
 	repo.Visibility = proto.VisibilityMap[req.GetVisibility()]
 	repo.ManagedByBuf = req.GetManagedByBuf()
 
