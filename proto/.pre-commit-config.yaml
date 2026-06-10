@@ -6,7 +6,10 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
         files: "\\.ya?ml$"
-
+  - repo: https://github.com/lynicis/actup
+    rev: v0.5.1
+    hooks:
+      - id: actup-check
   - repo: local
     hooks:
       - id: buf-format
