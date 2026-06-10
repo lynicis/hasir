@@ -46,7 +46,7 @@ Each domain implements a layered architecture:
 
 ### Key Technologies
 
-- **Go 1.25.4**: Core programming language
+- **Go 1.26**: Core programming language
 - **Connect-RPC**: Modern RPC framework compatible with gRPC
 - **PostgreSQL**: Primary data store
 - **Protocol Buffers**: API definitions and serialization
@@ -58,7 +58,7 @@ Each domain implements a layered architecture:
 
 ### Prerequisites
 
-- Go 1.25.4 or higher
+- Go 1.26 or higher
 - PostgreSQL 14+
 - Make (optional, for convenience commands)
 

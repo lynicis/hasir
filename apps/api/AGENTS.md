@@ -155,7 +155,7 @@ zap.L().Info("message", zap.String("key", value), zap.Error(err))
 - **Table-driven tests** with subtests: `t.Run("case name", func(t *testing.T) { ... })`.
 - **gomock** for mocking: `gomock.NewController(t)`, `NewMock<Interface>(ctrl)`, `.EXPECT().Method(...).Return(...).Times(n)`.
 - **testify** for assertions: prefer `assert.NoError`, `assert.Equal`, `assert.Error`, `require.NoError`.
-- Use `t.Context()` for context in tests (Go 1.24+).
+- Use `t.Context()` for context in tests (Go 1.26+).
 - Mark test helpers with `t.Helper()`.
 - Tests live in the same package as the code they test (white-box testing).
 
