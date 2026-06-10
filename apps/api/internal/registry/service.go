@@ -189,6 +189,7 @@ func (s *service) GetRepository(
 		OrganizationId: repo.OrganizationId,
 		Visibility:     proto.ReverseVisibilityMap[repo.Visibility],
 		SdkPreferences: protoSdkPreferences,
+		ManagedByBuf:   repo.ManagedByBuf,
 	}, nil
 }
 
@@ -261,6 +262,7 @@ func (s *service) GetRepositories(
 			Name:           repository.Name,
 			Visibility:     proto.ReverseVisibilityMap[repository.Visibility],
 			SdkPreferences: protoSdkPreferences,
+			ManagedByBuf:   repository.ManagedByBuf,
 		})
 	}
 
