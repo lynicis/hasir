@@ -44,7 +44,11 @@ const repositorySchema = z.object({
   name: z
     .string()
     .min(1, { error: "Please enter a repository name." })
-    .max(100, { error: "Repository name must be at most 100 characters." }),
+    .max(100, { error: "Repository name must be at most 100 characters." })
+    .regex(/^[a-zA-Z0-9_-]+$/, {
+      error:
+        "Only letters, numbers, hyphens, and underscores allowed",
+    }),
   organizationId: z
     .string()
     .min(1, { error: "Please select an organization." }),

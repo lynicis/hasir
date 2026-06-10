@@ -44,7 +44,10 @@ const organizationSchema = z.object({
   name: z
     .string()
     .min(1, { error: "Please enter an organization name." })
-    .max(100, { error: "Organization name must be at most 100 characters." }),
+    .max(100, { error: "Organization name must be at most 100 characters." })
+    .regex(/^[a-zA-Z0-9 _.-]+$/, {
+      error: "Only letters, numbers, spaces, and basic punctuation allowed",
+    }),
   visibility: z.enum(["public", "private"], {
     error: "Please select a visibility.",
   }),

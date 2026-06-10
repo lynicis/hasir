@@ -4,6 +4,28 @@ import { NextResponse } from 'next/server';
 
 const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
 
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8080";
+
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set(
+    "Content-Security-Policy",
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob:",
+      "font-src 'self' data:",
+      `connect-src 'self' ${apiUrl} https: wss:`,
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+    ].join("; "),
+  );
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  return response;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -14,7 +36,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/api/auth') ||
     pathname.includes('.')
   ) {
-    return NextResponse.next();
+    return addSecurityHeaders(NextResponse.next());
   }
 
   const sessionCookie = request.cookies.get('hasir-session');
@@ -22,10 +44,10 @@ export async function proxy(request: NextRequest) {
   if (!sessionCookie) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+    return addSecurityHeaders(NextResponse.redirect(loginUrl));
   }
 
-  return NextResponse.next();
+  return addSecurityHeaders(NextResponse.next());
 }
 
 export const config = {

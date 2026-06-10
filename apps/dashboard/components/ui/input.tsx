@@ -66,7 +66,7 @@ function useMaskedPassword({
         if (event.type === "change") {
           onChange?.(event as React.ChangeEvent<HTMLInputElement>);
         } else if (event.type === "input") {
-          onInput?.(event as React.FormEvent<HTMLInputElement>);
+          onInput?.(event as React.InputEvent<HTMLInputElement>);
         }
       }
     },

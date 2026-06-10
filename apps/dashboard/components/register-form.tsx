@@ -32,7 +32,12 @@ const schema = z
   .object({
     username: z
       .string({ error: "Invalid username" })
-      .max(20, { error: "Username too long" }),
+      .min(1, { error: "Username is required" })
+      .max(20, { error: "Username too long" })
+      .regex(/^[a-zA-Z0-9_-]+$/, {
+        error:
+          "Only letters, numbers, hyphens, and underscores allowed",
+      }),
     email: z.email({ error: "Invalid email address" }),
     password: z
       .string()

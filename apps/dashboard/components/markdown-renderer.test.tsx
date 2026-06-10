@@ -116,19 +116,42 @@ const x = 1;
     });
   });
 
-  describe("HTML passthrough", () => {
-    it("renders raw HTML anchor tags", () => {
-      render(<MarkdownRenderer content='<a name="top"></a>' />);
+  describe("XSS sanitization", () => {
+    it("allows safe HTML through sanitizer", () => {
+      render(<MarkdownRenderer content="<b>bold text</b>" />);
 
-      const anchor = document.querySelector('a[name="top"]');
-      expect(anchor).toBeInTheDocument();
+      const bold = document.querySelector("b");
+      expect(bold).toBeInTheDocument();
+      expect(bold).toHaveTextContent("bold text");
     });
 
-    it("renders HTML with alignment", () => {
-      render(<MarkdownRenderer content='<p align="right">Aligned text</p>' />);
+    it("strips script tags", () => {
+      render(
+        <MarkdownRenderer content='<script>alert("xss")</script>Hello' />
+      );
 
-      const paragraph = screen.getByText("Aligned text");
-      expect(paragraph).toHaveAttribute("align", "right");
+      expect(screen.getByText("Hello")).toBeInTheDocument();
+      expect(
+        document.querySelector("script")
+      ).not.toBeInTheDocument();
+    });
+
+    it("strips onerror event handlers", () => {
+      render(
+        <MarkdownRenderer content='<img onerror="alert(1)" src=x />safe' />
+      );
+
+      expect(screen.getByText("safe")).toBeInTheDocument();
+    });
+
+    it("strips javascript: URLs", () => {
+      render(
+        <MarkdownRenderer content='<a href="javascript:alert(1)">click</a>' />
+      );
+
+      const link = document.querySelector("a");
+      expect(link).toBeInTheDocument();
+      expect(link).not.toHaveAttribute("href", "javascript:alert(1)");
     });
   });
 

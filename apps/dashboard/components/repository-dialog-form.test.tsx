@@ -258,7 +258,7 @@ describe("RepositoryDialogForm", () => {
     await user.keyboard("{ArrowDown}");
     await user.keyboard("{Enter}");
 
-    await user.type(screen.getByLabelText(/name/i), "bad name");
+    await user.type(screen.getByLabelText(/name/i), "bad-name");
     await user.click(screen.getByRole("button", { name: /create/i }));
 
     await waitFor(() =>
