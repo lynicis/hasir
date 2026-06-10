@@ -55,6 +55,7 @@ type service struct {
 	cfg          *config.Config
 	sdkPath      string
 	sdkRegistry  *sdkgenerator.Registry
+	bufRegistry  *sdkgenerator.Registry
 	docGenerator *sdkgenerator.DocumentationGenerator
 }
 
@@ -73,6 +74,7 @@ func NewService(repository Repository, orgRepo authorization.MemberRoleChecker, 
 		cfg:          cfg,
 		sdkPath:      sdkPath,
 		sdkRegistry:  sdkgenerator.NewRegistry(runner),
+		bufRegistry:  sdkgenerator.NewBufRegistry(runner),
 		docGenerator: sdkgenerator.NewDocumentationGenerator(runner),
 	}
 }
@@ -846,7 +848,12 @@ func (s *service) GenerateSDK(ctx context.Context, repositoryId, commitHash stri
 		}
 	}()
 
-	generator, err := s.sdkRegistry.Get(sdkgenerator.SDK(sdk))
+	registry := s.sdkRegistry
+	if repo.ManagedByBuf {
+		registry = s.bufRegistry
+	}
+
+	generator, err := registry.Get(sdkgenerator.SDK(sdk))
 	if err != nil {
 		return fmt.Errorf("unsupported SDK type: %s", sdk)
 	}
@@ -865,6 +872,7 @@ func (s *service) GenerateSDK(ctx context.Context, repositoryId, commitHash stri
 		zap.String("repositoryId", repositoryId),
 		zap.String("commitHash", commitHash),
 		zap.String("sdk", string(sdk)),
+		zap.Bool("managedByBuf", repo.ManagedByBuf),
 		zap.String("outputPath", output.OutputPath))
 
 	if err := s.installSdkDependencies(ctx, output.OutputPath, sdk, repo.OrganizationId, repositoryId); err != nil {
