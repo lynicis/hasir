@@ -73,10 +73,13 @@ type SshConfig struct {
 }
 
 type SdkGenerationConfig struct {
-	WorkerCount    int    `koanf:"workerCount"`
-	PollInterval   string `koanf:"pollInterval"`
-	OutputPath     string `koanf:"outputPath"`
-	ModuleBasePath string `koanf:"moduleBasePath"`
+	WorkerCount      int               `koanf:"workerCount"`
+	PollInterval     string            `koanf:"pollInterval"`
+	OutputPath       string            `koanf:"outputPath"`
+	ModuleBasePath   string            `koanf:"moduleBasePath"`
+	BufToken         string            `koanf:"bufToken"`
+	BufBinaryPath    string            `koanf:"bufBinaryPath"`
+	CustomBsrModules map[string]string `koanf:"customBsrModules"`
 }
 
 func (sdk SdkGenerationConfig) GetModuleBasePath() string {
@@ -93,6 +96,20 @@ func (sdk SdkGenerationConfig) GetOutputPath() string {
 	}
 
 	return "./sdk"
+}
+
+func (sdk SdkGenerationConfig) GetBufBinaryPath() string {
+	if sdk.BufBinaryPath != "" {
+		return sdk.BufBinaryPath
+	}
+	return "buf"
+}
+
+func (sdk SdkGenerationConfig) GetCustomBsrModules() map[string]string {
+	if sdk.CustomBsrModules != nil {
+		return sdk.CustomBsrModules
+	}
+	return nil
 }
 
 type Config struct {

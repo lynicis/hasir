@@ -39,6 +39,18 @@ func (b *RegistryBuilder) WithDefaultGenerators() *RegistryBuilder {
 	return b
 }
 
+func (b *RegistryBuilder) WithBufGenerators() *RegistryBuilder {
+	b.generators = append(b.generators,
+		NewBufGoProtobufGenerator(b.runner),
+		NewBufGoConnectRpcGenerator(b.runner),
+		NewBufGoGrpcGenerator(b.runner),
+		NewBufJsBufbuildEsGenerator(b.runner),
+		NewBufJsProtobufGenerator(b.runner),
+		NewBufJsConnectRpcGenerator(b.runner),
+	)
+	return b
+}
+
 func (b *RegistryBuilder) Build() *Registry {
 	r := &Registry{
 		generators: make(map[SDK]Generator),
@@ -51,6 +63,10 @@ func (b *RegistryBuilder) Build() *Registry {
 
 func NewRegistry(runner CommandRunner) *Registry {
 	return NewRegistryBuilder(runner).WithDefaultGenerators().Build()
+}
+
+func NewBufRegistry(runner CommandRunner) *Registry {
+	return NewRegistryBuilder(runner).WithBufGenerators().Build()
 }
 
 func (r *Registry) Register(g Generator) {

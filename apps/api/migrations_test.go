@@ -42,7 +42,7 @@ func TestMigrations(t *testing.T) {
 		version, dirty, err := m.Version()
 		assert.NoError(t, err)
 		assert.False(t, dirty)
-		assert.Equal(t, uint(17), version, "Expected migration version to be 17")
+		assert.Equal(t, uint(18), version, "Expected migration version to be 18")
 	})
 
 	t.Run("idempotent - running migrations twice should not fail", func(t *testing.T) {
@@ -1442,7 +1442,7 @@ func TestMigrations(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, exists, "search_items view should exist before rollback")
 
-		err = m.Steps(-4)
+		err = m.Steps(-5)
 		require.NoError(t, err)
 
 		err = conn.QueryRow(context.Background(),

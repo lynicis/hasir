@@ -82,6 +82,7 @@ func createRepositoriesTable(t *testing.T, connString string) {
 		organization_id VARCHAR,
 		path VARCHAR NOT NULL,
 		visibility visibility NOT NULL DEFAULT 'private',
+		managed_by_buf BOOLEAN NOT NULL DEFAULT FALSE,
 		created_at TIMESTAMP NOT NULL,
 		updated_at TIMESTAMP NOT NULL,
 		deleted_at TIMESTAMP

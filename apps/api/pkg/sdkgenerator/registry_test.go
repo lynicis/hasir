@@ -147,3 +147,26 @@ func TestRegistryBuilder(t *testing.T) {
 		assert.Equal(t, "custom", g.DirName())
 	})
 }
+
+func TestNewBufRegistry(t *testing.T) {
+	runner := NewMockCommandRunner()
+	registry := NewBufRegistry(runner)
+
+	sdks := registry.List()
+	assert.Len(t, sdks, 6)
+
+	for _, sdk := range []SDK{SdkGoProtobuf, SdkGoConnectRpc, SdkGoGrpc, SdkJsBufbuildEs, SdkJsProtobuf, SdkJsConnectrpc} {
+		g, err := registry.Get(sdk)
+		assert.NoError(t, err)
+		assert.NotNil(t, g)
+		assert.Equal(t, sdk, g.SDK())
+	}
+}
+
+func TestRegistryBuilder_WithBufGenerators(t *testing.T) {
+	runner := NewMockCommandRunner()
+	registry := NewRegistryBuilder(runner).WithBufGenerators().Build()
+
+	sdks := registry.List()
+	assert.Len(t, sdks, 6)
+}
