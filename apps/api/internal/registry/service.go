@@ -125,6 +125,7 @@ func (s *service) CreateRepository(
 		OrganizationId: organizationId,
 		Path:           repoPath,
 		Visibility:     visibility,
+		ManagedByBuf:   req.GetManagedByBuf(),
 		CreatedAt:      now,
 		UpdatedAt:      &now,
 	}
@@ -309,6 +310,7 @@ func (s *service) UpdateRepository(
 
 	repo.Name = req.GetName()
 	repo.Visibility = proto.VisibilityMap[req.GetVisibility()]
+	repo.ManagedByBuf = req.GetManagedByBuf()
 
 	if err := s.repository.UpdateRepository(ctx, repo); err != nil {
 		return err
