@@ -114,8 +114,8 @@ func (r *PgRepository) CreateRepository(ctx context.Context, repo *registry.Repo
 	defer connection.Release()
 
 	now := time.Now().UTC()
-	sql := `INSERT INTO repositories (id, name, created_by, organization_id, path, visibility, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+	sql := `INSERT INTO repositories (id, name, created_by, organization_id, path, visibility, managed_by_buf, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 	if _, err = connection.Exec(ctx, sql,
 		repo.Id,
 		repo.Name,
@@ -123,6 +123,7 @@ func (r *PgRepository) CreateRepository(ctx context.Context, repo *registry.Repo
 		repo.OrganizationId,
 		repo.Path,
 		repo.Visibility,
+		repo.ManagedByBuf,
 		now,
 		&now,
 	); err != nil {
@@ -503,10 +504,10 @@ func (r *PgRepository) UpdateRepository(ctx context.Context, repo *registry.Repo
 
 	now := time.Now().UTC()
 	sql := `UPDATE repositories
-			SET name = $1, updated_at = $2
-			WHERE id = $3 AND deleted_at IS NULL`
+			SET name = $1, visibility = $2, managed_by_buf = $3, updated_at = $4
+			WHERE id = $5 AND deleted_at IS NULL`
 
-	result, err := connection.Exec(ctx, sql, repo.Name, &now, repo.Id)
+	result, err := connection.Exec(ctx, sql, repo.Name, repo.Visibility, repo.ManagedByBuf, &now, repo.Id)
 	if err != nil {
 		span.RecordError(err)
 
