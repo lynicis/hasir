@@ -49,12 +49,12 @@ export default function OrganizationUsersContent() {
     { retry: customRetry },
   );
 
-  const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [deleteMemberDialog, setDeleteMemberDialog] = useState<{
     open: boolean;
     member: OrganizationMember | null;
   }>({ open: false, member: null });
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [optimisticOps, setOptimisticOps] = useState<Map<string, Partial<OrganizationMember> | null>>(new Map());
 
   const currentMemberPermission = useMemo<Permission | null>(() => {
     if (!membersData?.members || !session?.user?.email) {
@@ -88,13 +88,18 @@ export default function OrganizationUsersContent() {
     }));
   }, [membersData]);
 
+  const members = useMemo(() => {
+    return fetchedMembers
+      .filter((m) => optimisticOps.get(m.id) !== null)
+      .map((m) => {
+        const op = optimisticOps.get(m.id);
+        return op ? { ...m, ...op } : m;
+      });
+  }, [fetchedMembers, optimisticOps]);
+
   const ownerCount = useMemo(() => {
     return members.filter((member) => member.permission === "owner").length;
   }, [members]);
-
-  useEffect(() => {
-    setMembers(fetchedMembers);
-  }, [fetchedMembers]);
 
   useEffect(() => {
     if (membersError && !isNotFoundError(membersError)) {
@@ -117,14 +122,7 @@ export default function OrganizationUsersContent() {
       return;
     }
 
-    const previousMembers = members;
-    setMembers((prev) =>
-      prev.map((member) =>
-        member.id === memberId
-          ? { ...member, permission: newPermission }
-          : member
-      )
-    );
+    setOptimisticOps((prev) => new Map(prev).set(memberId, { permission: newPermission }));
 
     try {
       await organizationApiClient.updateMemberRole({
@@ -133,10 +131,19 @@ export default function OrganizationUsersContent() {
         role: newRole,
       });
 
+      setOptimisticOps((prev) => {
+        const next = new Map(prev);
+        next.delete(memberId);
+        return next;
+      });
       toast.success("Permission updated successfully");
       await refetchMembers();
     } catch (error) {
-      setMembers(previousMembers);
+      setOptimisticOps((prev) => {
+        const next = new Map(prev);
+        next.delete(memberId);
+        return next;
+      });
 
       if (error instanceof ConnectError) {
         switch (error.code) {
@@ -171,9 +178,8 @@ export default function OrganizationUsersContent() {
     if (!deleteMemberDialog.member) return;
 
     const memberToDelete = deleteMemberDialog.member;
-    const previousMembers = members;
 
-    setMembers((prev) => prev.filter((member) => member.id !== memberToDelete.id));
+    setOptimisticOps((prev) => new Map(prev).set(memberToDelete.id, null));
     setDeleteMemberDialog({ open: false, member: null });
 
     try {
@@ -182,12 +188,21 @@ export default function OrganizationUsersContent() {
         memberId: memberToDelete.id,
       });
 
+      setOptimisticOps((prev) => {
+        const next = new Map(prev);
+        next.delete(memberToDelete.id);
+        return next;
+      });
       toast.success(
         `${memberToDelete.name} has been removed from the organization`
       );
       await refetchMembers();
     } catch (error) {
-      setMembers(previousMembers);
+      setOptimisticOps((prev) => {
+        const next = new Map(prev);
+        next.delete(memberToDelete.id);
+        return next;
+      });
 
       if (error instanceof ConnectError) {
         switch (error.code) {

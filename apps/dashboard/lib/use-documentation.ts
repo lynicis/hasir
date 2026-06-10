@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface UseDocumentationOptions {
   organizationId: string | undefined;
@@ -43,63 +43,31 @@ export function useDocumentation({
   commitHash,
   enabled = true,
 }: UseDocumentationOptions): UseDocumentationResult {
-  const [content, setContent] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
   const canFetch = enabled && !!organizationId && !!repositoryId && !!commitHash;
 
-  const fetchDocumentation = useCallback(async () => {
-    if (!canFetch || !organizationId || !repositoryId) return;
+  const queryKey = ["docs", organizationId, repositoryId, commitHash] as const;
 
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const url = buildDocsUrl(organizationId, repositoryId, commitHash);
-      const response = await fetch(url, { signal: controller.signal });
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey,
+    queryFn: async ({ signal }) => {
+      const url = buildDocsUrl(organizationId!, repositoryId!, commitHash);
+      const response = await fetch(url, { signal });
 
       if (!response.ok) {
         throw new Error(await parseErrorResponse(response));
       }
 
-      const text = await response.text();
-      
-      if (!controller.signal.aborted) {
-        setContent(text || null);
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        return;
-      }
-      if (!controller.signal.aborted) {
-        setError(err instanceof Error ? err.message : "Failed to load documentation");
-      }
-    } finally {
-      if (!controller.signal.aborted) {
-        setIsLoading(false);
-      }
-    }
-  }, [canFetch, organizationId, repositoryId, commitHash]);
-
-  useEffect(() => {
-    void fetchDocumentation();
-
-    return () => {
-      abortControllerRef.current?.abort();
-    };
-  }, [fetchDocumentation]);
+      return (await response.text()) || null;
+    },
+    enabled: canFetch,
+    retry: false,
+  });
 
   return {
-    content,
+    content: data ?? null,
     isLoading,
-    error,
-    refetch: fetchDocumentation,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refetch: () => { void refetch(); },
   };
 }
 

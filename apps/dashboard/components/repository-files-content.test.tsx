@@ -1,9 +1,11 @@
 import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 
+import { getFileTree, getFilePreview } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
 import { NodeType } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
+import { ConnectError } from "@connectrpc/connect";
 
 import { RepositoryContext } from "@/lib/repository-context";
 
@@ -18,15 +20,18 @@ vi.mock("react-syntax-highlighter/dist/esm/styles/prism", () => ({
 }));
 
 const mockGetFileTree = vi.fn();
-const mockGetFilePreview = vi.fn();
+const mockUseQuery = vi.fn();
 
 const mockClient = {
   getFileTree: mockGetFileTree,
-  getFilePreview: mockGetFilePreview,
 };
 
 vi.mock("@/lib/use-client", () => ({
   useClient: () => mockClient,
+}));
+
+vi.mock("@connectrpc/connect-query", () => ({
+  useQuery: (...args: unknown[]) => (mockUseQuery as (...args: unknown[]) => unknown)(...args),
 }));
 
 const mockRepository: Repository = {
@@ -36,6 +41,7 @@ const mockRepository: Repository = {
   name: "Test Repository",
   visibility: 0,
   sdkPreferences: [],
+  managedByBuf: false,
 };
 
 const mockFileTreeData = {
@@ -143,6 +149,14 @@ function renderWithContext(component: React.ReactElement) {
 describe("RepositoryFilesContent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    mockUseQuery.mockImplementation((method) => {
+      if (method === getFileTree) {
+        return { data: mockFileTreeData, isLoading: false, isFetching: false, error: null };
+      }
+      return { data: undefined, isLoading: false, isFetching: false, error: null };
+    });
+
     mockGetFileTree.mockImplementation(
       (request: { id: string; path?: string }) => {
         if (!request.path) {
@@ -211,10 +225,22 @@ describe("RepositoryFilesContent", () => {
     const user = userEvent.setup();
     const mockFileContent =
       'syntax = "proto3";\n\nmessage User {\n  string id = 1;\n}';
-    mockGetFilePreview.mockResolvedValue({
+
+    const previewData = {
       content: mockFileContent,
       mimeType: "text/plain",
       size: BigInt(mockFileContent.length),
+    };
+
+    mockUseQuery.mockImplementation((method, args) => {
+      if (method === getFileTree) {
+        return { data: mockFileTreeData, isLoading: false, isFetching: false, error: null };
+      }
+      if (method === getFilePreview) {
+        if (!args) return { data: undefined, isLoading: false, isFetching: false, error: null };
+        return { data: previewData, isLoading: false, isFetching: false, error: null };
+      }
+      return { data: undefined, isLoading: false, isFetching: false, error: null };
     });
 
     renderWithContext(<RepositoryFilesContent />);
@@ -234,13 +260,6 @@ describe("RepositoryFilesContent", () => {
 
     const file = screen.getByText("user.proto");
     await user.click(file);
-
-    await waitFor(() => {
-      expect(mockGetFilePreview).toHaveBeenCalledWith({
-        id: "test-repo-id",
-        path: "proto/user/user.proto",
-      });
-    });
 
     await waitFor(() => {
       expect(screen.getByText(/syntax = "proto3"/)).toBeInTheDocument();
@@ -342,16 +361,20 @@ describe("RepositoryFilesContent", () => {
   });
 
   it("shows loading skeleton when data is loading", async () => {
-    mockGetFileTree.mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(() => resolve(mockFileTreeData), 50)
-        )
-    );
+    mockUseQuery.mockReturnValue({ data: undefined, isLoading: true, isFetching: true, error: null });
 
     renderWithContext(<RepositoryFilesContent />);
 
     expect(screen.getByText("File Tree")).toBeInTheDocument();
+
+    mockUseQuery.mockImplementation((method) => {
+      if (method === getFileTree) {
+        return { data: mockFileTreeData, isLoading: false, isFetching: false, error: null };
+      }
+      return { data: undefined, isLoading: false, isFetching: false, error: null };
+    });
+
+    renderWithContext(<RepositoryFilesContent />);
 
     await waitFor(
       () => {
@@ -362,8 +385,12 @@ describe("RepositoryFilesContent", () => {
   });
 
   it("shows error alert when there is an error", async () => {
-    const mockError = new Error("Failed to load");
-    mockGetFileTree.mockRejectedValue(mockError);
+    mockUseQuery.mockImplementation((method) => {
+      if (method === getFileTree) {
+        return { data: undefined, isLoading: false, isFetching: false, error: new ConnectError("Failed to load") };
+      }
+      return { data: undefined, isLoading: false, isFetching: false, error: null };
+    });
 
     renderWithContext(<RepositoryFilesContent />);
 
@@ -373,7 +400,12 @@ describe("RepositoryFilesContent", () => {
   });
 
   it("shows empty state when no files are found", async () => {
-    mockGetFileTree.mockResolvedValue({ nodes: [] });
+    mockUseQuery.mockImplementation((method) => {
+      if (method === getFileTree) {
+        return { data: { nodes: [] }, isLoading: false, isFetching: false, error: null };
+      }
+      return { data: undefined, isLoading: false, isFetching: false, error: null };
+    });
 
     renderWithContext(<RepositoryFilesContent />);
 
@@ -386,22 +418,27 @@ describe("RepositoryFilesContent", () => {
 
   it("shows loading skeleton while fetching file preview", async () => {
     const user = userEvent.setup();
-    mockGetFilePreview.mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                content: "test content",
-                mimeType: "text/plain",
-                size: BigInt(12),
-              }),
-            100
-          )
-        )
-    );
 
-    renderWithContext(<RepositoryFilesContent />);
+    const previewData = {
+      content: "test content",
+      mimeType: "text/plain",
+      size: BigInt(12),
+    };
+
+    let previewLoading = true;
+
+    mockUseQuery.mockImplementation((method, args) => {
+      if (method === getFileTree) {
+        return { data: mockFileTreeData, isLoading: false, isFetching: false, error: null };
+      }
+      if (method === getFilePreview) {
+        if (!args) return { data: undefined, isLoading: false, isFetching: false, error: null };
+        return { data: previewLoading ? undefined : previewData, isLoading: previewLoading, isFetching: previewLoading, error: null };
+      }
+      return { data: undefined, isLoading: false, isFetching: false, error: null };
+    });
+
+    const result = renderWithContext(<RepositoryFilesContent />);
 
     await waitFor(
       () => {
@@ -421,6 +458,19 @@ describe("RepositoryFilesContent", () => {
 
     expect(document.querySelector(".animate-pulse")).toBeInTheDocument();
 
+    previewLoading = false;
+    result.rerender(
+      <RepositoryContext.Provider
+        value={{
+          repository: mockRepository,
+          isLoading: false,
+          error: null,
+        }}
+      >
+        <RepositoryFilesContent />
+      </RepositoryContext.Provider>
+    );
+
     await waitFor(
       () => {
         expect(screen.getByText("test content")).toBeInTheDocument();
@@ -431,8 +481,17 @@ describe("RepositoryFilesContent", () => {
 
   it("shows error alert when file preview fails to load", async () => {
     const user = userEvent.setup();
-    const mockError = new Error("Failed to load file preview");
-    mockGetFilePreview.mockRejectedValue(mockError);
+
+    mockUseQuery.mockImplementation((method, args) => {
+      if (method === getFileTree) {
+        return { data: mockFileTreeData, isLoading: false, isFetching: false, error: null };
+      }
+      if (method === getFilePreview) {
+        if (!args) return { data: undefined, isLoading: false, isFetching: false, error: null };
+        return { data: undefined, isLoading: false, isFetching: false, error: new ConnectError("Failed to load file preview") };
+      }
+      return { data: undefined, isLoading: false, isFetching: false, error: null };
+    });
 
     renderWithContext(<RepositoryFilesContent />);
 
@@ -461,10 +520,22 @@ describe("RepositoryFilesContent", () => {
 
   it("shows appropriate message for non-text files", async () => {
     const user = userEvent.setup();
-    mockGetFilePreview.mockResolvedValue({
+
+    const previewData = {
       content: "binary content",
       mimeType: "image/png",
       size: BigInt(1024),
+    };
+
+    mockUseQuery.mockImplementation((method, args) => {
+      if (method === getFileTree) {
+        return { data: mockFileTreeData, isLoading: false, isFetching: false, error: null };
+      }
+      if (method === getFilePreview) {
+        if (!args) return { data: undefined, isLoading: false, isFetching: false, error: null };
+        return { data: previewData, isLoading: false, isFetching: false, error: null };
+      }
+      return { data: undefined, isLoading: false, isFetching: false, error: null };
     });
 
     renderWithContext(<RepositoryFilesContent />);
@@ -495,10 +566,22 @@ describe("RepositoryFilesContent", () => {
   it("displays file metadata (size and mime type)", async () => {
     const user = userEvent.setup();
     const fileSize = BigInt(2048);
-    mockGetFilePreview.mockResolvedValue({
+
+    const previewData = {
       content: "test content",
       mimeType: "text/plain",
       size: fileSize,
+    };
+
+    mockUseQuery.mockImplementation((method, args) => {
+      if (method === getFileTree) {
+        return { data: mockFileTreeData, isLoading: false, isFetching: false, error: null };
+      }
+      if (method === getFilePreview) {
+        if (!args) return { data: undefined, isLoading: false, isFetching: false, error: null };
+        return { data: previewData, isLoading: false, isFetching: false, error: null };
+      }
+      return { data: undefined, isLoading: false, isFetching: false, error: null };
     });
 
     renderWithContext(<RepositoryFilesContent />);

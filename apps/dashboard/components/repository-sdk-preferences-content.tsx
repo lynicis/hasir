@@ -2,7 +2,7 @@
 
 import { getRecentCommit } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
 import { RegistryService, SDK } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { AlertTriangle, Wrench } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -183,14 +183,12 @@ export default function RepositorySdkPreferencesContent() {
   }, [repository]);
 
   const [config, setConfig] = useState<SdkConfig>(serverConfig);
+  const [prevServerConfig, setPrevServerConfig] = useState(serverConfig);
   const [isSaving, setIsSaving] = useState(false);
-  const syncedRef = useRef(serverConfig);
 
-  if (serverConfig !== syncedRef.current) {
-    syncedRef.current = serverConfig;
-    if (!isSaving) {
-      setConfig(serverConfig);
-    }
+  if (!isSaving && serverConfig !== prevServerConfig) {
+    setPrevServerConfig(serverConfig);
+    setConfig(serverConfig);
   }
 
   const hasChanges = useMemo(() => !configsAreEqual(config, serverConfig), [config, serverConfig]);

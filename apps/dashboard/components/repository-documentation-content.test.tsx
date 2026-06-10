@@ -1,5 +1,6 @@
 import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
@@ -24,6 +25,9 @@ function renderWithContext(
   ui: React.ReactElement,
   repository?: Partial<Repository>
 ) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   const value = {
     repository: {
       id: "repo-123",
@@ -39,7 +43,9 @@ function renderWithContext(
   };
 
   return render(
-    <RepositoryContext.Provider value={value}>{ui}</RepositoryContext.Provider>
+    <QueryClientProvider client={queryClient}>
+      <RepositoryContext.Provider value={value}>{ui}</RepositoryContext.Provider>
+    </QueryClientProvider>
   );
 }
 

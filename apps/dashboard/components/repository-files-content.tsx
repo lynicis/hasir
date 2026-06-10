@@ -2,12 +2,14 @@
 
 import type { FileTreeNode } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 
+import { getFilePreview, getFileTree } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
 import { RegistryService } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { NodeType } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 import { Code, ConnectError } from "@connectrpc/connect";
+import { useQuery } from "@connectrpc/connect-query";
 import { Files, FileText } from "lucide-react";
 
 import {
@@ -53,6 +55,65 @@ function transformFileTreeNode(
     isLoaded: isDirectory ? true : undefined,
     isLoading: false,
   };
+}
+
+function updateNodeLoading(
+  nodes: ExtendedTreeViewElement[],
+  targetPath: string,
+  loading: boolean,
+): ExtendedTreeViewElement[] {
+  return nodes.map((node) => {
+    if (node.id === targetPath) {
+      return { ...node, isLoading: loading };
+    }
+    if (node.children) {
+      return {
+        ...node,
+        children: updateNodeLoading(node.children, targetPath, loading),
+      };
+    }
+    return node;
+  });
+}
+
+function updateNodeChildren(
+  nodes: ExtendedTreeViewElement[],
+  targetPath: string,
+  newChildren: ExtendedTreeViewElement[],
+): ExtendedTreeViewElement[] {
+  return nodes.map((node) => {
+    if (node.id === targetPath) {
+      return {
+        ...node,
+        children: newChildren,
+        isLoaded: true,
+        isLoading: false,
+      };
+    }
+    if (node.children) {
+      return {
+        ...node,
+        children: updateNodeChildren(node.children, targetPath, newChildren),
+      };
+    }
+    return node;
+  });
+}
+
+function findNodeInTree(
+  nodes: ExtendedTreeViewElement[],
+  id: string,
+): ExtendedTreeViewElement | null {
+  for (const node of nodes) {
+    if (node.id === id) {
+      return node;
+    }
+    if (node.children && node.children.length > 0) {
+      const found = findNodeInTree(node.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 function FileTreeSkeleton() {
@@ -138,11 +199,6 @@ interface FilePreview {
 export default function RepositoryFilesContent() {
   const [selectedFile, setSelectedFile] = useState<string | undefined>();
   const [fileTree, setFileTree] = useState<ExtendedTreeViewElement[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [filePreview, setFilePreview] = useState<FilePreview | null>(null);
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [previewError, setPreviewError] = useState<Error | null>(null);
 
   const context = useContext(RepositoryContext);
   const client = useClient(RegistryService);
@@ -155,97 +211,44 @@ export default function RepositoryFilesContent() {
 
   const { repository } = context;
 
-  const loadRootTree = useCallback(async () => {
-    if (!repository?.id) return;
+  const rootTreeQuery = useQuery(
+    getFileTree,
+    { id: repository?.id ?? "" },
+    { enabled: !!repository?.id },
+  );
 
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await client.getFileTree({ id: repository.id });
-      const rootNodes = response.nodes.map((node) =>
+  const previewQuery = useQuery(
+    getFilePreview,
+    selectedFile && repository?.id ? { id: repository.id, path: selectedFile } : undefined,
+    { enabled: !!selectedFile && !!repository?.id },
+  );
+
+  const filePreview = useMemo(() => {
+    if (!previewQuery.data) return null;
+    return {
+      content: previewQuery.data.content,
+      mimeType: previewQuery.data.mimeType,
+      size: previewQuery.data.size,
+    } satisfies FilePreview;
+  }, [previewQuery.data]);
+
+  const [repoId, setRepoId] = useState(repository?.id);
+  const [isTreeInitialized, setIsTreeInitialized] = useState(false);
+
+  if (repository?.id !== repoId) {
+    setRepoId(repository?.id);
+    setFileTree([]);
+    setIsTreeInitialized(false);
+  }
+
+  if (rootTreeQuery.data && !isTreeInitialized) {
+    setIsTreeInitialized(true);
+    setFileTree(
+      rootTreeQuery.data.nodes.map((node) =>
         transformFileTreeNode(node, true)
-      );
-      setFileTree(rootNodes);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error("Failed to load file tree")
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [repository?.id, client]);
-
-  const updateNodeLoading = useCallback(
-    (
-      nodes: ExtendedTreeViewElement[],
-      targetPath: string,
-      loading: boolean
-    ): ExtendedTreeViewElement[] => {
-      return nodes.map((node) => {
-        if (node.id === targetPath) {
-          return { ...node, isLoading: loading };
-        }
-        if (node.children) {
-          return {
-            ...node,
-            children: updateNodeLoading(node.children, targetPath, loading),
-          };
-        }
-        return node;
-      });
-    },
-    []
-  );
-
-  const updateNodeChildren = useCallback(
-    (
-      nodes: ExtendedTreeViewElement[],
-      targetPath: string,
-      newChildren: ExtendedTreeViewElement[]
-    ): ExtendedTreeViewElement[] => {
-      return nodes.map((node) => {
-        if (node.id === targetPath) {
-          return {
-            ...node,
-            children: newChildren,
-            isLoaded: true,
-            isLoading: false,
-          };
-        }
-        if (node.children) {
-          return {
-            ...node,
-            children: updateNodeChildren(
-              node.children,
-              targetPath,
-              newChildren
-            ),
-          };
-        }
-        return node;
-      });
-    },
-    []
-  );
-
-  const findNodeInTree = useCallback(
-    (
-      nodes: ExtendedTreeViewElement[],
-      id: string
-    ): ExtendedTreeViewElement | null => {
-      for (const node of nodes) {
-        if (node.id === id) {
-          return node;
-        }
-        if (node.children && node.children.length > 0) {
-          const found = findNodeInTree(node.children, id);
-          if (found) return found;
-        }
-      }
-      return null;
-    },
-    []
-  );
+      )
+    );
+  }
 
   const loadFolderContents = useCallback(
     async (folderPath: string) => {
@@ -276,60 +279,15 @@ export default function RepositoryFilesContent() {
         setFileTree((prev) => updateNodeLoading(prev, folderPath, false));
       }
     },
-    [
-      repository?.id,
-      client,
-      updateNodeLoading,
-      updateNodeChildren,
-      findNodeInTree,
-    ]
+    [repository, client]
   );
 
-  const loadFilePreview = useCallback(
-    async (filePath: string) => {
-      if (!repository?.id) return;
-
-      setIsLoadingPreview(true);
-      setPreviewError(null);
-      setFilePreview(null);
-
-      try {
-        const response = await client.getFilePreview({
-          id: repository.id,
-          path: filePath,
-        });
-
-        setFilePreview({
-          content: response.content,
-          mimeType: response.mimeType,
-          size: response.size,
-        });
-      } catch (err) {
-        setPreviewError(
-          err instanceof Error ? err : new Error("Failed to load file preview")
-        );
-      } finally {
-        setIsLoadingPreview(false);
-      }
-    },
-    [repository?.id, client]
-  );
-
-  useEffect(() => {
-    loadRootTree();
-  }, [loadRootTree]);
-
-  useEffect(() => {
-    if (selectedFile) {
-      loadFilePreview(selectedFile);
-    } else {
-      setFilePreview(null);
-      setPreviewError(null);
-    }
-  }, [selectedFile, loadFilePreview]);
-
+  const isLoading = rootTreeQuery.isLoading || (rootTreeQuery.isFetching && fileTree.length === 0);
+  const error = rootTreeQuery.error;
   const isNotFound =
     error instanceof ConnectError && error.code === Code.NotFound;
+  const isLoadingPreview = previewQuery.isLoading;
+  const previewError = previewQuery.error;
 
   return (
     <div className="space-y-6">
