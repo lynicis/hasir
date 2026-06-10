@@ -388,6 +388,10 @@ func (h *GitHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	repoUUID := strings.TrimSuffix(parts[0], ".git")
+	if !isValidPathComponent(repoUUID) {
+		http.Error(w, "Invalid repository", http.StatusBadRequest)
+		return
+	}
 	repoPath := h.reposPath + "/" + repoUUID
 	subPath := ""
 	if len(parts) > 1 {
@@ -462,14 +466,17 @@ func (h *GitHttpHandler) handleInfoRefs(w http.ResponseWriter, r *http.Request, 
 	w.Header().Set("Cache-Control", "no-cache")
 
 	pktLine := fmt.Sprintf("# service=%s\n", serviceName)
+	// #nosec G705 -- serviceName validated against whitelist, content-type is not HTML
 	_, _ = fmt.Fprintf(w, "%04x%s", len(pktLine)+4, pktLine)
 	_, _ = fmt.Fprint(w, "0000")
 
 	var cmd *exec.Cmd
 	switch gitCommand {
 	case "git-upload-pack":
+		// #nosec G204 G702 -- repoPath validated via isValidPathComponent + DB auth check
 		cmd = exec.Command("git-upload-pack", "--stateless-rpc", "--advertise-refs", repoPath)
 	case "git-receive-pack":
+		// #nosec G204 G702 -- repoPath validated via isValidPathComponent + DB auth check
 		cmd = exec.Command("git-receive-pack", "--stateless-rpc", "--advertise-refs", repoPath)
 	default:
 		http.Error(w, "Invalid service", http.StatusBadRequest)
@@ -488,6 +495,7 @@ func (h *GitHttpHandler) handleUploadPack(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/x-git-upload-pack-result")
 	w.Header().Set("Cache-Control", "no-cache")
 
+	// #nosec G204 G702 -- repoPath validated via isValidPathComponent + DB auth check
 	cmd := exec.Command("git-upload-pack", "--stateless-rpc", repoPath)
 	cmd.Stdin = r.Body
 	cmd.Stdout = w
@@ -506,6 +514,7 @@ func (h *GitHttpHandler) handleReceivePack(w http.ResponseWriter, r *http.Reques
 	pktLine := fmt.Sprintf("%04x%s", len(message)+4, message)
 	_, _ = w.Write([]byte(pktLine))
 
+	// #nosec G204 G702 -- repoPath validated via isValidPathComponent + DB auth check
 	cmd := exec.Command("git-receive-pack", "--stateless-rpc", repoPath)
 	cmd.Stdin = r.Body
 	cmd.Stdout = w
@@ -624,6 +633,7 @@ func (h *SdkHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// #nosec G304 G703 -- repoPath validated via isValidPathComponent + path prefix check above
 	if _, err := os.Stat(filepath.Join(repoPath, ".git")); os.IsNotExist(err) {
 		http.Error(w, "SDK repository not found", http.StatusNotFound)
 		return
@@ -661,9 +671,11 @@ func (h *SdkHttpHandler) handleInfoRefs(w http.ResponseWriter, r *http.Request, 
 	w.Header().Set("Cache-Control", "no-cache")
 
 	pktLine := fmt.Sprintf("# service=%s\n", serviceName)
+	// #nosec G705 -- serviceName validated against whitelist (git-upload-pack), content-type is not HTML
 	_, _ = fmt.Fprintf(w, "%04x%s", len(pktLine)+4, pktLine)
 	_, _ = fmt.Fprint(w, "0000")
 
+	// #nosec G204 G702 -- repoPath validated via isValidPathComponent + path prefix check
 	cmd := exec.Command("git-upload-pack", "--stateless-rpc", "--advertise-refs", repoPath)
 	cmd.Stdout = w
 	cmd.Stderr = w
@@ -677,6 +689,7 @@ func (h *SdkHttpHandler) handleUploadPack(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/x-git-upload-pack-result")
 	w.Header().Set("Cache-Control", "no-cache")
 
+	// #nosec G204 G702 -- repoPath validated via isValidPathComponent + path prefix check
 	cmd := exec.Command("git-upload-pack", "--stateless-rpc", repoPath)
 	cmd.Stdin = r.Body
 	cmd.Stdout = w
@@ -890,6 +903,7 @@ func (h *DocumentationHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
+	// #nosec G705 -- markdown content served as text/markdown, path is validated above
 	_, _ = w.Write(markdownContent)
 }
 

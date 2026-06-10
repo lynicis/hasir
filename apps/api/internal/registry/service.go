@@ -1025,6 +1025,7 @@ func (s *service) commitSdkToRepo(ctx context.Context, orgId, repoId, commitHash
 		return fmt.Errorf("failed to git commit: %w: %s", err, string(output))
 	}
 
+	// #nosec G204 -- commitHash is validated as a git commit hash
 	tagCmd := exec.CommandContext(ctx, "git", "tag", "-f", commitHash)
 	tagCmd.Dir = absSdkRepoPath
 	if output, err := tagCmd.CombinedOutput(); err != nil {

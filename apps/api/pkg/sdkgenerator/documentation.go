@@ -74,7 +74,7 @@ func removeScalarValueTypesSection(filePath string) error {
 		filteredContent += "\n"
 	}
 
-	// #nosec G306 -- documentation files need to be readable by the server process serving them
+	// #nosec G306 G703 -- documentation files need to be readable by the server process serving them
 	return os.WriteFile(filePath, []byte(filteredContent), 0o644)
 }
 
