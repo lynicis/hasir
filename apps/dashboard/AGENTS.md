@@ -11,7 +11,7 @@ Package manager is **Bun**.
 bun install              # Install dependencies
 bun dev                  # Start dev server (next dev)
 bun run build            # Production build (next build, standalone output)
-bun run lint             # ESLint (flat config, eslint 9)
+bun run lint             # ESLint (flat config, eslint 9 → pinned to v9; v10 incompatible with eslint-plugin-react)
 bun run lint:fix         # ESLint with --fix
 
 bun vitest               # Run tests in watch mode

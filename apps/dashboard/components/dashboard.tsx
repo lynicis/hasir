@@ -9,8 +9,8 @@ import { toast } from "sonner";
 import Link from "next/link";
 
 import { OrganizationDialogForm } from "@/components/organization-dialog-form";
-import { reverseVisibilityMapper } from "@/lib/visibility-mapper";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { reverseVisibilityMapper } from "@/lib/visibility-mapper";
 import { useRegistryStore } from "@/stores/registry-store";
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";

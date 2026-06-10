@@ -1,11 +1,7 @@
 "use client";
 
 import { getRecentCommit } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
-import {
-  RegistryService,
-  SDK,
-  SdkPreference,
-} from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import { SDK } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { useParams } from "next/navigation";
@@ -22,11 +18,9 @@ import {
 import { RepositoryContext } from "@/lib/repository-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SdkUrls } from "@/components/sdk-urls";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { customRetry } from "@/lib/query-retry";
 import { Label } from "@/components/ui/label";
-import { useClient } from "@/lib/use-client";
 
 interface SdkOption {
   key: string;
@@ -137,13 +131,12 @@ export default function RepositorySdkPreferencesContent() {
   const params = useParams();
   const repositoryId = params.repositoryId as string;
   const context = useContext(RepositoryContext);
-  const registryApiClient = useClient(RegistryService);
 
   if (!context) {
     throw new Error("SdkPreferencesPage must be used within RepositoryLayout");
   }
 
-  const { repository, isLoading, error, refetch } = context;
+  const { repository, isLoading, error } = context;
 
   const { data: recentCommit } = useQuery(
     getRecentCommit,
@@ -162,27 +155,12 @@ export default function RepositorySdkPreferencesContent() {
 
   const [config, setConfig] = useState<SdkConfig>(serverConfig);
   const [prevServerConfig, setPrevServerConfig] = useState(serverConfig);
-  const [isSaving, setIsSaving] = useState(false);
+  
 
   if (serverConfig !== prevServerConfig) {
     setPrevServerConfig(serverConfig);
     setConfig(serverConfig);
   }
-
-  const hasChanges = useMemo(() => {
-    return Object.keys(config).some((langKey) => {
-      const configLang = config[langKey];
-      const serverLang = serverConfig[langKey];
-
-      if (!serverLang) {
-        return true;
-      }
-
-      return Object.keys(configLang).some(
-        (key) => configLang[key] !== serverLang[key]
-      );
-    });
-  }, [config, serverConfig]);
 
   useEffect(() => {
     if (error && !repository) {
@@ -219,65 +197,6 @@ export default function RepositorySdkPreferencesContent() {
         },
       };
     });
-  };
-
-  const getSdkPreferences = (): SdkPreference[] => {
-    const enabledSdkValues = new Set<SDK>();
-    Object.entries(SDK_LANGUAGES).forEach(([langKey, langConfig]) => {
-      langConfig.options.forEach((option) => {
-        if (config[langKey]?.[option.key]) {
-          enabledSdkValues.add(option.sdkValue);
-        }
-      });
-    });
-
-    const preferences: SdkPreference[] = [];
-
-    Object.values(SDK)
-      .filter(
-        (val): val is SDK =>
-          typeof val === "number" && val !== SDK.SDK_UNSPECIFIED
-      )
-      .forEach((sdkVal) => {
-        preferences.push({
-          sdk: sdkVal,
-          status: enabledSdkValues.has(sdkVal) ?? false,
-        } as SdkPreference);
-      });
-
-    return preferences;
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const sdkPreferences = getSdkPreferences();
-
-      await registryApiClient.updateSdkPreferences({
-        id: repositoryId,
-        sdkPreferences,
-      });
-
-      if (refetch) {
-        await refetch();
-      }
-
-      setPrevServerConfig(config);
-      toast.success("SDK preferences saved successfully");
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to save SDK preferences"
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleReset = () => {
-    setConfig(getInitialConfig());
-    toast.info("All SDK preferences disabled");
   };
 
   if (isLoading) {
@@ -363,8 +282,7 @@ export default function RepositorySdkPreferencesContent() {
                       }
                       disabled={
                         !config[langKey]?.enabled ||
-                        isLoading ||
-                        isSaving
+                        isLoading
                       }
                     />
                   </div>
