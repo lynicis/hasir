@@ -3,7 +3,7 @@ module hasir-api
 go 1.26
 
 require (
-	buf.build/gen/go/hasir/hasir/connectrpc/go v1.20.0-20260604170842-91f895a9e4c4.1
+	buf.build/gen/go/hasir/hasir/connectrpc/go v1.20.0-20260610094111-cfab46468758.1
 	buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20260610094111-cfab46468758.1
 	connectrpc.com/connect v1.20.0
 	github.com/exaring/otelpgx v0.11.1
