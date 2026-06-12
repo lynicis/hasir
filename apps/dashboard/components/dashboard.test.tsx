@@ -110,6 +110,7 @@ describe("Dashboard", () => {
       data: undefined,
       isLoading: true,
       error: null,
+      refetch: vi.fn(),
     }));
 
     render(<Dashboard />);
@@ -245,6 +246,7 @@ describe("Dashboard", () => {
           data: { organizations: mockOrganizations },
           isLoading: false,
           error: null,
+          refetch: vi.fn(),
         };
       }
       if (schema.name === "getRepositories") {
@@ -252,9 +254,10 @@ describe("Dashboard", () => {
           data: { repositories: [] },
           isLoading: false,
           error: null,
+          refetch: vi.fn(),
         };
       }
-      return { data: null, isLoading: false, error: null };
+      return { data: null, isLoading: false, error: null, refetch: vi.fn() };
     });
 
     render(<Dashboard />);
@@ -271,6 +274,7 @@ describe("Dashboard", () => {
           data: { organizations: mockOrganizations },
           isLoading: false,
           error: null,
+          refetch: vi.fn(),
         };
       }
       if (schema.name === "getRepositories") {
@@ -278,9 +282,10 @@ describe("Dashboard", () => {
           data: undefined,
           isLoading: false,
           error: new Error("Network error"),
+          refetch: vi.fn(),
         };
       }
-      return { data: null, isLoading: false, error: null };
+      return { data: null, isLoading: false, error: null, refetch: vi.fn() };
     });
 
     render(<Dashboard />);
@@ -299,6 +304,7 @@ describe("Dashboard", () => {
           data: undefined,
           isLoading: false,
           error: new Error("Network error"),
+          refetch: vi.fn(),
         };
       }
       if (schema.name === "getRepositories") {
@@ -306,9 +312,10 @@ describe("Dashboard", () => {
           data: { repositories: mockRepositories },
           isLoading: false,
           error: null,
+          refetch: vi.fn(),
         };
       }
-      return { data: null, isLoading: false, error: null };
+      return { data: null, isLoading: false, error: null, refetch: vi.fn() };
     });
 
     render(<Dashboard />);

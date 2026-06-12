@@ -1,3 +1,4 @@
+import { describe, it, expect, mock, afterEach, beforeEach, vi } from "bun:test";
 import { Code, ConnectError } from "@connectrpc/connect";
 
 import { authInterceptor } from "./auth-interceptor";
@@ -18,7 +19,7 @@ type MockRequest = {
 };
 
 describe("authInterceptor", () => {
-  const mockNext = vi.fn();
+  const mockNext = vi.fn().mockResolvedValue({});
   const mockRequest: MockRequest = {
     url: "https://api.example.com/service/method",
     header: {
