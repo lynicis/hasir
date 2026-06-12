@@ -69,14 +69,6 @@ if (typeof Element.prototype.releasePointerCapture === "undefined") {
 }
 
 /* --- Global test mock registries --- */
-// @connectrpc/connect
-// Must be mocked before connect-query because connect-query internally imports connect
-// We make a copy of the real exports so the module graph is fully captured by the preload
-const RealConnect = Object.assign({}, require("@connectrpc/connect"));
-mock.module("@connectrpc/connect", () => ({
-  ...RealConnect,
-}));
-
 // @connectrpc/connect-query
 (globalThis as any).__connectQueryMocks = new Map<string, () => any>();
 (globalThis as any).__defaultUseQuery = () => ({ data: null, isLoading: false });

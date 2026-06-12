@@ -1,4 +1,4 @@
-import { Code, ConnectError } from "@connectrpc/connect";
+import { type Interceptor, Code, ConnectError } from "@connectrpc/connect";
 
 const publicMethods = ['login', 'register', 'forgotpassword', 'resetpassword'];
 
@@ -28,8 +28,8 @@ function isPublicMethod(req: { url?: string }): boolean {
 async function destroySession(): Promise<void> {
   try {
     await fetch('/api/auth/logout', { method: 'POST' });
-  } catch {
-    console.warn('Failed to destroy session:');
+  } catch (error) {
+    console.warn('Failed to destroy session:', error);
   }
 }
 
@@ -38,40 +38,38 @@ async function redirectToLogin(): Promise<void> {
   window.history.replaceState(null, "", "/login");
 }
 
-export const authInterceptor = (next: (req: unknown) => Promise<unknown>): ((req: unknown) => Promise<unknown>) => {
-  return async (req: unknown) => {
-    const isPublic = isPublicMethod(req as { url?: string }) || isPublicPage();
+export const authInterceptor: Interceptor = (next) => async (req) => {
+  const isPublic = isPublicMethod(req) || isPublicPage();
 
-    if (isPublic) {
-      return await next(req);
+  if (isPublic) {
+    return await next(req);
+  }
+
+  const sessionResponse = await fetch('/api/auth/session');
+
+  if (sessionResponse.status === 401) {
+    await redirectToLogin();
+    throw new ConnectError("Unauthenticated", Code.Unauthenticated);
+  }
+
+  if (sessionResponse.ok) {
+    const session = await sessionResponse.json();
+    if (session.accessToken) {
+      req.header.set("Authorization", `Bearer ${session.accessToken}`);
     }
+  }
 
-    const sessionResponse = await fetch('/api/auth/session');
-
-    if (sessionResponse.status === 401) {
+  try {
+    return await next(req);
+  } catch (error) {
+    if (
+      error instanceof ConnectError &&
+      error.code === Code.Unauthenticated &&
+      !isPublic
+    ) {
       await redirectToLogin();
-      throw new ConnectError("Unauthenticated", Code.Unauthenticated);
     }
 
-    if (sessionResponse.ok) {
-      const session = await sessionResponse.json();
-      if (session.accessToken) {
-        (req as { header: { set: (k: string, v: string) => void } }).header.set("Authorization", `Bearer ${session.accessToken}`);
-      }
-    }
-
-    try {
-      return await next(req);
-    } catch (error) {
-      if (
-        error instanceof ConnectError &&
-        error.code === Code.Unauthenticated &&
-        !isPublic
-      ) {
-        await redirectToLogin();
-      }
-
-      throw error;
-    }
-  };
+    throw error;
+  }
 };
