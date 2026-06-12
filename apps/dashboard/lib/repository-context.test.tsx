@@ -1,7 +1,6 @@
 import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
 import { useContext } from "react";
 
 import { RepositoryContext } from "./repository-context";
@@ -25,6 +24,7 @@ describe("RepositoryContext", () => {
       organizationId: "test-org-id",
       visibility: 0,
       sdkPreferences: [],
+      managedByBuf: false,
     };
 
     const contextValue = {

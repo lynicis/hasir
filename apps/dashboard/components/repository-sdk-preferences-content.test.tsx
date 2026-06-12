@@ -1,11 +1,11 @@
 import {
-  Repository,
+  type Repository,
   SDK,
 } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createConnectTransport } from "@connectrpc/connect-web";
+import * as connectQueryActual from "@connectrpc/connect-query";
 import { TransportProvider } from "@connectrpc/connect-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -33,16 +33,13 @@ vi.mock("@/lib/use-client", () => ({
   }),
 }));
 
-vi.mock("@connectrpc/connect-query", async () => {
-  const actual = await vi.importActual("@connectrpc/connect-query");
-  return {
-    ...actual,
-    useQuery: vi.fn(() => ({
-      data: { id: "org-123" },
-      isLoading: false,
-    })),
-  };
-});
+vi.mock("@connectrpc/connect-query", () => ({
+  ...connectQueryActual,
+  useQuery: vi.fn(() => ({
+    data: { id: "org-123" },
+    isLoading: false,
+  })),
+}));
 
 const mockRepository: Repository = {
   $typeName: "registry.v1.Repository",
@@ -186,7 +183,7 @@ describe("RepositorySdkPreferencesContent", () => {
 
     const switches = screen.getAllByRole("switch");
 
-    const goSwitch = switches[0];
+    const goSwitch = switches[0]!;
     await user.click(goSwitch);
 
     const protocolBuffersSwitch = screen.getByLabelText(/protocol buffers/i);
@@ -194,15 +191,14 @@ describe("RepositorySdkPreferencesContent", () => {
   });
 
   it("throws error when used outside RepositoryLayout", () => {
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    const originalError = console.error;
+    console.error = vi.fn();
 
     expect(() => {
       render(<RepositorySdkPreferencesContent />);
     }).toThrow("SdkPreferencesPage must be used within RepositoryLayout");
 
-    consoleError.mockRestore();
+    console.error = originalError;
   });
 
   it("disables all toggles when Reset to Defaults button is clicked", async () => {
@@ -217,7 +213,7 @@ describe("RepositorySdkPreferencesContent", () => {
 
     const switches = screen.getAllByRole("switch");
 
-    const goSwitch = switches[0];
+    const goSwitch = switches[0]!;
     await user.click(goSwitch);
 
     const protocolBuffersSwitch = screen.getByLabelText(/protocol buffers/i);
@@ -265,7 +261,7 @@ describe("RepositorySdkPreferencesContent", () => {
     expect(saveButton).toBeDisabled();
 
     const switches = screen.getAllByRole("switch");
-    const goSwitch = switches[0];
+    const goSwitch = switches[0]!;
     await user.click(goSwitch);
 
     expect(saveButton).not.toBeDisabled();
@@ -287,7 +283,7 @@ describe("RepositorySdkPreferencesContent", () => {
     expect(saveButton).toBeDisabled();
 
     const switches = screen.getAllByRole("switch");
-    const goSwitch = switches[0];
+    const goSwitch = switches[0]!;
     await user.click(goSwitch);
 
     expect(saveButton).not.toBeDisabled();
@@ -317,7 +313,7 @@ describe("RepositorySdkPreferencesContent", () => {
     expect(saveButton).toBeDisabled();
 
     const switches = screen.getAllByRole("switch");
-    const goSwitch = switches[0];
+    const goSwitch = switches[0]!;
     await user.click(goSwitch);
 
     expect(saveButton).not.toBeDisabled();
@@ -357,7 +353,7 @@ describe("RepositorySdkPreferencesContent", () => {
     expect(saveButton).toBeDisabled();
 
     const switches = screen.getAllByRole("switch");
-    const goSwitch = switches[0];
+    const goSwitch = switches[0]!;
     await user.click(goSwitch);
 
     expect(saveButton).not.toBeDisabled();
@@ -465,7 +461,7 @@ describe("RepositorySdkPreferencesContent", () => {
       );
 
       const switches = screen.getAllByRole("switch");
-      const goSwitch = switches[0];
+      const goSwitch = switches[0]!;
 
       expect(goSwitch).toBeChecked();
       expect(goSwitch).toBeDisabled();

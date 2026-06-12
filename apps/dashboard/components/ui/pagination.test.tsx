@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, it, vi, expect } from "bun:test";
 
 import { Pagination } from "./pagination";
 
@@ -65,11 +65,11 @@ describe("Pagination", () => {
     );
 
     const buttons = screen.getAllByRole("button");
-    const nextButton = buttons[buttons.length - 1];
+    const nextButton = buttons[buttons.length - 1]!;
     await user.click(nextButton);
     expect(onPageChange).toHaveBeenCalledWith(3);
 
-    const prevButton = buttons[0];
+    const prevButton = buttons[0]!;
     await user.click(prevButton);
     expect(onPageChange).toHaveBeenCalledWith(1);
   });

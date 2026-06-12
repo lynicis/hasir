@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 
-import { SessionData } from "./session";
+import type { SessionData } from "./session";
 
 interface SessionContextType {
   session: SessionData | null;

@@ -1,4 +1,4 @@
-import { getIronSession, IronSession, SessionOptions } from 'iron-session';
+import { getIronSession, type IronSession, type SessionOptions } from 'iron-session';
 import { cookies } from 'next/headers';
 import { DateTime } from "luxon";
 

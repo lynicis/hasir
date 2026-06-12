@@ -3,7 +3,6 @@ import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/regist
 
 import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
 
 import { SearchDropdown } from "./search-dropdown";
 
@@ -28,15 +27,19 @@ describe("SearchDropdown", () => {
       $typeName: "registry.v1.Repository",
       id: "repo-1",
       name: "test-repo-1",
+      organizationId: "org-1",
       visibility: Visibility.PUBLIC,
       sdkPreferences: [],
+      managedByBuf: false,
     },
     {
       $typeName: "registry.v1.Repository",
       id: "repo-2",
       name: "test-repo-2",
+      organizationId: "org-2",
       visibility: Visibility.PRIVATE,
       sdkPreferences: [],
+      managedByBuf: false,
     },
   ];
 

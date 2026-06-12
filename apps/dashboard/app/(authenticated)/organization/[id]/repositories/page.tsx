@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 
 import OrganizationRepositoriesContent from "@/components/organization-repositories-content";
 

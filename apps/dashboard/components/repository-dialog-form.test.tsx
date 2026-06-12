@@ -1,8 +1,6 @@
-import type { Mock } from "vitest";
 
 import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, beforeEach, expect, it, vi } from "vitest";
 import { ConnectError, Code } from "@connectrpc/connect";
 import userEvent from "@testing-library/user-event";
 
@@ -10,10 +8,8 @@ import { useClient } from "@/lib/use-client";
 
 import { RepositoryDialogForm } from "./repository-dialog-form";
 
-const { toastSuccess, toastError } = vi.hoisted(() => ({
-  toastSuccess: vi.fn(),
-  toastError: vi.fn(),
-}));
+const toastSuccess = vi.fn();
+const toastError = vi.fn();
 
 vi.mock("@/lib/use-client", () => ({
   useClient: vi.fn(),

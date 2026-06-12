@@ -1,13 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import UsersPage from "./organization-users-content";
 
-const { toastSuccess, toastError } = vi.hoisted(() => ({
-  toastSuccess: vi.fn(),
-  toastError: vi.fn(),
-}));
+const toastSuccess = vi.fn();
+const toastError = vi.fn();
 
 const mockUseQuery = vi.fn();
 const mockRefetch = vi.fn();
@@ -202,7 +199,7 @@ describe("UsersPage", () => {
     });
     expect(readerButtons.length).toBeGreaterThan(0);
 
-    await user.click(readerButtons[0]);
+    await user.click(readerButtons[0]!);
 
     const authorOption = await screen.findByRole("menuitem", {
       name: /author/i,
@@ -257,7 +254,7 @@ describe("UsersPage", () => {
     const readerButtons = await screen.findAllByRole("button", {
       name: /reader/i,
     });
-    await user.click(readerButtons[0]);
+    await user.click(readerButtons[0]!);
 
     const authorOption = await screen.findByRole("menuitem", {
       name: /author/i,
@@ -303,7 +300,7 @@ describe("UsersPage", () => {
     render(<UsersPage />);
 
     const menuButtons = screen.getAllByRole("button", { name: "" });
-    const memberMenuButton = menuButtons[menuButtons.length - 1];
+    const memberMenuButton = menuButtons[menuButtons.length - 1]!;
     await user.click(memberMenuButton);
 
     const removeMenuItem = await screen.findByRole("menuitem", {
@@ -361,7 +358,7 @@ describe("UsersPage", () => {
     render(<UsersPage />);
 
     const menuButtons = screen.getAllByRole("button", { name: "" });
-    const memberMenuButton = menuButtons[menuButtons.length - 1];
+    const memberMenuButton = menuButtons[menuButtons.length - 1]!;
     await user.click(memberMenuButton);
 
     const removeMenuItem = await screen.findByRole("menuitem", {

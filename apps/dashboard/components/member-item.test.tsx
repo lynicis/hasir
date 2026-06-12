@@ -1,6 +1,5 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
 
 import { MemberItem, type OrganizationMember } from "./member-item";
 
@@ -31,6 +30,7 @@ describe("MemberItem", () => {
         canEditPermissions={true}
         canRemove={true}
         getInitials={mockGetInitials}
+        ownerCount={1}
       />
     );
 
@@ -48,6 +48,7 @@ describe("MemberItem", () => {
         canEditPermissions={true}
         canRemove={true}
         getInitials={mockGetInitials}
+        ownerCount={1}
       />
     );
 
@@ -64,6 +65,7 @@ describe("MemberItem", () => {
         canEditPermissions={true}
         canRemove={true}
         getInitials={mockGetInitials}
+        ownerCount={1}
       />
     );
 
@@ -86,6 +88,7 @@ describe("MemberItem", () => {
         canEditPermissions={true}
         canRemove={true}
         getInitials={mockGetInitials}
+        ownerCount={1}
       />
     );
 
@@ -114,6 +117,7 @@ describe("MemberItem", () => {
         canEditPermissions={true}
         canRemove={true}
         getInitials={mockGetInitials}
+        ownerCount={1}
       />
     );
 
@@ -131,6 +135,7 @@ describe("MemberItem", () => {
         canEditPermissions={true}
         canRemove={true}
         getInitials={mockGetInitials}
+        ownerCount={1}
       />
     );
 

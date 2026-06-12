@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, beforeEach, afterEach, it, vi, expect } from "bun:test";
 import userEvent from "@testing-library/user-event";
 
 import { CloneUrls } from "./clone-urls";
@@ -16,19 +16,29 @@ describe("CloneUrls", () => {
     repositoryId: "123e4567-e89b-12d3-a456-426614174000",
   };
 
+  const originalClipboard = navigator.clipboard;
+  let mockWriteText: ReturnType<typeof mock>;
+
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.NEXT_PUBLIC_API_URL;
 
-    if (!navigator.clipboard) {
-      Object.defineProperty(navigator, "clipboard", {
-        value: {
-          writeText: vi.fn().mockResolvedValue(undefined),
-        },
-        writable: true,
-        configurable: true,
-      });
-    }
+    mockWriteText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: mockWriteText,
+      },
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: originalClipboard,
+      writable: true,
+      configurable: true,
+    });
   });
 
   it("displays HTTPS URL by default using repository ID", () => {
@@ -57,25 +67,18 @@ describe("CloneUrls", () => {
   });
 
   it("copies URL to clipboard", async () => {
-    const writeTextSpy = vi
-      .spyOn(navigator.clipboard, "writeText")
-      .mockResolvedValue(undefined);
-
-    const user = userEvent.setup();
     render(<CloneUrls {...defaultProps} />);
 
     const copyButton = screen.getByRole("button", {
       name: "Copy to clipboard",
     });
-    await user.click(copyButton);
+    fireEvent.click(copyButton);
 
     await waitFor(() => {
-      expect(writeTextSpy).toHaveBeenCalledWith(
+      expect(mockWriteText).toHaveBeenCalledWith(
         `http://localhost:8080/git/${defaultProps.repositoryId}.git`
       );
     });
-
-    writeTextSpy.mockRestore();
   });
 
   it("handles SSH URL without port", async () => {

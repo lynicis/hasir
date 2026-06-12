@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { createConnectTransport } from "@connectrpc/connect-web";
+import * as connectQueryActual from "@connectrpc/connect-query";
 import { TransportProvider } from "@connectrpc/connect-query";
 import userEvent from "@testing-library/user-event";
 
@@ -12,10 +12,8 @@ type MockKey = {
   name: string;
 };
 
-const { toastSuccess, toastError } = vi.hoisted(() => ({
-  toastSuccess: vi.fn(),
-  toastError: vi.fn(),
-}));
+const toastSuccess = vi.fn();
+const toastError = vi.fn();
 
 vi.mock("sonner", () => ({
   toast: {
@@ -24,39 +22,36 @@ vi.mock("sonner", () => ({
   },
 }));
 
-const mockSshKeys = vi.hoisted(() => ({
+const mockSshKeys = {
   data: { keys: [] as MockKey[], totalPage: 1 },
   isLoading: false,
   refetch: vi.fn(),
-}));
+};
 
-const mockApiKeys = vi.hoisted(() => ({
+const mockApiKeys = {
   data: { keys: [] as MockKey[], totalPage: 1 },
   isLoading: false,
   refetch: vi.fn(),
-}));
+};
 
-vi.mock("@connectrpc/connect-query", async () => {
-  const actual = await vi.importActual("@connectrpc/connect-query");
-  return {
-    ...actual,
-    useQuery: vi.fn((queryFn) => {
-      if (
-        queryFn.name === "getSshKeys" ||
-        queryFn.toString().includes("SshKey")
-      ) {
-        return mockSshKeys;
-      }
-      if (
-        queryFn.name === "getApiKeys" ||
-        queryFn.toString().includes("ApiKey")
-      ) {
-        return mockApiKeys;
-      }
+vi.mock("@connectrpc/connect-query", () => ({
+  ...connectQueryActual,
+  useQuery: vi.fn((queryFn: (...args: unknown[]) => unknown) => {
+    if (
+      queryFn.name === "getSshKeys" ||
+      queryFn.toString().includes("SshKey")
+    ) {
       return mockSshKeys;
-    }),
-  };
-});
+    }
+    if (
+      queryFn.name === "getApiKeys" ||
+      queryFn.toString().includes("ApiKey")
+    ) {
+      return mockApiKeys;
+    }
+    return mockSshKeys;
+  }),
+}));
 
 const mockUserClient = {
   createSshKey: vi.fn(),
@@ -70,7 +65,7 @@ vi.mock("@/lib/use-client", () => ({
 }));
 
 describe("SshApiKeyPanel", () => {
-  let clipboardWriteTextSpy: ReturnType<typeof vi.fn>;
+  let clipboardWriteTextSpy: ReturnType<typeof mock>;
   let queryClient: QueryClient;
   const transport = createConnectTransport({
     baseUrl: "http://localhost:3000",
@@ -116,7 +111,7 @@ describe("SshApiKeyPanel", () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("Initial Rendering", () => {

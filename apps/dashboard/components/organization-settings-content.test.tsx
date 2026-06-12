@@ -1,13 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
 
 import OrganizationSettingsContent from "./organization-settings-content";
-
-vi.mock("@/components/organization-settings-form", () => ({
-  OrganizationSettingsForm: () => (
-    <div data-testid="organization-settings-form">Organization Settings Form</div>
-  ),
-}));
 
 describe("OrganizationSettingsContent", () => {
   it("renders the page heading", () => {
@@ -29,6 +22,6 @@ describe("OrganizationSettingsContent", () => {
   it("renders the organization settings form", () => {
     render(<OrganizationSettingsContent />);
 
-    expect(screen.getByTestId("organization-settings-form")).toBeInTheDocument();
+    expect(screen.getByText("General Settings")).toBeInTheDocument();
   });
 });

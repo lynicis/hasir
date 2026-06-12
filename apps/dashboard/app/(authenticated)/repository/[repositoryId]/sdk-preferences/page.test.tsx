@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createConnectTransport } from "@connectrpc/connect-web";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, it, vi, beforeEach, expect } from "bun:test";
 import { TransportProvider } from "@connectrpc/connect-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -27,20 +27,19 @@ vi.mock("next/navigation", () => ({
   useParams: () => mockParams,
 }));
 
-vi.mock("@connectrpc/connect-query", async () => {
-  const actual = await vi.importActual("@connectrpc/connect-query");
-  return {
-    ...actual,
-    useMutation: () => ({
-      mutateAsync: mockMutateAsync,
-      isPending: false,
-    }),
-    useQuery: vi.fn(() => ({
-      data: { id: "org-123" },
-      isLoading: false,
-    })),
-  };
-});
+import * as connectQueryActual from "@connectrpc/connect-query";
+
+vi.mock("@connectrpc/connect-query", () => ({
+  ...connectQueryActual,
+  useMutation: () => ({
+    mutateAsync: mockMutateAsync,
+    isPending: false,
+  }),
+  useQuery: vi.fn(() => ({
+    data: { id: "org-123" },
+    isLoading: false,
+  })),
+}));
 
 vi.mock("@/lib/use-client", () => ({
   useClient: () => ({
@@ -136,7 +135,7 @@ describe("SdkPreferencesPage", () => {
     renderWithContext();
 
     const allSwitches = screen.getAllByRole("switch");
-    const goSwitch = allSwitches[0];
+    const goSwitch = allSwitches[0]!;
     await user.click(goSwitch);
 
     const protocolBuffersSwitch = screen.getByLabelText("Protocol Buffers");
@@ -148,7 +147,7 @@ describe("SdkPreferencesPage", () => {
     renderWithContext();
 
     const allSwitches = screen.getAllByRole("switch");
-    const goSwitch = allSwitches[0];
+    const goSwitch = allSwitches[0]!;
 
     const protocolBuffersSwitch = screen.getByLabelText("Protocol Buffers");
     expect(protocolBuffersSwitch).toBeDisabled();
@@ -171,7 +170,7 @@ describe("SdkPreferencesPage", () => {
 
     expect(protocolBuffersSwitch).toBeDisabled();
 
-    const goSwitch = screen.getAllByRole("switch")[0];
+    const goSwitch = screen.getAllByRole("switch")[0]!;
     await user.click(goSwitch);
 
     await user.click(protocolBuffersSwitch);
@@ -204,7 +203,7 @@ describe("SdkPreferencesPage", () => {
     const user = userEvent.setup();
     renderWithContext();
 
-    const goSwitch = screen.getAllByRole("switch")[0];
+    const goSwitch = screen.getAllByRole("switch")[0]!;
     await user.click(goSwitch);
 
     expect(goSwitch.getAttribute("data-state")).toBe("checked");
@@ -222,8 +221,8 @@ describe("SdkPreferencesPage", () => {
 
     const allSwitches = screen.getAllByRole("switch");
 
-    const goSwitch = allSwitches[0];
-    const jsSwitch = allSwitches[1];
+    const goSwitch = allSwitches[0]!;
+    const jsSwitch = allSwitches[1]!;
 
     expect(goSwitch.getAttribute("data-state")).toBe("unchecked");
     expect(jsSwitch.getAttribute("data-state")).toBe("unchecked");
@@ -244,8 +243,8 @@ describe("SdkPreferencesPage", () => {
     renderWithContext(mockData as typeof mockRepositoryData);
 
     const allSwitches = screen.getAllByRole("switch");
-    const goSwitch = allSwitches[0];
-    const jsSwitch = allSwitches[1];
+    const goSwitch = allSwitches[0]!;
+    const jsSwitch = allSwitches[1]!;
 
     expect(goSwitch.getAttribute("data-state")).toBe("unchecked");
     expect(jsSwitch.getAttribute("data-state")).toBe("unchecked");

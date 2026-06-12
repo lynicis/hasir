@@ -1,4 +1,3 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { getIronSession, type IronSession } from "iron-session";
 import { cookies } from "next/headers";
 import { DateTime } from "luxon";
@@ -30,12 +29,14 @@ describe("session", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(cookies).mockResolvedValue(mockCookieStore as Awaited<ReturnType<typeof cookies>>);
-    vi.mocked(getIronSession).mockResolvedValue(mockIronSession);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (cookies as any).mockResolvedValue(mockCookieStore as Awaited<ReturnType<typeof cookies>>);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (getIronSession as any).mockResolvedValue(mockIronSession);
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("getSession", () => {

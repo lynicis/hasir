@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, it, vi, expect } from "bun:test";
 
 import { BrandLink } from "./brand-link";
 
@@ -28,7 +28,7 @@ describe("BrandLink", () => {
     render(<BrandLink />);
 
     const link = screen.getByRole("link", {
-      name: "Hasir LogoHasir Proto Schema Registry",
+      name: /Hasir Logo.*Hasir Proto Schema Registry/,
     });
 
     expect(link).toHaveAttribute("href", "/");
@@ -37,7 +37,7 @@ describe("BrandLink", () => {
   it("renders with a custom label and href", () => {
     render(<BrandLink label="Docs" href="/docs" />);
 
-    const link = screen.getByRole("link", { name: "Hasir LogoDocs" });
+    const link = screen.getByRole("link", { name: /Hasir Logo.*Docs/ });
 
     expect(link).toHaveAttribute("href", "/docs");
   });
@@ -46,7 +46,7 @@ describe("BrandLink", () => {
     render(<BrandLink className="text-muted" />);
 
     const link = screen.getByRole("link", {
-      name: "Hasir LogoHasir Proto Schema Registry",
+      name: /Hasir Logo.*Hasir Proto Schema Registry/,
     });
 
     expect(link.className).toContain("flex");

@@ -1,5 +1,4 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -250,7 +249,7 @@ describe("RepositorySettingsForm", () => {
 
       await waitFor(() => {
         expect(mockOnSubmit).toHaveBeenCalled();
-        expect(mockOnSubmit.mock.calls[0][0]).toEqual({
+        expect(mockOnSubmit.mock.calls[0]![0]).toEqual({
           name: "test-repository",
           visibility: "private",
           managedByBuf: false,
@@ -280,7 +279,7 @@ describe("RepositorySettingsForm", () => {
 
       await waitFor(() => {
         expect(mockOnSubmit).toHaveBeenCalled();
-        expect(mockOnSubmit.mock.calls[0][0]).toEqual({
+        expect(mockOnSubmit.mock.calls[0]![0]).toEqual({
           name: "test-repo",
           visibility: "public",
           managedByBuf: false,
@@ -306,7 +305,7 @@ describe("RepositorySettingsForm", () => {
 
       await waitFor(() => {
         expect(mockOnSubmit).toHaveBeenCalled();
-        expect(mockOnSubmit.mock.calls[0][0]).toEqual({
+        expect(mockOnSubmit.mock.calls[0]![0]).toEqual({
           name: "existing-repo",
           visibility: "private",
           managedByBuf: false,
@@ -499,7 +498,7 @@ describe("RepositorySettingsForm", () => {
 
       await waitFor(() => {
         expect(mockOnSubmit).toHaveBeenCalled();
-        expect(mockOnSubmit.mock.calls[0][0]).toEqual({
+        expect(mockOnSubmit.mock.calls[0]![0]).toEqual({
           name: "test-repo",
           visibility: "private",
           managedByBuf: false,
@@ -530,7 +529,7 @@ describe("RepositorySettingsForm", () => {
 
       await waitFor(() => {
         expect(mockOnSubmit).toHaveBeenCalled();
-        expect(mockOnSubmit.mock.calls[0][0]).toEqual({
+        expect(mockOnSubmit.mock.calls[0]![0]).toEqual({
           name: "test-repo",
           visibility: "private",
           managedByBuf: false,
@@ -556,7 +555,7 @@ describe("RepositorySettingsForm", () => {
 
       await waitFor(() => {
         expect(mockOnSubmit).toHaveBeenCalled();
-        expect(mockOnSubmit.mock.calls[0][0]).toEqual({
+        expect(mockOnSubmit.mock.calls[0]![0]).toEqual({
           name: "buf-repo",
           visibility: "private",
           managedByBuf: true,
@@ -606,7 +605,9 @@ describe("RepositorySettingsForm", () => {
       const rejectionHandler = vi.fn();
       const originalHandler = process.on("unhandledRejection", rejectionHandler);
 
-      mockOnSubmit.mockRejectedValue(new Error(errorMessage));
+      mockOnSubmit.mockImplementation(() =>
+        Promise.reject(new Error(errorMessage))
+      );
 
       render(<RepositorySettingsForm {...defaultProps} />);
 
@@ -644,7 +645,7 @@ describe("RepositorySettingsForm", () => {
 
       await waitFor(() => {
         expect(mockOnSubmit).toHaveBeenCalled();
-        expect(mockOnSubmit.mock.calls[0][0]).toEqual({
+        expect(mockOnSubmit.mock.calls[0]![0]).toEqual({
           name: maxLengthName,
           visibility: "private",
           managedByBuf: false,

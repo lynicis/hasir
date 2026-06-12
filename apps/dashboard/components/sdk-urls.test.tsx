@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { SdkUrls } from "./sdk-urls";
@@ -19,14 +18,30 @@ describe("SdkUrls", () => {
   };
 
   const originalEnv = process.env.NEXT_PUBLIC_API_URL;
+  const originalClipboard = navigator.clipboard;
+  let mockWriteText: ReturnType<typeof mock>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.NEXT_PUBLIC_API_URL = "http://localhost:8080";
+
+    mockWriteText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: mockWriteText,
+      },
+      writable: true,
+      configurable: true,
+    });
   });
 
   afterEach(() => {
     process.env.NEXT_PUBLIC_API_URL = originalEnv;
+    Object.defineProperty(navigator, "clipboard", {
+      value: originalClipboard,
+      writable: true,
+      configurable: true,
+    });
   });
 
   it("displays HTTPS SDK URL by default with go-protobuf", () => {
@@ -75,23 +90,16 @@ describe("SdkUrls", () => {
   });
 
   it("copies SDK URL to clipboard", async () => {
-    const writeTextSpy = vi
-      .spyOn(navigator.clipboard, "writeText")
-      .mockResolvedValue(undefined);
-
-    const user = userEvent.setup();
     render(<SdkUrls {...defaultProps} />);
 
     const copyButton = screen.getByRole("button", {
       name: "Copy SDK URL to clipboard",
     });
-    await user.click(copyButton);
+    fireEvent.click(copyButton);
 
-    expect(writeTextSpy).toHaveBeenCalledWith(
+    expect(mockWriteText).toHaveBeenCalledWith(
       `http://localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/go-protobuf/`
     );
-
-    writeTextSpy.mockRestore();
   });
 
   it("handles SSH URL without port", async () => {

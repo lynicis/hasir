@@ -1,92 +1,86 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { TransportProvider } from "@connectrpc/connect-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { render, screen } from "@testing-library/react";
 
 import RepositoryCommitsContent from "./repository-commits-content";
 
-const { mockUseQuery, defaultMockCommits } = vi.hoisted(() => {
-  const createMockTimestamp = (daysAgo: number) => {
-    const date = new Date();
-    date.setDate(date.getDate() - daysAgo);
-    const seconds = BigInt(Math.floor(date.getTime() / 1000));
-    return {
-      seconds,
-      nanos: 0,
-    };
-  };
-
-  const defaultMockCommits = {
-    data: {
-      commits: [
-        {
-          id: "a1b2c3d1234567890",
-          message: "feat: Add user authentication schema",
-          user: { username: "John Doe" },
-          commitedAt: createMockTimestamp(1),
-        },
-        {
-          id: "e4f5g6h1234567890",
-          message: "fix: Update product service definitions",
-          user: { username: "Jane Smith" },
-          commitedAt: createMockTimestamp(2),
-        },
-        {
-          id: "i7j8k9l1234567890",
-          message: "refactor: Reorganize proto directory structure",
-          user: { username: "Bob Johnson" },
-          commitedAt: createMockTimestamp(3),
-        },
-        {
-          id: "m0n1o2p1234567890",
-          message: "docs: Update API documentation",
-          user: { username: "John Doe" },
-          commitedAt: createMockTimestamp(4),
-        },
-        {
-          id: "q3r4s5t1234567890",
-          message: "test: Add integration tests",
-          user: { username: "Jane Smith" },
-          commitedAt: createMockTimestamp(5),
-        },
-        {
-          id: "u6v7w8x1234567890",
-          message: "chore: Update dependencies",
-          user: { username: "Bob Johnson" },
-          commitedAt: createMockTimestamp(6),
-        },
-        {
-          id: "y9z0a1b1234567890",
-          message: "feat: Add new endpoint",
-          user: { username: "John Doe" },
-          commitedAt: createMockTimestamp(7),
-        },
-        {
-          id: "c2d3e4f1234567890",
-          message: "fix: Resolve merge conflict",
-          user: { username: "Jane Smith" },
-          commitedAt: createMockTimestamp(8),
-        },
-      ],
-    },
-    isLoading: false,
-    error: null,
-  };
-
-  const mockUseQuery = vi.fn(() => defaultMockCommits);
-
-  return { mockUseQuery, defaultMockCommits };
-});
-
-vi.mock("@connectrpc/connect-query", async () => {
-  const actual = await vi.importActual("@connectrpc/connect-query");
+const createMockTimestamp = (daysAgo: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  const seconds = BigInt(Math.floor(date.getTime() / 1000));
   return {
-    ...actual,
-    useQuery: mockUseQuery,
+    seconds,
+    nanos: 0,
   };
-});
+};
+
+const defaultMockCommits = {
+  data: {
+    commits: [
+      {
+        id: "a1b2c3d1234567890",
+        message: "feat: Add user authentication schema",
+        user: { username: "John Doe" },
+        commitedAt: createMockTimestamp(1),
+      },
+      {
+        id: "e4f5g6h1234567890",
+        message: "fix: Update product service definitions",
+        user: { username: "Jane Smith" },
+        commitedAt: createMockTimestamp(2),
+      },
+      {
+        id: "i7j8k9l1234567890",
+        message: "refactor: Reorganize proto directory structure",
+        user: { username: "Bob Johnson" },
+        commitedAt: createMockTimestamp(3),
+      },
+      {
+        id: "m0n1o2p1234567890",
+        message: "docs: Update API documentation",
+        user: { username: "John Doe" },
+        commitedAt: createMockTimestamp(4),
+      },
+      {
+        id: "q3r4s5t1234567890",
+        message: "test: Add integration tests",
+        user: { username: "Jane Smith" },
+        commitedAt: createMockTimestamp(5),
+      },
+      {
+        id: "u6v7w8x1234567890",
+        message: "chore: Update dependencies",
+        user: { username: "Bob Johnson" },
+        commitedAt: createMockTimestamp(6),
+      },
+      {
+        id: "y9z0a1b1234567890",
+        message: "feat: Add new endpoint",
+        user: { username: "John Doe" },
+        commitedAt: createMockTimestamp(7),
+      },
+      {
+        id: "c2d3e4f1234567890",
+        message: "fix: Resolve merge conflict",
+        user: { username: "Jane Smith" },
+        commitedAt: createMockTimestamp(8),
+      },
+    ],
+  },
+  isLoading: false,
+  error: null,
+};
+
+const mockUseQuery = vi.fn(() => defaultMockCommits);
+
+import * as connectQueryActual from "@connectrpc/connect-query";
+
+vi.mock("@connectrpc/connect-query", () => ({
+  ...connectQueryActual,
+  useQuery: mockUseQuery,
+}));
 
 describe("RepositoryCommitsContent", () => {
   let queryClient: QueryClient;

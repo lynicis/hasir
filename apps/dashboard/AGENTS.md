@@ -1,42 +1,97 @@
 # AGENTS.md — Hasir Dashboard
 
-Next.js 16 (App Router) + React 19 + TypeScript 5 dashboard for the Hasir protobuf schema registry.
-Uses Connect-RPC (gRPC-web), TanStack Query, Zustand, react-hook-form + Zod v4, shadcn/ui (Radix + Tailwind v4).
+Next.js 16 (App Router, `output: "standalone"`) + React 19 + TypeScript 6 dashboard for the Hasir protobuf schema registry.
+Uses Connect-RPC (gRPC-web), TanStack Query (via `@connectrpc/connect-query`), Zustand, react-hook-form + Zod v4, shadcn/ui (Radix + Tailwind v4, new-york style, lucide icons, Magic UI registry).
 
 ## Build / Lint / Test Commands
 
 Package manager is **Bun**.
 
 ```sh
-bun install              # Install dependencies
-bun dev                  # Start dev server (next dev)
-bun run build            # Production build (next build, standalone output)
-bun run lint             # ESLint (flat config, eslint 9 → pinned to v9; v10 incompatible with eslint-plugin-react)
+bun install              # Install dependencies (uses bun.lock, frozen-lockfile in CI)
+bun dev                  # bun --bun run next dev (Turbopack)
+bun run build            # bun --bun run next build (standalone output)
+bun run start            # bun --bun run next start
+bun run lint             # ESLint (flat config, eslint 9, eslint-config-next)
 bun run lint:fix         # ESLint with --fix
 
-bun vitest               # Run tests in watch mode
-bun vitest run           # Run all tests once
-bun vitest run path/to/file.test.tsx          # Single test file
-bun vitest run -t "test name"                 # Single test by name
-bun vitest run path/to/file.test.tsx -t "it"  # Single test in file
-bun run test:ci          # CI mode: no watch, coverage, junit output
+bun test                 # Run all tests (Bun's built-in test runner, happy-dom)
+bun test path/to/file.test.tsx          # Single test file
+bun test -t "test name"                 # Single test by name
+bun test path/to/file.test.tsx -t "it"  # Single test in file
+bun run test:ci          # CI mode: bun test --reporter=junit, coverage via --coverage
 ```
 
-Test framework: **Vitest** (jsdom env, `@vitejs/plugin-react`, globals enabled, 15 s timeout).
-Tests use `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`.
+**Note on test runners:** Scripts use **Bun's built-in test runner** (happy-dom via `test/bun-setup.ts`, configured in `bunfig.toml`). A `vitest.config.ts` (jsdom, `@vitejs/plugin-react`, globals, 15s timeout) also exists but is not wired into any npm script.
+
+Test framework: **Bun test** (`bun:test` globals, `mock.module` for mocking). Vitest config available but dormant.
+Test libraries: `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`.
 
 ## Project Structure
 
 ```
 app/                     # Next.js App Router pages and API routes
-  (authenticated)/       # Protected route group (dashboard, org, repo, profile, invite)
-  api/                   # Route handlers (auth, docs proxy)
+├── globals.css          # Tailwind v4 CSS entry
+├── layout.tsx           # Root layout (html, body, SessionProvider, QueryClientProvider)
+├── providers.tsx        # Client providers (ThemeProvider, Toaster, SessionProvider)
+├── page.tsx             # Landing page
+├── (authenticated)/     # Protected route group
+│   ├── layout.tsx       # Auth layout with HeaderClient sidebar/nav
+│   ├── dashboard/       # Dashboard page
+│   ├── organization/
+│   │   └── [id]/
+│   │       ├── page.tsx           # Organization overview
+│   │       ├── repositories/     # Org repos list
+│   │       ├── settings/         # Org settings
+│   │       └── users/            # Org member management
+│   ├── profile/         # User profile
+│   ├── repository/      # Repo detail pages
+│   │   └── [repositoryId]/
+│   │       ├── page.tsx              # Repo overview
+│   │       ├── commits/             # Commit history
+│   │       ├── documentation/       # Protobuf docs viewer
+│   │       ├── files/               # File browser
+│   │       ├── sdk-preferences/     # SDK generation config
+│   │       └── settings/            # Repo settings
+│   └── invite/[token]/  # Invite acceptance
+├── api/                 # Route handlers
+│   ├── auth/            # login, logout, session (iron-session)
+│   └── docs/[...]/     # Protobuf docs proxy
+├── login/
+├── register/
+├── forgot-password/
+└── reset-password/[token]/
+
 components/              # Feature components with co-located *.test.tsx files
-  ui/                    # shadcn/ui primitives (do not edit by hand)
+└── ui/                  # shadcn/ui primitives (do not edit by hand)
+    ├── button.tsx, dialog.tsx, card.tsx, input.tsx, select.tsx
+    ├── field.tsx          # Field/FieldGroup/FieldLabel/FieldError pattern
+    ├── sonner.tsx         # Sonner toast wrapper
+    ├── pagination.tsx     # + pagination.test.tsx (has co-located tests)
+    ├── file-tree.tsx      # Repo file tree component
+    └── ...                # 26 total primitives (alert-dialog, avatar, dropdown-menu, etc.)
+
 lib/                     # Utilities, hooks, context providers
+├── utils.ts             # cn(), isNotFoundError(), isUnauthenticatedError()
+├── session.ts           # iron-session helpers
+├── session-provider.tsx # Session context (getSession, setSession, clearSession)
+├── auth-interceptor.ts  # Connect-RPC interceptor (Unauthenticated → /login redirect)
+├── query-retry.ts       # customRetry (skip on NotFound, max 3 retries)
+├── use-client.ts        # Generic Connect-RPC client hook
+├── use-debounce.ts      # Generic debounce hook
+├── use-documentation.ts # Protobuf docs viewer logic
+├── visibility-mapper.ts # Visibility level display helpers
+├── repository-context.tsx # Repo context provider
+└── *.test.*             # Co-located tests for most modules
+
 stores/                  # Zustand stores
-proxy.ts                 # Auth-redirect middleware
-instrumentation.ts       # OpenTelemetry setup
+└── registry-store.ts   # Global registry state
+
+test/                    # Legacy Bun test setup
+└── bun-setup.ts         # happy-dom setup, mock.module for packages
+
+proxy.ts                 # Auth-redirect middleware (Next.js middleware pattern)
+instrumentation.ts       # OpenTelemetry via @vercel/otel
 ```
 
 ## Code Style
@@ -58,7 +113,7 @@ instrumentation.ts       # OpenTelemetry setup
 
 ### TypeScript
 
-- **Strict mode** enabled. Do not add `any` without an eslint-disable comment.
+- **Strict mode** enabled (`tsconfig.json: strict: true`). Do not add `any` without an eslint-disable comment.
 - Use `interface` for component props and object shapes.
 - Use `type` for Zod-inferred types (`type ISchema = z.infer<typeof schema>`),
   union types, and simple aliases.
@@ -109,23 +164,37 @@ instrumentation.ts       # OpenTelemetry setup
 ### State Management
 
 - **Server state**: TanStack Query via `@connectrpc/connect-query` generated hooks.
-- **Client state**: Zustand stores in `stores/` directory.
+- **Client state**: Zustand stores in `stores/` directory (currently `registry-store.ts`).
 - **Sessions**: `iron-session` on the server, `SessionProvider` context on the client.
 
 ### Testing
 
 - Co-locate tests next to source files (`component.tsx` + `component.test.tsx`).
-- Use `describe`/`it`/`expect` from Vitest globals.
-- Mock with `vi.fn()`, `vi.mock()`.
+- Use `describe`/`it`/`expect` from `bun:test` globals (not Vitest globals).
+- Mock with `mock.module(...)` (Bun's built-in) or `vi.mock()` (if running via Vitest).
 - Component tests: `render()`, `screen`, `userEvent.setup()`.
 - Cover rendering, user interactions, error states, and edge cases.
 - Avoid `any` in tests when possible; use typed mocks or `as unknown as Type`.
 
+### Environment Variables
+
+Three vars in `.env.example`:
+- `NEXT_PUBLIC_API_URL` — Connect-RPC gRPC-web endpoint (default `http://localhost:8080`)
+- `NEXT_PUBLIC_BASE_URL` — App base URL (default `http://localhost:3000`)
+- `SESSION_SECRET` — iron-session encryption key (min 32 chars)
+
 ### Git Conventions
 
 - **Commit style**: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`).
-- Pre-commit hooks run ESLint and Vitest via `.pre-commit-config.yaml`.
-- CI runs lint + test on push to `master`; coverage uploaded to Codecov.
+- Pre-commit hooks via `.pre-commit-config.yaml` — lint + test (runs `npm run lint` / `npm test`, not Bun).
+- CI (`.github/workflows/ci.yaml`) — lint + test on push to `master`; coverage uploaded to Codecov.
+- Docker release (`.github/workflows/dockerize.yaml`) — multi-stage Docker build + GitHub Release on tag `v*.*.*`.
+
+### Docker
+
+Multi-stage `Dockerfile`:
+- **Build stage**: `oven/bun:1-alpine` — installs deps, runs `bun run build`.
+- **Release stage**: `node:24-alpine` — copies `.next/standalone`, `.next/static`, `public`; runs as non-root `hasir` user.
 
 ### Things to Avoid
 

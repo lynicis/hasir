@@ -1,14 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, beforeEach, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
 import { useSession } from "@/lib/session-provider";
 
 import { Dashboard } from "./dashboard";
 
-const { toastError } = vi.hoisted(() => ({
-  toastError: vi.fn(),
-}));
+const toastError = vi.fn();
 
 vi.mock("@/lib/session-provider", () => ({
   useSession: vi.fn(),
@@ -40,7 +37,8 @@ vi.mock(
   })
 );
 
-const mockedUseSession = vi.mocked(useSession);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockedUseSession = useSession as any;
 
 const mockOrganizations = [
   { id: "org-1", name: "Acme Corp" },

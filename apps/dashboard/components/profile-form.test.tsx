@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
 import { useSession } from "@/lib/session-provider";
@@ -10,7 +9,8 @@ vi.mock("@/lib/session-provider", () => ({
   useSession: vi.fn(),
 }));
 
-const mockedUseSession = vi.mocked(useSession);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockedUseSession = useSession as any;
 
 describe("ProfileForm", () => {
   const mockOnSubmit = vi.fn();
@@ -56,7 +56,7 @@ describe("ProfileForm", () => {
 
     await waitFor(() => {
       expect(mockOnSubmit).toHaveBeenCalled();
-      const callArgs = mockOnSubmit.mock.calls[0][0];
+      const callArgs = mockOnSubmit.mock.calls[0]![0];
       expect(callArgs).toMatchObject({
         email: "newemail@example.com",
         password: "",
@@ -79,7 +79,7 @@ describe("ProfileForm", () => {
 
     await waitFor(() => {
       expect(mockOnSubmit).toHaveBeenCalled();
-      const callArgs = mockOnSubmit.mock.calls[0][0];
+      const callArgs = mockOnSubmit.mock.calls[0]![0];
       expect(callArgs).toMatchObject({
         password: "newpassword123",
         confirmPassword: "newpassword123",
@@ -104,7 +104,7 @@ describe("ProfileForm", () => {
 
     await waitFor(() => {
       expect(mockOnSubmit).toHaveBeenCalled();
-      const callArgs = mockOnSubmit.mock.calls[0][0];
+      const callArgs = mockOnSubmit.mock.calls[0]![0];
       expect(callArgs).toMatchObject({
         email: "updated@example.com",
         password: "newpass123",
@@ -204,7 +204,7 @@ describe("ProfileForm", () => {
     await waitFor(
       () => {
         expect(mockOnSubmit).toHaveBeenCalled();
-        const callArgs = mockOnSubmit.mock.calls[0][0];
+        const callArgs = mockOnSubmit.mock.calls[0]![0];
         expect(callArgs).toMatchObject({
           email: "test@example.com",
           password: "",

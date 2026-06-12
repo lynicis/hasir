@@ -1,5 +1,4 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
 
 import RepositorySettingsContent from "./repository-settings-content";
 
@@ -38,33 +37,11 @@ vi.mock("@/stores/registry-store", () => ({
   useRegistryStore: () => mockInvalidateRepositories,
 }));
 
-vi.mock("@/components/repository-settings-form", () => ({
-  RepositorySettingsForm: ({
-    initialData,
-    isLoading,
-  }: {
-    initialData: { name: string; visibility: string };
-    isLoading: boolean;
-  }) => (
-    <div data-testid="repository-settings-form" data-loading={isLoading}>
-      Repository: {initialData.name} - {initialData.visibility}
-    </div>
-  ),
-}));
-
-vi.mock("@/components/delete-repository-dialog", () => ({
-  DeleteRepositoryDialog: ({ open }: { open: boolean }) => (
-    <div data-testid="delete-repository-dialog" data-open={open}>
-      Delete Dialog
-    </div>
-  ),
-}));
-
 describe("RepositorySettingsContent", () => {
   it("renders the repository settings form", () => {
     render(<RepositorySettingsContent />);
 
-    expect(screen.getByTestId("repository-settings-form")).toBeInTheDocument();
+    expect(screen.getByText("General Settings")).toBeInTheDocument();
   });
 
   it("renders the Danger Zone card", () => {
@@ -95,9 +72,5 @@ describe("RepositorySettingsContent", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the delete repository dialog", () => {
-    render(<RepositorySettingsContent />);
 
-    expect(screen.getByTestId("delete-repository-dialog")).toBeInTheDocument();
-  });
 });

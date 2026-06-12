@@ -1,8 +1,6 @@
-import type { Mock } from "vitest";
 
 import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
 import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Code, ConnectError } from "@connectrpc/connect";
 import userEvent from "@testing-library/user-event";
 
@@ -12,11 +10,9 @@ import { useClient } from "@/lib/use-client";
 
 import { OrganizationSettingsForm } from "./organization-settings-form";
 
-const { toastSuccess, toastError, mockUseSession } = vi.hoisted(() => ({
-  toastSuccess: vi.fn(),
-  toastError: vi.fn(),
-  mockUseSession: vi.fn(),
-}));
+const toastSuccess = vi.fn();
+const toastError = vi.fn();
+const mockUseSession = vi.fn();
 
 const mockPush = vi.fn();
 
@@ -868,11 +864,10 @@ describe("OrganizationSettingsForm", () => {
           screen.getByRole("heading", { name: /delete organization/i })
         ).toBeInTheDocument();
       });
-
       const allDeleteButtons = screen.getAllByRole("button", {
         name: /delete organization/i,
       });
-      const dialogConfirmButton = allDeleteButtons[allDeleteButtons.length - 1];
+      const dialogConfirmButton = allDeleteButtons[allDeleteButtons.length - 1]!;
       await user.click(dialogConfirmButton);
 
       await waitFor(() => {

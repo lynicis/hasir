@@ -1,5 +1,6 @@
+import type { Metadata } from "next";
+
 import { Suspense } from "react";
-import { Metadata } from "next";
 
 import { LoginForm, LoginFormSkeleton } from "@/components/login-form";
 import { BrandLink } from "@/components/brand-link";

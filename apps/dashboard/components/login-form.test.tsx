@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
 import { LoginForm } from "./login-form";
@@ -7,7 +6,7 @@ import { LoginForm } from "./login-form";
 const mockPush = vi.fn();
 const mockFetch = vi.fn();
 
-global.fetch = mockFetch;
+global.fetch = mockFetch as unknown as typeof fetch;
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({

@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 
 import { RegisterForm } from "@/components/register-form";
 import { BrandLink } from "@/components/brand-link";

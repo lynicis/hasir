@@ -13,7 +13,7 @@ function isPublicMethod(req: { url?: string }): boolean {
   const url = req.url?.toLowerCase() || '';
   if (!url) return false;
 
-  const urlPath = url.split('?')[0];
+  const urlPath = url.split('?')[0] || '';
   const parts = urlPath.split('/').filter(Boolean);
   const methodPart = parts[parts.length - 1] || '';
 

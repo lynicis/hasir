@@ -1,8 +1,19 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ComponentProps, ReactNode } from "react";
+
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { RepositoryItem, type OrganizationRepository } from "./repository-item";
+
+vi.mock("next/link", () => ({
+  __esModule: true,
+  default: ({
+    children,
+    ...props
+  }: ComponentProps<"a"> & { children: ReactNode }) => (
+    <a {...props}>{children}</a>
+  ),
+}));
 
 describe("RepositoryItem", () => {
   const mockRepository: OrganizationRepository = {
@@ -298,7 +309,7 @@ describe("RepositoryItem", () => {
       );
 
       const link = screen.getByRole("link");
-      expect(link).toHaveAttribute("href", "/repository");
+      expect(link).toHaveAttribute("href", "/repository/");
     });
 
     it("handles very long repository names", () => {

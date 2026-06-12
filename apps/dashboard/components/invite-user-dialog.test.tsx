@@ -1,17 +1,23 @@
 import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
 import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
-
-import * as useClientModule from "@/lib/use-client";
 
 import { InviteUserDialog } from "./invite-user-dialog";
 
 const mockInviteMember = vi.fn().mockResolvedValue({});
 
-vi.spyOn(useClientModule, "useClient").mockReturnValue({
-  inviteMember: mockInviteMember,
-} as never);
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/use-client", () => ({
+  useClient: () => ({
+    inviteMember: mockInviteMember,
+  }),
+}));
 
 describe("InviteUserDialog", () => {
   beforeEach(() => {

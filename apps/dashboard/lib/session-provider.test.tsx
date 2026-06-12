@@ -1,4 +1,3 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
@@ -16,7 +15,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
-global.fetch = vi.fn();
+global.fetch = vi.fn() as unknown as typeof fetch;
 
 describe("SessionProvider", () => {
   const mockPush = vi.fn();
@@ -26,18 +25,21 @@ describe("SessionProvider", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useRouter).mockReturnValue(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (useRouter as any).mockReturnValue(
       mockRouter as ReturnType<typeof useRouter>
     );
-    vi.mocked(usePathname).mockReturnValue("/dashboard");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (usePathname as any).mockReturnValue("/dashboard");
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should provide loading state initially", () => {
-    vi.mocked(global.fetch).mockImplementation(() => new Promise(() => {}));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global.fetch as any).mockImplementation(() => new Promise(() => {}));
 
     const TestComponent = () => {
       const { loading } = useSession();
@@ -59,7 +61,8 @@ describe("SessionProvider", () => {
       accessToken: "token",
     };
 
-    vi.mocked(global.fetch).mockResolvedValueOnce({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => mockSession,
     } as Response);
@@ -84,7 +87,8 @@ describe("SessionProvider", () => {
   });
 
   it("should set session to null when fetch returns non-ok", async () => {
-    vi.mocked(global.fetch).mockResolvedValueOnce({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global.fetch as any).mockResolvedValueOnce({
       ok: false,
       status: 401,
     } as Response);
@@ -107,9 +111,11 @@ describe("SessionProvider", () => {
   });
 
   it("should redirect to login when session fails on protected route", async () => {
-    vi.mocked(usePathname).mockReturnValue("/dashboard");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (usePathname as any).mockReturnValue("/dashboard");
 
-    vi.mocked(global.fetch).mockResolvedValueOnce({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global.fetch as any).mockResolvedValueOnce({
       ok: false,
       status: 401,
     } as Response);
@@ -131,9 +137,11 @@ describe("SessionProvider", () => {
   });
 
   it("should not redirect to login on root path", async () => {
-    vi.mocked(usePathname).mockReturnValue("/");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (usePathname as any).mockReturnValue("/");
 
-    vi.mocked(global.fetch).mockResolvedValueOnce({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global.fetch as any).mockResolvedValueOnce({
       ok: false,
       status: 401,
     } as Response);
@@ -157,9 +165,11 @@ describe("SessionProvider", () => {
   });
 
   it("should not redirect to login on public paths", async () => {
-    vi.mocked(usePathname).mockReturnValue("/login");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (usePathname as any).mockReturnValue("/login");
 
-    vi.mocked(global.fetch).mockResolvedValueOnce({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global.fetch as any).mockResolvedValueOnce({
       ok: false,
       status: 401,
     } as Response);
@@ -183,7 +193,8 @@ describe("SessionProvider", () => {
   });
 
   it("should handle fetch errors gracefully", async () => {
-    vi.mocked(global.fetch).mockRejectedValueOnce(new Error("Network error"));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global.fetch as any).mockRejectedValueOnce(new Error("Network error"));
 
     const TestComponent = () => {
       const { session, loading } = useSession();
@@ -210,7 +221,8 @@ describe("SessionProvider", () => {
         accessToken: "token",
       };
 
-      vi.mocked(global.fetch)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (global.fetch as any)
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockSession,
@@ -260,7 +272,8 @@ describe("SessionProvider", () => {
         accessToken: "token",
       };
 
-      vi.mocked(global.fetch)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (global.fetch as any)
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockSession,
@@ -308,7 +321,8 @@ describe("SessionProvider", () => {
         accessToken: "token",
       };
 
-      vi.mocked(global.fetch)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (global.fetch as any)
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockSession,

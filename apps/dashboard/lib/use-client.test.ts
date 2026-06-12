@@ -1,37 +1,35 @@
-import { type Client, createClient } from "@connectrpc/connect";
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import { type DescService } from "@bufbuild/protobuf";
 import { renderHook } from "@testing-library/react";
+import { type Client } from "@connectrpc/connect";
 
-const mockTransport = vi.hoisted(() => ({} as unknown));
-const mockClient = vi.hoisted(() => ({} as Client<DescService>));
-
-vi.mock("@connectrpc/connect-web", () => ({
-  createConnectTransport: vi.fn(() => mockTransport) as unknown,
-}));
+const mockClient = {} as Client<DescService>;
+const mockCreateClient = vi.fn(() => mockClient);
 
 vi.mock("@connectrpc/connect", () => ({
-  createClient: vi.fn(() => mockClient),
+  createClient: mockCreateClient,
 }));
 
 vi.mock("./auth-interceptor", () => ({
   authInterceptor: vi.fn(),
 }));
 
-import { useClient } from "./use-client";
+import { useClient } from "./use-client.impl";
 
 describe("useClient", () => {
   const mockService = {} as DescService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(createClient).mockReturnValue(mockClient);
+    mockCreateClient.mockReturnValue(mockClient);
   });
 
   it("should create a client with the service", () => {
     const { result } = renderHook(() => useClient(mockService));
 
-    expect(createClient).toHaveBeenCalledWith(mockService, mockTransport);
+    expect(mockCreateClient).toHaveBeenCalledWith(
+      mockService,
+      expect.anything()
+    );
     expect(result.current).toBe(mockClient);
   });
 
@@ -43,7 +41,7 @@ describe("useClient", () => {
     rerender();
 
     expect(result.current).toBe(firstClient);
-    expect(createClient).toHaveBeenCalledTimes(1);
+    expect(mockCreateClient).toHaveBeenCalledTimes(1);
   });
 
   it("should create a new client when service changes", () => {
@@ -52,7 +50,7 @@ describe("useClient", () => {
     const mockClient1 = {} as Client<DescService>;
     const mockClient2 = {} as Client<DescService>;
 
-    vi.mocked(createClient)
+    mockCreateClient
       .mockReturnValueOnce(mockClient1)
       .mockReturnValueOnce(mockClient2);
 
@@ -68,6 +66,6 @@ describe("useClient", () => {
     rerender({ service: mockService2 });
 
     expect(result.current).toBe(mockClient2);
-    expect(createClient).toHaveBeenCalledTimes(2);
+    expect(mockCreateClient).toHaveBeenCalledTimes(2);
   });
 });

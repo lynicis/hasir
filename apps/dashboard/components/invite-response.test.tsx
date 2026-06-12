@@ -1,9 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Code, ConnectError } from "@connectrpc/connect";
 import userEvent from "@testing-library/user-event";
-
-import * as useClientModule from "@/lib/use-client";
 
 import { InviteResponse } from "./invite-response";
 
@@ -23,10 +20,14 @@ vi.mock("next/navigation", () => ({
 const mockIsInvitationValid = vi.fn();
 const mockRespondToInvitation = vi.fn();
 
-vi.spyOn(useClientModule, "useClient").mockReturnValue({
+const mockApiClient = {
   isInvitationValid: mockIsInvitationValid,
   respondToInvitation: mockRespondToInvitation,
-} as never);
+};
+
+vi.mock("@/lib/use-client", () => ({
+  useClient: () => mockApiClient,
+}));
 
 describe("InviteResponse", () => {
   beforeEach(() => {

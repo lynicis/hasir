@@ -1,5 +1,6 @@
+import type { Metadata } from "next";
+
 import { redirect } from "next/navigation";
-import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Hasir | Organization Settings",

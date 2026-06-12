@@ -1,18 +1,14 @@
-import type { Mock } from "vitest";
 
 import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
 import { useClient } from "@/lib/use-client";
 
 import { ResetPasswordForm } from "./reset-password-form";
 
-const { mockRouterPush, toastSuccess, toastError } = vi.hoisted(() => ({
-  mockRouterPush: vi.fn(),
-  toastSuccess: vi.fn(),
-  toastError: vi.fn(),
-}));
+const mockRouterPush = vi.fn();
+const toastSuccess = vi.fn();
+const toastError = vi.fn();
 
 vi.mock("@/lib/use-client", () => ({
   useClient: vi.fn(),

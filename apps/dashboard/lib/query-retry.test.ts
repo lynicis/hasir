@@ -1,5 +1,4 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import { describe, expect, it } from "vitest";
 
 import { customRetry } from "./query-retry";
 

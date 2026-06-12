@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, it, vi, beforeEach, expect } from "bun:test";
 import { render, screen } from "@testing-library/react";
 
 import { SshConfigurationContent } from "./ssh-configuration-content";
@@ -16,14 +16,15 @@ vi.mock("next/link", () => ({
 }));
 
 beforeEach(() => {
-  vi.stubGlobal(
-    "IntersectionObserver",
-    class {
+  Object.defineProperty(globalThis, "IntersectionObserver", {
+    value: class {
       observe = vi.fn();
       unobserve = vi.fn();
       disconnect = vi.fn();
     },
-  );
+    writable: true,
+    configurable: true,
+  });
 });
 
 describe("SshConfigurationContent", () => {

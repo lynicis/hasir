@@ -1,5 +1,4 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import { describe, expect, it } from "vitest";
 
 import { cn, isNotFoundError, isUnauthenticatedError } from "./utils";
 

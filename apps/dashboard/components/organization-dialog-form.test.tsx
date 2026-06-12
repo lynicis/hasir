@@ -1,22 +1,28 @@
-import type { Mock } from "vitest";
 
 import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
 import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, beforeEach, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
-
-import { useClient } from "@/lib/use-client";
 
 import { OrganizationDialogForm } from "./organization-dialog-form";
 
-const { toastSuccess, toastError } = vi.hoisted(() => ({
-  toastSuccess: vi.fn(),
-  toastError: vi.fn(),
-}));
+const toastSuccess = vi.fn();
+const toastError = vi.fn();
+
+const mockInvalidateOrganizations = vi.fn();
+
+const mockCreateOrganization = vi.fn();
+const mockUseClientFn = vi.fn().mockReturnValue({
+  createOrganization: mockCreateOrganization,
+});
 
 vi.mock("@/lib/use-client", () => ({
-  useClient: vi.fn(),
+  useClient: mockUseClientFn,
+}));
+
+vi.mock("@/stores/registry-store", () => ({
+  useRegistryStore: (selector: (state: { invalidateOrganizations: () => void }) => void) =>
+    selector({ invalidateOrganizations: mockInvalidateOrganizations }),
 }));
 
 vi.mock("sonner", () => ({
@@ -26,15 +32,13 @@ vi.mock("sonner", () => ({
   },
 }));
 
-const mockCreateOrganization = vi.fn();
-const mockedUseClient = useClient as unknown as Mock;
-
 describe("OrganizationDialogForm", () => {
   beforeEach(() => {
-    mockedUseClient.mockReturnValue({
+    mockUseClientFn.mockReturnValue({
       createOrganization: mockCreateOrganization,
     } as never);
     mockCreateOrganization.mockReset();
+    mockInvalidateOrganizations.mockReset();
     toastSuccess.mockReset();
     toastError.mockReset();
   });
@@ -277,11 +281,12 @@ describe("OrganizationDialogForm", () => {
       "friend@test.com"
     );
 
+
     const roleSelects = screen.getAllByRole("combobox");
     const roleSelect =
-      roleSelects.find((select) =>
+      (roleSelects.find((select) =>
         select.getAttribute("aria-label")?.includes("Role")
-      ) || roleSelects[roleSelects.length - 1];
+      ) || roleSelects[roleSelects.length - 1]) as HTMLElement;
 
     await user.click(roleSelect);
     const authorOption = await screen.findByRole("option", { name: /author/i });

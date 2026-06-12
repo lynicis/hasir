@@ -106,10 +106,11 @@ const getInitialConfig = (): SdkConfig => {
   const config: SdkConfig = {};
 
   Object.entries(SDK_LANGUAGES).forEach(([langKey, langConfig]) => {
-    config[langKey] = { enabled: false };
+    const langObj = { enabled: false } as { enabled: boolean; [key: string]: boolean };
     langConfig.options.forEach((option) => {
-      config[langKey][option.key] = false;
+      langObj[option.key] = false;
     });
+    config[langKey] = langObj;
   });
 
   return config;
@@ -124,8 +125,11 @@ const mapSdkPreferencesToConfig = (
     Object.entries(SDK_LANGUAGES).forEach(([langKey, langConfig]) => {
       langConfig.options.forEach((option) => {
         if (option.sdkValue === pref.sdk && pref.status) {
-          config[langKey][option.key] = true;
-          config[langKey].enabled = true;
+          const lang = config[langKey];
+          if (lang) {
+            lang[option.key] = true;
+            lang.enabled = true;
+          }
         }
       });
     });
@@ -141,7 +145,7 @@ const configsAreEqual = (a: SdkConfig, b: SdkConfig): boolean => {
   for (const key of keys) {
     const aObj = a[key];
     const bObj = b[key];
-    if (!bObj) return false;
+    if (!aObj || !bObj) return false;
 
     const objKeys = Object.keys(aObj);
     if (objKeys.length !== Object.keys(bObj).length) return false;
@@ -201,32 +205,36 @@ export default function RepositorySdkPreferencesContent() {
 
   const handleLanguageToggle = (language: string) => {
     if (isManagedByBuf) return;
-    setConfig((prev) => ({
-      ...prev,
-      [language]: {
-        ...prev[language],
-        enabled: !prev[language].enabled,
-        ...(prev[language].enabled &&
-          Object.keys(prev[language]).reduce((acc, key) => {
-            if (key !== "enabled") acc[key] = false;
-            return acc;
-          }, {} as Record<string, boolean>)),
-      },
-    }));
+    setConfig((prev) => {
+      const current = prev[language] || { enabled: false };
+      return {
+        ...prev,
+        [language]: {
+          ...current,
+          enabled: !current.enabled,
+          ...(current.enabled &&
+            Object.keys(current).reduce((acc, key) => {
+              if (key !== "enabled") acc[key] = false;
+              return acc;
+            }, {} as Record<string, boolean>)),
+        },
+      };
+    });
   };
 
   const handleSubOptionToggle = (language: string, option: string) => {
     if (isManagedByBuf) return;
     setConfig((prev) => {
-      const currentValue = (prev[language] as Record<string, boolean>)[option];
+      const current = prev[language] || { enabled: false };
+      const currentValue = (current as Record<string, boolean>)[option] || false;
       const newValue = !currentValue;
 
       return {
         ...prev,
         [language]: {
-          ...prev[language],
+          ...current,
           [option]: newValue,
-          enabled: newValue ? true : prev[language].enabled,
+          enabled: newValue ? true : current.enabled,
         },
       };
     });
