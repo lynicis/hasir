@@ -77,8 +77,8 @@ Before starting, ensure you have:
 ### 1. Clone the repository
 Clone this repository to your target VPS:
 ```bash
-git clone git@github.com:protohasir/docker-images.git
-cd docker-images
+git clone git@github.com:protohasir/docker-compose.git
+cd docker-compose
 ```
 
 ### 2. Run the Setup Script
@@ -119,7 +119,7 @@ Add a daily cron job to automate backups:
 sudo crontab -e
 
 # Add the following line to run backups daily at 2:00 AM
-0 2 * * * /path/to/docker-images/scripts/backup.sh >> /var/log/hasir-backup.log 2>&1
+0 2 * * * /path/to/docker-compose/scripts/backup.sh >> /var/log/hasir-backup.log 2>&1
 ```
 
 ### Restoring a Backup

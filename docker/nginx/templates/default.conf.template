@@ -37,14 +37,6 @@ server {
     # API endpoints
     location /api/ {
         limit_req zone=api_limit burst=50 nodelay;
-
-        # Rate limit auth endpoints
-        location ~* /api/user\.v1\.UserService/(Register|Login) {
-            limit_req zone=auth_limit burst=10 nodelay;
-            proxy_pass http://hasir-api:8080/;
-            include /etc/nginx/includes/proxy-settings.conf;
-        }
-
         proxy_pass http://hasir-api:8080/;
         include /etc/nginx/includes/proxy-settings.conf;
     }
