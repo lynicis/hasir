@@ -1,0 +1,65 @@
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        allow all;
+    }
+
+    # Redirect all HTTP requests to HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name ${DOMAIN};
+
+    client_max_body_size 10M;
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    include /etc/nginx/includes/ssl.conf;
+    include /etc/nginx/includes/security-headers.conf;
+    include /etc/nginx/includes/gzip.conf;
+
+    location = /health {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 'OK';
+    }
+
+    # API endpoints
+    location /api/ {
+        limit_req zone=api_limit burst=50 nodelay;
+
+        # Rate limit auth endpoints
+        location ~* /api/user\.v1\.UserService/(Register|Login) {
+            limit_req zone=auth_limit burst=10 nodelay;
+            proxy_pass http://hasir-api:8080/;
+            include /etc/nginx/includes/proxy-settings.conf;
+        }
+
+        proxy_pass http://hasir-api:8080/;
+        include /etc/nginx/includes/proxy-settings.conf;
+    }
+
+    # Static assets Next.js caching
+    location /_next/static/ {
+        proxy_pass http://hasir-dashboard:3000;
+        proxy_cache_bypass $http_upgrade;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # Dashboard proxy
+    location / {
+        proxy_pass http://hasir-dashboard:3000;
+        include /etc/nginx/includes/proxy-settings.conf;
+    }
+}

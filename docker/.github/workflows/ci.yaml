@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-compose:
+    name: Validate Docker Compose
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup environment file
+        run: cp .env.example .env
+
+      - name: Validate compose syntax
+        run: docker compose config
+
+  validate-nginx:
+    name: Validate Nginx Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Nginx Docker Image
+        run: docker build -t hasir-nginx ./nginx
+
+      - name: Test Nginx configuration with templated virtual hosts
+        run: |
+          # Create dummy certificates to satisfy Nginx config check
+          mkdir -p certbot/conf/live/example.com
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+            -keyout certbot/conf/live/example.com/privkey.pem \
+            -out certbot/conf/live/example.com/fullchain.pem \
+            -subj "/CN=example.com"
+          
+          # Run Nginx configuration test in the built image with DOMAIN env and cert mounts.
+          # The entrypoint automatically generates /etc/nginx/conf.d/default.conf from templates/default.conf.template.
+          docker run --rm \
+            -e DOMAIN=example.com \
+            -v $(pwd)/certbot/conf:/etc/letsencrypt:ro \
+            hasir-nginx nginx -t
