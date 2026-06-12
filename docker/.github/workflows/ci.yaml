@@ -44,4 +44,6 @@ jobs:
           docker run --rm \
             -e DOMAIN=example.com \
             -v $(pwd)/certbot/conf:/etc/letsencrypt:ro \
+            --add-host hasir-api:127.0.0.1 \
+            --add-host hasir-dashboard:127.0.0.1 \
             hasir-nginx nginx -t
