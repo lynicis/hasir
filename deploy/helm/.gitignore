@@ -1,3 +1,2 @@
 # Helm dependencies
-charts/*.tgz
-charts/
+charts/**/*.tgz

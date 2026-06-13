@@ -71,13 +71,13 @@ helm repo update
 Make sure you update the chart dependencies first:
 
 ```bash
-helm dependency update
+helm dependency update charts/hasir
 ```
 
 Then, install the chart using:
 
 ```bash
-helm install hasir . --namespace hasir --create-namespace
+helm install hasir charts/hasir --namespace hasir --create-namespace
 ```
 
 ### 3. Customizing Configuration
@@ -85,7 +85,7 @@ helm install hasir . --namespace hasir --create-namespace
 You can override values during installation using a custom values file:
 
 ```bash
-helm install hasir . -f my-values.yaml --namespace hasir
+helm install hasir charts/hasir -f my-values.yaml --namespace hasir
 ```
 
 ---
