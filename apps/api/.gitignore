@@ -1,4 +1,5 @@
 .idea/
+.opencode/package-lock.json
 hasir-api
 api
 config.json
