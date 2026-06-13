@@ -12,20 +12,21 @@ const containerVariants: Variants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.2,
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
     },
   },
 };
 
 const itemVariants: Variants = {
-  hidden: { y: 30, opacity: 0 },
+  hidden: { y: 20, opacity: 0 },
   visible: {
     y: 0,
     opacity: 1,
     transition: {
-      duration: 0.6,
-      ease: "easeOut",
+      type: "spring",
+      stiffness: 100,
+      damping: 15,
     },
   },
 };
@@ -36,57 +37,36 @@ export default function HomePageContent() {
   const email = session?.user?.email;
 
   return (
-    <div className="min-h-screen bg-background">
-      <section className="relative flex min-h-[90vh] w-full items-center justify-center overflow-hidden px-6 py-20">
-        <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-background to-secondary/5" />
+    <div className="min-h-screen bg-background relative overflow-hidden noise-bg">
+      {/* Dynamic ambient spotlight backdrops */}
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-10 right-1/4 w-[600px] h-[600px] bg-secondary/5 rounded-full blur-[140px] pointer-events-none" />
+      
+      <section className="relative flex min-h-[90vh] w-full items-center justify-center px-6 py-24">
         <motion.div
-          className="absolute top-20 right-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-        <motion.div
-          className="absolute bottom-20 left-20 w-96 h-96 bg-secondary/10 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.2, 0.4, 0.2],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1,
-          }}
-        />
-        <motion.div
-          className="relative z-10 flex max-w-5xl flex-col items-center text-center"
+          className="relative z-10 flex max-w-4xl flex-col items-center text-center"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           <motion.div
             variants={itemVariants}
-            className="mb-6 flex items-center justify-center"
+            className="mb-8"
           >
-            <div className="rounded-2xl bg-primary/10 p-4 backdrop-blur-sm border border-primary/20">
-              <Database className="w-12 h-12 text-primary" />
+            <div className="rounded-2xl bg-card border border-border/80 p-4 shadow-sm relative group hover:border-primary/45 transition-colors duration-500">
+              <div className="absolute inset-0 bg-primary/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <Database className="w-10 h-10 text-primary relative z-10" />
             </div>
           </motion.div>
 
           <motion.h1
-            className="text-5xl font-bold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl bg-linear-to-r from-foreground via-foreground to-foreground/60 bg-clip-text text-transparent"
+            className="text-6xl font-extrabold tracking-tighter sm:text-7xl md:text-8xl leading-none text-foreground"
             variants={itemVariants}
           >
             Hasir
           </motion.h1>
           <motion.p
-            className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground md:text-xl"
+            className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg text-pretty"
             variants={itemVariants}
           >
             Your modern Proto Schema Registry dashboard. Manage, version, and
@@ -98,7 +78,11 @@ export default function HomePageContent() {
           >
             {isLoggedIn ? (
               <>
-                <Button asChild size="lg" className="min-w-[160px]">
+                <Button 
+                  asChild 
+                  size="lg" 
+                  className="min-w-[160px] active:scale-[0.98] active:translate-y-[1px] transition-transform duration-100"
+                >
                   <Link href="/dashboard" className="flex items-center gap-2">
                     <LayoutDashboard className="w-4 h-4" />
                     Dashboard
@@ -108,7 +92,7 @@ export default function HomePageContent() {
                   asChild
                   variant="outline"
                   size="lg"
-                  className="min-w-[160px]"
+                  className="min-w-[160px] active:scale-[0.98] active:translate-y-[1px] transition-transform duration-100"
                 >
                   <Link href="/profile" className="flex items-center gap-2">
                     <User className="w-4 h-4" />
@@ -118,7 +102,11 @@ export default function HomePageContent() {
               </>
             ) : (
               <>
-                <Button asChild size="lg" className="min-w-[160px]">
+                <Button 
+                  asChild 
+                  size="lg" 
+                  className="min-w-[160px] active:scale-[0.98] active:translate-y-[1px] transition-transform duration-100"
+                >
                   <Link href="/login" className="flex items-center gap-2">
                     <LogIn className="w-4 h-4" />
                     Login
@@ -128,7 +116,7 @@ export default function HomePageContent() {
                   asChild
                   variant="outline"
                   size="lg"
-                  className="min-w-[160px]"
+                  className="min-w-[160px] active:scale-[0.98] active:translate-y-[1px] transition-transform duration-100"
                 >
                   <Link href="/register" className="flex items-center gap-2">
                     <UserPlus className="w-4 h-4" />
@@ -140,7 +128,7 @@ export default function HomePageContent() {
           </motion.div>
           {isLoggedIn && (
             <motion.p
-              className="mt-6 text-sm text-muted-foreground"
+              className="mt-6 text-xs tracking-wide text-muted-foreground font-mono"
               variants={itemVariants}
             >
               Welcome back,{" "}
