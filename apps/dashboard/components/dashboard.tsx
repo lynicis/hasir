@@ -120,9 +120,9 @@ export function Dashboard() {
     <div className="h-[calc(100vh-4.5rem)] bg-background px-6 py-6">
       <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-6">
         <main className="grid flex-1 grid-cols-[260px_minmax(0,1fr)] gap-6 pt-2 min-h-0">
-          <Card className="h-full overflow-hidden rounded-2xl border border-border/60 shadow-sm flex flex-col gap-0 py-0">
+          <Card className="h-full overflow-hidden rounded-2xl border border-border/85 shadow-md flex flex-col gap-0 py-0 premium-glass transition-all duration-500 hover:shadow-lg">
             <CardHeader className="flex items-center bg-primary px-6 py-4 shrink-0 border-b border-border/60">
-              <CardTitle className="text-sm font-medium text-secondary">
+              <CardTitle className="text-sm font-semibold tracking-tight text-secondary">
                 Your organizations
               </CardTitle>
             </CardHeader>
@@ -131,10 +131,10 @@ export function Dashboard() {
                 <button
                   type="button"
                   onClick={() => handleOrgChange("all")}
-                  className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-colors ${
+                  className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-all duration-200 active:scale-[0.99] active:translate-y-[0.5px] ${
                     activeOrgId === "all"
-                      ? "bg-accent text-accent-foreground"
-                      : "hover:bg-accent hover:text-accent-foreground"
+                      ? "bg-accent text-accent-foreground font-medium"
+                      : "hover:bg-accent/80 hover:text-accent-foreground"
                   }`}
                 >
                   <span>All organizations</span>
@@ -169,19 +169,19 @@ export function Dashboard() {
                         <button
                           type="button"
                           onClick={() => handleOrgChange(org.id)}
-                          className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-colors ${
+                          className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-all duration-200 active:scale-[0.99] active:translate-y-[0.5px] ${
                             isActive
-                              ? "bg-accent text-accent-foreground"
-                              : "hover:bg-accent hover:text-accent-foreground"
+                              ? "bg-accent text-accent-foreground font-medium"
+                              : "hover:bg-accent/80 hover:text-accent-foreground"
                           }`}
                         >
                           <span>{org.name}</span>
                         </button>
                         <Link
                           href={`/organization/${org.id}`}
-                          className="flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                          className="flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-all duration-200 hover:text-foreground"
                         >
-                          <Settings className="size-3.5" />
+                          <Settings className="size-3.5 transition-transform duration-500 hover:rotate-45" />
                           <span>Settings</span>
                         </Link>
                       </div>
@@ -198,10 +198,10 @@ export function Dashboard() {
               className="px-6 pb-4 shrink-0"
             />
           </Card>
-          <Card className="h-full overflow-hidden rounded-2xl border border-border/60 shadow-sm flex flex-col gap-0 py-0">
+          <Card className="h-full overflow-hidden rounded-2xl border border-border/85 shadow-md flex flex-col gap-0 py-0 premium-glass transition-all duration-500 hover:shadow-lg">
             <CardHeader className="flex items-center justify-between bg-primary px-6 py-4 shrink-0 border-b border-border/60">
               <div className="space-y-0.5">
-                <CardTitle className="text-sm font-medium text-secondary">
+                <CardTitle className="text-sm font-semibold tracking-tight text-secondary">
                   Repositories
                 </CardTitle>
                 {activeOrgId !== "all" && (
@@ -209,7 +209,7 @@ export function Dashboard() {
                     Showing repositories in{" "}
                     {
                       organizationsList.find(
-                        (organization) => organization.id === activeOrgId
+                          (organization) => organization.id === activeOrgId
                       )?.name
                     }
                   </p>
@@ -218,7 +218,7 @@ export function Dashboard() {
               {isLoadingRepositories ? (
                 <Skeleton className="h-4 w-12 bg-secondary/70" />
               ) : (
-                <span className="text-xs text-secondary/70">
+                <span className="text-xs text-secondary/70 font-mono tabular-nums">
                   {repositoriesList.length} repos
                 </span>
               )}
@@ -247,13 +247,13 @@ export function Dashboard() {
                       <Link
                         href={`/repository/${repo.id}`}
                         key={repo.id}
-                        className="hover:bg-accent/60 flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3 text-sm transition-colors"
+                        className="hover:bg-accent/60 hover:border-primary/30 flex items-center justify-between rounded-xl border border-border/65 bg-card px-4 py-3 text-sm transition-all duration-200 hover:shadow-sm hover:scale-[1.005] active:scale-[0.995]"
                       >
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{repo.name}</span>
                           {visibility && (
                             <span
-                              className={`text-xs px-2 py-0.5 rounded-full ${
+                              className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
                                 visibility === "public"
                                   ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                                   : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
