@@ -4,43 +4,29 @@
 
 Go API service using Connect-RPC (gRPC-compatible over HTTP). Protocol buffer definitions are hosted at `buf.build/hasir/hasir` with generated Go code imported as dependencies. PostgreSQL database with `pgx/v5`, JWT authentication, SSH server for git operations, and OpenTelemetry tracing.
 
-## Build & Run Commands
+## Commands
+
+### Build & Run
 
 ```bash
-# Run locally (development mode, reads config.json)
-make dev                    # MODE=development go run main.go
-
-# Build for production
-GOOS=linux GOARCH=amd64 go build -o api ./main.go
-
-# Start local PostgreSQL (Docker)
-make run-postgres
+make dev                    # MODE=development go run main.go (reads config.json)
+GOOS=linux GOARCH=amd64 go build -o api ./main.go  # production build
+make run-postgres           # start local PostgreSQL via Docker
 ```
 
-## Test Commands
+### Test
 
 ```bash
-# Run all tests
-go test ./...
-
-# Run all tests with verbose output and coverage
-go test -v -coverprofile=coverage.txt ./...
-
-# Run a single test function
-go test -v -run TestService_Register ./internal/user/
-
-# Run a single subtest
-go test -v -run TestService_Register/happy_path ./internal/user/
-
-# Run all tests in a specific package
-go test -v ./pkg/postgres/user/
-
-# Run only integration tests (requires Docker for testcontainers)
-go test -v ./pkg/postgres/...
-go test -v ./migrations_test.go
+go test ./...                                           # all tests
+go test -v -coverprofile=coverage.txt ./...             # verbose + coverage
+go test -v -run TestService_Register ./internal/user/   # single function
+go test -v -run TestService_Register/happy_path ./internal/user/  # subtest
+go test -v ./pkg/postgres/user/                         # single package
+go test -v ./pkg/postgres/...                           # integration (Docker)
+go test -v ./migrations_test.go                         # migration tests
 ```
 
-## Lint & Format Commands
+### Lint & Format
 
 ```bash
 make lint                   # golangci-lint run ./...
@@ -50,7 +36,7 @@ gofmt -w .                  # format all Go files
 goimports -w .              # fix import grouping
 ```
 
-## Mock Generation
+### Mock Generation
 
 ```bash
 make generate-mocks         # regenerates all mock files via mockgen (uber/mock)
@@ -164,22 +150,19 @@ zap.L().Info("message", zap.String("key", value), zap.Error(err))
 - Integration tests: `repository_test.go` in `pkg/postgres/<domain>/`
 - Migration tests: `migrations_test.go` at project root
 
-## CI Pipeline
+## CI/CD Pipeline
 
 On push/PR to `master`: lint (golangci-lint v2.6.2) -> test (with coverage) -> static analysis (gosec) -> build. All four must pass. Coverage uploaded to Codecov (excludes `main.go`, `*_mock.go`, `*_test.go`).
 
-## Pre-commit Hooks
+Pre-commit hooks (configured in `.pre-commit-config.yaml`): trailing-whitespace, end-of-file-fixer, check-merge-conflict, gofmt, goimports, go test, golangci-lint.
 
-Configured in `.pre-commit-config.yaml`: trailing-whitespace, end-of-file-fixer, check-merge-conflict, gofmt, goimports, go test, golangci-lint. All hooks run before each commit.
+## GitNexus — Code Intelligence
 
-<!-- gitnexus:start -->
-# GitNexus — Code Intelligence
-
-This project is indexed by GitNexus as **api** (1830 symbols, 5886 relationships, 93 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **api** (1849 symbols, 5935 relationships, 97 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
-## Always Do
+### Always Do
 
 - **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
 - **MUST run `detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows. For regression review, compare against the default branch: `detect_changes({scope: "compare", base_ref: "master"})`.
@@ -187,14 +170,14 @@ This project is indexed by GitNexus as **api** (1830 symbols, 5886 relationships
 - When exploring unfamiliar code, use `query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
 - When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `context({name: "symbolName"})`.
 
-## Never Do
+### Never Do
 
 - NEVER edit a function, class, or method without first running `impact` on it.
 - NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
 - NEVER rename symbols with find-and-replace — use `rename` which understands the call graph.
 - NEVER commit changes without running `detect_changes()` to check affected scope.
 
-## Resources
+### Resources
 
 | Resource | Use for |
 |----------|---------|
@@ -203,7 +186,7 @@ This project is indexed by GitNexus as **api** (1830 symbols, 5886 relationships
 | `gitnexus://repo/api/processes` | All execution flows |
 | `gitnexus://repo/api/process/{name}` | Step-by-step execution trace |
 
-## CLI
+### CLI
 
 | Task | Read this skill file |
 |------|---------------------|
@@ -213,5 +196,3 @@ This project is indexed by GitNexus as **api** (1830 symbols, 5886 relationships
 | Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
 | Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-
-<!-- gitnexus:end -->
