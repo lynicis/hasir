@@ -43,19 +43,24 @@ export function SdkUrls({ organizationId, repositoryId, commitHash }: SdkUrlsPro
   const [sdkType, setSdkType] = useState<SdkType>("go-protobuf");
   const [copied, setCopied] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:2222";
-  const urlObj = new URL(apiUrl);
-  const host = urlObj.hostname;
-  const port = urlObj.port ? `:${urlObj.port}` : "";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+  let host = "localhost";
+  try {
+    const urlObj = new URL(apiUrl);
+    host = urlObj.hostname;
+  } catch {}
+
+  const isGo = sdkType.startsWith("go-");
 
   const sdkPath = organizationId
     ? `/sdk/${organizationId}/${repositoryId}/${commitHash}/${sdkType}/`
     : "";
 
-  const url =
-    protocol === "HTTPS"
-      ? `${apiUrl}${sdkPath}`
-      : `ssh://git@${host}${port}${sdkPath}`;
+  const url = isGo
+    ? `${host}/sdk/${organizationId}/${repositoryId}/${commitHash}/${sdkType}`
+    : protocol === "HTTPS"
+    ? `git+${apiUrl}${sdkPath}`
+    : `git+ssh://git@${host}:2222${sdkPath}`;
 
   const handleCopy = async () => {
     try {
@@ -80,21 +85,23 @@ export function SdkUrls({ organizationId, repositoryId, commitHash }: SdkUrlsPro
       </div>
 
       <div className="flex w-full items-center gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-[80px]">
-              {protocol}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setProtocol("HTTPS")}>
-              HTTPS
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setProtocol("SSH")}>
-              SSH
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {!isGo && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-[80px]">
+                {protocol}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => setProtocol("HTTPS")}>
+                HTTPS
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setProtocol("SSH")}>
+                SSH
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -127,7 +134,7 @@ export function SdkUrls({ organizationId, repositoryId, commitHash }: SdkUrlsPro
         </DropdownMenu>
       </div>
 
-      <div className="relative flex-1">
+      <div className="relative flex-1 min-w-0">
         <Input
           readOnly
           value={url}

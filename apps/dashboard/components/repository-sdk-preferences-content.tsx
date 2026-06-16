@@ -20,6 +20,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert";
+import { SdkInstallGuideDialog } from "@/components/sdk-install-guide-dialog";
 import { RepositoryContext } from "@/lib/repository-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SdkUrls } from "@/components/sdk-urls";
@@ -404,7 +405,14 @@ export default function RepositorySdkPreferencesContent() {
       {repository && (
         <Card>
           <CardHeader>
-            <CardTitle>Download SDK</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              <span>Download SDK</span>
+              <SdkInstallGuideDialog
+                organizationId={repository.organizationId}
+                repositoryId={repositoryId}
+                commitHash={commitHash}
+              />
+            </CardTitle>
             <CardDescription>
               Copy the SDK URL to install the generated SDK package
             </CardDescription>

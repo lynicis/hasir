@@ -44,18 +44,32 @@ describe("SdkUrls", () => {
     });
   });
 
-  it("displays HTTPS SDK URL by default with go-protobuf", () => {
+  it("displays Go SDK URL by default with go-protobuf without protocol dropdown", () => {
     render(<SdkUrls {...defaultProps} />);
 
     const input = screen.getByRole("textbox");
     expect(input).toHaveValue(
-      `http://localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/go-protobuf/`
+      `localhost/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/go-protobuf`
     );
+
+    // Protocol dropdown (HTTPS/SSH) should not be visible for Go
+    expect(screen.queryByRole("button", { name: "HTTPS" })).not.toBeInTheDocument();
   });
 
   it("switches to SSH URL", async () => {
     const user = userEvent.setup();
     render(<SdkUrls {...defaultProps} />);
+
+    // First switch to a JavaScript SDK to show the HTTPS/SSH dropdown
+    const sdkTrigger = screen.getByRole("button", {
+      name: /Go \/ Protocol Buffers/,
+    });
+    await user.click(sdkTrigger);
+
+    const jsOption = await screen.findByRole("menuitem", {
+      name: /JS \/ @bufbuild\/es/,
+    });
+    await user.click(jsOption);
 
     const trigger = screen.getByRole("button", { name: "HTTPS" });
     await user.click(trigger);
@@ -65,7 +79,7 @@ describe("SdkUrls", () => {
 
     const input = screen.getByRole("textbox");
     expect(input).toHaveValue(
-      `ssh://git@localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/go-protobuf/`
+      `git+ssh://git@localhost:2222/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/js-bufbuild-es/`
     );
   });
 
@@ -85,7 +99,7 @@ describe("SdkUrls", () => {
 
     const input = screen.getByRole("textbox");
     expect(input).toHaveValue(
-      `http://localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/js-bufbuild-es/`
+      `git+http://localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/js-bufbuild-es/`
     );
   });
 
@@ -98,7 +112,7 @@ describe("SdkUrls", () => {
     fireEvent.click(copyButton);
 
     expect(mockWriteText).toHaveBeenCalledWith(
-      `http://localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/go-protobuf/`
+      `localhost/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/go-protobuf`
     );
   });
 
@@ -108,6 +122,17 @@ describe("SdkUrls", () => {
     const user = userEvent.setup();
     render(<SdkUrls {...defaultProps} />);
 
+    // First switch to a JavaScript SDK to show the HTTPS/SSH dropdown
+    const sdkTrigger = screen.getByRole("button", {
+      name: /Go \/ Protocol Buffers/,
+    });
+    await user.click(sdkTrigger);
+
+    const jsOption = await screen.findByRole("menuitem", {
+      name: /JS \/ @bufbuild\/es/,
+    });
+    await user.click(jsOption);
+
     const trigger = screen.getByRole("button", { name: "HTTPS" });
     await user.click(trigger);
 
@@ -116,7 +141,7 @@ describe("SdkUrls", () => {
 
     const input = screen.getByRole("textbox");
     expect(input).toHaveValue(
-      `ssh://git@api.example.com/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/go-protobuf/`
+      `git+ssh://git@api.example.com:2222/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/js-bufbuild-es/`
     );
   });
 
@@ -136,7 +161,9 @@ describe("SdkUrls", () => {
     );
 
     const input = screen.getByRole("textbox");
-    expect(input).toHaveValue("http://localhost:8080");
+    expect(input).toHaveValue(
+      `localhost/sdk//${defaultProps.repositoryId}/${defaultProps.commitHash}/go-protobuf`
+    );
   });
 
   it("handles all SDK types correctly", async () => {
@@ -149,23 +176,27 @@ describe("SdkUrls", () => {
     await user.click(sdkTrigger);
 
     const sdkTypes = [
-      { name: /Go \/ Connect-RPC/, expected: "go-connectrpc" },
-      { name: /Go \/ gRPC/, expected: "go-grpc" },
-      { name: /JS \/ @bufbuild\/es/, expected: "js-bufbuild-es" },
-      { name: /JS \/ protocolbuffers/, expected: "js-protobuf" },
-      { name: /JS \/ @connectrpc/, expected: "js-connectrpc" },
+      { name: /Go \/ Connect-RPC/, expected: "go-connectrpc", isGo: true },
+      { name: /Go \/ gRPC/, expected: "go-grpc", isGo: true },
+      { name: /JS \/ @bufbuild\/es/, expected: "js-bufbuild-es", isGo: false },
+      { name: /JS \/ protocolbuffers/, expected: "js-protobuf", isGo: false },
+      { name: /JS \/ @connectrpc/, expected: "js-connectrpc", isGo: false },
     ];
 
-    for (const { name, expected } of sdkTypes) {
+    for (const { name, expected, isGo } of sdkTypes) {
       const option = await screen.findByRole("menuitem", { name });
       await user.click(option);
 
       const input = screen.getByRole("textbox");
-      expect(input).toHaveValue(
-        `http://localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/${expected}/`
-      );
+      const expectedUrl = isGo
+        ? `localhost/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/${expected}`
+        : `git+http://localhost:8080/sdk/${defaultProps.organizationId}/${defaultProps.repositoryId}/${defaultProps.commitHash}/${expected}/`;
 
-      await user.click(sdkTrigger);
+      expect(input).toHaveValue(expectedUrl);
+
+      // Re-open the trigger
+      const currentTrigger = screen.getByRole("button", { name });
+      await user.click(currentTrigger);
     }
   });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { NextRequest } from 'next/server';
 
 import { proxy } from './proxy';
