@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -600,24 +601,82 @@ func isValidPathComponent(component string) bool {
 	return true
 }
 
+func parseSdkPath(path string) (orgId, repoId, commitHash, sdkType, subPath string, ok bool) {
+	var segments []string
+	for _, p := range strings.Split(path, "/") {
+		if p != "" {
+			segments = append(segments, p)
+		}
+	}
+
+	if len(segments) < 3 {
+		return "", "", "", "", "", false
+	}
+
+	sdkTypes := map[string]bool{
+		"go-protobuf":    true,
+		"go-connectrpc":  true,
+		"go-grpc":        true,
+		"js-bufbuild-es": true,
+		"js-protobuf":    true,
+		"js-connectrpc":  true,
+	}
+
+	sdkTypeSegmentIndex := -1
+	for i, seg := range segments {
+		trimmed := strings.TrimSuffix(seg, ".git")
+		if sdkTypes[trimmed] {
+			sdkTypeSegmentIndex = i
+			break
+		}
+	}
+
+	if sdkTypeSegmentIndex == -1 {
+		// Fallback to old format: orgId/repoId/sdkType
+		orgId = segments[0]
+		repoId = strings.TrimSuffix(segments[1], ".git")
+		sdkType = strings.TrimSuffix(segments[2], ".git")
+		subPath = strings.Join(segments[3:], "/")
+		return orgId, repoId, "", sdkType, subPath, true
+	}
+
+	if sdkTypeSegmentIndex < 2 {
+		return "", "", "", "", "", false
+	}
+
+	orgId = segments[0]
+	repoId = strings.TrimSuffix(segments[1], ".git")
+
+	if sdkTypeSegmentIndex == 3 {
+		commitHash = segments[2]
+	}
+
+	sdkType = strings.TrimSuffix(segments[sdkTypeSegmentIndex], ".git")
+	subPath = strings.Join(segments[sdkTypeSegmentIndex+1:], "/")
+	return orgId, repoId, commitHash, sdkType, subPath, true
+}
+
 func (h *SdkHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/sdk/")
-	parts := strings.SplitN(path, "/", 4)
 
-	if len(parts) < 3 {
-		http.Error(w, "Invalid SDK path. Format: /sdk/{orgId}/{repoId}/{sdkType}/", http.StatusNotFound)
+	orgId, repoId, commitHash, sdkType, subPath, ok := parseSdkPath(path)
+	if !ok {
+		http.Error(w, "Invalid SDK path. Format: /sdk/{orgId}/{repoId}/{sdkType}/ or /sdk/{orgId}/{repoId}/{commitHash}/{sdkType}/", http.StatusNotFound)
 		return
 	}
 
-	orgId := parts[0]
-	repoId := strings.TrimSuffix(parts[1], ".git")
-	sdkType := strings.TrimSuffix(parts[2], ".git")
-	if !isValidPathComponent(orgId) || !isValidPathComponent(repoId) || !isValidPathComponent(sdkType) {
+	if !isValidPathComponent(orgId) || !isValidPathComponent(repoId) || !isValidPathComponent(sdkType) || (commitHash != "" && !isValidPathComponent(commitHash)) {
 		http.Error(w, "Invalid path component", http.StatusBadRequest)
 		return
 	}
 
-	repoPath := filepath.Join(h.sdkReposPath, orgId, repoId, sdkType)
+	var repoPath string
+	if commitHash != "" {
+		repoPath = filepath.Join(h.sdkReposPath, orgId, repoId, commitHash, sdkType)
+	} else {
+		repoPath = filepath.Join(h.sdkReposPath, orgId, repoId, sdkType)
+	}
+
 	absRepoPath, err := filepath.Abs(repoPath)
 	if err != nil {
 		http.Error(w, "Invalid path", http.StatusBadRequest)
@@ -639,9 +698,33 @@ func (h *SdkHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subPath := ""
-	if len(parts) > 3 {
-		subPath = parts[3]
+	// Handle go get request
+	if r.URL.Query().Get("go-get") == "1" {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		importHost := r.Host
+		if h, _, err := net.SplitHostPort(r.Host); err == nil {
+			importHost = h
+		}
+		importPath := importHost + r.URL.Path
+		importPath = strings.TrimSuffix(importPath, "/")
+
+		scheme := "http"
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		repoUrl := fmt.Sprintf("%s://%s%s", scheme, r.Host, strings.TrimSuffix(r.URL.Path, "/"))
+
+		_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
+<html>
+<head>
+<meta name="go-import" content="%s git %s">
+</head>
+<body>
+go get %s
+</body>
+</html>
+`, importPath, repoUrl, importPath)
+		return
 	}
 
 	serviceName := r.URL.Query().Get("service")
@@ -740,19 +823,21 @@ func (h *SdkSshHandler) HandleSession(session ssh.Session, userId string) error 
 	}
 
 	path := strings.TrimPrefix(repoPath, "sdk/")
-	pathParts := strings.SplitN(path, "/", 4)
-	if len(pathParts) < 3 {
-		return fmt.Errorf("invalid SDK path format: sdk/{orgId}/{repoId}/{sdkType}")
+	orgId, repoId, commitHash, sdkType, _, ok := parseSdkPath(path)
+	if !ok {
+		return fmt.Errorf("invalid SDK path format: sdk/{orgId}/{repoId}/{sdkType} or sdk/{orgId}/{repoId}/{commitHash}/{sdkType}")
 	}
 
-	orgId := pathParts[0]
-	repoId := strings.TrimSuffix(pathParts[1], ".git")
-	sdkType := strings.TrimSuffix(pathParts[2], ".git")
-	if !isValidPathComponent(orgId) || !isValidPathComponent(repoId) || !isValidPathComponent(sdkType) {
+	if !isValidPathComponent(orgId) || !isValidPathComponent(repoId) || !isValidPathComponent(sdkType) || (commitHash != "" && !isValidPathComponent(commitHash)) {
 		return fmt.Errorf("invalid path component")
 	}
 
-	fullRepoPath := filepath.Join(h.sdkReposPath, orgId, repoId, sdkType)
+	var fullRepoPath string
+	if commitHash != "" {
+		fullRepoPath = filepath.Join(h.sdkReposPath, orgId, repoId, commitHash, sdkType)
+	} else {
+		fullRepoPath = filepath.Join(h.sdkReposPath, orgId, repoId, sdkType)
+	}
 
 	absRepoPath, err := filepath.Abs(fullRepoPath)
 	if err != nil {

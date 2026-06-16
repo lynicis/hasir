@@ -94,21 +94,73 @@ func ResolveBsrModulesWithCustom(imports []string, customModules map[string]stri
 	return modules
 }
 
+type bufModule struct {
+	path string
+	name string
+}
+
 func GenerateBufYaml(dir string, modules []string) error {
+	bufYamlPath := filepath.Join(dir, "buf.yaml")
+	var existingModules []bufModule
+
+	if existingContent, err := os.ReadFile(bufYamlPath); err == nil {
+		lines := strings.Split(string(existingContent), "\n")
+		var current *bufModule
+
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "- path:") {
+				if current != nil {
+					existingModules = append(existingModules, *current)
+				}
+				path := strings.TrimSpace(strings.TrimPrefix(trimmed, "- path:"))
+				current = &bufModule{path: path}
+			} else if strings.HasPrefix(trimmed, "path:") && current == nil {
+				path := strings.TrimSpace(strings.TrimPrefix(trimmed, "path:"))
+				current = &bufModule{path: path}
+			} else if current != nil {
+				if strings.HasPrefix(trimmed, "name:") {
+					current.name = strings.TrimSpace(strings.TrimPrefix(trimmed, "name:"))
+				} else if strings.HasPrefix(trimmed, "-") || (strings.Contains(trimmed, ":") && !strings.HasPrefix(trimmed, "name:")) {
+					existingModules = append(existingModules, *current)
+					current = nil
+				}
+			}
+		}
+		if current != nil {
+			existingModules = append(existingModules, *current)
+		}
+	}
+
+	if len(existingModules) == 0 {
+		existingModules = []bufModule{{path: "."}}
+	}
+
 	var sb strings.Builder
 	sb.WriteString("version: v2\n")
 	sb.WriteString("modules:\n")
-	sb.WriteString("  - path: .\n")
+	for _, m := range existingModules {
+		sb.WriteString("  - path: ")
+		sb.WriteString(m.path)
+		sb.WriteString("\n")
+		if m.name != "" {
+			sb.WriteString("    name: ")
+			sb.WriteString(m.name)
+			sb.WriteString("\n")
+		}
+	}
 
 	if len(modules) > 0 {
 		sb.WriteString("deps:\n")
 		for _, module := range modules {
-			sb.WriteString("  - " + module + "\n")
+			sb.WriteString("  - ")
+			sb.WriteString(module)
+			sb.WriteString("\n")
 		}
 	}
 
 	// #nosec G306 -- buf.yaml needs to be readable by buf CLI
-	return os.WriteFile(filepath.Join(dir, "buf.yaml"), []byte(sb.String()), 0o644)
+	return os.WriteFile(bufYamlPath, []byte(sb.String()), 0o644)
 }
 
 type BufGenPlugin struct {
@@ -118,7 +170,7 @@ type BufGenPlugin struct {
 	Opts   []string
 }
 
-func GenerateBufGenYaml(dir string, plugins []BufGenPlugin) error {
+func GenerateBufGenYaml(dir string, plugins []BufGenPlugin, goPackagePrefix string) error {
 	var sb strings.Builder
 	sb.WriteString("version: v2\n")
 	sb.WriteString("managed:\n")
@@ -126,11 +178,22 @@ func GenerateBufGenYaml(dir string, plugins []BufGenPlugin) error {
 	sb.WriteString("  disable:\n")
 	sb.WriteString("    - file_option: go_package\n")
 	sb.WriteString("      module: buf.build/bufbuild/protovalidate\n")
+	if goPackagePrefix != "" {
+		sb.WriteString("  override:\n")
+		sb.WriteString("    - file_option: go_package_prefix\n")
+		sb.WriteString("      value: ")
+		sb.WriteString(goPackagePrefix)
+		sb.WriteString("\n")
+	}
 	sb.WriteString("plugins:\n")
 
 	for _, plugin := range plugins {
-		sb.WriteString("  - remote: " + plugin.Remote + "\n")
-		sb.WriteString("    out: " + plugin.Out + "\n")
+		sb.WriteString("  - remote: ")
+		sb.WriteString(plugin.Remote)
+		sb.WriteString("\n")
+		sb.WriteString("    out: ")
+		sb.WriteString(plugin.Out)
+		sb.WriteString("\n")
 
 		opts := plugin.Opts
 		if plugin.Opt != "" && len(opts) == 0 {
@@ -140,7 +203,9 @@ func GenerateBufGenYaml(dir string, plugins []BufGenPlugin) error {
 		if len(opts) > 0 {
 			sb.WriteString("    opt:\n")
 			for _, opt := range opts {
-				sb.WriteString("      - " + opt + "\n")
+				sb.WriteString("      - ")
+				sb.WriteString(opt)
+				sb.WriteString("\n")
 			}
 		}
 	}

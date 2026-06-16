@@ -1,12 +1,12 @@
-{{#files}}
-File: {{file_name}}
-{{#file_messages}}
-  Message: {{message_name}}
-  Description: {{message_description}}
+{{range .Files}}
+File: {{.Name}}
+{{range .Messages}}
+  Message: {{.Name}}
+  Description: {{.Description}}
   Fields:
-  {{#message_fields}}
-    {{field_name}}
-      {{field_description}}
-  {{/message_fields}}
-{{/file_messages}}
-{{/files}}
+  {{range .Fields}}
+    {{.Name}}
+      {{.Description}}
+  {{end}}
+{{end}}
+{{end}}

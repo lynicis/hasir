@@ -105,7 +105,7 @@ func buildDocumentationArgs(input GeneratorInput) []string {
 	args := []string{
 		"--proto_path=" + filepath.Clean(input.RepoPath),
 		"--doc_out=" + filepath.Clean(input.OutputPath),
-		"--doc_opt=markdown,index.md",
+		"--doc_opt=" + templatePath + ",index.md",
 	}
 	args = append(args, input.ProtoFiles...)
 

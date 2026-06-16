@@ -3,8 +3,8 @@ module hasir-api
 go 1.26
 
 require (
-	buf.build/gen/go/hasir/hasir/connectrpc/go v1.20.0-20260610094111-cfab46468758.1
-	buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20260610094111-cfab46468758.1
+	buf.build/gen/go/hasir/hasir/connectrpc/go v1.20.0-20260614121915-ea66d4785096.1
+	buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20260614121915-ea66d4785096.1
 	connectrpc.com/connect v1.20.0
 	github.com/exaring/otelpgx v0.11.1
 	github.com/gliderlabs/ssh v0.3.8
@@ -124,6 +124,6 @@ require (
 	github.com/google/cel-go v0.28.1 // indirect
 	golang.org/x/exp v0.0.0-20260611194520-c48552f49976 // indirect
 	golang.org/x/text v0.38.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260610212136-7ab31c22f7ad // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260610212136-7ab31c22f7ad // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260615183401-62b3387ff324 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260615183401-62b3387ff324 // indirect
 )

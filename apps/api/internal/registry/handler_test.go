@@ -1469,6 +1469,112 @@ func TestIsValidPathComponent(t *testing.T) {
 	}
 }
 
+func TestParseSdkPath(t *testing.T) {
+	tests := []struct {
+		name           string
+		path           string
+		wantOrgId      string
+		wantRepoId     string
+		wantCommitHash string
+		wantSdkType    string
+		wantSubPath    string
+		wantOk         bool
+	}{
+		{
+			name:           "valid 4-part path with subpath",
+			path:           "org-1/repo-1/commit-1/go-connectrpc/info/refs",
+			wantOrgId:      "org-1",
+			wantRepoId:     "repo-1",
+			wantCommitHash: "commit-1",
+			wantSdkType:    "go-connectrpc",
+			wantSubPath:    "info/refs",
+			wantOk:         true,
+		},
+		{
+			name:           "valid 4-part path without subpath",
+			path:           "org-1/repo-1/commit-1/go-connectrpc",
+			wantOrgId:      "org-1",
+			wantRepoId:     "repo-1",
+			wantCommitHash: "commit-1",
+			wantSdkType:    "go-connectrpc",
+			wantSubPath:    "",
+			wantOk:         true,
+		},
+		{
+			name:           "valid 3-part path with subpath",
+			path:           "org-1/repo-1/go-connectrpc/info/refs",
+			wantOrgId:      "org-1",
+			wantRepoId:     "repo-1",
+			wantCommitHash: "",
+			wantSdkType:    "go-connectrpc",
+			wantSubPath:    "info/refs",
+			wantOk:         true,
+		},
+		{
+			name:           "invalid path too short",
+			path:           "org-1/repo-1",
+			wantOk:         false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			orgId, repoId, commitHash, sdkType, subPath, ok := parseSdkPath(tt.path)
+			assert.Equal(t, tt.wantOk, ok)
+			if ok {
+				assert.Equal(t, tt.wantOrgId, orgId)
+				assert.Equal(t, tt.wantRepoId, repoId)
+				assert.Equal(t, tt.wantCommitHash, commitHash)
+				assert.Equal(t, tt.wantSdkType, sdkType)
+				assert.Equal(t, tt.wantSubPath, subPath)
+			}
+		})
+	}
+}
+
+func TestSdkHttpHandler_ServeHTTP(t *testing.T) {
+	t.Run("returns HTML for go-get request", func(t *testing.T) {
+		tempDir := t.TempDir()
+		orgId := "org-1"
+		repoId := "repo-1"
+		commitHash := "commit-1"
+		sdkType := "go-connectrpc"
+
+		gitDir := filepath.Join(tempDir, orgId, repoId, commitHash, sdkType, ".git")
+		require.NoError(t, os.MkdirAll(gitDir, 0755))
+
+		h := NewSdkHttpHandler(tempDir)
+		req := httptest.NewRequest(http.MethodGet, "/sdk/org-1/repo-1/commit-1/go-connectrpc?go-get=1", nil)
+		req.Host = "127.0.0.1:8080"
+		rec := httptest.NewRecorder()
+
+		h.ServeHTTP(rec, req)
+
+		res := rec.Result()
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+		assert.Equal(t, "text/html; charset=utf-8", res.Header.Get("Content-Type"))
+
+		body, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+		bodyStr := string(body)
+
+		assert.Contains(t, bodyStr, `meta name="go-import"`)
+		assert.Contains(t, bodyStr, `content="127.0.0.1/sdk/org-1/repo-1/commit-1/go-connectrpc git http://127.0.0.1:8080/sdk/org-1/repo-1/commit-1/go-connectrpc"`)
+	})
+
+	t.Run("returns 404 when git repo does not exist", func(t *testing.T) {
+		tempDir := t.TempDir()
+		h := NewSdkHttpHandler(tempDir)
+		req := httptest.NewRequest(http.MethodGet, "/sdk/org-1/repo-1/commit-1/go-connectrpc?go-get=1", nil)
+		rec := httptest.NewRecorder()
+
+		h.ServeHTTP(rec, req)
+
+		res := rec.Result()
+		assert.Equal(t, http.StatusNotFound, res.StatusCode)
+	})
+}
+
 func TestDocumentationHttpHandler(t *testing.T) {
 	t.Run("requires auth", func(t *testing.T) {
 		ctrl := gomock.NewController(t)

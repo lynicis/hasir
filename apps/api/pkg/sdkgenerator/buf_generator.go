@@ -53,7 +53,7 @@ func (g *bufGenerator) Generate(ctx context.Context, input GeneratorInput) (*Gen
 		}
 	}
 
-	if err := GenerateBufGenYaml(input.RepoPath, plugins); err != nil {
+	if err := GenerateBufGenYaml(input.RepoPath, plugins, input.GoPackagePrefix); err != nil {
 		return nil, fmt.Errorf("failed to generate buf.gen.yaml: %w", err)
 	}
 

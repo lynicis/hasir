@@ -47,9 +47,10 @@ func (s SDK) IsJs() bool {
 }
 
 type GeneratorInput struct {
-	RepoPath   string
-	OutputPath string
-	ProtoFiles []string
+	RepoPath        string
+	OutputPath      string
+	ProtoFiles      []string
+	GoPackagePrefix string
 }
 
 type GeneratorOutput struct {
@@ -158,7 +159,7 @@ func (g *protocGenerator) Generate(ctx context.Context, input GeneratorInput) (*
 	}, nil
 }
 
-func GenerateFromRepo(ctx context.Context, generator Generator, repoPath, outputPath string) (*GeneratorOutput, error) {
+func GenerateFromRepo(ctx context.Context, generator Generator, repoPath, outputPath string, goPackagePrefix string) (*GeneratorOutput, error) {
 	absOutputPath, err := filepath.Abs(outputPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get absolute output path: %w", err)
@@ -178,9 +179,10 @@ func GenerateFromRepo(ctx context.Context, generator Generator, repoPath, output
 	}
 
 	input := GeneratorInput{
-		RepoPath:   repoPath,
-		OutputPath: absOutputPath,
-		ProtoFiles: protoFiles,
+		RepoPath:        repoPath,
+		OutputPath:      absOutputPath,
+		ProtoFiles:      protoFiles,
+		GoPackagePrefix: goPackagePrefix,
 	}
 
 	return generator.Generate(ctx, input)

@@ -551,7 +551,7 @@ Service description
 	assert.Equal(t, "protoc", call.Name)
 	assert.Equal(t, "/tmp/repo", call.WorkDir)
 	assert.Contains(t, call.Args, "--doc_out="+outputPath)
-	assert.Contains(t, call.Args, "--doc_opt=markdown,index.md")
+	assert.Contains(t, call.Args, "--doc_opt="+filepath.Join(outputPath, "proto-doc-template.mustache")+",index.md")
 
 	content, err := os.ReadFile(indexMdPath)
 	require.NoError(t, err)

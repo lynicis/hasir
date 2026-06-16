@@ -2,6 +2,8 @@ package registry
 
 import (
 	"context"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -410,10 +412,13 @@ func TestProcessSdkGenerationJobs_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockService := registry.NewMockService(ctrl)
 
+	var mu sync.Mutex
 	generatedSDKs := make(map[string]bool)
 	mockService.EXPECT().GenerateSDK(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ context.Context, repositoryId, commitHash string, sdk registry.SDK) error {
+			mu.Lock()
 			generatedSDKs[repositoryId+"-"+commitHash+"-"+string(sdk)] = true
+			mu.Unlock()
 			return nil
 		}).AnyTimes()
 	mockService.EXPECT().ProcessSdkTrigger(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -440,7 +445,10 @@ func TestProcessSdkGenerationJobs_Success(t *testing.T) {
 
 	time.Sleep(500 * time.Millisecond)
 
-	assert.True(t, generatedSDKs["repo-1-abc123-GO_PROTOBUF"])
+	mu.Lock()
+	hasGen := generatedSDKs["repo-1-abc123-GO_PROTOBUF"]
+	mu.Unlock()
+	assert.True(t, hasGen)
 
 	fetchedJobs, err := queue.GetPendingSdkGenerationJobs(ctx, 10)
 	require.NoError(t, err)
@@ -457,10 +465,10 @@ func TestProcessSdkGenerationJobs_Retry(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockService := registry.NewMockService(ctrl)
 
-	attemptCount := 0
+	var attemptCount atomic.Int32
 	mockService.EXPECT().GenerateSDK(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ context.Context, _, _ string, _ registry.SDK) error {
-			attemptCount++
+			attemptCount.Add(1)
 			return assert.AnError
 		}).AnyTimes()
 	mockService.EXPECT().ProcessSdkTrigger(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -495,5 +503,5 @@ func TestProcessSdkGenerationJobs_Retry(t *testing.T) {
 
 	assert.Equal(t, registry.SdkGenerationJobStatusFailed, status)
 	assert.NotNil(t, errorMsg)
-	assert.GreaterOrEqual(t, attemptCount, 3)
+	assert.GreaterOrEqual(t, int(attemptCount.Load()), 3)
 }

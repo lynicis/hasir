@@ -238,7 +238,7 @@ func TestGenerateBufGenYaml_GoProtobuf(t *testing.T) {
 		{Remote: "buf.build/protocolbuffers/go", Out: ".", Opt: "paths=source_relative"},
 	}
 
-	err := GenerateBufGenYaml(tmpDir, plugins)
+	err := GenerateBufGenYaml(tmpDir, plugins, "")
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
@@ -267,7 +267,7 @@ func TestGenerateBufGenYaml_GoConnectRpc(t *testing.T) {
 		{Remote: "buf.build/connectrpc/go", Out: ".", Opt: "paths=source_relative"},
 	}
 
-	err := GenerateBufGenYaml(tmpDir, plugins)
+	err := GenerateBufGenYaml(tmpDir, plugins, "")
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
@@ -284,7 +284,7 @@ func TestGenerateBufGenYaml_JsEs(t *testing.T) {
 		{Remote: "buf.build/bufbuild/es", Out: ".", Opt: "target=ts"},
 	}
 
-	err := GenerateBufGenYaml(tmpDir, plugins)
+	err := GenerateBufGenYaml(tmpDir, plugins, "")
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
@@ -301,7 +301,7 @@ func TestGenerateBufGenYaml_MultipleOpts(t *testing.T) {
 		{Remote: "buf.build/protocolbuffers/js", Out: ".", Opts: []string{"import_style=commonjs", "binary"}},
 	}
 
-	err := GenerateBufGenYaml(tmpDir, plugins)
+	err := GenerateBufGenYaml(tmpDir, plugins, "")
 	require.NoError(t, err)
 
 	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
@@ -309,4 +309,35 @@ func TestGenerateBufGenYaml_MultipleOpts(t *testing.T) {
 
 	assert.Contains(t, string(content), "import_style=commonjs")
 	assert.Contains(t, string(content), "binary")
+}
+
+func TestGenerateBufGenYaml_WithGoPackagePrefix(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	plugins := []BufGenPlugin{
+		{Remote: "buf.build/protocolbuffers/go", Out: ".", Opt: "paths=source_relative"},
+	}
+
+	err := GenerateBufGenYaml(tmpDir, plugins, "127.0.0.1/sdk/org/repo/commit/go-connectrpc")
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
+	require.NoError(t, err)
+
+	expected := `version: v2
+managed:
+  enabled: true
+  disable:
+    - file_option: go_package
+      module: buf.build/bufbuild/protovalidate
+  override:
+    - file_option: go_package_prefix
+      value: 127.0.0.1/sdk/org/repo/commit/go-connectrpc
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: .
+    opt:
+      - paths=source_relative
+`
+	assert.Equal(t, expected, string(content))
 }

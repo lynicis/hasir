@@ -865,7 +865,17 @@ func (s *service) GenerateSDK(ctx context.Context, repositoryId, commitHash stri
 
 	sdkDirName := generator.DirName()
 	outputPath := filepath.Join(s.sdkPath, repo.OrganizationId, repositoryId, commitHash, sdkDirName)
-	output, err := sdkgenerator.GenerateFromRepo(ctx, generator, workDir, outputPath)
+
+	var goPackagePrefix string
+	if generator.SDK().IsGo() {
+		moduleBasePath := "localhost"
+		if s.cfg != nil {
+			moduleBasePath = s.cfg.SdkGeneration.GetModuleBasePath()
+		}
+		goPackagePrefix = fmt.Sprintf("%s/sdk/%s/%s/%s/%s", moduleBasePath, repo.OrganizationId, repositoryId, commitHash, sdkDirName)
+	}
+
+	output, err := sdkgenerator.GenerateFromRepo(ctx, generator, workDir, outputPath, goPackagePrefix)
 	if err != nil {
 		zap.L().Error("SDK generation failed",
 			zap.String("sdk", string(sdk)),
@@ -880,7 +890,7 @@ func (s *service) GenerateSDK(ctx context.Context, repositoryId, commitHash stri
 		zap.Bool("managedByBuf", repo.ManagedByBuf),
 		zap.String("outputPath", output.OutputPath))
 
-	if err := s.installSdkDependencies(ctx, output.OutputPath, sdk, repo.OrganizationId, repositoryId); err != nil {
+	if err := s.installSdkDependencies(ctx, output.OutputPath, sdk, repo.OrganizationId, repositoryId, commitHash); err != nil {
 		zap.L().Warn("failed to install SDK dependencies, but SDK generation succeeded",
 			zap.Error(err))
 	}
@@ -946,7 +956,7 @@ func (s *service) checkoutCommitToTempDir(ctx context.Context, repoPath, commitH
 func (s *service) GenerateDocumentation(ctx context.Context, repositoryId, commitHash, repoPath, organizationId string) error {
 	outputPath := filepath.Join(s.sdkPath, organizationId, repositoryId, commitHash, "docs")
 
-	if _, err := sdkgenerator.GenerateFromRepo(ctx, s.docGenerator, repoPath, outputPath); err != nil {
+	if _, err := sdkgenerator.GenerateFromRepo(ctx, s.docGenerator, repoPath, outputPath, ""); err != nil {
 		zap.L().Error("documentation generation failed",
 			zap.String("repositoryId", repositoryId),
 			zap.String("commitHash", commitHash),
@@ -1042,7 +1052,7 @@ func (s *service) commitSdkToRepo(ctx context.Context, orgId, repoId, commitHash
 	return nil
 }
 
-func (s *service) installSdkDependencies(ctx context.Context, sdkRepoPath string, sdk SDK, organizationId, repositoryId string) error {
+func (s *service) installSdkDependencies(ctx context.Context, sdkRepoPath string, sdk SDK, organizationId, repositoryId, commitHash string) error {
 	absSdkRepoPath, err := filepath.Abs(sdkRepoPath)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute SDK repo path: %w", err)
@@ -1051,7 +1061,7 @@ func (s *service) installSdkDependencies(ctx context.Context, sdkRepoPath string
 	sdkType := sdkgenerator.SDK(sdk)
 
 	if sdkType.IsGo() {
-		return s.installGoDependencies(ctx, absSdkRepoPath, organizationId, repositoryId)
+		return s.installGoDependencies(ctx, absSdkRepoPath, organizationId, repositoryId, commitHash, sdkType.DirName())
 	}
 
 	if sdkType.IsJs() {
@@ -1061,10 +1071,10 @@ func (s *service) installSdkDependencies(ctx context.Context, sdkRepoPath string
 	return nil
 }
 
-func (s *service) installGoDependencies(ctx context.Context, sdkRepoPath string, organizationId, repositoryId string) error {
+func (s *service) installGoDependencies(ctx context.Context, sdkRepoPath string, organizationId, repositoryId, commitHash, sdkDirName string) error {
 	if _, err := os.Stat(filepath.Join(sdkRepoPath, "go.mod")); os.IsNotExist(err) {
 		moduleBasePath := s.cfg.SdkGeneration.GetModuleBasePath()
-		moduleName := fmt.Sprintf("%s/sdk/%s/%s", moduleBasePath, organizationId, repositoryId)
+		moduleName := fmt.Sprintf("%s/sdk/%s/%s/%s/%s", moduleBasePath, organizationId, repositoryId, commitHash, sdkDirName)
 		// #nosec G204 -- moduleName is constructed from validated inputs: moduleBasePath from config
 		initCmd := exec.CommandContext(ctx, "go", "mod", "init", moduleName)
 		initCmd.Dir = sdkRepoPath
