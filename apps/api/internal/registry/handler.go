@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"net"
 	"net/http"
 	"os"
@@ -693,7 +694,7 @@ func (h *SdkHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// #nosec G304 G703 -- repoPath validated via isValidPathComponent + path prefix check above
-	if _, err := os.Stat(filepath.Join(repoPath, ".git")); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(repoPath, ".git")); os.IsNotExist(err) { // lgtm [go/path-injection]
 		http.Error(w, "SDK repository not found", http.StatusNotFound)
 		return
 	}
@@ -723,7 +724,7 @@ func (h *SdkHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 go get %s
 </body>
 </html>
-`, importPath, repoUrl, importPath)
+`, html.EscapeString(importPath), html.EscapeString(repoUrl), html.EscapeString(importPath))
 		return
 	}
 

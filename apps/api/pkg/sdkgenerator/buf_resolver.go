@@ -103,7 +103,7 @@ func GenerateBufYaml(dir string, modules []string) error {
 	bufYamlPath := filepath.Join(dir, "buf.yaml")
 	var existingModules []bufModule
 
-	if existingContent, err := os.ReadFile(bufYamlPath); err == nil {
+	if existingContent, err := os.ReadFile(bufYamlPath); err == nil { // #nosec G304 -- path is filepath.Join(dir, "buf.yaml"), controlled by caller
 		lines := strings.Split(string(existingContent), "\n")
 		var current *bufModule
 
