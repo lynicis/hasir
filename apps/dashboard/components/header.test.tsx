@@ -16,6 +16,14 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("next/image", () => ({
+  __esModule: true,
+  default: ({ src, alt, ...props }: ComponentProps<"img">) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt={alt} {...props} />
+  ),
+}));
+
 vi.mock("@/lib/session-provider", () => ({
   useSession: () => ({
     session: {
@@ -53,7 +61,7 @@ describe("Header", () => {
   it("renders brand link with correct label and href", () => {
     renderWithQueryClient(<Header />);
 
-    const brandLink = screen.getByRole("link", { name: "Hasir" });
+    const brandLink = screen.getByRole("link", { name: /Hasir/ });
 
     expect(brandLink).toBeInTheDocument();
     expect(brandLink).toHaveAttribute("href", "/dashboard");

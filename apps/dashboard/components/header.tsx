@@ -6,8 +6,9 @@ import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/regist
 import { search } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
 import { useRef, useEffect, useState, useSyncExternalStore, useMemo } from "react";
 import { useQuery } from "@connectrpc/connect-query";
-import { Box, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -135,7 +136,13 @@ export function Header() {
           href="/dashboard"
           className="flex items-center gap-2 text-base font-medium text-foreground"
         >
-          <Box className="size-5 text-primary" aria-hidden="true" />
+          <Image
+            src="/logo.webp"
+            alt="Hasir Logo"
+            width={20}
+            height={20}
+            className="size-5"
+          />
           <span>Hasir</span>
         </Link>
         <div className="flex flex-1 justify-center">
