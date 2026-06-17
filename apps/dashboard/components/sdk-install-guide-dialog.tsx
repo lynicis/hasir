@@ -21,7 +21,7 @@ export function SdkInstallGuideDialog({ organizationId, repositoryId, commitHash
   try {
     const urlObj = new URL(apiUrl);
     host = urlObj.hostname;
-  } catch {}
+  } catch { }
 
   const goImportPath = `${host}/sdk/${organizationId}/${repositoryId}/${commitHash}/go-connectrpc`;
   const httpJsUrl = `git+${apiUrl}/sdk/${organizationId}/${repositoryId}/${commitHash}/js-connectrpc/`;
@@ -103,6 +103,25 @@ export function SdkInstallGuideDialog({ organizationId, repositoryId, commitHash
                   aria-label="Copy go get command"
                 >
                   {copiedText === "go-get" ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold">3. Go Module Replacement</h4>
+              <p className="text-sm text-muted-foreground">
+                If your project uses a different module name or you want to alias the import path, add a replace directive to your <code className="bg-muted px-1 py-0.5 rounded">go.mod</code> file:
+              </p>
+              <div className="relative">
+                <pre className="p-3 bg-muted rounded-md text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all w-full max-w-full">
+                  {`replace ${goImportPath} => hasir v0.0.0-${commitHash}`}
+                </pre>
+                <button
+                  onClick={() => copyToClipboard(`replace ${goImportPath} => hasir v0.0.0-${commitHash}`, "go-replace")}
+                  className="absolute right-2 top-2 p-1.5 rounded-md hover:bg-background text-muted-foreground transition-colors"
+                  aria-label="Copy Go replace command"
+                >
+                  {copiedText === "go-replace" ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
                 </button>
               </div>
             </div>

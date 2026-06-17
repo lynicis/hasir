@@ -67,10 +67,12 @@ describe("SdkInstallGuideDialog", () => {
     // Go SDK content should be visible by default
     expect(screen.getByText(/1. Configure Go Environment/i)).toBeInTheDocument();
     expect(screen.getByText(/2. Get the package/i)).toBeInTheDocument();
+    expect(screen.getByText(/3. Go Module Replacement/i)).toBeInTheDocument();
 
     // Verify Go env content
     expect(screen.getByText(/go env -w GOINSECURE=localhost/i)).toBeInTheDocument();
     expect(screen.getByText(/go get localhost\/sdk\/org-123\/repo-456\/commit-abc\/go-connectrpc/i)).toBeInTheDocument();
+    expect(screen.getByText(/replace localhost\/sdk\/org-123\/repo-456\/commit-abc\/go-connectrpc => hasir v0.0.0-commit-abc/i)).toBeInTheDocument();
   });
 
   it("switches to JS SDK tab and shows npm install commands", async () => {
@@ -129,6 +131,24 @@ describe("SdkInstallGuideDialog", () => {
 
     expect(mockWriteText).toHaveBeenCalledWith(
       "go get localhost/sdk/org-123/repo-456/commit-abc/go-connectrpc"
+    );
+  });
+
+  it("copies Go replace command to clipboard", () => {
+    render(<SdkInstallGuideDialog {...defaultProps} />);
+
+    const trigger = screen.getByRole("button", {
+      name: "View SDK installation guide",
+    });
+    fireEvent.click(trigger);
+
+    const copyReplaceButton = screen.getByRole("button", {
+      name: "Copy Go replace command",
+    });
+    fireEvent.click(copyReplaceButton);
+
+    expect(mockWriteText).toHaveBeenCalledWith(
+      "replace localhost/sdk/org-123/repo-456/commit-abc/go-connectrpc => hasir v0.0.0-commit-abc"
     );
   });
 
