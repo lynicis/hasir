@@ -24,6 +24,15 @@ export function SdkInstallGuideDialog({ organizationId, repositoryId, commitHash
   } catch { }
 
   const goImportPath = `${host}/sdk/${organizationId}/${repositoryId}/${commitHash}/go-connectrpc`;
+  const goEnvCommands = `go env -w GOPRIVATE=${host}\ngo env -w GONOSUMDB=${host}\ngo env -w GOINSECURE=${host}`;
+  const goGetCommand = `go get ${goImportPath}@${commitHash}`;
+  const goImportExample = `import (
+\t"net/http"
+
+\t"${goImportPath}/user/v1/userv1connect"
+)
+
+client := userv1connect.NewUserServiceClient(http.DefaultClient, "${apiUrl}")`;
   const httpJsUrl = `git+${apiUrl}/sdk/${organizationId}/${repositoryId}/${commitHash}/js-connectrpc/`;
   const sshJsUrl = `git+ssh://git@${host}:2222/sdk/${organizationId}/${repositoryId}/${commitHash}/js-connectrpc/`;
 
@@ -58,7 +67,7 @@ export function SdkInstallGuideDialog({ organizationId, repositoryId, commitHash
             <span>SDK Installation Guide</span>
           </DialogTitle>
           <DialogDescription>
-            Follow these instructions to install the generated SDK in your project.
+            Follow these instructions to install the generated SDK from the Hasir registry.
           </DialogDescription>
         </DialogHeader>
 
@@ -72,14 +81,14 @@ export function SdkInstallGuideDialog({ organizationId, repositoryId, commitHash
             <div className="space-y-2">
               <h4 className="text-sm font-semibold">1. Configure Go Environment</h4>
               <p className="text-sm text-muted-foreground">
-                Because this registry runs locally or securely without a public certificate, you must tell Go to allow insecure connections and skip checksum verification:
+                Mark the Hasir registry host as private (skip proxy + checksum DB) and allow plain HTTP when the registry is not served over TLS:
               </p>
               <div className="relative">
                 <pre className="p-3 bg-muted rounded-md text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all w-full max-w-full">
-                  {`go env -w GOINSECURE=${host}\ngo env -w GONOSUMDB=${host}`}
+                  {goEnvCommands}
                 </pre>
                 <button
-                  onClick={() => copyToClipboard(`go env -w GOINSECURE=${host}\ngo env -w GONOSUMDB=${host}`, "go-env")}
+                  onClick={() => copyToClipboard(goEnvCommands, "go-env")}
                   className="absolute right-2 top-2 p-1.5 rounded-md hover:bg-background text-muted-foreground transition-colors"
                   aria-label="Copy Go env commands"
                 >
@@ -91,14 +100,14 @@ export function SdkInstallGuideDialog({ organizationId, repositoryId, commitHash
             <div className="space-y-2">
               <h4 className="text-sm font-semibold">2. Get the package</h4>
               <p className="text-sm text-muted-foreground">
-                Fetch the package into your project using the vanity import path:
+                Fetch the generated module from the Hasir registry. Pin to the commit hash so resolution hits the tagged SDK revision:
               </p>
               <div className="relative">
                 <pre className="p-3 bg-muted rounded-md text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all w-full max-w-full">
-                  {`go get ${goImportPath}`}
+                  {goGetCommand}
                 </pre>
                 <button
-                  onClick={() => copyToClipboard(`go get ${goImportPath}`, "go-get")}
+                  onClick={() => copyToClipboard(goGetCommand, "go-get")}
                   className="absolute right-2 top-2 p-1.5 rounded-md hover:bg-background text-muted-foreground transition-colors"
                   aria-label="Copy go get command"
                 >
@@ -108,22 +117,31 @@ export function SdkInstallGuideDialog({ organizationId, repositoryId, commitHash
             </div>
 
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold">3. Go Module Replacement</h4>
+              <h4 className="text-sm font-semibold">3. Import and use</h4>
               <p className="text-sm text-muted-foreground">
-                If your project uses a different module name or you want to alias the import path, add a replace directive to your <code className="bg-muted px-1 py-0.5 rounded">go.mod</code> file:
+                Import packages under the module path (example: Connect-RPC UserService client). Package layout follows your <code className="bg-muted px-1 py-0.5 rounded">.proto</code> paths:
               </p>
               <div className="relative">
                 <pre className="p-3 bg-muted rounded-md text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all w-full max-w-full">
-                  {`replace ${goImportPath} => hasir v0.0.0-${commitHash}`}
+                  {goImportExample}
                 </pre>
                 <button
-                  onClick={() => copyToClipboard(`replace ${goImportPath} => hasir v0.0.0-${commitHash}`, "go-replace")}
+                  onClick={() => copyToClipboard(goImportExample, "go-import")}
                   className="absolute right-2 top-2 p-1.5 rounded-md hover:bg-background text-muted-foreground transition-colors"
-                  aria-label="Copy Go replace command"
+                  aria-label="Copy Go import example"
                 >
-                  {copiedText === "go-replace" ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
+                  {copiedText === "go-import" ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
                 </button>
               </div>
+            </div>
+
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>
+                The module path host must match the registry host you request (and the API <code className="bg-muted px-1 py-0.5 rounded">moduleBasePath</code>).
+              </p>
+              <p>
+                If <code className="bg-muted px-1 py-0.5 rounded">go get</code> returns <code className="bg-muted px-1 py-0.5 rounded">SDK repository not found</code>, enable the Go SDK under repository SDK preferences and wait for generation to finish for this commit.
+              </p>
             </div>
           </TabsContent>
 

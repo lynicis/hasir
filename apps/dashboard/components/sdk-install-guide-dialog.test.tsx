@@ -64,15 +64,20 @@ describe("SdkInstallGuideDialog", () => {
     expect(screen.getByText("Go SDK")).toBeInTheDocument();
     expect(screen.getByText("JavaScript / TypeScript")).toBeInTheDocument();
 
-    // Go SDK content should be visible by default
     expect(screen.getByText(/1. Configure Go Environment/i)).toBeInTheDocument();
     expect(screen.getByText(/2. Get the package/i)).toBeInTheDocument();
-    expect(screen.getByText(/3. Go Module Replacement/i)).toBeInTheDocument();
+    expect(screen.getByText(/3. Import and use/i)).toBeInTheDocument();
 
-    // Verify Go env content
+    expect(screen.getByText(/go env -w GOPRIVATE=localhost/i)).toBeInTheDocument();
+    expect(screen.getByText(/go env -w GONOSUMDB=localhost/i)).toBeInTheDocument();
     expect(screen.getByText(/go env -w GOINSECURE=localhost/i)).toBeInTheDocument();
-    expect(screen.getByText(/go get localhost\/sdk\/org-123\/repo-456\/commit-abc\/go-connectrpc/i)).toBeInTheDocument();
-    expect(screen.getByText(/replace localhost\/sdk\/org-123\/repo-456\/commit-abc\/go-connectrpc => hasir v0.0.0-commit-abc/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/go get localhost\/sdk\/org-123\/repo-456\/commit-abc\/go-connectrpc@commit-abc/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/localhost\/sdk\/org-123\/repo-456\/commit-abc\/go-connectrpc\/user\/v1\/userv1connect/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/replace .* => hasir/i)).not.toBeInTheDocument();
   });
 
   it("switches to JS SDK tab and shows npm install commands", async () => {
@@ -112,7 +117,7 @@ describe("SdkInstallGuideDialog", () => {
     fireEvent.click(copyEnvButton);
 
     expect(mockWriteText).toHaveBeenCalledWith(
-      "go env -w GOINSECURE=localhost\ngo env -w GONOSUMDB=localhost"
+      "go env -w GOPRIVATE=localhost\ngo env -w GONOSUMDB=localhost\ngo env -w GOINSECURE=localhost"
     );
   });
 
@@ -130,11 +135,11 @@ describe("SdkInstallGuideDialog", () => {
     fireEvent.click(copyGetButton);
 
     expect(mockWriteText).toHaveBeenCalledWith(
-      "go get localhost/sdk/org-123/repo-456/commit-abc/go-connectrpc"
+      "go get localhost/sdk/org-123/repo-456/commit-abc/go-connectrpc@commit-abc"
     );
   });
 
-  it("copies Go replace command to clipboard", () => {
+  it("copies Go import example to clipboard", () => {
     render(<SdkInstallGuideDialog {...defaultProps} />);
 
     const trigger = screen.getByRole("button", {
@@ -142,13 +147,19 @@ describe("SdkInstallGuideDialog", () => {
     });
     fireEvent.click(trigger);
 
-    const copyReplaceButton = screen.getByRole("button", {
-      name: "Copy Go replace command",
+    const copyImportButton = screen.getByRole("button", {
+      name: "Copy Go import example",
     });
-    fireEvent.click(copyReplaceButton);
+    fireEvent.click(copyImportButton);
 
     expect(mockWriteText).toHaveBeenCalledWith(
-      "replace localhost/sdk/org-123/repo-456/commit-abc/go-connectrpc => hasir v0.0.0-commit-abc"
+      `import (
+\t"net/http"
+
+\t"localhost/sdk/org-123/repo-456/commit-abc/go-connectrpc/user/v1/userv1connect"
+)
+
+client := userv1connect.NewUserServiceClient(http.DefaultClient, "http://localhost:8080")`
     );
   });
 
