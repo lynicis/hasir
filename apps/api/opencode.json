@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "postgresql": {
+      "type": "local",
+      "command": [
+        "bunx",
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://test:test@localhost:5432/test"
+      ]
+    },
+    "gitnexus": {
+      "type": "local",
+      "command": [
+        "bunx",
+        "-y",
+        "gitnexus",
+        "mcp"
+      ]
+    }
+  }
+}
