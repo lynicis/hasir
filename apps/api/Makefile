@@ -1,4 +1,4 @@
-.PHONY: dev generate-mocks lint lint-fix run-postgres sec
+.PHONY: dev generate-mocks lint lint-fix run-postgres sec vuln
 
 BASE_PKG := hasir-api
 
@@ -32,3 +32,6 @@ run-postgres:
 
 sec:
 	gosec -exclude-dir=$(BASE_PKG)/sdk -exclude-dir=$(BASE_PKG)/repos ./...
+
+vuln:
+	govulncheck ./...
