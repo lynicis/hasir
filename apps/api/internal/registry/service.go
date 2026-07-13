@@ -791,6 +791,11 @@ func (s *service) TriggerSdkGeneration(ctx context.Context, repositoryId, commit
 		return nil
 	}
 
+	repo, err := s.repository.GetRepositoryById(ctx, repositoryId)
+	if err != nil {
+		return fmt.Errorf("failed to fetch repository: %w", err)
+	}
+
 	sdkPreferences, err := s.repository.GetSdkPreferences(ctx, repositoryId)
 	if err != nil {
 		return err
@@ -818,8 +823,33 @@ func (s *service) TriggerSdkGeneration(ctx context.Context, repositoryId, commit
 	}
 
 	if len(jobs) == 0 {
-		zap.L().Debug("no SDK preferences enabled for repository, skipping SDK generation",
-			zap.String("repositoryId", repositoryId))
+		// Trigger documentation generation asynchronously to not block the git client
+		// #nosec G118 -- background goroutine needs to outlive the request context
+		go func() {
+			bgCtx := context.Background()
+			repoFullPath := filepath.Join(s.rootPath, repositoryId)
+			workDir, err := s.checkoutCommitToTempDir(bgCtx, repoFullPath, commitHash)
+			if err != nil {
+				zap.L().Error("failed to checkout commit for repo documentation generation",
+					zap.String("repositoryId", repositoryId),
+					zap.String("commitHash", commitHash),
+					zap.Error(err))
+				return
+			}
+			defer func() {
+				// #nosec G703 -- workDir is created by os.MkdirTemp
+				if removeErr := os.RemoveAll(workDir); removeErr != nil {
+					zap.L().Warn("failed to cleanup temp directory", zap.String("path", workDir), zap.Error(removeErr))
+				}
+			}()
+
+			if err := s.GenerateDocumentation(bgCtx, repositoryId, commitHash, workDir, repo.OrganizationId); err != nil {
+				zap.L().Error("failed to generate documentation for repo",
+					zap.String("repositoryId", repositoryId),
+					zap.String("commitHash", commitHash),
+					zap.Error(err))
+			}
+		}()
 		return nil
 	}
 

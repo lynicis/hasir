@@ -621,6 +621,84 @@ func TestDocumentationGenerator_Generate_ProtocError(t *testing.T) {
 	assert.Contains(t, err.Error(), "protoc failed")
 }
 
+func TestDocumentationGenerator_Generate_WithBufYaml(t *testing.T) {
+	ctx := context.Background()
+	mockRunner := NewMockCommandRunner()
+	g := NewDocumentationGenerator(mockRunner)
+
+	tmpDir := t.TempDir()
+	outputPath := filepath.Join(tmpDir, "docs")
+	require.NoError(t, os.MkdirAll(outputPath, 0o750))
+
+	// Create buf.yaml
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "buf.yaml"), []byte("version: v2\n"), 0o644))
+
+	input := GeneratorInput{
+		RepoPath:   tmpDir,
+		OutputPath: outputPath,
+		ProtoFiles: []string{"user.proto"},
+	}
+
+	indexMdPath := filepath.Join(outputPath, "index.md")
+	markdownContent := `# API Documentation
+## Scalar Value Types
+`
+	err := os.WriteFile(indexMdPath, []byte(markdownContent), 0o644)
+	require.NoError(t, err)
+
+	output, err := g.Generate(ctx, input)
+	require.NoError(t, err)
+	require.NotNil(t, output)
+
+	// Verify that mockRunner was called for buf mod update and buf generate
+	require.Len(t, mockRunner.Calls, 2)
+	assert.Equal(t, "buf", mockRunner.Calls[0].Name)
+	assert.Contains(t, mockRunner.Calls[0].Args, "mod")
+	assert.Contains(t, mockRunner.Calls[0].Args, "update")
+
+	assert.Equal(t, "buf", mockRunner.Calls[1].Name)
+	assert.Contains(t, mockRunner.Calls[1].Args, "generate")
+
+	// Ensure scalar section was removed
+	content, err := os.ReadFile(indexMdPath)
+	require.NoError(t, err)
+	assert.NotContains(t, string(content), "Scalar Value Types")
+}
+
+func TestDocumentationGenerator_Generate_WithExistingBufGenYaml(t *testing.T) {
+	ctx := context.Background()
+	mockRunner := NewMockCommandRunner()
+	g := NewDocumentationGenerator(mockRunner)
+
+	tmpDir := t.TempDir()
+	outputPath := filepath.Join(tmpDir, "docs")
+	require.NoError(t, os.MkdirAll(outputPath, 0o750))
+
+	// Create buf.yaml and buf.gen.yaml
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "buf.yaml"), []byte("version: v2\n"), 0o644))
+	bufGenYamlPath := filepath.Join(tmpDir, "buf.gen.yaml")
+	require.NoError(t, os.WriteFile(bufGenYamlPath, []byte("version: v2\n"), 0o644))
+
+	input := GeneratorInput{
+		RepoPath:   tmpDir,
+		OutputPath: outputPath,
+		ProtoFiles: []string{"user.proto"},
+	}
+
+	output, err := g.Generate(ctx, input)
+	require.NoError(t, err)
+	require.NotNil(t, output)
+
+	// Verify that mockRunner was called
+	require.Len(t, mockRunner.Calls, 2)
+	assert.Equal(t, "buf", mockRunner.Calls[0].Name)
+	assert.Equal(t, "buf", mockRunner.Calls[1].Name)
+
+	// Ensure buf.gen.yaml was NOT deleted
+	_, err = os.Stat(bufGenYamlPath)
+	assert.NoError(t, err, "existing buf.gen.yaml should not be deleted")
+}
+
 func initBareRepoWithFiles(t *testing.T, files map[string]string) string {
 	t.Helper()
 

@@ -1279,6 +1279,14 @@ func TestService_TriggerSdkGeneration(t *testing.T) {
 		}
 
 		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				ManagedByBuf:   false,
+				OrganizationId: "org-123",
+			}, nil)
+
+		mockRepo.EXPECT().
 			GetSdkPreferences(ctx, repoID).
 			Return(sdkPreferences, nil)
 
@@ -1298,7 +1306,56 @@ func TestService_TriggerSdkGeneration(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("success - no jobs when no SDK preferences enabled", func(t *testing.T) {
+	t.Run("success - triggers async doc generation when no preferences (non-managed)", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockQueue := NewMockSdkGenerationQueue(ctrl)
+
+		tmpDir := t.TempDir()
+		sdkDir := t.TempDir()
+		repoID := "repo-123"
+		repoPath := filepath.Join(tmpDir, repoID)
+		require.NoError(t, os.MkdirAll(repoPath, 0o750))
+
+		commitHash := initGitRepoWithProtoFile(t, repoPath)
+
+		runner := sdkgenerator.NewDefaultCommandRunner()
+		svc := &service{
+			repository:   mockRepo,
+			sdkQueue:     mockQueue,
+			rootPath:     tmpDir,
+			sdkPath:      sdkDir,
+			docGenerator: sdkgenerator.NewDocumentationGenerator(runner),
+		}
+
+		ctx := context.Background()
+		orgID := "org-123"
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				ManagedByBuf:   false,
+				OrganizationId: orgID,
+			}, nil)
+
+		mockRepo.EXPECT().
+			GetSdkPreferences(ctx, repoID).
+			Return([]SdkPreferencesDTO{}, nil)
+
+		err := svc.TriggerSdkGeneration(ctx, repoID, commitHash)
+		require.NoError(t, err)
+
+		// Wait briefly for the background goroutine to finish doc generation
+		time.Sleep(300 * time.Millisecond)
+
+		// Check if documentation directory and index.md are generated
+		docFilePath := filepath.Join(sdkDir, orgID, repoID, commitHash, "docs", "index.md")
+		_, err = os.Stat(docFilePath)
+		assert.NoError(t, err, "documentation index.md should exist")
+	})
+
+	t.Run("error - failed to get repository", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := NewMockRepository(ctrl)
 		mockQueue := NewMockSdkGenerationQueue(ctrl)
@@ -1312,21 +1369,13 @@ func TestService_TriggerSdkGeneration(t *testing.T) {
 		repoID := "repo-123"
 		commitHash := "abc123def456"
 
-		sdkPreferences := []SdkPreferencesDTO{
-			{
-				Id:           uuid.NewString(),
-				RepositoryId: repoID,
-				Sdk:          SdkGoProtobuf,
-				Status:       false,
-			},
-		}
-
 		mockRepo.EXPECT().
-			GetSdkPreferences(ctx, repoID).
-			Return(sdkPreferences, nil)
+			GetRepositoryById(ctx, repoID).
+			Return(nil, errors.New("repository database error"))
 
 		err := svc.TriggerSdkGeneration(ctx, repoID, commitHash)
-		require.NoError(t, err)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "repository database error")
 	})
 
 	t.Run("error - failed to get SDK preferences", func(t *testing.T) {
@@ -1342,6 +1391,14 @@ func TestService_TriggerSdkGeneration(t *testing.T) {
 		ctx := context.Background()
 		repoID := "repo-123"
 		commitHash := "abc123def456"
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				ManagedByBuf:   false,
+				OrganizationId: "org-123",
+			}, nil)
 
 		mockRepo.EXPECT().
 			GetSdkPreferences(ctx, repoID).
@@ -1366,6 +1423,55 @@ func TestService_TriggerSdkGeneration(t *testing.T) {
 
 		err := svc.TriggerSdkGeneration(ctx, repoID, commitHash)
 		require.NoError(t, err)
+	})
+
+	t.Run("success - triggers async doc generation when no preferences (managed by buf)", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockQueue := NewMockSdkGenerationQueue(ctrl)
+
+		tmpDir := t.TempDir()
+		sdkDir := t.TempDir()
+		repoID := "repo-123"
+		repoPath := filepath.Join(tmpDir, repoID)
+		require.NoError(t, os.MkdirAll(repoPath, 0o750))
+
+		commitHash := initGitRepoWithProtoFile(t, repoPath)
+
+		runner := sdkgenerator.NewDefaultCommandRunner()
+		svc := &service{
+			repository:   mockRepo,
+			sdkQueue:     mockQueue,
+			rootPath:     tmpDir,
+			sdkPath:      sdkDir,
+			docGenerator: sdkgenerator.NewDocumentationGenerator(runner),
+		}
+
+		ctx := context.Background()
+		orgID := "org-123"
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				ManagedByBuf:   true,
+				OrganizationId: orgID,
+			}, nil)
+
+		mockRepo.EXPECT().
+			GetSdkPreferences(ctx, repoID).
+			Return([]SdkPreferencesDTO{}, nil)
+
+		err := svc.TriggerSdkGeneration(ctx, repoID, commitHash)
+		require.NoError(t, err)
+
+		// Wait briefly for the background goroutine to finish doc generation
+		time.Sleep(300 * time.Millisecond)
+
+		// Check if documentation directory and index.md are generated
+		docFilePath := filepath.Join(sdkDir, orgID, repoID, commitHash, "docs", "index.md")
+		_, err = os.Stat(docFilePath)
+		assert.NoError(t, err, "documentation index.md should exist")
 	})
 }
 
