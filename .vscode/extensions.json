@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "golang.go",
+    "dbaeumer.vscode-eslint",
+    "bradlc.vscode-tailwindcss",
+    "bufbuild.vscode-buf",
+    "ms-azuretools.vscode-docker",
+    "redhat.vscode-yaml",
+    "exiasr.hadolint",
+    "timonwong.shellcheck"
+  ]
+}
