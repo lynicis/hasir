@@ -1,0 +1,13 @@
+{
+  "mcp": {
+    "gitnexus": {
+      "type": "local",
+      "command": [
+        "bunx",
+        "-y",
+        "gitnexus",
+        "mcp"
+      ]
+    }
+  }
+}
