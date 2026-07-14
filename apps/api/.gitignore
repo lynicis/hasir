@@ -1,5 +1,5 @@
 .idea/
-.opencode/package-lock.json
+.opencode/
 hasir-api
 api
 config.json
@@ -7,3 +7,6 @@ config.json
 repos/
 sdk/
 ssh_host_key
+.codegraph/
+.gitnexus/
+.omo/
