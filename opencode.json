@@ -10,6 +10,14 @@
         "postgresql://test:test@localhost:5432/test"
       ]
     },
+    "nextjs": {
+      "type": "local",
+      "command": [
+        "bunx",
+        "-y",
+        "next-devtools-mcp@latest"
+      ]
+    },
     "gitnexus": {
       "type": "local",
       "command": [
