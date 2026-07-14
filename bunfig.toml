@@ -1,4 +1,3 @@
-# path: bunfig.toml
 # Root Bun configuration for the monorepo.
 # Per-workspace bunfig.toml files (e.g. apps/dashboard/bunfig.toml) layer on
 # top of this one for test preload/reporter settings.

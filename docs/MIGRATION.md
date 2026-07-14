@@ -1,4 +1,3 @@
-# path: docs/MIGRATION.md
 # Hasir Platform Monorepo Migration Guide
 
 ## 5. Migration Strategy

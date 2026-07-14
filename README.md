@@ -1,4 +1,3 @@
-# path: README.md
 # Hasir Platform Monorepo
 
 Welcome to the Hasir platform monorepo. This repository consolidates the Go API, Next.js dashboard, shared protobuf contracts, Helm charts, and Docker images into a single unified workspace.
@@ -195,16 +194,6 @@ This script bumps the version, creates a tag (such as `api/v1.4.1`), and pushes 
 
 * **Branching Model**: We follow trunk-based development. All feature branches are short-lived and merged directly into `main`.
 * **Versioning Model**: We use independent per-application versioning. Each service is versioned and tagged independently.
-
----
-
-## Ownership Map
-
-We enforce code ownership using the `CODEOWNERS` file at the repository root.
-
-* **Platform Team (`@protohasir/platform`)**: Owns root configurations, CI/CD workflows, Helm charts, and shared tooling.
-* **API Team (`@protohasir/api`)**: Owns the Go backend (`apps/api/`) and protobuf definitions.
-* **Frontend Team (`@protohasir/frontend`)**: Owns the Next.js dashboard (`apps/dashboard/`).
 
 ---
 

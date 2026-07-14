@@ -1,4 +1,3 @@
-# path: .github/workflows/helm.yml
 name: Helm Checks
 
 on:
@@ -20,6 +19,6 @@ jobs:
           python-version: "3.x"
 
       - uses: helm/chart-testing-action@v2
-      
+
       - name: Lint
         run: ct lint --target-branch main --charts deploy/helm/hasir

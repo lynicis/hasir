@@ -1,4 +1,3 @@
-# path: .github/workflows/proto.yml
 name: Protobuf Checks
 
 on:

@@ -1,4 +1,3 @@
-# path: packages/shared/README.md
 # Stub package `@hasir/shared` — re-exported cross-cutting helpers.
 # Currently: `log`, `otel`. The Go side has equivalents in `apps/api/pkg/log`.
 # See ADR-0001 §13 (Baseline Production Hooks) for the convention.

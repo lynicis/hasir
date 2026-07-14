@@ -1,4 +1,3 @@
-# path: Makefile
 # Top-level developer workflow. The Makefile is a thin convenience layer over
 # the `turbo`/`bun` commands already exposed in package.json so newcomers and
 # muscle-memory contributors have a familiar entry point. Commands compose:

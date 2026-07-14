@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# path: scripts/release.sh
 set -euo pipefail
 
 if [ $# -lt 2 ]; then
@@ -20,13 +19,13 @@ else
   # simple semantic version bump logic
   VERSION=${LATEST#"$APP/v"}
   IFS='.' read -r -a PARTS <<< "$VERSION"
-  
+
   # Ensure we have 3 parts
   if [ ${#PARTS[@]} -ne 3 ]; then
     echo "Error: Latest tag '$LATEST' is not in semver format (vX.Y.Z)"
     exit 1
   fi
-  
+
   case $BUMP in
     major) NEW_VERSION="v$((PARTS[0]+1)).0.0" ;;
     minor) NEW_VERSION="v${PARTS[0]}.$((PARTS[1]+1)).0" ;;

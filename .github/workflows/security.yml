@@ -1,4 +1,3 @@
-# path: .github/workflows/security.yml
 name: Security Scans
 
 on:
@@ -11,12 +10,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      
+
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
           go-version: "1.26"
-          
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:

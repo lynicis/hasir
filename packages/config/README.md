@@ -1,4 +1,3 @@
-# path: packages/config/README.md
 # The `@hasir/config` package owns the shared ESLint preset, the shared
 # `tsconfig.base.json`, and any other tooling config that every workspace
 # inherits. Defined in ADR-0001.

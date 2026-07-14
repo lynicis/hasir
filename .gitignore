@@ -1,4 +1,3 @@
-# path: .gitignore
 # Unified gitignore for the hasir monorepo.
 # Source repos each had a .gitignore; this is the consolidated set with the
 # reasons kept inline so future maintainers know why each entry is here.

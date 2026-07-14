@@ -1,4 +1,3 @@
-# path: docs/RELEASE.md
 # Hasir Platform Monorepo Release Strategy
 
 ## 24. Release Strategy

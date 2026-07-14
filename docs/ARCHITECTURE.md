@@ -1,4 +1,3 @@
-# path: docs/ARCHITECTURE.md
 # Hasir Platform Monorepo Architecture Documentation
 
 ## 1. Executive Summary
