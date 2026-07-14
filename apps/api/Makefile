@@ -1,9 +1,15 @@
-.PHONY: dev generate-mocks lint lint-fix run-postgres sec vuln
+.PHONY: build dev generate-mocks lint lint-fix run-postgres sec test vuln
 
 BASE_PKG := hasir-api
 
+build:
+	go build ./...
+
 dev:
 	MODE=development go run main.go
+
+test:
+	go test -count=1 ./...
 
 generate-mocks:
 	# User
