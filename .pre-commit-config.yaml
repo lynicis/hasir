@@ -1,0 +1,74 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: check-yaml
+      - id: check-json
+
+  - repo: https://github.com/lynicis/actup
+    rev: v0.5.1
+    hooks:
+      - id: actup-check
+
+  # --- Go (apps/api/) ---
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        entry: gofmt
+        language: system
+        types: [go]
+        files: ^apps/api/
+
+      - id: goimports
+        name: goimports
+        entry: goimports
+        language: system
+        types: [go]
+        files: ^apps/api/
+        fail_fast: true
+
+      - id: go-test
+        name: go test ./...
+        entry: sh -c 'cd apps/api && go test ./...'
+        language: system
+        pass_filenames: false
+        files: ^apps/api/
+
+      - id: golangci-lint
+        name: golangci-lint run
+        entry: sh -c 'cd apps/api && golangci-lint run ./...'
+        language: system
+        pass_filenames: false
+        files: ^apps/api/
+
+  # --- Dashboard (apps/dashboard/) ---
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: sh -c 'cd apps/dashboard && npm run lint'
+        language: system
+        pass_filenames: false
+        files: ^apps/dashboard/
+
+  # --- Proto (proto/) ---
+  - repo: local
+    hooks:
+      - id: buf-format
+        name: buf format
+        entry: sh -c 'cd proto && buf format --write'
+        language: system
+        pass_filenames: false
+        files: ^proto/
+
+      - id: buf-lint
+        name: buf lint
+        entry: sh -c 'cd proto && buf lint'
+        language: system
+        pass_filenames: false
+        files: ^proto/
