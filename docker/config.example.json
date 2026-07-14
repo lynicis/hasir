@@ -1,0 +1,44 @@
+{
+  "server": {
+    "publicUrl": "https://example.com/api",
+    "sshHost": "git@example.com",
+    "ip": "0.0.0.0",
+    "port": "8080"
+  },
+  "otel": {
+    "enabled": false,
+    "traceEndpoint": ""
+  },
+  "postgresql": {
+    "connectionString": "",
+    "host": "postgres",
+    "port": "5432",
+    "username": "hasir",
+    "password": "your-db-password-here",
+    "database": "hasir"
+  },
+  "smtp": {
+    "host": "smtp.example.com",
+    "port": 587,
+    "username": "postmaster@example.com",
+    "password": "your-smtp-password-here",
+    "from": "Hasir <noreply@example.com>",
+    "useTLS": true
+  },
+  "ssh": {
+    "enabled": true,
+    "port": "2222",
+    "hostKeyPath": "/data/ssh/ssh_host_key"
+  },
+  "sdkGeneration": {
+    "workerCount": 5,
+    "pollInterval": "10s",
+    "outputPath": "/data/sdk",
+    "moduleBasePath": "example.com",
+    "bufToken": "",
+    "bufBinaryPath": "buf",
+    "customBsrModules": {}
+  },
+  "jwtSecret": "your-jwt-secret-here",
+  "dashboardUrl": "https://example.com"
+}

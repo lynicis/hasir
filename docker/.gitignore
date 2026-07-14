@@ -1,0 +1,24 @@
+# Environment variables
+.env
+
+# Configuration files
+config.json
+
+# Local data directories
+pgdata/
+repos/
+sdk/
+ssh_keys/
+
+# SSL Certificates (if stored locally outside docker volumes)
+certbot/conf/
+certbot/www/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# ai
+.codegraph/
+.gitnexus/
+.omo/
