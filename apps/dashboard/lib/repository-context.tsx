@@ -1,0 +1,12 @@
+"use client";
+
+import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+
+import { createContext } from "react";
+
+export const RepositoryContext = createContext<{
+  repository: Repository | undefined;
+  isLoading: boolean;
+  error: unknown;
+  refetch?: () => Promise<unknown>;
+} | null>(null);

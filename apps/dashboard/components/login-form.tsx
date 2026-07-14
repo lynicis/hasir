@@ -1,0 +1,208 @@
+"use client";
+
+import { useRouter, useSearchParams } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
+import { useEffect } from "react";
+import { toast } from "sonner";
+import Link from "next/link";
+import { z } from "zod/v4";
+
+import {
+  FieldDescription,
+  FieldLabel,
+  FieldGroup,
+  Field,
+} from "@/components/ui/field";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
+const schema = z.object({
+  email: z.email({ error: "Please enter a valid email address." }),
+  password: z
+    .string()
+    .min(8, { error: "Password must be at least 8 characters." })
+    .max(20, { error: "Password must be at most 20 characters." }),
+});
+
+type ISchema = z.infer<typeof schema>;
+
+export function LoginForm({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const {
+    control,
+    handleSubmit,
+    formState: { isLoading, errors },
+    setError,
+  } = useForm<ISchema>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  async function onSubmit({ email, password }: ISchema) {
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Login failed");
+      }
+
+      const redirectParam = searchParams.get("redirect");
+      const hasValidRedirect =
+        redirectParam &&
+        redirectParam.startsWith("/") &&
+        !redirectParam.startsWith("//");
+
+      toast.success("You have successfully logged in!");
+      setTimeout(() => {
+        router.push(hasValidRedirect ? redirectParam : "/dashboard");
+        router.refresh();
+      }, 600);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes("Invalid")) {
+          setError("root", {
+            message: "Invalid email or password.",
+          });
+        } else {
+          setError("root", {
+            message:
+              error.message ||
+              "Error occurred while logging into your account.",
+          });
+        }
+      } else {
+        setError("root", {
+          message: "Error occurred while logging into your account.",
+        });
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (errors.root) {
+      toast.error(errors.root.message);
+    }
+  }, [errors.root]);
+
+  return (
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <Card>
+        <CardHeader className="text-center">
+          <CardTitle className="text-xl">Welcome back</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <FieldGroup>
+              <Controller
+                control={control}
+                name="email"
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                    <Input
+                      {...field}
+                      id={field.name}
+                      type="email"
+                      placeholder="m@example.com"
+                      required
+                      disabled={isLoading}
+                      aria-invalid={fieldState.invalid}
+                    />
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="password"
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <div className="flex items-center">
+                      <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                      <Link
+                        href="/forgot-password"
+                        className="ml-auto text-sm underline-offset-4 hover:underline"
+                      >
+                        Forgot your password?
+                      </Link>
+                    </div>
+                    <Input
+                      {...field}
+                      id={field.name}
+                      type="password"
+                      disabled={isLoading}
+                      required
+                      placeholder="********"
+                      aria-invalid={fieldState.invalid}
+                    />
+                  </Field>
+                )}
+              />
+              <Field>
+                <Button type="submit" isLoading={isLoading}>
+                  Login
+                </Button>
+                <FieldDescription className="text-center">
+                  Don&apos;t have an account?{" "}
+                  <Link href="/register">Register</Link>
+                </FieldDescription>
+              </Field>
+            </FieldGroup>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export function LoginFormSkeleton({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <Card>
+        <CardHeader className="text-center">
+          <CardTitle className="text-xl">Welcome back</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6">
+            <div className="grid gap-2">
+              <Skeleton className="h-4 w-10" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="grid gap-2">
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="grid gap-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-4 w-48 mx-auto" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
