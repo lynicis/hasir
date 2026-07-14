@@ -50,7 +50,7 @@ The push of the tag triggers the `release.yml` workflow in GitHub Actions.
 
 1. The workflow checks out the code at the tag.
 2. It builds the Docker image for the specified application.
-3. The image is tagged with the version (such as `ghcr.io/protohasir/api:1.5.0`) and `latest`.
+3. The image is tagged with the version (such as `ghcr.io/lynicis/api:1.5.0`) and `latest`.
 4. The image is published to GHCR.
 
 #### Step 3: Helm Chart Update

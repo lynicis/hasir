@@ -1,11 +1,11 @@
 <div align="center">
-  <img src="https://github.com/protohasir/dashboard/blob/master/public/logo.webp" alt="Hasir Dashboard Logo" width="150">
+  <img src="https://github.com/lynicis/dashboard/blob/master/public/logo.webp" alt="Hasir Dashboard Logo" width="150">
 
 # Hasir Proto
 
 **Protocol Buffer definitions for the Hasir platform - a collaborative protobuf registry and code generation service**
 
-[![Publish Schema to BSR](https://github.com/protohasir/proto/actions/workflows/master.yaml/badge.svg)](https://github.com/protohasir/proto/actions)
+[![Publish Schema to BSR](https://github.com/lynicis/proto/actions/workflows/master.yaml/badge.svg)](https://github.com/lynicis/proto/actions)
 [![Buf](https://img.shields.io/badge/Buf-Build-blue)](https://buf.build/hasir/hasir)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 </div>
@@ -67,7 +67,7 @@ This repository defines three core services:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/protohasir/hasir-proto.git
+git clone https://github.com/lynicis/hasir-proto.git
 cd hasir-proto
 ```
 
@@ -109,7 +109,7 @@ buf format --write
 
 ### Generating Code
 
-The repository is configured to generate Go code with the package prefix `github.com/protohasir/proto/gen/go`. Code generation is managed via [buf.gen.yaml](buf.gen.yaml).
+The repository is configured to generate Go code with the package prefix `github.com/lynicis/proto/gen/go`. Code generation is managed via [buf.gen.yaml](buf.gen.yaml).
 
 To generate code:
 

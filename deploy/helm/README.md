@@ -1,13 +1,13 @@
 # Hasir Stack Helm Chart
 
 <p align="center">
-  <a href="https://github.com/protohasir/helm-charts">
+  <a href="https://github.com/lynicis/helm-charts">
     <img src="https://img.shields.io/badge/Helm-v3-blue.svg?logo=helm" alt="Helm v3">
   </a>
   <a href="https://kubernetes.io">
     <img src="https://img.shields.io/badge/Kubernetes-1.19+-blue.svg?logo=kubernetes" alt="Kubernetes 1.19+">
   </a>
-  <a href="https://github.com/protohasir/helm-charts/blob/main/LICENSE">
+  <a href="https://github.com/lynicis/helm-charts/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
   </a>
 </p>
@@ -105,7 +105,7 @@ The following table lists the configurable parameters of the Hasir chart and the
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `api.replicaCount` | Number of API service replicas | `1` |
-| `api.image.repository` | API container image repository | `ghcr.io/protohasir/api` |
+| `api.image.repository` | API container image repository | `ghcr.io/lynicis/api` |
 | `api.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `api.image.tag` | API container image tag (defaults to chart's `appVersion`) | `""` |
 | `api.service.type` | Service type for HTTP access | `ClusterIP` |
@@ -125,7 +125,7 @@ The following table lists the configurable parameters of the Hasir chart and the
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `dashboard.replicaCount` | Number of dashboard service replicas | `1` |
-| `dashboard.image.repository` | Dashboard image repository | `ghcr.io/protohasir/dashboard` |
+| `dashboard.image.repository` | Dashboard image repository | `ghcr.io/lynicis/dashboard` |
 | `dashboard.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `dashboard.image.tag` | Dashboard container image tag (defaults to chart's `appVersion`) | `""` |
 | `dashboard.service.type` | Service type for Dashboard HTTP access | `ClusterIP` |

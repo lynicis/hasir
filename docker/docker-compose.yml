@@ -22,7 +22,7 @@ services:
         max-file: "3"
 
   hasir-api:
-    image: ghcr.io/protohasir/api:${API_TAG:-latest}
+    image: ghcr.io/lynicis/api:${API_TAG:-latest}
     restart: unless-stopped
     stop_grace_period: 30s
     expose:
@@ -72,7 +72,7 @@ services:
         max-file: "3"
 
   hasir-dashboard:
-    image: ghcr.io/protohasir/dashboard:${DASHBOARD_TAG:-latest}
+    image: ghcr.io/lynicis/dashboard:${DASHBOARD_TAG:-latest}
     restart: unless-stopped
     stop_grace_period: 30s
     expose:

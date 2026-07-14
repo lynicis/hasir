@@ -11,11 +11,11 @@ echo "NOTE: This script is for documentation and manual execution. DO NOT run it
 # Define the repositories to import
 # Format: name|git_url|target_subdirectory|tag_prefix
 REPOS=(
-  "api|git@github.com:protohasir/api.git|apps/api|api/"
-  "dashboard|git@github.com:protohasir/dashboard.git|apps/dashboard|dashboard/"
-  "proto|git@github.com:protohasir/proto.git|proto|proto/"
-  "helm-charts|git@github.com:protohasir/helm-charts.git|deploy/helm|helm/"
-  "docker-compose|git@github.com:protohasir/docker-compose.git|docker|docker/"
+  "api|git@github.com:lynicis/api.git|apps/api|api/"
+  "dashboard|git@github.com:lynicis/dashboard.git|apps/dashboard|dashboard/"
+  "proto|git@github.com:lynicis/proto.git|proto|proto/"
+  "helm-charts|git@github.com:lynicis/helm-charts.git|deploy/helm|helm/"
+  "docker-compose|git@github.com:lynicis/docker-compose.git|docker|docker/"
 )
 
 # Create tmp directory for mirrors

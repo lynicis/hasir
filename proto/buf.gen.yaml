@@ -5,7 +5,7 @@ managed:
     enabled: true
     override:
       - file_option: go_package_prefix
-        value: github.com/protohasir/proto/gen/go
+        value: github.com/lynicis/hasir-proto/gen/go
     disable:
       - file_option: go_package
         module: buf.build/bufbuild/protovalidate

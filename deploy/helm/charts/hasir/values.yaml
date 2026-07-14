@@ -6,7 +6,7 @@ global:
 api:
   replicaCount: 1
   image:
-    repository: ghcr.io/protohasir/api
+    repository: ghcr.io/lynicis/api
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
     tag: ""
@@ -44,7 +44,7 @@ api:
 dashboard:
   replicaCount: 1
   image:
-    repository: ghcr.io/protohasir/dashboard
+    repository: ghcr.io/lynicis/dashboard
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
     tag: ""

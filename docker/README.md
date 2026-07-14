@@ -77,7 +77,7 @@ Before starting, ensure you have:
 ### 1. Clone the repository
 Clone this repository to your target VPS:
 ```bash
-git clone git@github.com:protohasir/docker-compose.git
+git clone git@github.com:lynicis/docker-compose.git
 cd docker-compose
 ```
 

@@ -1,13 +1,13 @@
 <div align="center">
-  <img src="https://github.com/protohasir/dashboard/blob/master/public/logo.webp" alt="Hasir Dashboard Logo" width="150">
+  <img src="https://github.com/lynicis/dashboard/blob/master/public/logo.webp" alt="Hasir Dashboard Logo" width="150">
 
 # Hasir API
 
 **A self-hosted protobuf schema registry backend service built with Go and Connect-RPC**
 
-[![CI](https://github.com/protohasir/api/actions/workflows/ci.yaml/badge.svg)](https://github.com/protohasir/api/actions)
-[![codecov](https://codecov.io/gh/protohasir/api/graph/badge.svg?token=1772BU1JL0)](https://codecov.io/gh/protohasir/api)
-[![CodeQL](https://github.com/protohasir/api/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/protohasir/api/actions/workflows/github-code-scanning/codeql)
+[![CI](https://github.com/lynicis/api/actions/workflows/ci.yaml/badge.svg)](https://github.com/lynicis/api/actions)
+[![codecov](https://codecov.io/gh/lynicis/api/graph/badge.svg?token=1772BU1JL0)](https://codecov.io/gh/lynicis/api)
+[![CodeQL](https://github.com/lynicis/api/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/lynicis/api/actions/workflows/github-code-scanning/codeql)
 [![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)](https://go.dev/)
 [![Connect-RPC](https://img.shields.io/badge/Connect--RPC-Protocol-5C4EE5)](https://connectrpc.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?logo=postgresql)](https://www.postgresql.org/)

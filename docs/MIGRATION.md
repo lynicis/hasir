@@ -61,7 +61,7 @@ Run these commands to migrate the `api` repository:
 
 ```bash
 # Clone the source repository to a temporary directory
-git clone git@github.com:protohasir/api.git /tmp/hasir-migration/api
+git clone git@github.com:lynicis/api.git /tmp/hasir-migration/api
 cd /tmp/hasir-migration/api
 
 # Move all files into the target subdirectory apps/api/
@@ -85,7 +85,7 @@ Run these commands to migrate the `dashboard` repository:
 
 ```bash
 # Clone the source repository to a temporary directory
-git clone git@github.com:protohasir/dashboard.git /tmp/hasir-migration/dashboard
+git clone git@github.com:lynicis/dashboard.git /tmp/hasir-migration/dashboard
 cd /tmp/hasir-migration/dashboard
 
 # Move all files into the target subdirectory apps/dashboard/
@@ -109,7 +109,7 @@ Run these commands to migrate the `hasir-proto` repository:
 
 ```bash
 # Clone the source repository to a temporary directory
-git clone git@github.com:protohasir/hasir-proto.git /tmp/hasir-migration/hasir-proto
+git clone git@github.com:lynicis/hasir-proto.git /tmp/hasir-migration/hasir-proto
 cd /tmp/hasir-migration/hasir-proto
 
 # Move all files into the target subdirectory proto/
@@ -133,7 +133,7 @@ Run these commands to migrate the `helm-charts` repository:
 
 ```bash
 # Clone the source repository to a temporary directory
-git clone git@github.com:protohasir/helm-charts.git /tmp/hasir-migration/helm-charts
+git clone git@github.com:lynicis/helm-charts.git /tmp/hasir-migration/helm-charts
 cd /tmp/hasir-migration/helm-charts
 
 # Move all files into the target subdirectory deploy/helm/
@@ -157,7 +157,7 @@ Run these commands to migrate the `docker-images` repository:
 
 ```bash
 # Clone the source repository to a temporary directory
-git clone git@github.com:protohasir/docker-images.git /tmp/hasir-migration/docker-images
+git clone git@github.com:lynicis/docker-images.git /tmp/hasir-migration/docker-images
 cd /tmp/hasir-migration/docker-images
 
 # Move all files into the target subdirectory docker/

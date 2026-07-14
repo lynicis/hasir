@@ -2,10 +2,6 @@
   "name": "hasir-dashboard",
   "version": "1.1.1-alpha",
   "private": true,
-  "author": {
-    "name": "Hasir",
-    "url": "https://github.com/protohasir"
-  },
   "scripts": {
     "dev": "bun --bun run next dev",
     "build": "bun --bun run next build",
