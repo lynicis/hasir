@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package shared;
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_READER = 1;
+  ROLE_AUTHOR = 2;
+  ROLE_OWNER = 3;
+}

@@ -1,0 +1,30 @@
+name: Publish Schema to BSR
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  publish-to-bsr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: bufbuild/buf-action@v1
+        with:
+          token: ${{ secrets.BUF_TOKEN }}
+          setup_only: true
+
+      - name: Lint
+        run: buf lint --error-format github-actions
+
+      - name: Format
+        run: buf format --error-format github-actions --exit-code
+
+      - name: Push
+        run: buf push --error-format github-actions
