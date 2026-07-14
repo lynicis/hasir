@@ -1,0 +1,7 @@
+# Helm dependencies
+charts/**/*.tgz
+
+# ai
+.codegraph/
+.gitnexus/
+.omo/
