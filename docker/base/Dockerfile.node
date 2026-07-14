@@ -1,0 +1,6 @@
+# path: docker/base/Dockerfile.node
+# Base image for JS/TS apps (compilation stage).
+# Centralizes Bun, node_modules caching, and turbo.
+FROM oven/bun:1.3.14-alpine AS node-builder
+RUN apk add --no-cache git ca-certificates
+WORKDIR /app

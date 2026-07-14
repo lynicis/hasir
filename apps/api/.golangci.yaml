@@ -1,0 +1,5 @@
+# path: apps/api/.golangci.yaml
+version: "2"
+run:
+  concurrency: 3
+  go: "1.26"

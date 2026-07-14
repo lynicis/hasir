@@ -1,0 +1,29 @@
+# path: bunfig.toml
+# Root Bun configuration for the monorepo.
+# Per-workspace bunfig.toml files (e.g. apps/dashboard/bunfig.toml) layer on
+# top of this one for test preload/reporter settings.
+
+[install]
+# Strict lockfile in CI; locals still resolve but `bun install --frozen-lockfile`
+# is the contract enforced by every workflow.
+exact = false
+# Allow workspace:* and workspace:^ resolution across apps/* and packages/*
+linker = "isolated"
+
+[test]
+# Root-level defaults. The dashboard has its own bunfig.toml that adds a
+# DOM preload shim for component tests. Keep coverage opt-in here so a bare
+# `bun test` does not slow down on fast-feedback loops.
+coverage = false
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [
+  "node_modules/**",
+  ".next/**",
+  "dist/**",
+  "**/gen/**",
+  "coverage/**"
+]
+
+[test.reporter]
+# CI consumes this; locals can override with `bun test --reporter=default`.
+junit = "./junit.xml"

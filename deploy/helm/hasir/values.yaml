@@ -1,0 +1,115 @@
+# Global settings
+global:
+  domain: hasir.local
+
+# API Service Configuration
+api:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/protohasir/api
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
+  
+  service:
+    type: ClusterIP
+    port: 8080
+    ssh:
+      type: LoadBalancer
+      port: 2222
+      # nodePort: 32222 # If service type is NodePort
+  
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size:
+      sshKeys: 1Gi
+      repos: 5Gi
+      sdk: 5Gi
+
+  resources: {}
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Dashboard Service Configuration
+dashboard:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/protohasir/dashboard
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
+
+  service:
+    type: ClusterIP
+    port: 3000
+
+  resources: {}
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  hosts:
+    - host: hasir.local
+      paths:
+        - path: /api
+          pathType: Prefix
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: hasir-tls
+      hosts:
+        - hasir.local
+
+# Configuration parameters
+config:
+  smtp:
+    host: "smtp.mailgun.org"
+    port: 587
+    from: "noreply@hasir.local"
+    useTls: "true"
+
+# Secret configurations (Recommended to override via --set or secret values files)
+secrets:
+  jwtSecret: ""
+  smtp:
+    username: ""
+    password: ""
+
+# Bitnami PostgreSQL subchart configuration
+postgresql:
+  enabled: true
+  auth:
+    database: hasir
+    username: hasir
+    password: ""
+    existingSecret: "hasir-secrets"
+    secretKeys:
+      userPasswordKey: "HASIR_POSTGRESQL_PASSWORD"
+  persistence:
+    enabled: true
+    size: 8Gi

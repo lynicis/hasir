@@ -1,0 +1,19 @@
+# path: deploy/helm/hasir/values-prod.yaml.example
+# Production configuration example for Hasir.
+# Plaintext secrets are removed; secrets are retrieved dynamically from AWS Secrets Manager
+# via the External Secrets Operator (see templates/externalsecret.yaml).
+
+global:
+  domain: api.hasir.example.com
+ingress:
+  hosts:
+    - host: api.hasir.example.com
+      paths:
+        - path: /api
+          pathType: Prefix
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: hasir-tls
+      hosts:
+        - api.hasir.example.com

@@ -1,0 +1,25 @@
+# path: .github/workflows/helm.yml
+name: Helm Checks
+
+on:
+  pull_request:
+    paths:
+      - 'deploy/helm/**'
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - uses: helm/chart-testing-action@v2
+      
+      - name: Lint
+        run: ct lint --target-branch main --charts deploy/helm/hasir

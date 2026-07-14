@@ -1,0 +1,45 @@
+{
+  "name": "hasir-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Hasir platform monorepo — Go API + Next.js dashboard + shared protobuf contracts, Helm charts, and Docker images.",
+  "license": "UNLICENSED",
+  "packageManager": "bun@1.3.14",
+  "engines": {
+    "bun": ">=1.3.14",
+    "node": ">=22.0.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "dev": "turbo run dev --parallel",
+    "proto": "turbo run proto",
+    "generate": "turbo run generate",
+    "docker": "turbo run docker",
+    "format": "turbo run format",
+    "clean": "turbo run clean && rimraf node_modules .turbo",
+    "affected:build": "turbo run build --affected",
+    "affected:test": "turbo run test --affected",
+    "affected:lint": "turbo run lint --affected",
+    "release": "bun run scripts/release.sh"
+  },
+  "devDependencies": {
+    "turbo": "^2.6.0",
+    "rimraf": "^6.0.1",
+    "@bufbuild/buf": "^1.42.0",
+    "@bufbuild/protoc-gen-es": "^2.12.0",
+    "@connectrpc/protoc-gen-connect-es": "^2.0.0",
+    "@connectrpc/protoc-gen-connect-query": "^2.2.0"
+  },
+  "trustedDependencies": [
+    "esbuild",
+    "sharp",
+    "unrs-resolver"
+  ]
+}

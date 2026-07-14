@@ -1,0 +1,72 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build", "proto"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*", "tsconfig.json", "next.config.ts", "go.mod", "go.sum"],
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**", "build/**", "api"]
+    },
+    "test": {
+      "dependsOn": ["^build", "proto"],
+      "inputs": ["$TURBO_DEFAULT$", "tsconfig.json", "go.mod", "go.sum"],
+      "outputs": ["coverage/**", "coverage.txt", "junit.xml"]
+    },
+    "lint": {
+      "dependsOn": ["^lint"],
+      "inputs": ["$TURBO_DEFAULT$", "eslint.config.mjs", ".golangci.yaml"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build", "proto"],
+      "inputs": ["$TURBO_DEFAULT$", "tsconfig.json"]
+    },
+    "dev": { "cache": false, "persistent": true },
+    "proto": {
+      "dependsOn": ["^proto"],
+      "inputs": ["$TURBO_DEFAULT$", "buf.yaml", "buf.gen.yaml", "buf.lock", "**/*.proto"],
+      "outputs": ["gen/**", "**/gen/**"],
+      "cache": true
+    },
+    "generate": { "dependsOn": ["^generate"] },
+    "docker": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "Dockerfile", "docker-bake.hcl"],
+      "outputs": [],
+      "cache": false
+    },
+    "format": { "cache": false },
+    "clean": { "cache": false }
+  },
+  "globalDependencies": ["bunfig.toml", "turbo.json", "package.json", "tsconfig.base.json", "CODEOWNERS"],
+  "globalEnv": [
+    "NODE_ENV",
+    "NEXT_PUBLIC_API_URL",
+    "NEXT_PUBLIC_BASE_URL",
+    "SESSION_SECRET",
+    "BUF_TOKEN",
+    "TURBO_REMOTE_CACHE_SIGNATURE_KEY",
+    "VERCEL_TOKEN",
+    "HASIR_POSTGRESQL_HOST",
+    "HASIR_POSTGRESQL_PORT",
+    "HASIR_POSTGRESQL_USERNAME",
+    "HASIR_POSTGRESQL_PASSWORD",
+    "HASIR_POSTGRESQL_DATABASE",
+    "HASIR_JWTSECRET",
+    "HASIR_SMTP_HOST",
+    "HASIR_SMTP_PORT",
+    "HASIR_SMTP_USERNAME",
+    "HASIR_SMTP_PASSWORD",
+    "HASIR_SMTP_FROM",
+    "HASIR_SMTP_USETLS",
+    "HASIR_SERVER_PUBLICURL",
+    "HASIR_SERVER_SSHHOST",
+    "HASIR_SERVER_IP",
+    "HASIR_SERVER_PORT",
+    "HASIR_SSH_ENABLED",
+    "HASIR_SSH_PORT",
+    "HASIR_SSH_HOSTKEYPATH",
+    "HASIR_DASHBOARDURL",
+    "HASIR_SDKGENERATION_OUTPUTPATH",
+    "MODE"
+  ]
+}

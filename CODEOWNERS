@@ -1,0 +1,62 @@
+# path: CODEOWNERS
+# Maps each top-level area to an owning team. Enforces the "clear ownership
+# boundaries" principle from the migration plan. PRs touching a path require
+# review from the listed team(s).
+#
+# Replace the @protohasir/* team slugs with the real GitHub team slugs once
+# the org's teams are provisioned. Until then, ownership falls back to the
+# org default reviewers.
+
+# ---- Root tooling & build system ----
+# Owned by the Platform team because it gates every other team's CI.
+/turbo.json                                              @protohasir/platform
+/package.json                                            @protohasir/platform
+/bunfig.toml                                             @protohasir/platform
+/tsconfig.base.json                                      @protohasir/platform
+/eslint.config.mjs                                       @protohasir/platform
+/Makefile                                                @protohasir/platform
+/CODEOWNERS                                              @protohasir/platform
+/.github/                                                @protohasir/platform
+/scripts/                                                @protohasir/platform
+/packages/config/                                        @protohasir/platform
+/packages/tooling/                                       @protohasir/platform
+/tools/                                                  @protohasir/platform
+
+# ---- API (Go backend) ----
+# Owned by the API team. The Go service stays idiomatic Go (see ADR-0001);
+# the thin package.json wrapper is co-owned with Platform.
+/apps/api/                                               @protohasir/api
+/apps/api/package.json                                   @protohasir/api  @protohasir/platform
+
+# ---- Dashboard (Bun/Next.js frontend) ----
+/apps/dashboard/                                         @protohasir/frontend
+
+# ---- Protobuf contracts ----
+# Shared by every consumer. Changes require API + Platform review (the API
+# team is the primary consumer, Platform owns the codegen pipeline).
+/proto/                                                  @protohasir/api  @protohasir/platform
+/proto/buf.yaml                                          @protohasir/platform
+/proto/buf.gen.yaml                                      @protohasir/platform
+
+# ---- Docker images and shared Docker tooling ----
+/docker/                                                 @protohasir/platform
+/docker/base/                                            @protohasir/platform
+/docker/shared/                                          @protohasir/platform
+/docker/api/                                             @protohasir/api  @protohasir/platform
+/docker/dashboard/                                       @protohasir/frontend  @protohasir/platform
+
+# ---- Helm charts / Kubernetes deployment ----
+/deploy/                                                 @protohasir/platform
+
+# ---- Shared TS packages consumed by apps ----
+/packages/shared/                                        @protohasir/platform
+
+# ---- Documentation ----
+/docs/                                                   @protohasir/platform
+/README.md                                               @protohasir/platform
+
+# ---- ADRs require Platform sign-off because they pin cross-team decisions ----
+/docs/adr/                                               @protohasir/platform
+
+# ---- Fallback: anything not matched above, default to Platform ----
+*                                                        @protohasir/platform

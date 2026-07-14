@@ -1,0 +1,14 @@
+{
+  "name": "@hasir/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./eslint": "./eslint.config.mjs",
+    "./tsconfig.base.json": "./tsconfig.base.json"
+  },
+  "files": [
+    "eslint.config.mjs",
+    "tsconfig.base.json"
+  ]
+}

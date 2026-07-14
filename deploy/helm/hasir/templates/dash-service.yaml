@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: '{{ include "hasir.dashboard.fullname" . }}'
+  labels:
+    {{- include "hasir.labels" . | nindent 4 }}
+    app.kubernetes.io/component: dashboard
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "hasir.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: dashboard

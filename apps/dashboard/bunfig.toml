@@ -1,0 +1,6 @@
+# path: apps/dashboard/bunfig.toml
+[test]
+preload = ["./test/bun-setup.ts"]
+
+[test.reporter]
+junit = "./junit.xml"

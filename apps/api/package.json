@@ -1,0 +1,13 @@
+{
+  "name": "hasir-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Turbo bridge for the Go API. Zero npm dependencies; delegates to Go toolchain via Makefile.",
+  "scripts": {
+    "build": "make build",
+    "test": "make test",
+    "lint": "make lint",
+    "dev": "make dev",
+    "clean": "make clean"
+  }
+}

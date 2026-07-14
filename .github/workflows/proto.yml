@@ -1,0 +1,20 @@
+# path: .github/workflows/proto.yml
+name: Protobuf Checks
+
+on:
+  pull_request:
+    paths:
+      - 'proto/**/*.proto'
+      - 'proto/buf.*'
+
+jobs:
+  buf:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: bufbuild/buf-action@v1
+        with:
+          lint: true
+          breaking: true
+          breaking_against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main,subdir=proto"
+          token: ${{ secrets.BUF_TOKEN }}
