@@ -1,0 +1,12 @@
+{{range .Files}}
+File: {{.Name}}
+{{range .Messages}}
+  Message: {{.Name}}
+  Description: {{.Description}}
+  Fields:
+  {{range .Fields}}
+    {{.Name}}
+      {{.Description}}
+  {{end}}
+{{end}}
+{{end}}

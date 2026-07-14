@@ -1,0 +1,1 @@
+ALTER TABLE repositories ADD COLUMN managed_by_buf BOOLEAN NOT NULL DEFAULT FALSE;

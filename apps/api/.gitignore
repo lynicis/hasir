@@ -1,0 +1,12 @@
+.idea/
+.opencode/
+hasir-api
+api
+config.json
+!config.example.json
+repos/
+sdk/
+ssh_host_key
+.codegraph/
+.gitnexus/
+.omo/

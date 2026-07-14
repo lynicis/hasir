@@ -1,0 +1,44 @@
+{
+  "server": {
+    "publicUrl": "http://localhost:8080",
+    "sshHost": "git@localhost",
+    "ip": "0.0.0.0",
+    "port": "8080"
+  },
+  "otel": {
+    "enabled": false,
+    "traceEndpoint": "localhost:4317"
+  },
+  "postgresql": {
+    "connectionString": "",
+    "host": "localhost",
+    "port": "5432",
+    "username": "postgres",
+    "password": "postgres",
+    "database": "hasir"
+  },
+  "smtp": {
+    "host": "smtp.example.com",
+    "port": 587,
+    "username": "",
+    "password": "",
+    "from": "noreply@example.com",
+    "useTLS": true
+  },
+  "ssh": {
+    "enabled": true,
+    "port": "2222",
+    "hostKeyPath": "./ssh_host_key"
+  },
+  "sdkGeneration": {
+    "workerCount": 5,
+    "pollInterval": "10s",
+    "outputPath": "./sdk",
+    "moduleBasePath": "localhost",
+    "bufToken": "",
+    "bufBinaryPath": "buf",
+    "customBsrModules": {}
+  },
+  "jwtSecret": "your-secret-key-here",
+  "dashboardUrl": "http://localhost:3000"
+}
