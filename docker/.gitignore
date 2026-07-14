@@ -17,3 +17,8 @@ certbot/www/
 # OS files
 .DS_Store
 Thumbs.db
+
+# ai
+.codegraph/
+.gitnexus/
+.omo/
