@@ -74,7 +74,7 @@ make test                       # Test all apps
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **hasir-monorepo** (3366 symbols, 9152 relationships, 174 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **hasir** (3361 symbols, 9148 relationships, 174 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
@@ -98,10 +98,10 @@ This project is indexed by GitNexus as **hasir-monorepo** (3366 symbols, 9152 re
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/hasir-monorepo/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/hasir-monorepo/clusters` | All functional areas |
-| `gitnexus://repo/hasir-monorepo/processes` | All execution flows |
-| `gitnexus://repo/hasir-monorepo/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/hasir/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/hasir/clusters` | All functional areas |
+| `gitnexus://repo/hasir/processes` | All execution flows |
+| `gitnexus://repo/hasir/process/{name}` | Step-by-step execution trace |
 
 ## CLI
 
