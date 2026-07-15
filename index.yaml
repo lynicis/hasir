@@ -1,0 +1,19 @@
+apiVersion: v1
+entries:
+  hasir:
+  - apiVersion: v2
+    appVersion: 0.1.1
+    created: "2026-07-15T08:49:16.019508952Z"
+    dependencies:
+    - condition: postgresql.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 15.5.3
+    description: A Helm chart for deploying the Hasir stack on Kubernetes
+    digest: c4c2887937ade888ef298648632016a335abd4a63aa46b4908fbcf9cc7b628a5
+    name: hasir
+    type: application
+    urls:
+    - https://github.com/lynicis/hasir/releases/download/hasir-0.1.1/hasir-0.1.1.tgz
+    version: 0.1.1
+generated: "2026-07-15T08:49:16.019516737Z"
