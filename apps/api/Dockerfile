@@ -1,13 +1,20 @@
+FROM golang:1.26-alpine AS build
+
+WORKDIR /usr/src/app
+
+COPY apps/api/go.mod apps/api/go.sum ./
+RUN go mod download
+
+COPY apps/api ./
+RUN go build -o api .
+
 FROM alpine:latest
 
 WORKDIR /usr/src/app
 
-COPY api ./
+COPY --from=build /usr/src/app/api .
 
-RUN apk add --no-cache git ca-certificates protoc npm go
-RUN npm i -g @bufbuild/protoc-gen-es
-RUN npm i -g @connectrpc/protoc-gen-connect-es
-
+RUN apk add --no-cache git ca-certificates
 RUN addgroup -S hasir && adduser -S -G hasir hasir
 RUN chown -R hasir:hasir /usr/src/app
 
