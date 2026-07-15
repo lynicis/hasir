@@ -1,233 +1,152 @@
-# Hasir Platform Monorepo
+<div align="center">
 
-Welcome to the Hasir platform monorepo. This repository consolidates the Go API, Next.js dashboard, shared protobuf contracts, Helm charts, and Docker images into a single unified workspace.
+# Hasir
 
----
+**A self-hosted platform for managing protobuf APIs, SDK generation, and Git-native workflows.**
 
-## Table of Contents
+[![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=next.js&logoColor=white)](https://nextjs.org)
+[![Buf](https://img.shields.io/badge/Buf-Protobuf-4353FF?logo=buf&logoColor=white)](https://buf.build)
+[![Bun](https://img.shields.io/badge/Bun-1.3-F9F1E1?logo=bun&logoColor=black)](https://bun.sh)
 
-1. [Repository Overview](#repository-overview)
-2. [Repository Structure](#repository-structure)
-3. [Local Setup](#local-setup)
-4. [Development Workflow](#development-workflow)
-   * [Running Services](#running-services)
-   * [Adding a Go Service](#adding-a-go-service)
-   * [Adding a Bun Application](#adding-a-bun-application)
-   * [Adding Shared Packages](#adding-shared-packages)
-   * [Adding Protobuf Definitions](#adding-protobuf-definitions)
-5. [Docker Workflow](#docker-workflow)
-6. [Helm Workflow](#helm-workflow)
-7. [CI/CD Pipeline](#cicd-pipeline)
-8. [Release Process](#release-process)
-9. [Branching & Versioning Strategy](#branching--versioning-strategy)
-10. [Ownership Map](#ownership-map)
-11. [Secrets Handling](#secrets-handling)
-12. [Troubleshooting](#troubleshooting)
-13. [Scope Boundaries](#scope-boundaries)
-14. [Additional Documentation](#additional-documentation)
+</div>
 
 ---
 
-## Repository Overview
+## Overview
 
-The Hasir platform is a cloud-native system designed to scale to dozens of services. We use Turborepo for task orchestration and Bun for package management. Go services remain standard Go modules, participating in the Turborepo task graph via thin package wrappers.
+Hasir is a cloud-native platform that combines a Go API, a Next.js dashboard, and protocol buffer contracts into a single monorepo. It provides Git-over-SSH access, automatic SDK generation from protobuf definitions, JWT authentication, and OpenTelemetry observability — all orchestrated with Turborepo and Bun.
 
----
+> [!NOTE]
+> The original standalone repositories (`api`, `dashboard`, `proto`, `docker-images`) under the [protohasir](https://github.com/protohasir) organization are retired. They remain available for older versions, but all active development continues here.
+
+## Features
+
+- **ConnectRPC API** — Type-safe RPC services built with Connect for Go, backed by PostgreSQL (pgx)
+- **Git-over-SSH** — Native SSH server for Git push/pull workflows using go-git
+- **SDK Generation** — Automatic client SDK generation from Buf modules with configurable workers
+- **Next.js Dashboard** — Admin UI with Radix primitives, TanStack Query, and iron-session auth
+- **Protobuf Contracts** — Shared `.proto` definitions with Buf-managed code generation for Go and TypeScript
+- **OpenTelemetry** — Distributed tracing and structured logging via zap
+- **Kubernetes-Ready** — Helm charts, multi-stage Docker builds, and Docker Compose for local development
 
 ## Repository Structure
 
-```text
-.
-├── .github/             # GitHub Actions workflows
-├── apps/                # Applications and services
-│   ├── api/             # Go backend service
-│   └── dashboard/       # Next.js frontend dashboard
-├── deploy/              # Deployment configurations
-│   └── helm/            # Helm charts for Kubernetes
-├── docker/              # Dockerfiles and image definitions
-├── docs/                # Architecture, migration, and release docs
-├── packages/            # Shared packages and configurations
-│   ├── config/          # Shared linting and tsconfig files
-│   ├── shared/          # Shared TypeScript utilities
-│   └── tooling/         # Shared build and development tools
-├── proto/               # Protocol Buffer definitions
-├── scripts/             # Helper scripts for development and CI
-├── CODEOWNERS           # Code ownership mapping
-├── package.json         # Root package configuration
-├── bunfig.toml          # Bun configuration
-└── turbo.json           # Turborepo configuration
+```
+apps/api/            Go API service (ConnectRPC, PostgreSQL, JWT, SSH)
+apps/dashboard/      Next.js dashboard (React, shadcn/ui, Tailwind)
+proto/               Protocol buffer definitions (Buf)
+packages/            Shared configs (eslint, tsconfig, UI components)
+deploy/helm/         Helm chart for Kubernetes deployment
+docker/              Docker Compose stack (nginx, certbot)
+scripts/             Build, release, and lint utilities
+docs/                Architecture docs and ADRs
 ```
 
----
+## Prerequisites
 
-## Local Setup
+| Tool       | Version   |
+| ---------- | --------- |
+| [Bun](https://bun.sh) | >= 1.3.14 |
+| [Go](https://go.dev)  | >= 1.26   |
+| [Node.js](https://nodejs.org) | >= 22 |
+| [Buf](https://buf.build/docs/installation) | Latest |
+| [Docker](https://docs.docker.com/get-docker/) | With Buildx |
+| [Helm](https://helm.sh) | >= 3.14 *(optional, for K8s deployment)* |
 
-Ensure you have the following tools installed on your system:
-* Bun `1.3.14` or higher (verify before executing).
-* Go `1.26` or higher (verify before executing).
-* Docker with Buildx support.
-* Helm `3.14` or higher (verify before executing).
-
-Run the setup script to install dependencies and configure the workspace:
+## Quick Start
 
 ```bash
-./scripts/setup.sh
+# Clone the repository
+git clone https://github.com/lynicis/hasir.git
+cd hasir
+
+# Install dependencies, generate proto, update Helm deps
+make setup
+
+# Copy example configs
+cp apps/api/config.example.json apps/api/config.json
+cp apps/dashboard/.env.example apps/dashboard/.env.local
+
+# Start API + dashboard in parallel
+make dev
 ```
 
-This script installs Bun dependencies, updates Helm chart dependencies, and downloads Go modules.
+The API runs at `http://localhost:8080` and the dashboard at `http://localhost:3000`.
 
----
+> [!TIP]
+> You can also start services individually:
+> ```bash
+> cd apps/api && make dev         # API only
+> cd apps/dashboard && bun dev    # Dashboard only
+> ```
 
-## Development Workflow
+## Available Commands
 
-### Running Services
+All top-level commands are available through `make`:
 
-To start the local development environment, run:
+| Command           | Description                                      |
+| ----------------- | ------------------------------------------------ |
+| `make setup`      | Install deps, generate proto, update Helm charts |
+| `make dev`        | Start API + dashboard via Turborepo              |
+| `make build`      | Build all affected workspaces                    |
+| `make test`       | Run tests across affected workspaces             |
+| `make lint`       | ESLint + golangci-lint across the monorepo       |
+| `make typecheck`  | TypeScript type checking                         |
+| `make proto`      | Regenerate code from `.proto` definitions        |
+| `make docker`     | Build all Docker images (Buildx Bake)            |
+| `make helm-lint`  | Lint and validate Helm charts                    |
+| `make clean`      | Remove build artifacts and caches                |
+| `make release`    | Tag and release a service (`app=api bump=patch`) |
+
+## Configuration
+
+### API (`apps/api/config.json`)
+
+Copy `config.example.json` and fill in your values:
+
+| Key                  | Description                              |
+| -------------------- | ---------------------------------------- |
+| `server.port`        | HTTP listen port (default: `8080`)       |
+| `ssh.port`           | SSH server port (default: `2222`)        |
+| `postgresql.*`       | Database connection settings             |
+| `smtp.*`             | Email delivery (registration, invites)   |
+| `jwtSecret`          | Secret for signing JWT tokens            |
+| `sdkGeneration.*`    | Worker count, poll interval, Buf config  |
+| `otel.*`             | OpenTelemetry trace endpoint             |
+
+### Dashboard (`apps/dashboard/.env.local`)
+
+| Variable                | Description                    |
+| ----------------------- | ------------------------------ |
+| `NEXT_PUBLIC_API_URL`   | API base URL                   |
+| `NEXT_PUBLIC_BASE_URL`  | Dashboard public URL           |
+| `SESSION_SECRET`        | iron-session encryption secret |
+
+## Deployment
+
+### Docker Compose
 
 ```bash
-bun run dev
+cd docker
+cp .env.example .env
+docker compose up -d
 ```
 
-This command starts the API and dashboard services in parallel.
+Includes nginx reverse proxy and optional certbot for TLS certificates.
 
-### Adding a Go Service
-
-1. Create a new directory under `apps/` (such as `apps/my-service/`).
-2. Initialize a Go module: `go mod init hasir-my-service`.
-3. Create a `package.json` file in the new directory to wrap Go commands:
-   ```json
-   {
-     "name": "hasir-my-service",
-     "version": "0.0.0",
-     "private": true,
-     "scripts": {
-       "build": "go build -o dist/my-service main.go",
-       "test": "go test ./...",
-       "lint": "golangci-lint run"
-     }
-   }
-   ```
-4. Register the workspace in the root `package.json` if it is not covered by the wildcard.
-
-### Adding a Bun Application
-
-1. Create a new directory under `apps/` (such as `apps/my-app/`).
-2. Initialize a package: `bun init`.
-3. Configure `package.json` with the required scripts and dependencies.
-4. Ensure the workspace is registered in the root `package.json`.
-
-### Adding Shared Packages
-
-1. Create a new directory under `packages/` (such as `packages/my-package/`).
-2. Initialize a package: `bun init`.
-3. Reference the package in other workspaces using the `workspace:*` protocol.
-
-### Adding Protobuf Definitions
-
-1. Add your `.proto` files to the `proto/` directory.
-2. Run the generation script to regenerate Go and TypeScript files:
-   ```bash
-   ./scripts/proto-gen.sh
-   ```
-
----
-
-## Docker Workflow
-
-We use multi-stage Docker builds to keep image sizes minimal.
-
-### Building Images
-
-To build all Docker images using Buildx Bake, run:
+### Kubernetes (Helm)
 
 ```bash
-./scripts/docker-build.sh
+helm dependency update deploy/helm/hasir
+helm install hasir deploy/helm/hasir -f deploy/helm/hasir/values.yaml
 ```
 
-You can also build a specific service image:
+## Documentation
 
-```bash
-docker build -t hasir-api -f apps/api/Dockerfile .
-```
-
----
-
-## Helm Workflow
-
-Helm charts are located in `deploy/helm/`.
-
-### Linting and Validation
-
-To lint and validate the Helm charts, run:
-
-```bash
-./scripts/helm-lint.sh
-```
-
-This script runs `helm lint` and `helm template` to ensure the charts are valid.
-
----
-
-## CI/CD Pipeline
-
-Our CI/CD pipeline is built on GitHub Actions.
-
-* **Continuous Integration**: Runs on every pull request. It executes linting, testing, and validation.
-* **Continuous Delivery**: Runs when a release tag is pushed. It builds and publishes Docker images to GHCR.
-
----
-
-## Release Process
-
-Releases are triggered by pushing a versioned git tag.
-
-```bash
-# Release a new patch version for the api service
-bun run scripts/release.sh api patch
-```
-
-This script bumps the version, creates a tag (such as `api/v1.4.1`), and pushes it to GitHub.
-
----
-
-## Branching & Versioning Strategy
-
-* **Branching Model**: We follow trunk-based development. All feature branches are short-lived and merged directly into `main`.
-* **Versioning Model**: We use independent per-application versioning. Each service is versioned and tagged independently.
-
----
-
-## Secrets Handling
-
-Plaintext secrets must never be committed to the repository.
-
-* **Local Development**: Use `.env.local` files (which are gitignored) to store local secrets.
-* **Production**: We use External Secrets Operator to fetch secrets from AWS Secrets Manager and inject them into Kubernetes pods.
-
----
-
-## Troubleshooting
-
-### Protobuf Generation Fails
-Ensure you have `buf` installed and available in your PATH. Run `bun install` to install the local buf package.
-
-### Turborepo Cache Issues
-If you suspect cache corruption, run `bun run clean` to clear all build caches and node_modules.
-
----
-
-## Scope Boundaries
-
-This repository is designed to manage the platform infrastructure and build orchestration. It explicitly does not cover:
-* Application business logic changes.
-* Observability platform selection.
-* Authentication and authorization architecture.
-
----
-
-## Additional Documentation
-
-For more detailed information, refer to the following documents:
-* [Architecture Documentation](docs/ARCHITECTURE.md)
-* [Migration Guide](docs/MIGRATION.md)
-* [Release Strategy](docs/RELEASE.md)
+| Document | Description |
+| -------- | ----------- |
+| [Architecture](docs/ARCHITECTURE.md) | System design and component boundaries |
+| [Migration Guide](docs/MIGRATION.md) | Database and breaking-change migrations |
+| [Release Strategy](docs/RELEASE.md) | Versioning, tagging, and release workflow |
+| [ADRs](docs/adr/) | Architecture Decision Records |
