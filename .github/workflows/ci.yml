@@ -11,7 +11,7 @@ permissions:
 
 env:
   TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-  TURBO_TEAM: protohasir
+  TURBO_TEAM: lynicis-projects
 
 jobs:
   lint:
