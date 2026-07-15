@@ -1,0 +1,65 @@
+name: Proto Release
+
+on:
+  push:
+    tags:
+      - 'proto/v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Determine versions
+        id: versions
+        run: |
+          CURRENT_TAG="${GITHUB_REF_NAME}"
+          BSR_TAG="${CURRENT_TAG#proto/}"
+          PREV_TAG=$(git tag -l 'proto/v*' --sort=-v:refname | head -2 | tail -1 || echo "")
+          echo "current=${CURRENT_TAG}" >> "${GITHUB_OUTPUT}"
+          echo "bsr=${BSR_TAG}" >> "${GITHUB_OUTPUT}"
+          echo "previous=${PREV_TAG}" >> "${GITHUB_OUTPUT}"
+
+      - name: Lint proto files
+        uses: bufbuild/buf-action@v1
+        with:
+          lint: true
+          token: ${{ secrets.BUF_TOKEN }}
+
+      - name: Check breaking changes (skip if first release)
+        if: ${{ steps.versions.outputs.previous != '' }}
+        uses: bufbuild/buf-action@v1
+        with:
+          breaking: true
+          breaking_against: "${{ github.server_url }}/${{ github.repository }}.git#tag=${{ steps.versions.outputs.previous }},subdir=proto"
+          token: ${{ secrets.BUF_TOKEN }}
+
+      - name: Push to Buf Schema Registry
+        run: buf push --tag "${{ steps.versions.outputs.bsr }}"
+        working-directory: proto
+        env:
+          BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
+
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          CURRENT="${{ steps.versions.outputs.current }}"
+          PREVIOUS="${{ steps.versions.outputs.previous }}"
+          if [ -n "$PREVIOUS" ]; then
+            git log --pretty=format:"- %s (%h)" "${PREVIOUS}..${CURRENT}" > CHANGELOG.md
+          else
+            echo "- Initial release" > CHANGELOG.md
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.versions.outputs.current }}
+          body_path: CHANGELOG.md
+          generate_release_notes: true
