@@ -20,6 +20,11 @@ jobs:
 
       - uses: azure/setup-helm@v5
 
+      - name: Add Helm chart dependencies
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm dependency update deploy/helm/charts/hasir
+
       - name: Package and publish Helm chart
         uses: helm/chart-releaser-action@v1
         with:
