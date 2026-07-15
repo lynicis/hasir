@@ -105,7 +105,7 @@ The following table lists the configurable parameters of the Hasir chart and the
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `api.replicaCount` | Number of API service replicas | `1` |
-| `api.image.repository` | API container image repository | `ghcr.io/lynicis/api` |
+| `api.image.repository` | API container image repository | `ghcr.io/lynicis/hasir-api` |
 | `api.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `api.image.tag` | API container image tag (defaults to chart's `appVersion`) | `""` |
 | `api.service.type` | Service type for HTTP access | `ClusterIP` |
@@ -125,7 +125,7 @@ The following table lists the configurable parameters of the Hasir chart and the
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `dashboard.replicaCount` | Number of dashboard service replicas | `1` |
-| `dashboard.image.repository` | Dashboard image repository | `ghcr.io/lynicis/dashboard` |
+| `dashboard.image.repository` | Dashboard image repository | `ghcr.io/lynicis/hasir-dashboard` |
 | `dashboard.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `dashboard.image.tag` | Dashboard container image tag (defaults to chart's `appVersion`) | `""` |
 | `dashboard.service.type` | Service type for Dashboard HTTP access | `ClusterIP` |
