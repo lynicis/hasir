@@ -6,7 +6,7 @@
   **Web interface for on-premise proto schema registry**
 
   [![CI](https://github.com/lynicis/hasir/actions/workflows/ci.yml/badge.svg)](https://github.com/lynicis/hasir/actions)
-  [![codecov](https://codecov.io/gh/lynicis/hasir/graph/badge.svg?flag=dashboard)](https://codecov.io/gh/lynicis/hasir)
+  [![codecov](https://codecov.io/gh/lynicis/hasir/branch/main/graph/badge.svg?flag=dashboard&token=au9Erb4Kl7)](https://codecov.io/gh/lynicis/hasir)
   [![CodeQL](https://github.com/lynicis/hasir/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/lynicis/hasir/actions/workflows/github-code-scanning/codeql)
   [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
   [![React](https://img.shields.io/badge/React-19-blue)](https://react.dev/)

@@ -6,7 +6,7 @@
 **A self-hosted protobuf schema registry backend service built with Go and Connect-RPC**
 
 [![CI](https://github.com/lynicis/hasir/actions/workflows/ci.yml/badge.svg)](https://github.com/lynicis/hasir/actions)
-[![codecov](https://codecov.io/gh/lynicis/hasir/graph/badge.svg?flag=api)](https://codecov.io/gh/lynicis/hasir)
+[![codecov](https://codecov.io/gh/lynicis/hasir/branch/main/graph/badge.svg?flag=api&token=au9Erb4Kl7)](https://codecov.io/gh/lynicis/hasir)
 [![CodeQL](https://github.com/lynicis/hasir/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/lynicis/hasir/actions/workflows/github-code-scanning/codeql)
 [![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)](https://go.dev/)
 [![Connect-RPC](https://img.shields.io/badge/Connect--RPC-Protocol-5C4EE5)](https://connectrpc.com/)
