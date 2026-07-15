@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
@@ -16,6 +16,7 @@ FROM alpine:latest
 WORKDIR /usr/src/app
 
 COPY --from=build /usr/src/app/api .
+COPY apps/api/migrations ./migrations
 
 RUN apk add --no-cache git ca-certificates
 RUN addgroup -S hasir && adduser -S -G hasir hasir
