@@ -20,8 +20,10 @@ jobs:
 
       - uses: azure/setup-helm@v5
 
-      - name: Add Helm chart dependencies
+      - name: Configure git and Helm dependencies
         run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm dependency update deploy/helm/charts/hasir
 
