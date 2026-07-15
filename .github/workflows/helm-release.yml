@@ -1,0 +1,29 @@
+name: Helm Release
+
+on:
+  push:
+    tags:
+      - 'helm/v*.*.*'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  helm-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@v5
+
+      - name: Package and publish Helm chart
+        uses: helm/chart-releaser-action@v1
+        with:
+          charts_dir: deploy/helm/charts
+          config: deploy/helm/cr.yaml
+        env:
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
