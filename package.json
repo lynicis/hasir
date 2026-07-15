@@ -50,9 +50,15 @@
     "turbo": "^2.6.0",
     "typescript": "^5.9.3"
   },
+  "overrides": {
+    "postcss": "8.5.19"
+  },
   "trustedDependencies": [
     "esbuild",
     "sharp",
     "unrs-resolver"
-  ]
+  ],
+  "dependencies": {
+    "next": "^16.2.10"
+  }
 }
