@@ -9,7 +9,7 @@ dev:
 	MODE=development go run main.go
 
 test:
-	go test -count=1 ./...
+	go test -count=1 -coverprofile=coverage.out -covermode=atomic ./...
 
 generate-mocks:
 	# User

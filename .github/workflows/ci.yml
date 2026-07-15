@@ -114,6 +114,22 @@ jobs:
       - name: Test (Affected)
         run: bun run affected:test
 
+      - name: Generate Go coverage
+        run: cd apps/api && go test -count=1 -coverprofile=coverage.out -covermode=atomic ./...
+        continue-on-error: true
+
+      - name: Generate Dashboard coverage
+        run: cd apps/dashboard && bun run test:ci
+        continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: apps/api/coverage.out,apps/dashboard/coverage/lcov.info
+          flags: api,dashboard
+          fail_ci_if_error: false
+
   build:
     runs-on: ubuntu-latest
     steps:

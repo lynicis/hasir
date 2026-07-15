@@ -8,6 +8,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=next.js&logoColor=white)](https://nextjs.org)
 [![Buf](https://img.shields.io/badge/Buf-Protobuf-4353FF?logo=buf&logoColor=white)](https://buf.build)
 [![Bun](https://img.shields.io/badge/Bun-1.3-F9F1E1?logo=bun&logoColor=black)](https://bun.sh)
+[![codecov](https://codecov.io/gh/lynicis/hasir/graph/badge.svg)](https://codecov.io/gh/lynicis/hasir)
 
 </div>
 
