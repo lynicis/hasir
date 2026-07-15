@@ -12,13 +12,13 @@ group "default" {
 target "api" {
   context = "."
   dockerfile = "apps/api/Dockerfile"
-  tags = ["${REGISTRY}/api:${TAG}"]
+  tags = ["${REGISTRY}/hasir-api:${TAG}"]
   platforms = ["linux/amd64", "linux/arm64"]
 }
 
 target "dashboard" {
   context = "."
   dockerfile = "apps/dashboard/Dockerfile"
-  tags = ["${REGISTRY}/dashboard:${TAG}"]
+  tags = ["${REGISTRY}/hasir-dashboard:${TAG}"]
   platforms = ["linux/amd64", "linux/arm64"]
 }
