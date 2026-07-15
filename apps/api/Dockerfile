@@ -1,12 +1,15 @@
 FROM golang:1.26-alpine AS build
 
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+
 WORKDIR /usr/src/app
 
 COPY apps/api/go.mod apps/api/go.sum ./
 RUN go mod download
 
 COPY apps/api ./
-RUN go build -o api .
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o api .
 
 FROM alpine:latest
 
