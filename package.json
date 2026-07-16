@@ -36,13 +36,15 @@
     "affected:build": "turbo run build --affected",
     "affected:test": "turbo run test --affected",
     "affected:lint": "turbo run lint --affected",
-    "release": "bun run scripts/release.sh"
+    "release": "bun run scripts/release.sh",
+    "design:lint": "designmd lint DESIGN.md"
   },
   "devDependencies": {
     "@bufbuild/buf": "^1.42.0",
     "@bufbuild/protoc-gen-es": "^2.12.0",
     "@connectrpc/protoc-gen-connect-es": "^1.7.0",
     "@connectrpc/protoc-gen-connect-query": "^2.2.0",
+    "@google/design.md": "^0.3.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "16.2.10",
     "eslint-plugin-perfectionist": "^5.10.0",
