@@ -117,12 +117,12 @@ export function Dashboard() {
   }, [repositoriesVersion, refetchRepositories]);
 
   return (
-    <div className="h-[calc(100vh-4.5rem)] bg-background px-6 py-6">
+    <div className="min-h-[calc(100vh-4.5rem)] bg-background px-6 py-6">
       <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-6">
         <main className="grid flex-1 grid-cols-[260px_minmax(0,1fr)] gap-6 pt-2 min-h-0">
-          <Card className="h-full overflow-hidden rounded-2xl border border-border/85 shadow-md flex flex-col gap-0 py-0 premium-glass transition-all duration-500 hover:shadow-lg">
-            <CardHeader className="flex items-center bg-primary px-6 py-4 shrink-0 border-b border-border/60">
-              <CardTitle className="text-sm font-semibold tracking-tight text-secondary">
+          <Card className="h-full overflow-hidden rounded-2xl border border-border bg-card flex flex-col gap-0 py-0">
+            <CardHeader className="flex items-center bg-transparent px-6 py-4 shrink-0 border-b border-border">
+              <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
                 Your organizations
               </CardTitle>
             </CardHeader>
@@ -175,7 +175,7 @@ export function Dashboard() {
                               : "hover:bg-accent/80 hover:text-accent-foreground"
                           }`}
                         >
-                          <span>{org.name}</span>
+                          <span className="font-mono">{org.name}</span>
                         </button>
                         <Link
                           href={`/organization/${org.id}`}
@@ -198,14 +198,14 @@ export function Dashboard() {
               className="px-6 pb-4 shrink-0"
             />
           </Card>
-          <Card className="h-full overflow-hidden rounded-2xl border border-border/85 shadow-md flex flex-col gap-0 py-0 premium-glass transition-all duration-500 hover:shadow-lg">
-            <CardHeader className="flex items-center justify-between bg-primary px-6 py-4 shrink-0 border-b border-border/60">
+          <Card className="h-full overflow-hidden rounded-2xl border border-border bg-card flex flex-col gap-0 py-0">
+            <CardHeader className="flex items-center justify-between bg-transparent px-6 py-4 shrink-0 border-b border-border">
               <div className="space-y-0.5">
-                <CardTitle className="text-sm font-semibold tracking-tight text-secondary">
+                <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
                   Repositories
                 </CardTitle>
                 {activeOrgId !== "all" && (
-                  <p className="text-xs text-secondary/70">
+                  <p className="text-xs text-muted-foreground">
                     Showing repositories in{" "}
                     {
                       organizationsList.find(
@@ -218,7 +218,7 @@ export function Dashboard() {
               {isLoadingRepositories ? (
                 <Skeleton className="h-4 w-12 bg-secondary/70" />
               ) : (
-                <span className="text-xs text-secondary/70 font-mono tabular-nums">
+                <span className="text-xs text-muted-foreground font-mono tabular-nums">
                   {repositoriesList.length} repos
                 </span>
               )}
@@ -250,7 +250,7 @@ export function Dashboard() {
                         className="hover:bg-accent/60 hover:border-primary/30 flex items-center justify-between rounded-xl border border-border/65 bg-card px-4 py-3 text-sm transition-all duration-200 hover:shadow-sm hover:scale-[1.005] active:scale-[0.995]"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{repo.name}</span>
+                          <span className="font-medium font-mono">{repo.name}</span>
                           {visibility && (
                             <span
                               className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
