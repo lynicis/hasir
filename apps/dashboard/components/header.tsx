@@ -141,7 +141,14 @@ export function Header() {
             alt="Hasir Logo"
             width={20}
             height={20}
-            className="size-5"
+            className="size-5 hidden dark:block"
+          />
+          <Image
+            src="/logo-light.webp"
+            alt="Hasir Logo"
+            width={20}
+            height={20}
+            className="size-5 block dark:hidden"
           />
           <span>Hasir</span>
         </Link>
