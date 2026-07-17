@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="apps/dashboard/public/logo.svg" alt="Hasir Logo" width="120" />
+
 # Hasir
 
 **Self-hosted schema registry with Git-native workflows, automatic SDK generation, and a management dashboard.**

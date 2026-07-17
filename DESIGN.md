@@ -1,7 +1,8 @@
 ---
 version: alpha
-name: Hasir Dashboard
+name: HASIR Design System
 colors:
+  # Dashboard UI Colors
   background: "oklch(0.99 0.003 240)"
   foreground: "oklch(0.12 0.01 240)"
   card: "oklch(1 0 0)"
@@ -47,6 +48,7 @@ colors:
   chart-5: "oklch(0.769 0.188 70.08)"
 
 typography:
+  # Dashboard Typography
   hero:
     fontFamily: Geist Sans
     fontSize: 6rem
@@ -84,12 +86,14 @@ typography:
     fontWeight: 400
 
 rounded:
+  # Dashboard Rounding
   sm: 8px
   md: 10px
   lg: 12px
   xl: 16px
 
 spacing:
+  # Dashboard Spacing
   xs: 4px
   sm: 8px
   md: 16px
@@ -184,11 +188,11 @@ components:
     textColor: "{colors.dark-foreground}"
 ---
 
-# Hasir Dashboard — Design Specification
+# Design System: HASIR
+**Project ID:** c5027631-e040-4ab2-b704-c4ac4ebef772
 
-> **Scope**: `apps/dashboard/` — the Next.js web interface for the Hasir proto schema registry.
-
-## Overview
+## 1. Visual Theme & Atmosphere
+Hasir is a self-hosted protobuf schema registry built for engineers. The design system reflects a commit-as-currency aesthetic: terminal-forward, monospace-led brutalism. It aims to project enterprise trust through precision and restraint, eschewing marketing fluff for signal clarity. The visual language is anchored to a near-black void with a subtle warm blue undertone ("dark stage"), contrasted by pure-ish white typography and a singular warm amber signal ("bright answer") that echoes the legacy branding as a terminal cursor or commit diff line.
 
 Hasir Dashboard provides a clean, premium, and highly functional management interface for the Hasir schema registry.
 
@@ -259,9 +263,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 ```
 
----
-
-## Colors
+## 2. Color Palette & Roles
+* **Void Canvas (`#0a0b0d`)** - Canvas (`--bg`): Warm-undertone near-black. Default canvas for all new UI.
+* **Surface Panel (`#101213`)** - Surface (`--surface`): Slightly elevated panels for cards and containers.
+* **White Signal (`#f8f8f8`)** - Foreground (`--fg`): Pure-ish white for high-signal readable text and labels.
+* **Muted Text (`#8f8f8f`)** - Muted (`--muted`): Ash grey for secondary interface text, helper copy, and metadata.
+* **Hairline Border (`#202223`)** - Border (`--border`): Hairline structure for dividers and outlines.
+* **Warm Amber Accent (`#eba941`)** - Signal Accent (`--accent`): Warm amber cursor accent. Used sparingly (≤2 times per screen) for critical statuses or key visual anchors.
+* **Primary Action Background (`#ffffff`)** - Primary Action (`--accent-secondary`): Pure white. Used for primary CTAs requiring dark text on filled backgrounds for maximum contrast.
 
 All color tokens use the **OKLCH** color space. The system uses CSS custom properties consumed by Tailwind via `@theme inline`.
 
@@ -334,9 +343,9 @@ Used for data visualization. Identical in both themes:
 | `--chart-4` | `oklch(0.828 0.189 84.429)` |
 | `--chart-5` | `oklch(0.769 0.188 70.08)` |
 
----
-
-## Typography
+## 3. Typography Rules
+* **Display & Buttons:** `Geist Mono` (or fallback monospace) is used for headings, metrics, IDs, hashes, and button text. Headings use slightly negative tracking (`-0.02em`), while buttons and tags use uppercase with positive letter-spacing (`0.06em`) to prevent crowding.
+* **Body & UI Text:** `Geist Sans` (or fallback Inter/system-ui) is used for body and general UI text. Body text is set to `1.6` line-height for enhanced readability.
 
 ### Font Stack
 
@@ -369,132 +378,10 @@ font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 | Mono / code | `font-mono text-xs` | Welcome-back email, code blocks |
 | Error text | `text-sm font-normal text-destructive` | FieldError |
 
----
-
-## Layout
-
-### Layout & Spacing conventions
-
-| Context | Gap / Padding |
-|---|---|
-| Card internal gap | `gap-6` (24px) between header/content/footer |
-| Card padding | `px-6 py-6` (24px) |
-| Form field gap | `gap-6` via FieldSet, `gap-7` via FieldGroup |
-| Dialog padding | `p-6` with `gap-4` between sections |
-| Section spacing | `gap-4` between form fields, `gap-1.5` between label+input |
-| Page max-width | `max-w-2xl mx-auto` (typical content pages) |
-| Button internal gap | `gap-2` (default), `gap-1.5` (sm) |
-
-### Provider Stack
-
-```
-<TransportProvider>          ← ConnectRPC transport (binary, with auth interceptor)
-  <QueryClientProvider>      ← TanStack Query cache
-    <SessionProvider>        ← JWT session context
-      <ThemeProvider>        ← next-themes (class strategy)
-        <main>{children}</main>
-        <Toaster />          ← Sonner toast container
-      </ThemeProvider>
-    </SessionProvider>
-  </QueryClientProvider>
-</TransportProvider>
-```
-
-### Route Structure
-
-```
-app/
-├── layout.tsx               # Root: Geist fonts, antialiased body, Providers
-├── page.tsx                 # Landing: HomePageContent (Framer Motion)
-├── login/page.tsx           # Public: LoginForm
-├── register/page.tsx        # Public: RegisterForm
-├── forgot-password/page.tsx # Public: ForgotPasswordForm
-├── reset-password/page.tsx  # Public: ResetPasswordForm
-├── invite/[token]/page.tsx  # Public: InviteResponse
-└── (authenticated)/
-    ├── layout.tsx           # HeaderClient wrapper
-    ├── dashboard/page.tsx   # Dashboard (org/repo listing)
-    ├── profile/page.tsx     # ProfilePageContent (tabs)
-    ├── organization/
-    │   └── [id]/
-    │       ├── layout.tsx   # Sidebar layout (Users/Org/Repos tabs)
-    │       └── page.tsx
-    └── repository/
-        └── [repositoryId]/
-            ├── layout.tsx   # Sidebar layout (Docs/Files/Commits/SDK/Settings)
-            └── page.tsx
-```
-
-### Page Layout Patterns
-
-- **Landing page:** Full-viewport hero, centered content, `noise-bg` texture, ambient spotlights, Framer Motion stagger animations.
-- **Auth pages:** Centered `Card` at `max-w-md`, minimal chrome, no header.
-- **Authenticated pages:** `HeaderClient` at top, content below. No fixed sidebar at the app level — sidebars are per-entity (org, repo).
-- **Entity detail pages (org, repo):** Two-column layout — left sidebar nav (tabs) + right content area. Sidebar rendered as vertical `Tabs` list with Radix.
-- **Settings / profile pages:** Single-column centered content at `max-w-2xl`, cards stacked vertically.
-
----
-
-## Elevation & Depth
-
-Visual depth is achieved through **Tonal Layers** rather than heavy shadows. The background uses a soft off-white or very light green, while primary content sits on pure white cards.
-
-### Premium Visual Texture
-
-The landing page uses a subtle visual texture system:
-
-```css
-/* Noise overlay — 2.5% opacity, fixed, non-interactive */
-.noise-bg::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  opacity: 0.025;
-  z-index: 9999;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml,...feTurbulence...");
-}
-
-/* Glassmorphism card */
-.premium-glass {
-  background: rgba(var(--card), 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
-}
-
-/* Dark mode glass */
-.dark .premium-glass {
-  background: rgba(var(--card), 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
-}
-```
-
-The landing page also uses ambient spotlight blurs:
-```css
-bg-primary/5 rounded-full blur-[120px]  /* top-left */
-bg-secondary/5 rounded-full blur-[140px] /* bottom-right */
-```
-
----
-
-## Shapes
-
-Base radius: `--radius: 0.75rem` (12px). Computed variants:
-
-| Token | Computation | Result |
-|---|---|---|
-| `--radius-sm` | `calc(var(--radius) - 4px)` | 8px |
-| `--radius-md` | `calc(var(--radius) - 2px)` | 10px |
-| `--radius-lg` | `var(--radius)` | 12px |
-| `--radius-xl` | `calc(var(--radius) + 4px)` | 16px |
-
-Components use `rounded-md` (10px) by default. Cards use `rounded-xl` (16px). Dialogs use `rounded-lg` (12px).
-
----
-
-## Components
+## 4. Component Stylings
+* **Buttons:** Sharp, squared-off edges (0px border radius). Primary CTAs use dark text on a white filled background. Active and hover states employ high-contrast monochrome transitions.
+* **Cards/Containers:** Subtly rounded corners (4px radius). Styled with Surface Panel background (`#101213`) and Hairline Border (`#202223`). Absolutely zero box-shadows are used for elevation.
+* **Inputs/Forms:** Defined by Hairline Border stroke and Surface Panel background. Focus states utilize a precise White Signal or Warm Amber Accent hairline border. No rounded pills or soft shadow effects.
 
 ### UI Primitives (`components/ui/`)
 
@@ -665,9 +552,126 @@ Used exclusively on the landing page (`home-page-content.tsx`):
 - Theme toggle icons: rotation + scale transitions.
 - Hover states: `transition-colors duration-500` (e.g. landing cards).
 
----
+## 5. Layout Principles
+* **Whitespace & Grids:** Anchored to an 8px baseline grid with clean alignment and generous margins.
+* **Aesthetic Restraint:** Structure is defined purely by 1px hairline borders rather than shadows. The amber accent is strictly reserved for high-signal alerts or cursors rather than general styling.
 
-## Do's and Don'ts
+### Layout & Spacing conventions
+
+| Context | Gap / Padding |
+|---|---|
+| Card internal gap | `gap-6` (24px) between header/content/footer |
+| Card padding | `px-6 py-6` (24px) |
+| Form field gap | `gap-6` via FieldSet, `gap-7` via FieldGroup |
+| Dialog padding | `p-6` with `gap-4` between sections |
+| Section spacing | `gap-4` between form fields, `gap-1.5` between label+input |
+| Page max-width | `max-w-2xl mx-auto` (typical content pages) |
+| Button internal gap | `gap-2` (default), `gap-1.5` (sm) |
+
+### Provider Stack
+
+```
+<TransportProvider>          ← ConnectRPC transport (binary, with auth interceptor)
+  <QueryClientProvider>      ← TanStack Query cache
+    <SessionProvider>        ← JWT session context
+      <ThemeProvider>        ← next-themes (class strategy)
+        <main>{children}</main>
+        <Toaster />          ← Sonner toast container
+      </ThemeProvider>
+    </SessionProvider>
+  </QueryClientProvider>
+</TransportProvider>
+```
+
+### Route Structure
+
+```
+app/
+├── layout.tsx               # Root: Geist fonts, antialiased body, Providers
+├── page.tsx                 # Landing: HomePageContent (Framer Motion)
+├── login/page.tsx           # Public: LoginForm
+├── register/page.tsx        # Public: RegisterForm
+├── forgot-password/page.tsx # Public: ForgotPasswordForm
+├── reset-password/page.tsx  # Public: ResetPasswordForm
+├── invite/[token]/page.tsx  # Public: InviteResponse
+└── (authenticated)/
+    ├── layout.tsx           # HeaderClient wrapper
+    ├── dashboard/page.tsx   # Dashboard (org/repo listing)
+    ├── profile/page.tsx     # ProfilePageContent (tabs)
+    ├── organization/
+    │   └── [id]/
+    │       ├── layout.tsx   # Sidebar layout (Users/Org/Repos tabs)
+    │       └── page.tsx
+    └── repository/
+        └── [repositoryId]/
+            ├── layout.tsx   # Sidebar layout (Docs/Files/Commits/SDK/Settings)
+            └── page.tsx
+```
+
+### Page Layout Patterns
+
+- **Landing page:** Full-viewport hero, centered content, `noise-bg` texture, ambient spotlights, Framer Motion stagger animations.
+- **Auth pages:** Centered `Card` at `max-w-md`, minimal chrome, no header.
+- **Authenticated pages:** `HeaderClient` at top, content below. No fixed sidebar at the app level — sidebars are per-entity (org, repo).
+- **Entity detail pages (org, repo):** Two-column layout — left sidebar nav (tabs) + right content area. Sidebar rendered as vertical `Tabs` list with Radix.
+- **Settings / profile pages:** Single-column centered content at `max-w-2xl`, cards stacked vertically.
+
+## 6. Elevation & Depth
+
+Visual depth is achieved through **Tonal Layers** rather than heavy shadows. The background uses a soft off-white or very light green, while primary content sits on pure white cards.
+
+### Premium Visual Texture
+
+The landing page uses a subtle visual texture system:
+
+```css
+/* Noise overlay — 2.5% opacity, fixed, non-interactive */
+.noise-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  opacity: 0.025;
+  z-index: 9999;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,...feTurbulence...");
+}
+
+/* Glassmorphism card */
+.premium-glass {
+  background: rgba(var(--card), 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+}
+
+/* Dark mode glass */
+.dark .premium-glass {
+  background: rgba(var(--card), 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+}
+```
+
+The landing page also uses ambient spotlight blurs:
+```css
+bg-primary/5 rounded-full blur-[120px]  /* top-left */
+bg-secondary/5 rounded-full blur-[140px] /* bottom-right */
+```
+
+## 7. Shapes
+
+Base radius: `--radius: 0.75rem` (12px). Computed variants:
+
+| Token | Computation | Result |
+|---|---|---|
+| `--radius-sm` | `calc(var(--radius) - 4px)` | 8px |
+| `--radius-md` | `calc(var(--radius) - 2px)` | 10px |
+| `--radius-lg` | `var(--radius)` | 12px |
+| `--radius-xl` | `calc(var(--radius) + 4px)` | 16px |
+
+Components use `rounded-md` (10px) by default. Cards use `rounded-xl` (16px). Dialogs use `rounded-lg` (12px).
+
+## 8. Do's and Don'ts
 
 - **Do** use OKLCH color space for any new color tokens.
 - **Do** use `cn()` for all class merging — never concatenate raw class strings.
@@ -687,72 +691,3 @@ Used exclusively on the landing page (`home-page-content.tsx`):
 - **Don't** mix rounded and sharp corners in the same view.
 - **Don't** define custom spacing classes; always stick to Tailwind defaults.
 - **Don't** hardcode light/dark theme values; always refer to the CSS theme variables.
-
----
-
-## State Management
-
-### Server State (TanStack Query)
-All API calls go through ConnectRPC with `@connectrpc/connect-query` integration. Query keys are auto-generated from the protobuf service definitions.
-
-### Client State (Zustand)
-`stores/registry-store.ts` implements a version-based cache invalidation pattern: each entity type has a version counter. Incrementing the version invalidates related queries and triggers subscribed component updates.
-
-### Session State
-JWT-based via `iron-session`. Access + refresh token pair stored in HTTP-only cookies. Auth interceptor on the ConnectRPC transport handles automatic token refresh.
-
----
-
-## Permission Model
-
-Three roles with cascading capabilities:
-
-| Capability | Owner | Author | Reader |
-|---|---|---|---|
-| View content | Yes | Yes | Yes |
-| Push schemas | Yes | Yes | No |
-| Edit settings | Yes | No | No |
-| Invite members | Yes | No | No |
-| Edit member permissions | Yes | No | No |
-| Remove members | Yes | No | No |
-| Delete org/repo | Yes | No | No |
-
----
-
-## File Organization Conventions
-
-### Directory Structure
-
-```
-components/
-├── ui/                    # shadcn/ui primitives (generic, reusable)
-│   ├── button.tsx
-│   ├── card.tsx
-│   ├── input.tsx
-│   └── ...
-├── header.tsx             # Feature components (app-specific)
-├── dashboard.tsx
-├── login-form.tsx
-├── danger-zone.tsx
-└── ...
-
-lib/
-├── utils.ts               # cn() + error helpers
-├── use-client.ts          # ConnectRPC useClient hook
-├── auth-interceptor.ts    # JWT token interceptor
-└── session-provider.tsx   # Session context
-
-stores/
-└── registry-store.ts      # Zustand store
-
-hooks/
-└── ...                    # Custom React hooks
-```
-
-### Naming Conventions
-
-- **UI primitives:** lowercase, single word (`button.tsx`, `card.tsx`).
-- **Feature components:** kebab-case (`login-form.tsx`, `danger-zone.tsx`).
-- **Content components:** `*-content.tsx` for client-side page layout wrappers.
-- **Dialog forms:** `*-dialog-form.tsx` or `*-dialog.tsx`.
-- **Settings:** `*-settings-form.tsx` or `*-settings-content.tsx`.
