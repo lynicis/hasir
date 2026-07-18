@@ -1,5 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "AGENTS.md",
+    "CONTEXT.md",
+    "docs/ARCHITECTURE.md",
+    "docs/RELEASE.md"
+  ],
   "mcp": {
     "postgresql": {
       "type": "local",
