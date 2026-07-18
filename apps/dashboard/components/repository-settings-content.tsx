@@ -172,10 +172,10 @@ export default function RepositorySettingsContent() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex max-w-2xl items-center justify-between rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+          <div className="flex max-w-2xl items-center justify-between">
             <div className="space-y-1">
               <h4 className="text-sm font-medium">Delete this repository</h4>
-              <p className="text-muted-foreground text-xs">
+              <p className="text-muted-foreground text-sm">
                 Once deleted, this repository and all its data cannot be
                 recovered.
               </p>
