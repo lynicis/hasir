@@ -693,8 +693,8 @@ func (h *SdkHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// #nosec G304 G703 -- repoPath validated via isValidPathComponent + path prefix check above
-	if _, err := os.Stat(filepath.Join(repoPath, ".git")); os.IsNotExist(err) { // lgtm [go/path-injection]
+	// #nosec G304 G703 -- absRepoPath validated via isValidPathComponent + path prefix check above
+	if _, err := os.Stat(filepath.Join(absRepoPath, ".git")); os.IsNotExist(err) { // lgtm [go/path-injection]
 		http.Error(w, "SDK repository not found", http.StatusNotFound)
 		return
 	}
@@ -736,9 +736,9 @@ go get %s
 
 	switch {
 	case subPath == "info/refs":
-		h.handleInfoRefs(w, r, repoPath)
+		h.handleInfoRefs(w, r, absRepoPath)
 	case subPath == "git-upload-pack" && r.Method == http.MethodPost:
-		h.handleUploadPack(w, r, repoPath)
+		h.handleUploadPack(w, r, absRepoPath)
 	default:
 		http.Error(w, "Not found", http.StatusNotFound)
 	}
