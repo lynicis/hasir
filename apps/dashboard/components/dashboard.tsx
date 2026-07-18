@@ -120,9 +120,9 @@ export function Dashboard() {
     <div className="min-h-[calc(100vh-4.5rem)] bg-background px-6 py-6">
       <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-6">
         <main className="grid flex-1 grid-cols-[260px_minmax(0,1fr)] gap-6 pt-2 min-h-0">
-          <Card className="h-full overflow-hidden rounded-2xl border border-border bg-card flex flex-col gap-0 py-0">
+          <Card className="h-full overflow-hidden rounded shadow-none border border-border bg-card flex flex-col gap-0 py-0">
             <CardHeader className="flex items-center bg-transparent px-6 py-4 shrink-0 border-b border-border">
-              <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
+              <CardTitle className="text-sm font-semibold font-mono tracking-[-0.02em] text-foreground">
                 Your organizations
               </CardTitle>
             </CardHeader>
@@ -131,7 +131,7 @@ export function Dashboard() {
                 <button
                   type="button"
                   onClick={() => handleOrgChange("all")}
-                  className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-all duration-200 active:scale-[0.99] active:translate-y-[0.5px] ${
+                  className={`flex w-full items-center justify-between rounded-none px-3 py-2.5 text-sm transition-all duration-200 active:scale-[0.99] active:translate-y-[0.5px] ${
                     activeOrgId === "all"
                       ? "bg-accent text-accent-foreground font-medium"
                       : "hover:bg-accent/80 hover:text-accent-foreground"
@@ -143,7 +143,7 @@ export function Dashboard() {
                   Array.from({ length: 3 }).map((_, i) => (
                     <div
                       key={i}
-                      className="flex w-full items-center rounded-md px-3 py-2.5"
+                      className="flex w-full items-center rounded-none px-3 py-2.5"
                     >
                       <Skeleton className="h-4 w-24" />
                     </div>
@@ -165,24 +165,30 @@ export function Dashboard() {
                   organizationsList.map((org) => {
                     const isActive = activeOrgId === org.id;
                     return (
-                      <div key={org.id} className="space-y-1">
+                      <div
+                        key={org.id}
+                        className={`group flex items-center justify-between rounded-none text-sm transition-all duration-200 ${
+                          isActive
+                            ? "bg-accent text-accent-foreground font-medium"
+                            : "hover:bg-accent/80 hover:text-accent-foreground"
+                        }`}
+                      >
                         <button
                           type="button"
                           onClick={() => handleOrgChange(org.id)}
-                          className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm transition-all duration-200 active:scale-[0.99] active:translate-y-[0.5px] ${
-                            isActive
-                              ? "bg-accent text-accent-foreground font-medium"
-                              : "hover:bg-accent/80 hover:text-accent-foreground"
-                          }`}
+                          className="flex-1 text-left font-mono truncate px-3 py-2.5 active:opacity-70 transition-opacity"
                         >
-                          <span className="font-mono">{org.name}</span>
+                          {org.name}
                         </button>
                         <Link
                           href={`/organization/${org.id}`}
-                          className="flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-all duration-200 hover:text-foreground"
+                          className={`mr-2 p-1.5 text-muted-foreground hover:text-foreground transition-all duration-200 rounded-md hover:bg-background/50 ${
+                            isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          }`}
+                          title="Organization Settings"
                         >
                           <Settings className="size-3.5 transition-transform duration-500 hover:rotate-45" />
-                          <span>Settings</span>
+                          <span className="sr-only">Settings</span>
                         </Link>
                       </div>
                     );
@@ -198,10 +204,10 @@ export function Dashboard() {
               className="px-6 pb-4 shrink-0"
             />
           </Card>
-          <Card className="h-full overflow-hidden rounded-2xl border border-border bg-card flex flex-col gap-0 py-0">
+          <Card className="h-full overflow-hidden rounded shadow-none border border-border bg-card flex flex-col gap-0 py-0">
             <CardHeader className="flex items-center justify-between bg-transparent px-6 py-4 shrink-0 border-b border-border">
               <div className="space-y-0.5">
-                <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
+                <CardTitle className="text-sm font-semibold font-mono tracking-[-0.02em] text-foreground">
                   Repositories
                 </CardTitle>
                 {activeOrgId !== "all" && (
@@ -229,7 +235,7 @@ export function Dashboard() {
                   Array.from({ length: 5 }).map((_, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3"
+                      className="flex items-center justify-between rounded-none border border-border/60 bg-card px-4 py-3"
                     >
                       <Skeleton className="h-5 w-32" />
                     </div>
@@ -247,13 +253,13 @@ export function Dashboard() {
                       <Link
                         href={`/repository/${repo.id}`}
                         key={repo.id}
-                        className="hover:bg-accent/60 hover:border-primary/30 flex items-center justify-between rounded-xl border border-border/65 bg-card px-4 py-3 text-sm transition-all duration-200 hover:shadow-sm hover:scale-[1.005] active:scale-[0.995]"
+                        className="hover:bg-accent/60 hover:border-primary/30 flex items-center justify-between rounded-none border border-border/65 bg-card px-4 py-3 text-sm transition-all duration-200 active:scale-[0.99] active:translate-y-[0.5px]"
                       >
                         <div className="flex items-center gap-2">
                           <span className="font-medium font-mono">{repo.name}</span>
                           {visibility && (
                             <span
-                              className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
+                              className={`text-xs px-2 py-0.5 rounded-none font-mono uppercase tracking-wider transition-colors ${
                                 visibility === "public"
                                   ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                                   : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"

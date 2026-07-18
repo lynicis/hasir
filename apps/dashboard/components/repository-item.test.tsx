@@ -114,7 +114,7 @@ describe("RepositoryItem", () => {
       );
 
       const visibilityBadge = screen.getByText("public");
-      expect(visibilityBadge).toHaveClass("text-xs", "px-2", "py-0.5", "rounded-full");
+      expect(visibilityBadge).toHaveClass("text-xs", "px-2", "py-0.5", "rounded-none");
     });
   });
 
@@ -270,9 +270,8 @@ describe("RepositoryItem", () => {
         "flex",
         "items-center",
         "justify-between",
-        "rounded-lg",
+        "rounded-md",
         "border",
-        "border-border/60",
         "bg-card"
       );
     });
@@ -283,7 +282,7 @@ describe("RepositoryItem", () => {
       );
 
       const itemContainer = container.firstChild;
-      expect(itemContainer).toHaveClass("hover:bg-accent/50", "transition-colors");
+      expect(itemContainer).toHaveClass("hover:bg-accent", "transition-colors");
     });
 
     it("delete button has ghost variant styling", () => {

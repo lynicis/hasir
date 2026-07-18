@@ -53,7 +53,7 @@ export function MemberItem({
   const canEditRole = canEditPermissions && !isLastOwner;
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card px-4 py-3 hover:bg-accent/50 transition-colors">
+    <div className="flex items-center justify-between rounded-md border bg-card px-4 py-3 hover:bg-accent transition-colors">
       <div className="flex items-center gap-3">
         <Avatar>
           <AvatarImage src={member.avatar} alt={member.name} />

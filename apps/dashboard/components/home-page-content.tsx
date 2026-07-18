@@ -1,7 +1,8 @@
 "use client";
 
-import { Database, LayoutDashboard, LogIn, User, UserPlus } from "lucide-react";
+import { LayoutDashboard, LogIn, User, UserPlus } from "lucide-react";
 import { motion, type Variants } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 
 import { useSession } from "@/lib/session-provider";
@@ -53,9 +54,24 @@ export default function HomePageContent() {
             variants={itemVariants}
             className="mb-8"
           >
-            <div className="rounded-2xl bg-card border border-border/80 p-4 shadow-sm relative group hover:border-primary/45 transition-colors duration-500">
-              <div className="absolute inset-0 bg-primary/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <Database className="w-10 h-10 text-primary relative z-10" />
+            <div className="rounded-xl bg-card border p-4 relative group hover:border-primary/45 transition-colors duration-500">
+              <div className="absolute inset-0 bg-primary/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <Image
+                src="/logo.svg"
+                alt="Hasir Logo"
+                width={40}
+                height={40}
+                className="relative z-10 hidden dark:block"
+                priority
+              />
+              <Image
+                src="/logo-light.svg"
+                alt="Hasir Logo"
+                width={40}
+                height={40}
+                className="relative z-10 block dark:hidden"
+                priority
+              />
             </div>
           </motion.div>
 
@@ -81,7 +97,7 @@ export default function HomePageContent() {
                 <Button 
                   asChild 
                   size="lg" 
-                  className="min-w-[160px] active:scale-[0.98] active:translate-y-[1px] transition-transform duration-100"
+                  className="min-w-[160px] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-100"
                 >
                   <Link href="/dashboard" className="flex items-center gap-2">
                     <LayoutDashboard className="w-4 h-4" />
@@ -92,7 +108,7 @@ export default function HomePageContent() {
                   asChild
                   variant="outline"
                   size="lg"
-                  className="min-w-[160px] active:scale-[0.98] active:translate-y-[1px] transition-transform duration-100"
+                  className="min-w-[160px] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-100"
                 >
                   <Link href="/profile" className="flex items-center gap-2">
                     <User className="w-4 h-4" />
@@ -105,7 +121,7 @@ export default function HomePageContent() {
                 <Button 
                   asChild 
                   size="lg" 
-                  className="min-w-[160px] active:scale-[0.98] active:translate-y-[1px] transition-transform duration-100"
+                  className="min-w-[160px] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-100"
                 >
                   <Link href="/login" className="flex items-center gap-2">
                     <LogIn className="w-4 h-4" />
@@ -116,7 +132,7 @@ export default function HomePageContent() {
                   asChild
                   variant="outline"
                   size="lg"
-                  className="min-w-[160px] active:scale-[0.98] active:translate-y-[1px] transition-transform duration-100"
+                  className="min-w-[160px] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-100"
                 >
                   <Link href="/register" className="flex items-center gap-2">
                     <UserPlus className="w-4 h-4" />

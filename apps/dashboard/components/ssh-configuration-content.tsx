@@ -81,7 +81,7 @@ export function SshConfigurationContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header className="mx-auto mt-4 flex w-full max-w-6xl items-center gap-4 rounded-full border bg-card/80 px-4 py-2 shadow-sm">
+      <header className="mx-auto mt-4 flex w-full max-w-6xl items-center gap-4 rounded-md border bg-card px-4 py-2">
         <Link
           href="/"
           className="flex items-center gap-2 text-base font-medium text-foreground"
@@ -100,7 +100,7 @@ export function SshConfigurationContent() {
 
       <div className="h-[calc(100vh-4.5rem)] overflow-hidden px-6 py-6">
         <div className="mx-auto flex h-full w-full max-w-6xl gap-6">
-          <Card className="h-full w-64 shrink-0 gap-0 overflow-hidden rounded-2xl border border-border/60 py-0 shadow-sm">
+          <Card className="h-full w-64 shrink-0 gap-0 overflow-hidden rounded-xl border py-0">
             <CardHeader className="flex items-center bg-primary px-6 py-4">
               <CardTitle className="flex items-center gap-2 text-sm font-medium text-secondary">
                 <BookOpen className="size-4" />

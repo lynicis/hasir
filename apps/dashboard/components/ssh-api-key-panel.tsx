@@ -407,13 +407,13 @@ export function SshApiKeyPanel() {
               {sshKeys.map((key) => (
                 <div
                   key={key.id}
-                  className="group flex items-center justify-between gap-4 rounded-lg border bg-card px-4 py-3 shadow-sm transition-all hover:shadow-md"
+                  className="group flex items-center justify-between gap-4 rounded-md border bg-card px-4 py-3 transition-colors"
                 >
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{key.name}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="font-mono text-xs text-muted-foreground">
                       Key ID: {key.id}
                     </p>
                   </div>
@@ -527,13 +527,13 @@ export function SshApiKeyPanel() {
                 return (
                   <div
                     key={key.id}
-                    className="group flex items-center justify-between gap-4 rounded-lg border bg-card px-4 py-3 shadow-sm transition-all hover:shadow-md"
+                    className="group flex items-center justify-between gap-4 rounded-md border bg-card px-4 py-3 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{key.name}</p>
                         {isNewlyCreated && (
-                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
+                          <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
                             New
                           </span>
                         )}

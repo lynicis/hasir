@@ -382,7 +382,7 @@ describe("Dashboard", () => {
 
     await user.click(hasirLabsButton);
 
-    expect(hasirLabsButton.className).toContain("bg-accent");
+    expect(hasirLabsButton.parentElement?.className).toContain("bg-accent");
   });
 
   describe("Pagination", () => {

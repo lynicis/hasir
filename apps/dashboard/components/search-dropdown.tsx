@@ -31,7 +31,7 @@ export const SearchDropdown = forwardRef<HTMLDivElement, SearchDropdownProps>(
     return (
       <div
         ref={ref}
-        className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[80vh] overflow-y-auto rounded-2xl border bg-card shadow-lg"
+        className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[80vh] overflow-y-auto rounded-md border bg-card"
       >
       <div className="p-4">
         {isLoading && (
