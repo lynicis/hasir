@@ -74,9 +74,9 @@ export default function OrganizationLayout({
   return (
     <div className="h-[calc(100vh-4.5rem)] bg-background px-6 py-6 overflow-hidden">
       <div className="mx-auto flex h-full w-full max-w-6xl gap-6">
-        <Card className="h-full w-64 gap-0 overflow-hidden rounded-2xl border border-border/60 py-0 shadow-sm">
+        <Card className="h-full w-64 gap-0 overflow-hidden border border-border py-0">
           <CardHeader className="flex items-center bg-primary px-6 py-4">
-            <CardTitle className="text-sm font-medium text-secondary">
+            <CardTitle className="text-sm font-mono uppercase tracking-[0.06em] font-medium text-primary-foreground">
               Settings
             </CardTitle>
           </CardHeader>
@@ -96,10 +96,10 @@ export default function OrganizationLayout({
                   <Link
                     key={tab.id}
                     href={href}
-                    className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
+                    className={`flex w-full items-center gap-3 rounded-none px-3 py-2.5 text-sm font-mono uppercase tracking-[0.06em] font-medium transition-colors ${
                       isActive
-                        ? "bg-accent text-accent-foreground"
-                        : "hover:bg-accent hover:text-accent-foreground"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-primary hover:text-primary-foreground"
                     }`}
                   >
                     <Icon className="size-4" />
