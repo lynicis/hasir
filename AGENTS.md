@@ -2,12 +2,20 @@
 
 ## Project Overview
 
-Monorepo for the hasir platform — a Go API + Next.js dashboard + protocol buffer definitions + Helm deployment configs + Docker Compose stack.
+Monorepo for the Hasir platform — a Go API + Next.js dashboard + protocol buffer definitions + Helm deployment configs + Docker Compose stack.
+
+### Architecture & Quirks
+
+- **Turborepo Orchestration**: All builds, tests, and linting are orchestrated by Turborepo from the root. 
+- **Go via Turborepo**: Go services (`apps/api/`) remain standard Go modules but use a minimal `package.json` to participate in the Turborepo task graph. Do not add JS dependencies to Go services.
+- **Protobufs**: The schema directory is flattened at `proto/` directly. 
+- **Database Migrations**: Always use raw SQL migration files under `apps/api/migrations/`. Do not use ORM-level migrations to prevent schema drift.
+- **TypeScript Strictness**: Strictly avoid `as any`, `@ts-ignore`, or `@ts-expect-error`.
 
 ### Structure
 
-```
-apps/api/          Go API service (Connect-RPC, PostgreSQL, JWT)
+```text
+apps/api/          Go API service (Connect-RPC, PostgreSQL, JWT, Git-over-SSH)
 apps/dashboard/    Next.js dashboard (React, shadcn/ui, Bun)
 proto/             Protocol buffer definitions (Buf)
 deploy/helm/       Helm chart for Kubernetes deployment
@@ -19,62 +27,44 @@ docs/              Architecture docs and ADRs
 
 ## Commands
 
-### API (Go)
+Run all primary commands from the **monorepo root**. Turborepo will orchestrate the underlying dependencies.
+
+### Local Development & Verification
 
 ```bash
-cd apps/api && make dev       # MODE=development go run main.go
-cd apps/api && make test      # go test ./...
-cd apps/api && make build     # GOOS=linux go build
-cd apps/api && make lint      # golangci-lint run
+make setup                # Installs dependencies, lint/proto tools, setups config files
+make dev                  # Starts Go API and Next.js dev servers concurrently
+make build                # Builds Go API and compiles Next.js frontend
+make test                 # Runs go test and bun test across the monorepo
+make lint                 # Runs golangci-lint, eslint, and buf lint
+make proto                # Triggers 'buf generate' on the proto/ directory
 ```
 
-### Dashboard (Next.js)
-
-```bash
-cd apps/dashboard && bun dev           # Next.js dev server
-cd apps/dashboard && bun test          # bun test
-cd apps/dashboard && bun run build     # next build
-cd apps/dashboard && bun run lint      # next lint
-```
-
-### Proto
-
-```bash
-cd proto && buf lint           # Lint proto files
-cd proto && buf generate       # Generate code
-```
-
-### Helm
-
-```bash
-scripts/helm-lint.sh           # Lint Helm chart
-```
-
-### Docker
+### Docker Deployments
 
 ```bash
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-### Monorepo
+## Git Workflow & Releases
+
+- **Trunk-based development** on the `main` branch. 
+- **Independent Versioning**: Services are versioned independently. 
+- **Tag format**: `<app>/<semver>` (e.g., `api/v1.0.0-alpha`)
+
+### Releasing a Service
+
+To release a service, use the automated bump script which handles git tags and triggers GitHub Actions:
 
 ```bash
-scripts/setup.sh               # First-time setup
-scripts/clean.sh               # Clean all artifacts
-make build                      # Build all apps
-make test                       # Test all apps
+bun run scripts/release.sh <app> <patch|minor|major>
+# Example: bun run scripts/release.sh api minor
 ```
-
-## Git Workflow
-
-- Trunk-based development on `main`
-- Use `git filter-repo` for history rewrites
-- Tag format: `<app>/<semver>` (e.g., `api/v1.0.0-alpha`)
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **hasir** (3426 symbols, 9211 relationships, 174 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **hasir** (3425 symbols, 9210 relationships, 174 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
