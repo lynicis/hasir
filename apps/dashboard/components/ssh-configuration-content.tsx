@@ -100,9 +100,9 @@ export function SshConfigurationContent() {
 
       <div className="h-[calc(100vh-4.5rem)] overflow-hidden px-6 py-6">
         <div className="mx-auto flex h-full w-full max-w-6xl gap-6">
-          <Card className="h-full w-64 shrink-0 gap-0 overflow-hidden rounded-xl border py-0">
-            <CardHeader className="flex items-center bg-primary px-6 py-4">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium text-secondary">
+          <Card className="h-full w-64 shrink-0 gap-0 overflow-hidden border border-border py-0">
+            <CardHeader className="flex items-center bg-transparent px-6 py-4 shrink-0 border-b border-border">
+              <CardTitle className="flex items-center gap-2 text-sm font-mono uppercase tracking-[0.06em] font-medium text-foreground">
                 <BookOpen className="size-4" />
                 SSH Guide
               </CardTitle>
@@ -118,10 +118,10 @@ export function SshConfigurationContent() {
                       key={item.id}
                       onClick={() => handleTocClick(item.id)}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors",
+                        "flex w-full items-center gap-3 rounded-none px-3 py-2.5 text-sm font-mono uppercase tracking-[0.06em] font-medium transition-colors",
                         isActive
-                          ? "bg-accent text-accent-foreground"
-                          : "hover:bg-accent hover:text-accent-foreground",
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-primary hover:text-primary-foreground"
                       )}
                     >
                       <Icon className="size-4 shrink-0" />

@@ -139,8 +139,8 @@ export default function RepositoryLayout({
       <div className="h-[calc(100vh-4.5rem)] overflow-hidden bg-background px-6 py-6">
         <div className="mx-auto flex h-full w-full max-w-6xl gap-6">
           <Card className="h-full w-64 gap-0 overflow-hidden border border-border py-0">
-            <CardHeader className="flex items-center bg-primary px-6 py-4">
-              <Skeleton className="h-5 w-20 bg-primary-foreground/20" />
+            <CardHeader className="flex items-center bg-transparent px-6 py-4 shrink-0 border-b border-border">
+              <Skeleton className="h-5 w-20 bg-muted-foreground/20" />
             </CardHeader>
             <CardContent className="space-y-2 py-4">
               <Skeleton className="h-10 w-full" />
@@ -172,8 +172,8 @@ export default function RepositoryLayout({
     <div className="h-[calc(100vh-4.5rem)] overflow-hidden bg-background px-6 py-6">
       <div className="mx-auto flex h-full w-full max-w-6xl gap-6">
         <Card className="h-full w-64 gap-0 overflow-hidden border border-border py-0">
-          <CardHeader className="flex items-center bg-primary px-6 py-4">
-            <CardTitle className="text-sm font-mono uppercase tracking-[0.06em] font-medium text-primary-foreground">
+          <CardHeader className="flex items-center bg-transparent px-6 py-4 shrink-0 border-b border-border">
+            <CardTitle className="text-sm font-mono uppercase tracking-[0.06em] font-medium text-foreground">
               {repository?.name || "Loading..."}
             </CardTitle>
           </CardHeader>
