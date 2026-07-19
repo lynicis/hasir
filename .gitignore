@@ -75,3 +75,4 @@ tmp/
 .turbo
 
 .worktrees/
+!.changeset/config.json
