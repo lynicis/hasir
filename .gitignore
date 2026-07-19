@@ -73,3 +73,5 @@ tmp/
 
 # Turborepo
 .turbo
+
+.worktrees/
