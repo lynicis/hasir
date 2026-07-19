@@ -15,8 +15,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hasir - Git-native protobuf registry",
-  description: "Git-native protobuf registry for teams who ship. Push .proto files over standard Git-SSH. Hasir validates with buf, generates client SDKs, and keeps every schema version-controlled.",
+  metadataBase: new URL("https://hasir.lynicis.dev"),
+  title: "Hasir | Self-Hosted Git-Native Protobuf Registry",
+  description: "Hasir is a self-hosted, Git-native protobuf registry. Push .proto files via SSH, validate with buf, and automatically generate client SDKs.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Hasir | Self-Hosted Git-Native Protobuf Registry",
+    description: "Hasir is a self-hosted, Git-native protobuf registry. Push .proto files via SSH, validate with buf, and automatically generate client SDKs.",
+    url: "https://hasir.lynicis.dev",
+    siteName: "Hasir",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Hasir | Self-Hosted Git-Native Protobuf Registry",
+    description: "Hasir is a self-hosted, Git-native protobuf registry. Push .proto files via SSH, validate with buf, and automatically generate client SDKs.",
+  },
 };
 
 export default function RootLayout({

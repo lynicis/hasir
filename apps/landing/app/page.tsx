@@ -75,7 +75,7 @@ function HeroSection() {
           </h1>
 
           <p className="text-lg text-muted-foreground max-w-xl leading-relaxed">
-            Push .proto files over standard Git-SSH. Hasir validates with buf, generates client SDKs, and keeps every schema version-controlled.
+            A self-hosted schema registry for teams who ship. Push .proto files over standard Git-SSH, validate with buf, and automatically generate client SDKs.
           </p>
 
           <div className="flex flex-wrap items-center gap-4">
@@ -176,8 +176,8 @@ function FeaturesSection() {
   return (
     <section id="features" className="py-24 sm:py-32 border-t border-border/40">
       <div className="flex flex-col gap-4 text-center max-w-2xl mx-auto mb-16">
-        <h2 className="text-sm font-mono text-accent uppercase tracking-widest">Registry Core</h2>
-        <h3 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">Everything a schema registry should do.</h3>
+        <span className="block text-sm font-mono text-accent uppercase tracking-widest">Registry Core</span>
+        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">Everything a schema registry should do.</h2>
         <p className="text-muted-foreground">Built for teams who treat protobuf definitions as source of truth, not an afterthought.</p>
       </div>
 
@@ -208,8 +208,8 @@ function WorkflowSection() {
     <section id="workflow" className="py-24 sm:py-32 border-t border-border/40">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
         <div>
-          <h2 className="text-sm font-mono text-accent uppercase tracking-widest mb-4">How it works</h2>
-          <h3 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-12">From commit to client SDK, automatically.</h3>
+          <span className="block text-sm font-mono text-accent uppercase tracking-widest mb-4">How it works</span>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-12">From commit to client SDK, automatically.</h2>
 
           <div className="flex flex-col gap-10">
             <WorkflowStep
@@ -272,8 +272,8 @@ function LanguagesSection() {
 
   return (
     <section id="languages" className="py-24 sm:py-32 border-t border-border/40 text-center">
-      <h2 className="text-sm font-mono text-accent uppercase tracking-widest mb-4">SDK Generation</h2>
-      <h3 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-16">One push. Every SDK.</h3>
+      <span className="block text-sm font-mono text-accent uppercase tracking-widest mb-4">SDK Generation</span>
+      <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-16">One push. Every SDK.</h2>
 
       <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto">
         {langs.map((lang, i) => (
@@ -292,7 +292,7 @@ function BottomCTA() {
 
   return (
     <section className="py-24 sm:py-32 border-t border-border/40 text-center">
-      <h3 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-6">Deploy anywhere in minutes.</h3>
+      <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-6">Deploy anywhere in minutes.</h2>
       <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10">
         Run Hasir on your favorite cloud provider or own server. Use our pre-built Docker images or deploy directly to Kubernetes via Helm.
       </p>
