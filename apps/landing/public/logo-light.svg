@@ -1,0 +1,29 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    HASIR logo mark — "commit glyph" H.
+    Three stacked corner-bars form the H outline; one shorter vertical
+    "signal bar" on the right stands in for a commit-diff line —
+    terminal-forward, enterprise-stable. Built on a 8px grid, sharp 4px
+    corners, monoline strokes of equal weight.
+  -->
+  <!-- Shape uses even-odd fill so the inner H is negative space-free -->
+  <g fill="#0a0b0d">
+    <!-- Left vertical pillar -->
+    <path d="M112 88 H160 V224 H112 Z"/>
+    <path d="M112 288 H160 V424 H112 Z"/>
+    <!-- Right vertical pillar -->
+    <path d="M352 88 H400 V224 H352 Z"/>
+    <path d="M352 288 H400 V424 H352 Z"/>
+    <!-- Cross connector — the H bar -->
+    <path d="M160 224 H352 V288 H160 Z"/>
+  </g>
+  <!-- Signal bar — single warm accent, the "commit line" -->
+  <rect x="416" y="208" width="24" height="96" rx="0" fill="#E8B05A"/>
+  <!-- 4px corner brackets — engineer-precision frame -->
+  <g stroke="#0a0b0d" stroke-width="8" fill="none" stroke-linecap="square">
+    <path d="M48 88 V48 H88"/>
+    <path d="M464 48 H424"/>
+    <path d="M48 424 V464 H88"/>
+    <path d="M464 464 H424"/>
+  </g>
+</svg>
