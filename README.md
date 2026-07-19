@@ -41,8 +41,7 @@ graph TD
     Client -->|Git SSH 2222| Nginx
     Nginx --> Dashboard[Dashboard <br> Next.js <br> Port 3000]
     Nginx --> API[API <br> Go / ConnectRPC <br> Port 8080 / 2222]
-    Dashboard --> DB[(PostgreSQL <br> Port 5432)]
-    API --> DB
+    API --> DB[(PostgreSQL <br> Port 5432)]
 ```
 
 ---
