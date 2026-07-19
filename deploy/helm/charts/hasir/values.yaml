@@ -68,11 +68,10 @@ dashboard:
 # Ingress configuration
 ingress:
   enabled: true
-  className: "nginx"
+  className: "traefik"
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/use-regex: "true"
+    traefik.ingress.kubernetes.io/router.tls: "true"
   hosts:
     - host: hasir.local
       paths:
