@@ -37,11 +37,11 @@ Hasir is a self-hosted platform for managing protobuf schemas. Push schemas over
 
 ```mermaid
 graph TD
-    Client[Client <br> Web / Git] -->|HTTP 80/443| Nginx[nginx <br> TLS termination, rate limiting]
-    Client -->|Git SSH 2222| Nginx
-    Nginx --> Dashboard[Dashboard <br> Next.js <br> Port 3000]
-    Nginx --> API[API <br> Go / ConnectRPC <br> Port 8080 / 2222]
-    API --> DB[(PostgreSQL <br> Port 5432)]
+    Client["Client <br> Web / Git"] -->|HTTP 80/443| Ingress["Ingress <br> Nginx (Docker) / Traefik (Helm)"]
+    Client -->|Git SSH 2222| Ingress
+    Ingress --> Dashboard["Dashboard <br> Next.js <br> Port 3000"]
+    Ingress --> API["API <br> Go / ConnectRPC <br> Port 8080 / 2222"]
+    API --> DB[("PostgreSQL <br> Port 5432")]
 ```
 
 ---
