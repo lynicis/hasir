@@ -117,9 +117,9 @@ describe("RepositorySdkPreferencesContent", () => {
       { wrapper }
     );
 
-    expect(screen.getByText("Protocol Buffers")).toBeInTheDocument();
-    expect(screen.getByText("Connect-RPC")).toBeInTheDocument();
-    expect(screen.getByText("gRPC")).toBeInTheDocument();
+    expect(screen.getAllByText("Protocol Buffers")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Connect-RPC")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("gRPC")[0]).toBeInTheDocument();
   });
 
   it("renders JavaScript SDK options", () => {

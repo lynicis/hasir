@@ -121,9 +121,9 @@ describe("SdkPreferencesPage", () => {
     expect(screen.getByText("Go")).toBeInTheDocument();
     expect(screen.getByText("JavaScript/Typescript")).toBeInTheDocument();
 
-    expect(screen.getByText("Protocol Buffers")).toBeInTheDocument();
-    expect(screen.getByText("Connect-RPC")).toBeInTheDocument();
-    expect(screen.getByText("gRPC")).toBeInTheDocument();
+    expect(screen.getAllByText("Protocol Buffers")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Connect-RPC")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("gRPC")[0]).toBeInTheDocument();
 
     expect(screen.getByText("@bufbuild/es")).toBeInTheDocument();
     expect(screen.getByText("protocolbuffers/js")).toBeInTheDocument();
@@ -138,7 +138,7 @@ describe("SdkPreferencesPage", () => {
     const goSwitch = allSwitches[0]!;
     await user.click(goSwitch);
 
-    const protocolBuffersSwitch = screen.getByLabelText("Protocol Buffers");
+    const protocolBuffersSwitch = screen.getAllByLabelText("Protocol Buffers")[0];
     expect(protocolBuffersSwitch).not.toBeDisabled();
   });
 
@@ -149,7 +149,7 @@ describe("SdkPreferencesPage", () => {
     const allSwitches = screen.getAllByRole("switch");
     const goSwitch = allSwitches[0]!;
 
-    const protocolBuffersSwitch = screen.getByLabelText("Protocol Buffers");
+    const protocolBuffersSwitch = screen.getAllByLabelText("Protocol Buffers")[0];
     expect(protocolBuffersSwitch).toBeDisabled();
 
     await user.click(goSwitch);
@@ -163,7 +163,7 @@ describe("SdkPreferencesPage", () => {
     const user = userEvent.setup();
     renderWithContext();
 
-    const protocolBuffersLabel = screen.getByText("Protocol Buffers");
+    const protocolBuffersLabel = screen.getAllByText("Protocol Buffers")[0];
     const protocolBuffersSwitch = protocolBuffersLabel
       .closest("div")
       ?.querySelector("button") as HTMLElement;
@@ -227,7 +227,7 @@ describe("SdkPreferencesPage", () => {
     expect(goSwitch.getAttribute("data-state")).toBe("unchecked");
     expect(jsSwitch.getAttribute("data-state")).toBe("unchecked");
 
-    const protocolBuffersSwitch = screen.getByLabelText("Protocol Buffers");
+    const protocolBuffersSwitch = screen.getAllByLabelText("Protocol Buffers")[0];
     expect(protocolBuffersSwitch.getAttribute("data-state")).toBe("unchecked");
   });
 

@@ -3,8 +3,8 @@ module hasir-api
 go 1.26
 
 require (
-	buf.build/gen/go/hasir/hasir/connectrpc/go v1.20.0-20260614121915-ea66d4785096.1
-	buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20260614121915-ea66d4785096.1
+	buf.build/gen/go/hasir/hasir/connectrpc/go v1.20.0-20260720133518-ccdd8499aea6.1
+	buf.build/gen/go/hasir/hasir/protocolbuffers/go v1.36.11-20260720133518-ccdd8499aea6.1
 	connectrpc.com/connect v1.20.0
 	github.com/exaring/otelpgx v0.11.1
 	github.com/gliderlabs/ssh v0.3.8
@@ -109,7 +109,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	google.golang.org/grpc v1.82.0 // indirect
+	google.golang.org/grpc v1.82.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
@@ -122,8 +122,8 @@ require (
 	connectrpc.com/validate v0.6.0
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/google/cel-go v0.29.2 // indirect
-	golang.org/x/exp v0.0.0-20260709172345-9ea1abe57597 // indirect
+	golang.org/x/exp v0.0.0-20260718201538-764159d718ef // indirect
 	golang.org/x/text v0.40.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260713192124-69af07f8185f // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260713194154-142c488ef3d3 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260715232425-e75dac1f907d // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260715232425-e75dac1f907d // indirect
 )
