@@ -30,6 +30,7 @@ jobs:
         uses: bufbuild/buf-action@v1
         with:
           lint: true
+          input: proto
           token: ${{ secrets.BUF_TOKEN }}
 
       - name: Check breaking changes (skip if first release)
@@ -37,6 +38,7 @@ jobs:
         uses: bufbuild/buf-action@v1
         with:
           breaking: true
+          input: proto
           breaking_against: "${{ github.server_url }}/${{ github.repository }}.git#tag=${{ steps.versions.outputs.previous }},subdir=proto"
           token: ${{ secrets.BUF_TOKEN }}
 
