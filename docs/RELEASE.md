@@ -6,7 +6,7 @@ This document defines the release strategy, versioning model, and branching stra
 
 ### Versioning Model
 
-We use independent per-application versioning. Each application or service in the monorepo is versioned independently using semantic versioning. Git tags are prefixed with the application name, such as `api/v1.4.0` or `dashboard/v2.1.0`.
+We use independent per-application versioning managed by [Changesets](https://github.com/changesets/changesets). Each application or service in the monorepo is versioned independently using semantic versioning. Git tags are natively prefixed by changesets using the package name, such as `hasir-api@1.4.0` or `hasir-dashboard@2.1.0`.
 
 #### Why Independent Versioning?
 * **Decoupled Release Cycles**: Services can be deployed at different times without requiring a full platform release.
@@ -29,33 +29,29 @@ We follow trunk-based development. This model is optimized for continuous integr
 
 ### Release Process
 
-The release process is automated using GitHub Actions. It is triggered by pushing a versioned git tag.
+The release process is fully automated using GitHub Actions and Changesets.
 
-#### Step 1: Version Bump (Changesets)
-We use `changesets` to manage versioning and changelogs.
+#### Step 1: Create a Changeset
+When making changes, developers run the changeset CLI locally:
 
-1. Create a new changeset for your work:
-   ```bash
-   bunx changeset
-   ```
-2. Follow the prompts to select the packages that were changed and the bump type (major, minor, patch), and provide a summary of the changes.
-3. Commit the generated markdown file in the `.changeset` directory with your pull request.
+```bash
+bunx changeset
+```
 
-When the PR merges to `main`, the "Version Packages" GitHub Action will automatically open a new PR that consumes the changesets, bumps versions, updates changelogs, and sets up tags.
+This prompts you to select the packages that changed and the type of version bump (major, minor, patch). It generates a markdown file in the `.changeset` directory which must be committed alongside your code changes.
 
-#### Step 2: Build and Publish
-Once the "Version Packages" PR is merged:
-1. The `release.yml` workflow is triggered.
-2. It builds the Docker images for the affected applications.
-3. The image is tagged with the version (such as `ghcr.io/lynicis/api:1.5.0`) and `latest`.
-4. The image is published to GHCR.
+#### Step 2: Version Packages PR
+When you merge your feature branch to `main`, the `.github/workflows/changeset.yml` workflow is triggered.
+It consumes the `.changeset` files and automatically opens or updates a **"Version Packages"** Pull Request. This PR contains the calculated version bumps and aggregated `CHANGELOG.md` updates.
 
-#### Step 3: Helm Chart Update
-The release workflow updates the Helm chart values file with the new image tag.
+#### Step 3: Publish and Deploy
+When a repository maintainer is ready to release, they merge the **"Version Packages"** PR into `main`.
 
-1. The workflow modifies `deploy/helm/hasir/values.yaml` to update the image tag for the released service.
-2. It packages the Helm chart and publishes it to the chart registry.
-3. The updated chart is deployed to the target Kubernetes cluster.
+1. The `changeset.yml` workflow triggers again, but this time it detects the version bumps.
+2. It automatically creates Git tags (e.g., `hasir-api@1.5.0`) and publishes GitHub Releases.
+3. The newly created tags trigger downstream workflows:
+   - `.github/workflows/docker.yml`: Builds Docker images, tags them (e.g., `ghcr.io/lynicis/api:1.5.0`), and publishes them to GHCR.
+   - `.github/workflows/helm-release.yml`: Packages the Helm chart and publishes it to the chart registry.
 
 ---
 
