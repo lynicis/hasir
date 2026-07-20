@@ -17,12 +17,12 @@ enum SDK {
   SDK_JS_PROTOBUF = 5;
   SDK_JS_CONNECTRPC = 6;
   SDK_RUST_PROTOBUF = 7;
-  SDK_RUST_CONNECTRPC = 8;
-  SDK_RUST_GRPC = 9;
-  SDK_JAVA_PROTOBUF = 10;
-  SDK_JAVA_CONNECTRPC = 11;
-  SDK_JAVA_GRPC = 12;
-  SDK_CSHARP_PROTOBUF = 13;
+  SDK_JAVA_PROTOBUF = 8;
+  SDK_CSHARP_PROTOBUF = 9;
+  SDK_RUST_CONNECTRPC = 10;
+  SDK_RUST_GRPC = 11;
+  SDK_JAVA_CONNECTRPC = 12;
+  SDK_JAVA_GRPC = 13;
   SDK_CSHARP_CONNECTRPC = 14;
   SDK_CSHARP_GRPC = 15;
 }
@@ -72,8 +72,8 @@ message GetRepositoryRequest {
 message UpdateSdkPreferencesRequest {
   string id = 1 [(buf.validate.field).required = true];
   repeated SdkPreference sdk_preferences = 2 [
-    (buf.validate.field).repeated.min_items = 9,
-    (buf.validate.field).repeated.max_items = 9
+    (buf.validate.field).repeated.min_items = 15,
+    (buf.validate.field).repeated.max_items = 15
   ];
 }
 

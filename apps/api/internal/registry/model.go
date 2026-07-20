@@ -24,30 +24,57 @@ type RepositoryDTO struct {
 type SDK string
 
 const (
-	SdkGoProtobuf   SDK = "GO_PROTOBUF"
-	SdkGoConnectRpc SDK = "GO_CONNECTRPC"
-	SdkGoGrpc       SDK = "GO_GRPC"
-	SdkJsBufbuildEs SDK = "JS_BUFBUILD_ES"
-	SdkJsProtobuf   SDK = "JS_PROTOBUF"
-	SdkJsConnectrpc SDK = "JS_CONNECTRPC"
+	SdkGoProtobuf       SDK = "GO_PROTOBUF"
+	SdkGoConnectRpc     SDK = "GO_CONNECTRPC"
+	SdkGoGrpc           SDK = "GO_GRPC"
+	SdkJsBufbuildEs     SDK = "JS_BUFBUILD_ES"
+	SdkJsProtobuf       SDK = "JS_PROTOBUF"
+	SdkJsConnectrpc     SDK = "JS_CONNECTRPC"
+	SdkRustProtobuf     SDK = "RUST_PROTOBUF"
+	SdkRustConnectrpc   SDK = "RUST_CONNECTRPC"
+	SdkRustGrpc         SDK = "RUST_GRPC"
+	SdkJavaProtobuf     SDK = "JAVA_PROTOBUF"
+	SdkJavaConnectrpc   SDK = "JAVA_CONNECTRPC"
+	SdkJavaGrpc         SDK = "JAVA_GRPC"
+	SdkCsharpProtobuf   SDK = "CSHARP_PROTOBUF"
+	SdkCsharpConnectrpc SDK = "CSHARP_CONNECTRPC"
+	SdkCsharpGrpc       SDK = "CSHARP_GRPC"
 )
 
 var SdkProtoToDbEnum = map[registryv1.SDK]SDK{
-	registryv1.SDK_SDK_GO_PROTOBUF:    SdkGoProtobuf,
-	registryv1.SDK_SDK_GO_CONNECTRPC:  SdkGoConnectRpc,
-	registryv1.SDK_SDK_GO_GRPC:        SdkGoGrpc,
-	registryv1.SDK_SDK_JS_BUFBUILD_ES: SdkJsBufbuildEs,
-	registryv1.SDK_SDK_JS_PROTOBUF:    SdkJsProtobuf,
-	registryv1.SDK_SDK_JS_CONNECTRPC:  SdkJsConnectrpc,
+	registryv1.SDK_SDK_GO_PROTOBUF:       SdkGoProtobuf,
+	registryv1.SDK_SDK_GO_CONNECTRPC:     SdkGoConnectRpc,
+	registryv1.SDK_SDK_GO_GRPC:           SdkGoGrpc,
+	registryv1.SDK_SDK_JS_BUFBUILD_ES:    SdkJsBufbuildEs,
+	registryv1.SDK_SDK_JS_PROTOBUF:       SdkJsProtobuf,
+	registryv1.SDK_SDK_JS_CONNECTRPC:     SdkJsConnectrpc,
+	registryv1.SDK_SDK_RUST_PROTOBUF:     SdkRustProtobuf,
+	registryv1.SDK_SDK_RUST_CONNECTRPC:   SdkRustConnectrpc,
+	registryv1.SDK_SDK_RUST_GRPC:         SdkRustGrpc,
+	registryv1.SDK_SDK_JAVA_PROTOBUF:     SdkJavaProtobuf,
+	registryv1.SDK_SDK_JAVA_CONNECTRPC:   SdkJavaConnectrpc,
+	registryv1.SDK_SDK_JAVA_GRPC:         SdkJavaGrpc,
+	registryv1.SDK_SDK_CSHARP_PROTOBUF:   SdkCsharpProtobuf,
+	registryv1.SDK_SDK_CSHARP_CONNECTRPC: SdkCsharpConnectrpc,
+	registryv1.SDK_SDK_CSHARP_GRPC:       SdkCsharpGrpc,
 }
 
 var SdkDbToProtoEnum = map[SDK]registryv1.SDK{
-	SdkGoProtobuf:   registryv1.SDK_SDK_GO_PROTOBUF,
-	SdkGoConnectRpc: registryv1.SDK_SDK_GO_CONNECTRPC,
-	SdkGoGrpc:       registryv1.SDK_SDK_GO_GRPC,
-	SdkJsBufbuildEs: registryv1.SDK_SDK_JS_BUFBUILD_ES,
-	SdkJsProtobuf:   registryv1.SDK_SDK_JS_PROTOBUF,
-	SdkJsConnectrpc: registryv1.SDK_SDK_JS_CONNECTRPC,
+	SdkGoProtobuf:       registryv1.SDK_SDK_GO_PROTOBUF,
+	SdkGoConnectRpc:     registryv1.SDK_SDK_GO_CONNECTRPC,
+	SdkGoGrpc:           registryv1.SDK_SDK_GO_GRPC,
+	SdkJsBufbuildEs:     registryv1.SDK_SDK_JS_BUFBUILD_ES,
+	SdkJsProtobuf:       registryv1.SDK_SDK_JS_PROTOBUF,
+	SdkJsConnectrpc:     registryv1.SDK_SDK_JS_CONNECTRPC,
+	SdkRustProtobuf:     registryv1.SDK_SDK_RUST_PROTOBUF,
+	SdkRustConnectrpc:   registryv1.SDK_SDK_RUST_CONNECTRPC,
+	SdkRustGrpc:         registryv1.SDK_SDK_RUST_GRPC,
+	SdkJavaProtobuf:     registryv1.SDK_SDK_JAVA_PROTOBUF,
+	SdkJavaConnectrpc:   registryv1.SDK_SDK_JAVA_CONNECTRPC,
+	SdkJavaGrpc:         registryv1.SDK_SDK_JAVA_GRPC,
+	SdkCsharpProtobuf:   registryv1.SDK_SDK_CSHARP_PROTOBUF,
+	SdkCsharpConnectrpc: registryv1.SDK_SDK_CSHARP_CONNECTRPC,
+	SdkCsharpGrpc:       registryv1.SDK_SDK_CSHARP_GRPC,
 }
 
 type SdkPreferencesDTO struct {
