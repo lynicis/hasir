@@ -31,25 +31,22 @@ We follow trunk-based development. This model is optimized for continuous integr
 
 The release process is automated using GitHub Actions. It is triggered by pushing a versioned git tag.
 
-#### Step 1: Version Bump
-A developer runs the release script from the repository root:
+#### Step 1: Version Bump (Changesets)
+We use `changesets` to manage versioning and changelogs.
 
-```bash
-# Bump the api service version by a minor version
-bun run scripts/release.sh api minor
-```
+1. Create a new changeset for your work:
+   ```bash
+   bunx changeset
+   ```
+2. Follow the prompts to select the packages that were changed and the bump type (major, minor, patch), and provide a summary of the changes.
+3. Commit the generated markdown file in the `.changeset` directory with your pull request.
 
-This script performs the following actions:
-1. Finds the latest tag for the specified application.
-2. Calculates the next version based on the bump type (major, minor, or patch).
-3. Creates a new git tag (such as `api/v1.5.0`).
-4. Pushes the tag to the remote repository.
+When the PR merges to `main`, the "Version Packages" GitHub Action will automatically open a new PR that consumes the changesets, bumps versions, updates changelogs, and sets up tags.
 
 #### Step 2: Build and Publish
-The push of the tag triggers the `release.yml` workflow in GitHub Actions.
-
-1. The workflow checks out the code at the tag.
-2. It builds the Docker image for the specified application.
+Once the "Version Packages" PR is merged:
+1. The `release.yml` workflow is triggered.
+2. It builds the Docker images for the affected applications.
 3. The image is tagged with the version (such as `ghcr.io/lynicis/api:1.5.0`) and `latest`.
 4. The image is published to GHCR.
 

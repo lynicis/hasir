@@ -36,7 +36,7 @@
     "affected:build": "turbo run build --affected",
     "affected:test": "turbo run test --affected",
     "affected:lint": "turbo run lint --affected",
-    "release": "bun run scripts/release.sh",
+    "release": "changeset publish",
     "design:lint": "designmd lint DESIGN.md"
   },
   "devDependencies": {
