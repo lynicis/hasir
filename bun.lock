@@ -150,10 +150,14 @@
         "@types/bun": "^1.3.14",
       },
     },
+    "proto": {
+      "name": "@hasir/proto",
+    },
   },
   "trustedDependencies": [
     "sharp",
     "unrs-resolver",
+    "@bufbuild/buf",
   ],
   "overrides": {
     "postcss": "8.5.19",
@@ -342,6 +346,8 @@
     "@happy-dom/global-registrator": ["@happy-dom/global-registrator@20.10.6", "", { "dependencies": { "@types/node": ">=20.0.0", "happy-dom": "^20.10.6" } }, "sha512-Nu/IjRkkNxmeG2ywWsyJSO4d1BrWTqVzxCPL+gXj0b97klhmjd6wLzt6Bx/laNpkZ3WLW7zNCqmtMIbIlahqug=="],
 
     "@hasir/config": ["@hasir/config@workspace:packages/config"],
+
+    "@hasir/proto": ["@hasir/proto@workspace:proto"],
 
     "@hasir/shared": ["@hasir/shared@workspace:packages/shared"],
 

@@ -101,6 +101,42 @@ const SDK_LANGUAGES: Record<string, LanguageConfig> = {
       },
     ],
   },
+  rust: {
+    name: "Rust",
+    description: "Generate Rust SDK using Protocol Buffers",
+    options: [
+      {
+        key: "protocolBuffers",
+        label: "Protocol Buffers",
+        htmlId: "rust-protocol-buffers",
+        sdkValue: SDK.SDK_RUST_PROTOBUF,
+      },
+    ],
+  },
+  java: {
+    name: "Java",
+    description: "Generate Java SDK using Protocol Buffers",
+    options: [
+      {
+        key: "protocolBuffers",
+        label: "Protocol Buffers",
+        htmlId: "java-protocol-buffers",
+        sdkValue: SDK.SDK_JAVA_PROTOBUF,
+      },
+    ],
+  },
+  csharp: {
+    name: "C#",
+    description: "Generate C# SDK using Protocol Buffers",
+    options: [
+      {
+        key: "protocolBuffers",
+        label: "Protocol Buffers",
+        htmlId: "csharp-protocol-buffers",
+        sdkValue: SDK.SDK_CSHARP_PROTOBUF,
+      },
+    ],
+  },
 };
 
 const getInitialConfig = (): SdkConfig => {

@@ -1,0 +1,9 @@
+{
+  "name": "@hasir/proto",
+  "private": true,
+  "scripts": {
+    "proto": "buf generate",
+    "lint": "buf lint",
+    "format": "buf format -w"
+  }
+}

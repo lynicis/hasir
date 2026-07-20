@@ -20,7 +20,8 @@
   },
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "proto"
   ],
   "scripts": {
     "build": "turbo run build",
@@ -57,6 +58,7 @@
     "postcss": "8.5.19"
   },
   "trustedDependencies": [
+    "@bufbuild/buf",
     "esbuild",
     "sharp",
     "unrs-resolver"
