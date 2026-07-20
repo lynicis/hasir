@@ -1,11 +1,10 @@
 <div align="center">
-  <img src="https://github.com/lynicis/dashboard/blob/master/public/logo.webp" alt="Hasir Dashboard Logo" width="150">
+    <img src="../apps/dashboard/public/logo.svg" alt="Hasir Logo" width="120" />
 
 # Hasir Proto
 
 **Protocol Buffer definitions for the Hasir platform - a collaborative protobuf registry and code generation service**
-
-[![Publish Schema to BSR](https://github.com/lynicis/proto/actions/workflows/master.yaml/badge.svg)](https://github.com/lynicis/proto/actions)
+[![Proto Release](https://github.com/lynicis/hasir/actions/workflows/proto-release.yml/badge.svg)](https://github.com/lynicis/hasir/actions/workflows/proto-release.yml)
 [![Buf](https://img.shields.io/badge/Buf-Build-blue)](https://buf.build/hasir/hasir)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 </div>
