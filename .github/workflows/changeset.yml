@@ -25,5 +25,6 @@ jobs:
         with:
           publish: bunx changeset publish
           version: bunx changeset version
+          createGithubReleases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

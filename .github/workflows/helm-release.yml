@@ -3,7 +3,7 @@ name: Helm Release
 on:
   push:
     tags:
-      - 'helm/v*.*.*'
+      - 'hasir-helm@*.*.*'
 
 permissions:
   contents: write
@@ -14,11 +14,11 @@ jobs:
   helm-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: azure/setup-helm@v5
+      - uses: azure/setup-helm@v4
 
       - name: Configure git and Helm dependencies
         run: |
@@ -34,21 +34,3 @@ jobs:
           config: deploy/helm/cr.yaml
         env:
           CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate Changelog
-        id: changelog
-        run: |
-          REF_NAME="${{ github.ref_name }}"
-          TAG_PATTERN="${REF_NAME%%/*}/*"
-          PREV_TAG=$(git describe --tags --abbrev=0 "${REF_NAME}^" --match "$TAG_PATTERN" 2>/dev/null || echo "")
-          if [ -n "$PREV_TAG" ]; then
-            git log --pretty=format:"- %s (%h)" "${PREV_TAG}..${{ github.ref_name }}" > CHANGELOG.md
-          else
-            echo "- Initial release" > CHANGELOG.md
-          fi
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          body_path: CHANGELOG.md
-          generate_release_notes: true
