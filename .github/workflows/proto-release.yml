@@ -43,7 +43,7 @@ jobs:
           token: ${{ secrets.BUF_TOKEN }}
 
       - name: Push to Buf Schema Registry
-        run: buf push --tag "${{ steps.versions.outputs.bsr }}"
+        run: buf push --label "${{ steps.versions.outputs.bsr }}"
         working-directory: proto
         env:
           BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
