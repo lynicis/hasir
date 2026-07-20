@@ -186,7 +186,7 @@ describe("RepositorySdkPreferencesContent", () => {
     const goSwitch = switches[0]!;
     await user.click(goSwitch);
 
-    const protocolBuffersSwitch = screen.getByLabelText(/protocol buffers/i);
+    const protocolBuffersSwitch = screen.getAllByLabelText(/protocol buffers/i)[0];
     expect(protocolBuffersSwitch).not.toBeDisabled();
   });
 
@@ -216,7 +216,7 @@ describe("RepositorySdkPreferencesContent", () => {
     const goSwitch = switches[0]!;
     await user.click(goSwitch);
 
-    const protocolBuffersSwitch = screen.getByLabelText(/protocol buffers/i);
+    const protocolBuffersSwitch = screen.getAllByLabelText(/protocol buffers/i)[0];
     await user.click(protocolBuffersSwitch);
 
     expect(goSwitch).toBeChecked();
