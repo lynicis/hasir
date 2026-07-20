@@ -42,5 +42,5 @@ clean:          # nuke across the tree
 	bun run clean
 	rm -rf tmp/ coverage/ junit.xml
 
-release:        # path-scoped tag + GH release; usage: make release app=api bump=patch
-	./scripts/release.sh "$(app)" "$(bump)"
+release:        # create a new changeset for a version bump
+	bunx changeset
