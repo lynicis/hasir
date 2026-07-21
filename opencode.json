@@ -10,11 +10,13 @@
     "postgresql": {
       "type": "local",
       "command": [
-        "bunx",
-        "-y",
-        "@modelcontextprotocol/server-postgres",
-        "postgresql://test:test@localhost:5432/test"
-      ]
+        "uvx",
+        "postgres-mcp",
+        "--access-mode=unrestricted"
+      ],
+      "environment": {
+        "DATABASE_URI": "postgresql://test:test@localhost:5432/test"
+      }
     },
     "nextjs": {
       "type": "local",
@@ -22,15 +24,6 @@
         "bunx",
         "-y",
         "next-devtools-mcp@latest"
-      ]
-    },
-    "gitnexus": {
-      "type": "local",
-      "command": [
-        "bunx",
-        "-y",
-        "gitnexus",
-        "mcp"
       ]
     }
   }

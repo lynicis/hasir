@@ -1,70 +1,59 @@
-# AGENTS.md
+# PROJECT KNOWLEDGE BASE
 
-## Project Overview
+**Generated:** 2026-07-21
 
-Monorepo for the Hasir platform — a Go API + Next.js dashboard + protocol buffer definitions + Helm deployment configs + Docker Compose stack.
+## OVERVIEW
+Hasir platform monorepo — Go API (ConnectRPC, PostgreSQL, JWT, Git-over-SSH) + Next.js dashboard + Buf protocol buffer definitions + Helm/Docker deployments. Uses Turborepo for orchestration.
 
-### Architecture & Quirks
-
-- **Turborepo Orchestration**: All builds, tests, and linting are orchestrated by Turborepo from the root. 
-- **Go via Turborepo**: Go services (`apps/api/`) remain standard Go modules but use a minimal `package.json` to participate in the Turborepo task graph. Do not add JS dependencies to Go services.
-- **Protobufs**: The schema directory is flattened at `proto/` directly. 
-- **Database Migrations**: Always use raw SQL migration files under `apps/api/migrations/`. Do not use ORM-level migrations to prevent schema drift.
-- **TypeScript Strictness**: Strictly avoid `as any`, `@ts-ignore`, or `@ts-expect-error`.
-
-### Structure
-
-```text
-apps/api/          Go API service (Connect-RPC, PostgreSQL, JWT, Git-over-SSH)
-apps/dashboard/    Next.js dashboard (React, shadcn/ui, Bun)
-proto/             Protocol buffer definitions (Buf)
-deploy/helm/       Helm chart for Kubernetes deployment
-docker/            Docker Compose stack (nginx, certbot, dev)
-packages/          Shared configs (eslint, tsconfig, tooling)
-scripts/           Build/release/lint utilities
-docs/              Architecture docs and ADRs
+## STRUCTURE
+```
+./
+├── apps/api/          # Go API service
+├── apps/dashboard/    # Next.js frontend
+├── proto/             # Protocol buffer definitions (flattened)
+├── deploy/helm/       # Kubernetes Helm charts
+├── docker/            # Docker Compose stack
+├── packages/          # Shared TS packages
+├── scripts/           # Build/release utilities
+└── docs/              # Architecture docs and ADRs
 ```
 
-## Commands
+## WHERE TO LOOK
+| Task | Location | Notes |
+|------|----------|-------|
+| API Development | `apps/api/` | Standard Go modules |
+| UI/Frontend | `apps/dashboard/` | Next.js 16, React, shadcn/ui |
+| Protobufs | `proto/` | Buf configurations |
+| Infrastructure | `docker/` & `deploy/` | Compose and Helm |
 
-Run all primary commands from the **monorepo root**. Turborepo will orchestrate the underlying dependencies.
+## CONVENTIONS
+- **Turborepo Orchestration**: All builds, tests, and linting are orchestrated by Turborepo from the root.
+- **Go via Turborepo**: Go services use a minimal `package.json` to participate in the Turborepo task graph. Do not add JS dependencies to Go services.
+- **Protobufs**: The schema directory is flattened at `proto/` directly.
+- **Database Migrations**: Always use raw SQL migration files under `apps/api/migrations/`. Do not use ORM-level migrations to prevent schema drift.
+- **Independent Versioning**: Services are versioned independently. Tag format: `<app>/<semver>`.
+- **TypeScript Strictness**: Strictly avoid `as any`, `@ts-ignore`, or `@ts-expect-error`.
 
-### Local Development & Verification
+## ANTI-PATTERNS (THIS PROJECT)
+- DO NOT use ORM-level migrations for the database.
+- DO NOT add JS dependencies to Go services.
+- DO NOT use `@ts-ignore` or `any`.
 
+## COMMANDS
 ```bash
-make setup                # Installs dependencies, lint/proto tools, setups config files
+make setup                # Installs dependencies, lint/proto tools
 make dev                  # Starts Go API and Next.js dev servers concurrently
 make build                # Builds Go API and compiles Next.js frontend
 make test                 # Runs go test and bun test across the monorepo
 make lint                 # Runs golangci-lint, eslint, and buf lint
 make proto                # Triggers 'buf generate' on the proto/ directory
-```
-
-### Docker Deployments
-
-```bash
-docker compose -f docker/docker-compose.yml up -d
-```
-
-## Git Workflow & Releases
-
-- **Trunk-based development** on the `main` branch. 
-- **Independent Versioning**: Services are versioned independently. 
-- **Tag format**: `<app>/<semver>` (e.g., `api/v1.0.0-alpha`)
-
-### Releasing a Service
-
-To release a service, use the automated bump script which handles git tags and triggers GitHub Actions:
-
-```bash
-bun run scripts/release.sh <app> <patch|minor|major>
-# Example: bun run scripts/release.sh api minor
+bun run scripts/release.sh <app> <patch|minor|major> # Release
 ```
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **hasir** (3507 symbols, 9352 relationships, 179 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **hasir** (3528 symbols, 9410 relationships, 182 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
