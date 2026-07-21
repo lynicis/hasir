@@ -38,7 +38,7 @@ func (b *RegistryBuilder) WithDefaultGenerators() *RegistryBuilder {
 		NewRustProtobufGenerator(b.runner),
 		NewRustGrpcGenerator(b.runner),
 		NewJavaProtobufGenerator(b.runner),
-		// NewJavaGrpcGenerator(b.runner),
+		NewJavaGrpcGenerator(b.runner),
 		NewCsharpProtobufGenerator(b.runner),
 		// NewCsharpGrpcGenerator(b.runner),
 	)
