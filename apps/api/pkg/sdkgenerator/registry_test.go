@@ -19,6 +19,12 @@ func TestNewRegistry(t *testing.T) {
 		SdkJsBufbuildEs,
 		SdkJsProtobuf,
 		SdkJsConnectrpc,
+		SdkRustProtobuf,
+		SdkRustGrpc,
+		SdkJavaProtobuf,
+		SdkJavaGrpc,
+		SdkCsharpProtobuf,
+		SdkCsharpGrpc,
 	}
 
 	for _, sdk := range expectedSdks {
@@ -51,7 +57,7 @@ func TestRegistry_List(t *testing.T) {
 	r := NewRegistry(NewMockCommandRunner())
 
 	sdks := r.List()
-	assert.Len(t, sdks, 6)
+	assert.Len(t, sdks, 12)
 
 	sdkMap := make(map[SDK]bool)
 	for _, sdk := range sdks {
@@ -64,6 +70,12 @@ func TestRegistry_List(t *testing.T) {
 	assert.True(t, sdkMap[SdkJsBufbuildEs])
 	assert.True(t, sdkMap[SdkJsProtobuf])
 	assert.True(t, sdkMap[SdkJsConnectrpc])
+	assert.True(t, sdkMap[SdkRustProtobuf])
+	assert.True(t, sdkMap[SdkRustGrpc])
+	assert.True(t, sdkMap[SdkJavaProtobuf])
+	assert.True(t, sdkMap[SdkJavaGrpc])
+	assert.True(t, sdkMap[SdkCsharpProtobuf])
+	assert.True(t, sdkMap[SdkCsharpGrpc])
 }
 
 func TestRegistry_Register(t *testing.T) {
@@ -128,7 +140,7 @@ func TestRegistryBuilder(t *testing.T) {
 			Build()
 
 		sdks := r.List()
-		assert.Len(t, sdks, 6)
+		assert.Len(t, sdks, 12)
 	})
 
 	t.Run("build registry with mix of default and custom", func(t *testing.T) {
@@ -140,7 +152,7 @@ func TestRegistryBuilder(t *testing.T) {
 			Build()
 
 		sdks := r.List()
-		assert.Len(t, sdks, 7)
+		assert.Len(t, sdks, 13)
 
 		g, err := r.Get(SDK("CUSTOM"))
 		require.NoError(t, err)

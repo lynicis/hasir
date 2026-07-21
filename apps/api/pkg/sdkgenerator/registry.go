@@ -40,7 +40,7 @@ func (b *RegistryBuilder) WithDefaultGenerators() *RegistryBuilder {
 		NewJavaProtobufGenerator(b.runner),
 		NewJavaGrpcGenerator(b.runner),
 		NewCsharpProtobufGenerator(b.runner),
-		// NewCsharpGrpcGenerator(b.runner),
+		NewCsharpGrpcGenerator(b.runner),
 	)
 	return b
 }

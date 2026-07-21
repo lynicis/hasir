@@ -282,6 +282,34 @@ func TestJavaGrpcGenerator_Generate(t *testing.T) {
 	assert.Contains(t, call.Args, "user/v1/user.proto")
 }
 
+func TestCsharpGrpcGenerator_Generate(t *testing.T) {
+	ctx := context.Background()
+	mockRunner := NewMockCommandRunner()
+	g := NewCsharpGrpcGenerator(mockRunner)
+
+	input := GeneratorInput{
+		RepoPath:   "/tmp/repo",
+		OutputPath: "/tmp/output",
+		ProtoFiles: []string{"user/v1/user.proto"},
+	}
+
+	output, err := g.Generate(ctx, input)
+	require.NoError(t, err)
+	require.NotNil(t, output)
+
+	assert.Equal(t, "/tmp/output", output.OutputPath)
+	assert.Equal(t, 1, output.FilesCount)
+
+	assert.Len(t, mockRunner.Calls, 1)
+	call := mockRunner.Calls[0]
+	assert.Equal(t, "protoc", call.Name)
+	assert.Equal(t, "/tmp/repo", call.WorkDir)
+	assert.Contains(t, call.Args, "--proto_path=/tmp/repo")
+	assert.Contains(t, call.Args, "--csharp_out=/tmp/output")
+	assert.Contains(t, call.Args, "--grpc_out=/tmp/output")
+	assert.Contains(t, call.Args, "user/v1/user.proto")
+}
+
 func TestGenerator_GenerateError(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := NewMockCommandRunner()
