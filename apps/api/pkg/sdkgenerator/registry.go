@@ -35,6 +35,12 @@ func (b *RegistryBuilder) WithDefaultGenerators() *RegistryBuilder {
 		NewJsBufbuildEsGenerator(b.runner),
 		NewJsProtobufGenerator(b.runner),
 		NewJsConnectRpcGenerator(b.runner),
+		NewRustProtobufGenerator(b.runner),
+		NewRustGrpcGenerator(b.runner),
+		NewJavaProtobufGenerator(b.runner),
+		// NewJavaGrpcGenerator(b.runner),
+		NewCsharpProtobufGenerator(b.runner),
+		// NewCsharpGrpcGenerator(b.runner),
 	)
 	return b
 }

@@ -23,6 +23,12 @@ func TestSDK_DirName(t *testing.T) {
 		{SdkJsBufbuildEs, "js-bufbuild-es"},
 		{SdkJsProtobuf, "js-protobuf"},
 		{SdkJsConnectrpc, "js-connectrpc"},
+		{SdkRustProtobuf, "rust-protobuf"},
+		{SdkRustGrpc, "rust-grpc"},
+		{SdkJavaProtobuf, "java-protobuf"},
+		{SdkJavaGrpc, "java-grpc"},
+		{SdkCsharpProtobuf, "csharp-protobuf"},
+		{SdkCsharpGrpc, "csharp-grpc"},
 		{SDK("unknown"), "unknown"},
 	}
 
@@ -191,6 +197,61 @@ func TestGoGrpcGenerator_Generate(t *testing.T) {
 	assert.Contains(t, call.Args, "--go-grpc_out=/tmp/output")
 	assert.Contains(t, call.Args, "--go-grpc_opt=paths=source_relative")
 	assert.Contains(t, call.Args, "--go-grpc_opt=Mapi.proto=./")
+}
+
+func TestRustProtobufGenerator_Generate(t *testing.T) {
+	ctx := context.Background()
+	mockRunner := NewMockCommandRunner()
+	g := NewRustProtobufGenerator(mockRunner)
+
+	input := GeneratorInput{
+		RepoPath:   "/tmp/repo",
+		OutputPath: "/tmp/output",
+		ProtoFiles: []string{"user/v1/user.proto"},
+	}
+
+	output, err := g.Generate(ctx, input)
+	require.NoError(t, err)
+	require.NotNil(t, output)
+
+	assert.Equal(t, "/tmp/output", output.OutputPath)
+	assert.Equal(t, 1, output.FilesCount)
+
+	assert.Len(t, mockRunner.Calls, 1)
+	call := mockRunner.Calls[0]
+	assert.Equal(t, "protoc", call.Name)
+	assert.Equal(t, "/tmp/repo", call.WorkDir)
+	assert.Contains(t, call.Args, "--proto_path=/tmp/repo")
+	assert.Contains(t, call.Args, "--prost_out=/tmp/output")
+	assert.Contains(t, call.Args, "user/v1/user.proto")
+}
+
+func TestRustGrpcGenerator_Generate(t *testing.T) {
+	ctx := context.Background()
+	mockRunner := NewMockCommandRunner()
+	g := NewRustGrpcGenerator(mockRunner)
+
+	input := GeneratorInput{
+		RepoPath:   "/tmp/repo",
+		OutputPath: "/tmp/output",
+		ProtoFiles: []string{"user/v1/user.proto"},
+	}
+
+	output, err := g.Generate(ctx, input)
+	require.NoError(t, err)
+	require.NotNil(t, output)
+
+	assert.Equal(t, "/tmp/output", output.OutputPath)
+	assert.Equal(t, 1, output.FilesCount)
+
+	assert.Len(t, mockRunner.Calls, 1)
+	call := mockRunner.Calls[0]
+	assert.Equal(t, "protoc", call.Name)
+	assert.Equal(t, "/tmp/repo", call.WorkDir)
+	assert.Contains(t, call.Args, "--proto_path=/tmp/repo")
+	assert.Contains(t, call.Args, "--prost_out=/tmp/output")
+	assert.Contains(t, call.Args, "--tonic_out=/tmp/output")
+	assert.Contains(t, call.Args, "user/v1/user.proto")
 }
 
 func TestGenerator_GenerateError(t *testing.T) {

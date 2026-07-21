@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,21 +14,33 @@ import (
 type SDK string
 
 const (
-	SdkGoProtobuf   SDK = "GO_PROTOBUF"
-	SdkGoConnectRpc SDK = "GO_CONNECTRPC"
-	SdkGoGrpc       SDK = "GO_GRPC"
-	SdkJsBufbuildEs SDK = "JS_BUFBUILD_ES"
-	SdkJsProtobuf   SDK = "JS_PROTOBUF"
-	SdkJsConnectrpc SDK = "JS_CONNECTRPC"
+	SdkGoProtobuf     SDK = "GO_PROTOBUF"
+	SdkGoConnectRpc   SDK = "GO_CONNECTRPC"
+	SdkGoGrpc         SDK = "GO_GRPC"
+	SdkJsBufbuildEs   SDK = "JS_BUFBUILD_ES"
+	SdkJsProtobuf     SDK = "JS_PROTOBUF"
+	SdkJsConnectrpc   SDK = "JS_CONNECTRPC"
+	SdkRustProtobuf   SDK = "RUST_PROTOBUF"
+	SdkRustGrpc       SDK = "RUST_GRPC"
+	SdkJavaProtobuf   SDK = "JAVA_PROTOBUF"
+	SdkJavaGrpc       SDK = "JAVA_GRPC"
+	SdkCsharpProtobuf SDK = "CSHARP_PROTOBUF"
+	SdkCsharpGrpc     SDK = "CSHARP_GRPC"
 )
 
 var sdkDirNames = map[SDK]string{
-	SdkGoProtobuf:   "go-protobuf",
-	SdkGoConnectRpc: "go-connectrpc",
-	SdkGoGrpc:       "go-grpc",
-	SdkJsBufbuildEs: "js-bufbuild-es",
-	SdkJsProtobuf:   "js-protobuf",
-	SdkJsConnectrpc: "js-connectrpc",
+	SdkGoProtobuf:     "go-protobuf",
+	SdkGoConnectRpc:   "go-connectrpc",
+	SdkGoGrpc:         "go-grpc",
+	SdkJsBufbuildEs:   "js-bufbuild-es",
+	SdkJsProtobuf:     "js-protobuf",
+	SdkJsConnectrpc:   "js-connectrpc",
+	SdkRustProtobuf:   "rust-protobuf",
+	SdkRustGrpc:       "rust-grpc",
+	SdkJavaProtobuf:   "java-protobuf",
+	SdkJavaGrpc:       "java-grpc",
+	SdkCsharpProtobuf: "csharp-protobuf",
+	SdkCsharpGrpc:     "csharp-grpc",
 }
 
 func (s SDK) DirName() string {
@@ -185,7 +198,19 @@ func GenerateFromRepo(ctx context.Context, generator Generator, repoPath, output
 		GoPackagePrefix: goPackagePrefix,
 	}
 
-	return generator.Generate(ctx, input)
+	isBufSpecFileExists, err := input.isBufSpecFileExists()
+	if err != nil {
+		return nil, fmt.Errorf("failed to check buf spec file: %w", err)
+	}
+
+	if !isBufSpecFileExists {
+		return generator.Generate(ctx, input)
+	}
+
+	return &GeneratorOutput{
+		OutputPath: absOutputPath,
+		FilesCount: len(protoFiles),
+	}, nil
 }
 
 func FindProtoFiles(repoPath string) ([]string, error) {
@@ -239,4 +264,25 @@ func FindProtoFilesInBareRepo(repoPath, commitHash string) ([]string, error) {
 	}
 
 	return protoFiles, nil
+}
+
+func (i GeneratorInput) isBufSpecFileExists() (bool, error) {
+	var isBufSpecFileExists = false
+	var errFound = errors.New("found")
+	if err := filepath.WalkDir(i.RepoPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !d.IsDir() && d.Name() == "buf.gen.yaml" {
+			isBufSpecFileExists = true
+			return errFound
+		}
+
+		return nil
+	}); err != nil && !errors.Is(err, errFound) {
+		return false, err
+	}
+
+	return isBufSpecFileExists, nil
 }
