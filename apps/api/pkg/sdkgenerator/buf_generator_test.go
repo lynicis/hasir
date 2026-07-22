@@ -183,3 +183,15 @@ func TestBufJsConnectRpcGenerator(t *testing.T) {
 	assert.Equal(t, SdkJsConnectrpc, g.SDK())
 	assert.Equal(t, "js-connectrpc", g.DirName())
 }
+
+func TestBufRustProtobufGenerator(t *testing.T) {
+	g := NewBufRustProtobufGenerator(NewMockCommandRunner())
+	assert.Equal(t, SdkRustProtobuf, g.SDK())
+	assert.Equal(t, "rust-protobuf", g.DirName())
+}
+
+func TestBufRustGrpcGenerator(t *testing.T) {
+	g := NewBufRustGrpcGenerator(NewMockCommandRunner())
+	assert.Equal(t, SdkRustGrpc, g.SDK())
+	assert.Equal(t, "rust-grpc", g.DirName())
+}

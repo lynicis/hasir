@@ -53,6 +53,8 @@ func (b *RegistryBuilder) WithBufGenerators() *RegistryBuilder {
 		NewBufJsBufbuildEsGenerator(b.runner),
 		NewBufJsProtobufGenerator(b.runner),
 		NewBufJsConnectRpcGenerator(b.runner),
+		NewBufRustProtobufGenerator(b.runner),
+		NewBufRustGrpcGenerator(b.runner),
 	)
 	return b
 }
