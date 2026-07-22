@@ -57,6 +57,8 @@ func (b *RegistryBuilder) WithBufGenerators() *RegistryBuilder {
 		NewBufRustGrpcGenerator(b.runner),
 		NewBufJavaProtobufGenerator(b.runner),
 		NewBufJavaGrpcGenerator(b.runner),
+		NewBufCsharpProtobufGenerator(b.runner),
+		NewBufCsharpGrpcGenerator(b.runner),
 	)
 	return b
 }

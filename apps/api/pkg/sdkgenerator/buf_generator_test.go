@@ -207,3 +207,15 @@ func TestBufJavaGrpcGenerator(t *testing.T) {
 	assert.Equal(t, SdkJavaGrpc, g.SDK())
 	assert.Equal(t, "java-grpc", g.DirName())
 }
+
+func TestBufCsharpProtobufGenerator(t *testing.T) {
+	g := NewBufCsharpProtobufGenerator(NewMockCommandRunner())
+	assert.Equal(t, SdkCsharpProtobuf, g.SDK())
+	assert.Equal(t, "csharp-protobuf", g.DirName())
+}
+
+func TestBufCsharpGrpcGenerator(t *testing.T) {
+	g := NewBufCsharpGrpcGenerator(NewMockCommandRunner())
+	assert.Equal(t, SdkCsharpGrpc, g.SDK())
+	assert.Equal(t, "csharp-grpc", g.DirName())
+}
