@@ -195,3 +195,15 @@ func TestBufRustGrpcGenerator(t *testing.T) {
 	assert.Equal(t, SdkRustGrpc, g.SDK())
 	assert.Equal(t, "rust-grpc", g.DirName())
 }
+
+func TestBufJavaProtobufGenerator(t *testing.T) {
+	g := NewBufJavaProtobufGenerator(NewMockCommandRunner())
+	assert.Equal(t, SdkJavaProtobuf, g.SDK())
+	assert.Equal(t, "java-protobuf", g.DirName())
+}
+
+func TestBufJavaGrpcGenerator(t *testing.T) {
+	g := NewBufJavaGrpcGenerator(NewMockCommandRunner())
+	assert.Equal(t, SdkJavaGrpc, g.SDK())
+	assert.Equal(t, "java-grpc", g.DirName())
+}
