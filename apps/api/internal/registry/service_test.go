@@ -1707,7 +1707,7 @@ func TestNewService_WithConfig(t *testing.T) {
 		require.NotNil(t, concrete.sdkRegistry)
 
 		generators := concrete.sdkRegistry.List()
-		assert.Len(t, generators, 6)
+		assert.Len(t, generators, 12)
 
 		_, err := concrete.sdkRegistry.Get(sdkgenerator.SdkGoProtobuf)
 		assert.NoError(t, err)
@@ -1720,6 +1720,18 @@ func TestNewService_WithConfig(t *testing.T) {
 		_, err = concrete.sdkRegistry.Get(sdkgenerator.SdkJsProtobuf)
 		assert.NoError(t, err)
 		_, err = concrete.sdkRegistry.Get(sdkgenerator.SdkJsConnectrpc)
+		assert.NoError(t, err)
+		_, err = concrete.sdkRegistry.Get(sdkgenerator.SdkRustProtobuf)
+		assert.NoError(t, err)
+		_, err = concrete.sdkRegistry.Get(sdkgenerator.SdkRustGrpc)
+		assert.NoError(t, err)
+		_, err = concrete.sdkRegistry.Get(sdkgenerator.SdkJavaProtobuf)
+		assert.NoError(t, err)
+		_, err = concrete.sdkRegistry.Get(sdkgenerator.SdkJavaGrpc)
+		assert.NoError(t, err)
+		_, err = concrete.sdkRegistry.Get(sdkgenerator.SdkCsharpProtobuf)
+		assert.NoError(t, err)
+		_, err = concrete.sdkRegistry.Get(sdkgenerator.SdkCsharpGrpc)
 		assert.NoError(t, err)
 	})
 
