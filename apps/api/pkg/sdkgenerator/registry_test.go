@@ -165,9 +165,9 @@ func TestNewBufRegistry(t *testing.T) {
 	registry := NewBufRegistry(runner)
 
 	sdks := registry.List()
-	assert.Len(t, sdks, 6)
+	assert.Len(t, sdks, 12)
 
-	for _, sdk := range []SDK{SdkGoProtobuf, SdkGoConnectRpc, SdkGoGrpc, SdkJsBufbuildEs, SdkJsProtobuf, SdkJsConnectrpc} {
+	for _, sdk := range []SDK{SdkGoProtobuf, SdkGoConnectRpc, SdkGoGrpc, SdkJsBufbuildEs, SdkJsProtobuf, SdkJsConnectrpc, SdkRustProtobuf, SdkRustGrpc, SdkJavaProtobuf, SdkJavaGrpc, SdkCsharpProtobuf, SdkCsharpGrpc} {
 		g, err := registry.Get(sdk)
 		assert.NoError(t, err)
 		assert.NotNil(t, g)
@@ -180,5 +180,5 @@ func TestRegistryBuilder_WithBufGenerators(t *testing.T) {
 	registry := NewRegistryBuilder(runner).WithBufGenerators().Build()
 
 	sdks := registry.List()
-	assert.Len(t, sdks, 6)
+	assert.Len(t, sdks, 12)
 }
