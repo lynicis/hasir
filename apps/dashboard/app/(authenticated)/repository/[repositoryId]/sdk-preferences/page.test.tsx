@@ -163,7 +163,7 @@ describe("SdkPreferencesPage", () => {
     const user = userEvent.setup();
     renderWithContext();
 
-    const protocolBuffersLabel = screen.getAllByText("Protocol Buffers")[0];
+    const protocolBuffersLabel = screen.getAllByText("Protocol Buffers")[0]!;
     const protocolBuffersSwitch = protocolBuffersLabel
       .closest("div")
       ?.querySelector("button") as HTMLElement;
@@ -227,7 +227,7 @@ describe("SdkPreferencesPage", () => {
     expect(goSwitch.getAttribute("data-state")).toBe("unchecked");
     expect(jsSwitch.getAttribute("data-state")).toBe("unchecked");
 
-    const protocolBuffersSwitch = screen.getAllByLabelText("Protocol Buffers")[0];
+    const protocolBuffersSwitch = screen.getAllByLabelText("Protocol Buffers")[0]!;
     expect(protocolBuffersSwitch.getAttribute("data-state")).toBe("unchecked");
   });
 
