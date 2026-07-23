@@ -70,4 +70,13 @@ describe('proxy', () => {
 
     expect(response.status).not.toBe(307);
   });
+
+  it('should bypass authentication and security headers for __nextjs dev endpoints', async () => {
+    const devUrl = 'http://localhost:3000/__nextjs_original-stack-frames';
+    const request = new NextRequest(new URL(devUrl));
+    const response = await proxy(request);
+
+    expect(response.status).not.toBe(307);
+    expect(response.headers.get('Content-Security-Policy')).toBeNull();
+  });
 });

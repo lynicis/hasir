@@ -29,6 +29,10 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  if (pathname.startsWith('/__nextjs')) {
+    return NextResponse.next();
+  }
+
   if (
     pathname === '/' ||
     publicPaths.some((path) => pathname.startsWith(path)) ||
@@ -52,6 +56,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\..*).*)',
+    '/((?!api/auth|_next/static|_next/image|favicon.ico|__nextjs|.*\\..*).*)',
   ],
 };
