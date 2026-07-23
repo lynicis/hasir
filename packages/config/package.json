@@ -10,5 +10,8 @@
   "files": [
     "eslint.config.mjs",
     "tsconfig.base.json"
-  ]
+  ],
+  "scripts": {
+    "vuln": "bun audit"
+  }
 }

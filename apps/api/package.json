@@ -8,6 +8,7 @@
     "test": "make test",
     "lint": "make lint",
     "dev": "make dev",
-    "clean": "make clean"
+    "clean": "make clean",
+    "vuln": "make vuln"
   }
 }

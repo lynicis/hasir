@@ -14,7 +14,8 @@
     "lint": "eslint src",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "clean": "rimraf dist .tsbuildinfo"
+    "clean": "rimraf dist .tsbuildinfo",
+    "vuln": "bun audit"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
