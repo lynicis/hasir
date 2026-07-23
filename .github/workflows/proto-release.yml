@@ -22,9 +22,11 @@ jobs:
           CURRENT_TAG="${GITHUB_REF_NAME}"
           BSR_TAG="${CURRENT_TAG#proto/}"
           PREV_TAG=$(git tag -l 'proto/v*' --sort=-v:refname | head -2 | tail -1 || echo "")
-          echo "current=${CURRENT_TAG}" >> "${GITHUB_OUTPUT}"
-          echo "bsr=${BSR_TAG}" >> "${GITHUB_OUTPUT}"
-          echo "previous=${PREV_TAG}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "current=${CURRENT_TAG}"
+            echo "bsr=${BSR_TAG}"
+            echo "previous=${PREV_TAG}"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Lint proto files
         uses: bufbuild/buf-action@v1

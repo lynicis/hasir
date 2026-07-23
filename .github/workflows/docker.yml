@@ -28,13 +28,15 @@ jobs:
 
       - name: Determine Target
         id: target
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          if [[ "${{ github.ref_name }}" == hasir-api@* ]]; then
-            echo "name=api" >> $GITHUB_OUTPUT
-            echo "tag=${GITHUB_REF_NAME#hasir-api@}" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref_name }}" == hasir-dashboard@* ]]; then
-            echo "name=dashboard" >> $GITHUB_OUTPUT
-            echo "tag=${GITHUB_REF_NAME#hasir-dashboard@}" >> $GITHUB_OUTPUT
+          if [[ "$REF_NAME" == hasir-api@* ]]; then
+            echo "name=api" >> "$GITHUB_OUTPUT"
+            echo "tag=${REF_NAME#hasir-api@}" >> "$GITHUB_OUTPUT"
+          elif [[ "$REF_NAME" == hasir-dashboard@* ]]; then
+            echo "name=dashboard" >> "$GITHUB_OUTPUT"
+            echo "tag=${REF_NAME#hasir-dashboard@}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push
