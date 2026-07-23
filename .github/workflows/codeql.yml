@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: ["main"]
   schedule:
-    - cron: "28 15 * * 4"
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 permissions:
@@ -66,6 +66,18 @@ jobs:
         run: |
           cd apps/api
           go build ./...
+
+      - name: Run Gosec Security Scanner
+        if: matrix.language == 'go'
+        uses: securego/gosec@v2
+        with:
+          args: '-no-fail -fmt sarif -out results.sarif ./apps/api/...'
+
+      - name: Upload Gosec SARIF
+        if: matrix.language == 'go'
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: results.sarif
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
