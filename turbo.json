@@ -35,7 +35,11 @@
       "cache": false
     },
     "format": { "cache": false },
-    "clean": { "cache": false }
+    "clean": { "cache": false },
+    "vuln": {
+      "dependsOn": [],
+      "cache": false
+    }
   },
   "globalDependencies": ["bunfig.toml", "turbo.json", "package.json", "tsconfig.base.json", "CODEOWNERS"],
   "globalEnv": [

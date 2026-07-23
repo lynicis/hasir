@@ -37,6 +37,7 @@
     "affected:build": "turbo run build --affected",
     "affected:test": "turbo run test --affected",
     "affected:lint": "turbo run lint --affected",
+    "vuln": "turbo run vuln",
     "release": "touch \"${CHANGESETS_OUTPUT:-/dev/null}\" && changeset publish",
     "design:lint": "designmd lint DESIGN.md"
   },

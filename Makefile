@@ -42,5 +42,8 @@ clean:          # nuke across the tree
 	bun run clean
 	rm -rf tmp/ coverage/ junit.xml
 
+vuln:           # scan dependencies for known vulnerabilities across all apps and packages
+	bun run vuln
+
 release:        # create a new changeset for a version bump
 	bunx changeset
