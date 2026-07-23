@@ -1,4 +1,4 @@
-name: "CodeQL Analysis"
+name: "CodeQL & Security Scan"
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
     branches: ["main"]
   schedule:
     - cron: "28 15 * * 4"
+  workflow_dispatch:
 
 permissions:
   security-events: write
@@ -15,7 +16,7 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze
+    name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
@@ -39,6 +40,9 @@ jobs:
           go-version: "1.26"
           cache: true
           cache-dependency-path: "**/go.sum"
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
 
       - name: Setup Buf
         uses: bufbuild/buf-action@v1
@@ -67,3 +71,6 @@ jobs:
         uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
+
+      - name: Scan for vulnerabilities
+        run: make vuln
