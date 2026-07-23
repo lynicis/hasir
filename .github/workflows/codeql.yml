@@ -69,7 +69,7 @@ jobs:
 
       - name: Run Gosec Security Scanner
         if: matrix.language == 'go'
-        uses: securego/gosec@v2
+        uses: securego/gosec@master
         with:
           args: '-no-fail -fmt sarif -out results.sarif ./apps/api/...'
 
