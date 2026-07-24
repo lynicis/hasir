@@ -22,7 +22,6 @@ export interface Logger {
 }
 
 function emit(level: LogLevel, msg: string, fields?: Record<string, unknown>): void {
-  // eslint-disable-next-line no-console
   console.log(
     JSON.stringify({
       ts: new Date().toISOString(),

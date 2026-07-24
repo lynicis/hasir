@@ -21,7 +21,16 @@ export const hasirEslintPreset = defineConfig([
     plugins: {
       perfectionist,
     },
+    settings: {
+      react: {
+        version: "18.3.1",
+      },
+      next: {
+        rootDir: ["apps/dashboard/", "apps/landing/"],
+      },
+    },
     rules: {
+      "@next/next/no-html-link-for-pages": "off",
       "perfectionist/sort-imports": [
         "warn",
         {
