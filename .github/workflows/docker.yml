@@ -45,7 +45,7 @@ jobs:
           TAG: ${{ steps.target.outputs.tag }}
         run: |
           docker buildx bake \
-            -f docker/shared/docker-bake.hcl \
+            -f deploy/docker/shared/docker-bake.hcl \
             --set "*.cache-from=type=gha" \
             --set "*.cache-to=type=gha,mode=max" \
             --push ${{ steps.target.outputs.name }}

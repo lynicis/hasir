@@ -325,7 +325,7 @@ function BottomCTA() {
               <div className="text-muted-foreground/60 mb-2"># Fetch compose config & run (uses pre-built ghcr.io images)</div>
               <div className="flex gap-3 text-muted-foreground">
                 <span className="text-accent select-none">$</span>
-                <span className="text-foreground whitespace-nowrap">curl -O https://raw.githubusercontent.com/lynicis/hasir/main/docker/docker-compose.yml</span>
+                <span className="text-foreground whitespace-nowrap">curl -O https://raw.githubusercontent.com/lynicis/hasir/main/deploy/docker/docker-compose.yml</span>
               </div>
               <div className="flex gap-3 text-muted-foreground mt-3">
                 <span className="text-accent select-none">$</span>

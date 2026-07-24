@@ -48,8 +48,8 @@ ssh_host_key
 !**/*.pem.example
 
 # ---- Certbot / nginx runtime state (carried from docker-images repo) ----
-docker/shared/certbot/conf/
-docker/shared/certbot/www/
+deploy/docker/shared/certbot/conf/
+deploy/docker/shared/certbot/www/
 
 # ---- IDE / editor / agent state ----
 .idea/

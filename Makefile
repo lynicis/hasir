@@ -33,7 +33,7 @@ proto:          # buf generate, writing into proto/gen/ and consumers
 	bun run proto
 
 docker:         # buildx + bake all images
-	docker buildx bake -f docker/shared/docker-bake.hcl "$@"
+	docker buildx bake -f deploy/docker/shared/docker-bake.hcl "$@"
 
 clean:          # nuke across the tree
 	bun run clean

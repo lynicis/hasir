@@ -125,7 +125,7 @@ sudo ./scripts/backup.sh
 
 # Automate daily backups via cron (runs at 2:00 AM)
 sudo crontab -e
-# 0 2 * * * /path/to/hasir/docker/scripts/backup.sh >> /var/log/hasir-backup.log 2>&1
+# 0 2 * * * /path/to/hasir/deploy/docker/scripts/backup.sh >> /var/log/hasir-backup.log 2>&1
 
 # Restore from backup
 gunzip -c backups/hasir_db_YYYYMMDD_HHMMSS.sql.gz | \
@@ -184,7 +184,7 @@ apps/dashboard/      Next.js dashboard (React, shadcn/ui, Tailwind)
 proto/               Protocol buffer definitions (Buf)
 packages/            Shared configs (eslint, tsconfig, UI components)
 deploy/helm/         Helm chart for Kubernetes deployment
-docker/              Docker Compose stack (nginx, certbot)
+deploy/docker/       Docker Compose stack (nginx, certbot)
 docs/                Architecture docs and ADRs
 ```
 
@@ -196,4 +196,4 @@ docs/                Architecture docs and ADRs
 | [Migration Guide](docs/MIGRATION.md) | Database and breaking-change migrations |
 | [Release Strategy](docs/RELEASE.md) | Versioning, tagging, and release workflow |
 | [ADRs](docs/adr/) | Architecture Decision Records |
-| [Docker Stack](docker/README.md) | Full deployment and operations guide |
+| [Docker Stack](deploy/docker/README.md) | Full deployment and operations guide |
