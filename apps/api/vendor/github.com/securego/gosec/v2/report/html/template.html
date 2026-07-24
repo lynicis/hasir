@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Golang Security Checker</title>
+  <link rel="shortcut icon" type="image/png" href="https://securego.io/img/favicon.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/1.0.4/css/bulma.min.css" integrity="sha512-yh2RE0wZCVZeysGiqTwDTO/dKelCbS9bP2L94UvOFtl/FKXcNAje3Y2oBg/ZMZ3LS1sicYk4dYVGtDex75fvvA==" crossorigin="anonymous"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css" integrity="sha512-hasIneQUHlh06VNBe7f6ZcHmeRTLIaQWFd43YriJ0UND19bvYRauxthDg8E4eVNPm9bRUhr5JGeqH7FRFXQu5g==" crossorigin="anonymous"/>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/go.min.js" integrity="sha512-weC0VNVf2qQR6OY675qO0AEL92gt3h5f2VGjhMUvi/UqFHaWzIEL5S/8Dt763fWfKftchzb7GryvEj/2HC9Exw==" crossorigin="anonymous"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/8.0.4/babel.min.js" integrity="sha512-0kogYX+JRNNH6mtJ3d4ZGS50A5IbSQdyOQRX4suqvLbIKjUmJ4/oMFlqhVLSO/hUVUKXJ6TS7Tvqa1wdEj/wHg==" crossorigin="anonymous"></script>
+  
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@19",
+      "react-dom/client": "https://esm.sh/react-dom@19/client"
+    }
+  }
+  </script>
+  <style>
+  .field-label {
+    min-width: 80px;
+  }
+  .break-word {
+    word-wrap: break-word;
+  }
+  .help {
+    white-space: pre-wrap;
+  }
+  .tag {
+    width: 80px;
+  }
+  .summary-first {
+    padding: .75rem .75rem .1rem .75rem;
+  }
+  .summary-last {
+    padding: .1rem .75rem .75rem .75rem;
+  }
+  .summary {
+    padding: .1rem .75rem ;
+  }
+  </style>
+</head>
+<body>
+  <section class="section">
+    <div class="container">
+      <div id="content"></div>
+    </div>
+  </section>
+  <script>
+    var data = {{ . }};
+  </script>
+  <script type="text/babel" data-type="module">
+    import React, { useState, useEffect, useMemo, useRef } from 'react';
+    import { createRoot } from 'react-dom/client';
+
+    const IssueTag = ({ label, level }) => {
+      let lvlClass = "tag";
+      if (level === "HIGH") {
+        lvlClass += " is-danger";
+      } else if (level === "MEDIUM") {
+        lvlClass += " is-warning";
+      } else if (level === "LOW") {
+        lvlClass += " is-info";
+      } else if (level === "WAIVED") {
+        lvlClass += " is-success";
+      }
+      lvlClass += " is-rounded";
+      return (
+        <div className="control">
+          <div className="tags has-addons">
+            <span className="tag is-dark is-rounded">{label}</span>
+            <span className={lvlClass}>{level}</span>
+          </div>
+        </div>
+      );
+    };
+
+    const Highlight = ({ code }) => {
+      const codeRef = useRef(null);
+      useEffect(() => {
+        if (codeRef.current) {
+          hljs.highlightElement(codeRef.current);
+        }
+      }, [code]);
+      return (
+        <pre className="go"><code ref={codeRef}>{code}</code></pre>
+      );
+    };
+
+    const Issue = ({ data }) => (
+      <div className="issue box">
+        <div className="columns">
+          <div className="column is-three-quarters">
+            <strong className="break-word">{data.file} (line {data.line})</strong>
+            <p>{data.rule_id} (CWE-{data.cwe.id}): {data.details}</p>
+          </div>
+          <div className="column is-one-quarter">
+            <div className="field is-grouped is-grouped-multiline">
+              {data.nosec && <IssueTag label="NoSec" level="WAIVED"/>}
+              <IssueTag label="Severity" level={data.severity}/>
+              <IssueTag label="Confidence" level={data.confidence}/>
+            </div>
+          </div>
+        </div>
+        <div className="highlight">
+          <Highlight key={data.file+data.line} code={data.code}/>
+        </div>
+      </div>
+    );
+
+    const Stats = ({ data }) => (
+      <p className="help is-pulled-right">
+        Gosec {data.GosecVersion} scanned {data.Stats.files.toLocaleString()} files
+        with {data.Stats.lines.toLocaleString()} lines of code.
+        {data.Stats.nosec ? '\n' + data.Stats.nosec.toLocaleString() + ' false positives (nosec) have been waived.' : ''}
+      </p>
+    );
+
+    const Issues = ({ data, severity, confidence, issueType }) => {
+      if (data.Stats.files === 0) {
+        return <div className="notification">No source files found. Do you even Go?</div>;
+      }
+      if (data.Issues.length === 0) {
+        return (
+          <div>
+            <div className="notification">Awesome! No issues found!</div>
+            <Stats data={data} />
+          </div>
+        );
+      }
+      
+      const filteredIssues = data.Issues
+        .filter(issue => severity.includes(issue.severity))
+        .filter(issue => confidence.includes(issue.confidence))
+        .filter(issue => {
+          if (issueType) {
+            return issue.details.toLowerCase().startsWith(issueType.toLowerCase());
+          }
+          return true;
+        })
+        .map((issue, idx) => <Issue key={idx} data={issue} />);
+
+      if (filteredIssues.length === 0) {
+        return (
+          <div>
+            <div className="notification">
+              No issues matched given filters
+              (of total {data.Issues.length} issues).
+            </div>
+            <Stats data={data} />
+          </div>
+        );
+      }
+      return (
+        <div className="issues">
+          {filteredIssues}
+          <Stats data={data} />
+        </div>
+      );
+    };
+
+    const LevelSelector = ({ selected, available, onChange }) => {
+      const handleChange = (level) => (e) => {
+        const updated = selected.filter(item => item !== level);
+        if (e.target.checked) {
+          updated.push(level);
+        }
+        onChange(updated);
+      };
+
+      const HIGH = "HIGH", MEDIUM = "MEDIUM", LOW = "LOW";
+      const highDisabled = !available.includes(HIGH);
+      const mediumDisabled = !available.includes(MEDIUM);
+      const lowDisabled = !available.includes(LOW);
+
+      return (
+        <div className="field">
+          <div className="control">
+            <label className="checkbox" disabled={highDisabled}>
+              <input type="checkbox" checked={selected.includes(HIGH)} disabled={highDisabled} onChange={handleChange(HIGH)}/> High
+            </label>
+          </div>
+          <div className="control">
+            <label className="checkbox" disabled={mediumDisabled}>
+              <input type="checkbox" checked={selected.includes(MEDIUM)} disabled={mediumDisabled} onChange={handleChange(MEDIUM)}/> Medium
+            </label>
+          </div>
+          <div className="control">
+            <label className="checkbox" disabled={lowDisabled}>
+              <input type="checkbox" checked={selected.includes(LOW)} disabled={lowDisabled} onChange={handleChange(LOW)}/> Low
+            </label>
+          </div>
+        </div>
+      );
+    };
+
+    const Navigation = ({ data, severity, confidence, issueType, allSeverities, allConfidences, allIssueTypes, onSeverity, onConfidence, onIssueType }) => {
+      const updateIssueType = (e) => {
+        if (e.target.value === "all") {
+          onIssueType(null);
+        } else {
+          onIssueType(e.target.value);
+        }
+      };
+
+      const issueTypesOptions = allIssueTypes.map(it => (
+        <option key={it} value={it}>{it}</option>
+      ));
+
+      // Abstracted variable to prevent Go html/template parsing errors
+      const currentIssueType = issueType ? issueType : "all";
+
+      return (
+        <div>
+          <nav className="panel">
+            <div className="panel-heading">Filters</div>
+            <div className="panel-block">
+              <div className="field is-horizontal">
+                <div className="field-label is-normal">
+                  <label className="label is-pulled-left">Severity</label>
+                </div>
+                <div className="field-body">
+                  <LevelSelector selected={severity} available={allSeverities} onChange={onSeverity} />
+                </div>
+              </div>
+            </div>
+            <div className="panel-block">
+              <div className="field is-horizontal">
+                <div className="field-label is-normal">
+                  <label className="label is-pulled-left">Confidence</label>
+                </div>
+                <div className="field-body">
+                  <LevelSelector selected={confidence} available={allConfidences} onChange={onConfidence} />
+                </div>
+              </div>
+            </div>
+            <div className="panel-block">
+              <div className="field is-horizontal">
+                <div className="field-label is-normal">
+                  <label className="label is-pulled-left">Issue type</label>
+                </div>
+                <div className="field-body">
+                  <div className="field">
+                    <div className="control">
+                      <div className="select is-fullwidth">
+                        <select onChange={updateIssueType} value={currentIssueType}>
+                          <option value="all">(all)</option>
+                          {issueTypesOptions}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </nav>
+          <nav className="panel">
+            <div className="panel-heading">Summary</div>
+            <div className="panel-block">
+              <div className="columns is-multiline">
+                <div className="column is-half summary-first">
+                  <label className="label is-pulled-left">Gosec: </label>
+                </div>
+                <div className="column is-half summary-first">
+                  {data.GosecVersion}
+                </div>
+                <div className="column is-half summary">
+                  <label className="label is-pulled-left">Files: </label>
+                </div>
+                <div className="column is-half summary">
+                  {data.Stats.files.toLocaleString()}
+                </div>
+                <div className="column is-half summary">
+                  <label className="label is-pulled-left">Lines: </label>
+                </div>
+                <div className="column is-half summary">
+                  {data.Stats.lines.toLocaleString()}
+                </div>
+                <div className="column is-half summary">
+                  <label className="label is-pulled-left">Nosec: </label>
+                </div>
+                <div className="column is-half summary">
+                  {data.Stats.nosec.toLocaleString()}
+                </div>
+                <div className="column is-half summary-last">
+                  <label className="label is-pulled-left">Issues: </label>
+                </div>
+                <div className="column is-half summary-last">
+                  {data.Stats.found.toLocaleString()}
+                </div>
+              </div>
+            </div>
+          </nav>
+        </div>
+      );
+    };
+
+    const IssueBrowser = ({ data }) => {
+      const allSeverities = useMemo(() => {
+        if (!data) return [];
+        return Array.from(new Set(data.Issues.map(i => i.severity))).sort();
+      }, [data]);
+
+      const allConfidences = useMemo(() => {
+        if (!data) return [];
+        return Array.from(new Set(data.Issues.map(i => i.confidence))).sort();
+      }, [data]);
+
+      const [severity, setSeverity] = useState(allSeverities);
+      const [confidence, setConfidence] = useState(allConfidences);
+      const [issueType, setIssueType] = useState(null);
+
+      const allIssueTypes = useMemo(() => {
+        if (!data) return [];
+        return Array.from(new Set(data.Issues
+          .filter(i => severity.includes(i.severity))
+          .filter(i => confidence.includes(i.confidence))
+          .map(i => i.details)
+        )).sort();
+      }, [data, severity, confidence]);
+
+      useEffect(() => {
+        if (issueType && !allIssueTypes.includes(issueType)) {
+          setIssueType(null);
+        }
+      }, [allIssueTypes, issueType]);
+
+      if (!data) return null;
+
+      return (
+        <div className="content">
+          <div className="columns">
+            <div className="column is-one-quarter">
+              <Navigation
+                data={data}
+                severity={severity}
+                confidence={confidence}
+                issueType={issueType}
+                allSeverities={allSeverities}
+                allConfidences={allConfidences}
+                allIssueTypes={allIssueTypes}
+                onSeverity={setSeverity}
+                onConfidence={setConfidence}
+                onIssueType={setIssueType}
+              />
+            </div>
+            <div className="column is-three-quarters">
+              <Issues
+                data={data}
+                severity={severity}
+                confidence={confidence}
+                issueType={issueType}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const root = createRoot(document.getElementById("content"));
+    root.render(<IssueBrowser data={data} />);
+  </script>
+</body>
+</html>

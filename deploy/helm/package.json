@@ -1,0 +1,7 @@
+{
+  "name": "@hasir/helm",
+  "private": true,
+  "scripts": {
+    "lint": "helm lint charts/hasir"
+  }
+}

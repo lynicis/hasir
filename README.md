@@ -58,14 +58,11 @@ git clone https://github.com/lynicis/hasir.git
 cd hasir/docker
 
 # Run setup — installs Docker, configures firewall, bootstraps TLS
-sudo ./scripts/setup.sh
+make setup
 
 # Configure environment
 cp .env.example .env
 nano .env    # Set DOMAIN, LETSENCRYPT_EMAIL, SMTP credentials
-
-# Deploy — pulls images, starts services, requests Let's Encrypt certificate
-sudo ./scripts/deploy.sh
 ```
 
 The dashboard is available at `https://your-domain.com` and Git SSH at port `2222`.
@@ -188,7 +185,6 @@ proto/               Protocol buffer definitions (Buf)
 packages/            Shared configs (eslint, tsconfig, UI components)
 deploy/helm/         Helm chart for Kubernetes deployment
 docker/              Docker Compose stack (nginx, certbot)
-scripts/             Build, release, and lint utilities
 docs/                Architecture docs and ADRs
 ```
 

@@ -12,7 +12,7 @@
 setup:           # install deps + generate proto + update helm deps
 	bun install
 	bun run proto
-	helm dependency update deploy/helm/hasir >/dev/null 2>&1 || true
+	helm dependency update deploy/helm/charts/hasir >/dev/null 2>&1 || true
 
 dev:            # API + dashboard in parallel via turbo
 	bun run dev
@@ -33,10 +33,7 @@ proto:          # buf generate, writing into proto/gen/ and consumers
 	bun run proto
 
 docker:         # buildx + bake all images
-	./scripts/docker-build.sh
-
-helm-lint:      # helm lint + template validation
-	./scripts/helm-lint.sh
+	docker buildx bake -f docker/shared/docker-bake.hcl "$@"
 
 clean:          # nuke across the tree
 	bun run clean

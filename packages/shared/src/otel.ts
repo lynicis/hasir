@@ -15,7 +15,7 @@ export interface OtelConfig {
 export let otelTracer: unknown = null;
 export let otelMeter: unknown = null;
 
-export function initOtel(_config: OtelConfig): void {
+export function initOtel(): void {
   // Stub until @hasir/shared pulls in @opentelemetry/sdk-trace-base.
   // The dashboard uses @vercel/otel directly; other Bun apps will opt in.
   otelTracer = null;
