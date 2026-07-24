@@ -1,6 +1,10 @@
 name: Protobuf Checks
 
 on:
+  push:
+    paths:
+      - 'proto/**/*.proto'
+      - 'proto/buf.*'
   pull_request:
     paths:
       - 'proto/**/*.proto'

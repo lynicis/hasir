@@ -1,6 +1,9 @@
 name: Helm Checks
 
 on:
+  push:
+    paths:
+      - 'deploy/helm/**'
   pull_request:
     paths:
       - 'deploy/helm/**'

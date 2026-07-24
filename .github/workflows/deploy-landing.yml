@@ -2,13 +2,9 @@ name: Deploy Landing Page
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - 'apps/landing/**'
-      - '.github/workflows/deploy-landing.yml'
-      - 'turbo.json'
-      - 'bun.lock'
 
 jobs:
   deploy:
