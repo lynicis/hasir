@@ -255,13 +255,16 @@ type ConfigReader interface {
 
 func NewConfigReader() ConfigReader {
 	mode := os.Getenv("MODE")
-	if mode == "development" {
-		return &JsonConfig{}
+	configPath := os.Getenv("HASIR_CONFIG_PATH")
+	if mode == "development" || configPath != "" {
+		return &JsonConfig{ConfigPath: configPath}
 	}
 	return &EnvConfig{}
 }
 
-func getCwd() string {
+type getCwdFunc func() string
+
+var getCwd = func() string {
 	_, currentFile, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(currentFile), "../..")
 }
