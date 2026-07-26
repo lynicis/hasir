@@ -8,10 +8,10 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 
-const protoRoot = new URL("../../../proto/", import.meta.url);
+const protoRoot = new URL("../../../packages/proto/", import.meta.url);
 
 if (!existsSync(new URL("buf.gen.yaml", protoRoot))) {
-  console.error("proto/buf.gen.yaml not found — run from the monorepo root");
+  console.error("packages/proto/buf.gen.yaml not found — run from the monorepo root");
   process.exit(1);
 }
 

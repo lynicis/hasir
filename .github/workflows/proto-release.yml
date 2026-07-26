@@ -32,7 +32,7 @@ jobs:
         uses: bufbuild/buf-action@v1
         with:
           lint: true
-          input: proto
+          input: packages/proto
           token: ${{ secrets.BUF_TOKEN }}
 
       - name: Check breaking changes (skip if first release)
@@ -40,30 +40,12 @@ jobs:
         uses: bufbuild/buf-action@v1
         with:
           breaking: true
-          input: proto
-          breaking_against: "${{ github.server_url }}/${{ github.repository }}.git#tag=${{ steps.versions.outputs.previous }},subdir=proto"
+          input: packages/proto
+          breaking_against: "${{ github.server_url }}/${{ github.repository }}.git#tag=${{ steps.versions.outputs.previous }},subdir=packages/proto"
           token: ${{ secrets.BUF_TOKEN }}
 
       - name: Push to Buf Schema Registry
         run: buf push --label "${{ steps.versions.outputs.bsr }}"
-        working-directory: proto
+        working-directory: packages/proto
         env:
           BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
-
-      - name: Generate Changelog
-        id: changelog
-        run: |
-          CURRENT="${{ steps.versions.outputs.current }}"
-          PREVIOUS="${{ steps.versions.outputs.previous }}"
-          if [ -n "$PREVIOUS" ]; then
-            git log --pretty=format:"- %s (%h)" "${PREVIOUS}..${CURRENT}" > CHANGELOG.md
-          else
-            echo "- Initial release" > CHANGELOG.md
-          fi
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ steps.versions.outputs.current }}
-          body_path: CHANGELOG.md
-          generate_release_notes: true

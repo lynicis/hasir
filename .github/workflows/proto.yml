@@ -3,12 +3,10 @@ name: Protobuf Checks
 on:
   push:
     paths:
-      - 'proto/**/*.proto'
-      - 'proto/buf.*'
+      - 'packages/proto/**'
   pull_request:
     paths:
-      - 'proto/**/*.proto'
-      - 'proto/buf.*'
+      - 'packages/proto/**'
 
 jobs:
   buf:
@@ -19,5 +17,5 @@ jobs:
         with:
           lint: true
           breaking: true
-          breaking_against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main,subdir=proto"
+          breaking_against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main,subdir=packages/proto"
           token: ${{ secrets.BUF_TOKEN }}

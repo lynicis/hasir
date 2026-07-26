@@ -9,5 +9,5 @@
     "skipLibCheck": true
   },
   "include": ["packages/*/src"],
-  "exclude": ["node_modules", "apps", "deploy", "docker", "proto"]
+  "exclude": ["node_modules", "apps", "deploy", "docker", "packages/proto"]
 }

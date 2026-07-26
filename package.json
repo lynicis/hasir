@@ -21,8 +21,7 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "deploy/*",
-    "proto"
+    "deploy/*"
   ],
   "scripts": {
     "build": "turbo run build",
