@@ -10,7 +10,9 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/getsops/sops/v3/decrypt"
 	"github.com/knadh/koanf/parsers/json"
+	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
@@ -264,6 +266,18 @@ func getCwd() string {
 	return filepath.Join(filepath.Dir(currentFile), "../..")
 }
 
+type rawBytesProvider struct {
+	bytes []byte
+}
+
+func (p *rawBytesProvider) ReadBytes() ([]byte, error) {
+	return p.bytes, nil
+}
+
+func (p *rawBytesProvider) Read() (map[string]any, error) {
+	return nil, fmt.Errorf("rawbytes provider does not support Read()")
+}
+
 type JsonConfig struct {
 	ConfigPath string
 }
@@ -277,8 +291,25 @@ func (c *JsonConfig) Read() *Config {
 		configFilePath = filepath.Join(rootDir, "config.json")
 	}
 
-	configPath := file.Provider(configFilePath)
-	if err := koanfInstance.Load(configPath, json.Parser()); err != nil {
+	var provider koanf.Provider
+	var parser koanf.Parser = json.Parser()
+
+	if strings.HasSuffix(configFilePath, ".sops.json") || strings.HasSuffix(configFilePath, ".sops.yaml") {
+		format := "json"
+		if strings.HasSuffix(configFilePath, ".sops.yaml") {
+			format = "yaml"
+			parser = yaml.Parser()
+		}
+		decryptedData, err := decrypt.File(configFilePath, format)
+		if err != nil {
+			panic(fmt.Sprintf("failed to decrypt config file via SOPS: %s", err))
+		}
+		provider = &rawBytesProvider{bytes: decryptedData}
+	} else {
+		provider = file.Provider(configFilePath)
+	}
+
+	if err := koanfInstance.Load(provider, parser); err != nil {
 		panic(fmt.Sprintf("error occurred while reading config: %s", err))
 	}
 
