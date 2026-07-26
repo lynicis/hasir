@@ -142,7 +142,7 @@ func (c Config) LogValue() slog.Value {
 }
 
 func redactStructToAttrs(v reflect.Value) []slog.Attr {
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Struct {
@@ -176,7 +176,7 @@ func redactStructToAttrs(v reflect.Value) []slog.Attr {
 				Key:   name,
 				Value: slog.GroupValue(nested...),
 			})
-		case reflect.Ptr:
+		case reflect.Pointer:
 			if fieldVal.IsNil() {
 				attrs = append(attrs, slog.Any(name, nil))
 			} else {
@@ -195,7 +195,7 @@ func redactStructToAttrs(v reflect.Value) []slog.Attr {
 }
 
 func redactStructToMap(v reflect.Value) map[string]interface{} {
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Struct {
@@ -203,7 +203,7 @@ func redactStructToMap(v reflect.Value) map[string]interface{} {
 	}
 
 	t := v.Type()
-	res := make(map[string]interface{})
+	res := make(map[string]any)
 
 	for i := 0; i < v.NumField(); i++ {
 		fieldVal := v.Field(i)
@@ -225,7 +225,7 @@ func redactStructToMap(v reflect.Value) map[string]interface{} {
 		switch fieldVal.Kind() {
 		case reflect.Struct:
 			res[name] = redactStructToMap(fieldVal)
-		case reflect.Ptr:
+		case reflect.Pointer:
 			if fieldVal.IsNil() {
 				res[name] = nil
 			} else {

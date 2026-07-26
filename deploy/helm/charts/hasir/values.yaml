@@ -98,6 +98,8 @@ secrets:
   smtp:
     username: "postmaster@hasir.local"
     password: "smtp-password"
+  # Set to a valid age private key to enable SOPS decryption
+  sopsAgeKey: ""
 
 # Bitnami PostgreSQL subchart configuration
 postgresql:
