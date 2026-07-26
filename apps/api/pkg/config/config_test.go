@@ -306,3 +306,18 @@ func TestSdkGenerationConfig(t *testing.T) {
 		assert.Empty(t, config.SdkGeneration.OutputPath)
 	})
 }
+
+func TestConfigRedaction(t *testing.T) {
+	cfg := &Config{
+		PostgresConfig: PostgresConfig{
+			ConnectionString: "postgres://user:my-secret-db-password@localhost/db",
+		},
+		JwtSecret: []byte("super-secret-key"),
+	}
+
+	str := cfg.String()
+	assert.NotContains(t, str, "my-secret-db-password")
+	assert.NotContains(t, str, "super-secret-key")
+	assert.Contains(t, str, "[REDACTED]")
+}
+

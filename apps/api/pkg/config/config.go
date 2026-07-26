@@ -1,9 +1,12 @@
 package config
 
 import (
+	stdjson "encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 
@@ -14,11 +17,11 @@ import (
 )
 
 type PostgresConfig struct {
-	ConnectionString string `koanf:"connectionString"`
+	ConnectionString string `koanf:"connectionString" sops:"secret"`
 	Host             string `koanf:"host"`
 	Port             string `koanf:"port"`
 	Username         string `koanf:"username"`
-	Password         string `koanf:"password"`
+	Password         string `koanf:"password" sops:"secret"`
 	Database         string `koanf:"database"`
 }
 
@@ -61,7 +64,7 @@ type SmtpConfig struct {
 	Host     string `koanf:"host"`
 	Port     int    `koanf:"port"`
 	Username string `koanf:"username"`
-	Password string `koanf:"password"`
+	Password string `koanf:"password" sops:"secret"`
 	From     string `koanf:"from"`
 	UseTLS   bool   `koanf:"useTLS"`
 }
@@ -77,7 +80,7 @@ type SdkGenerationConfig struct {
 	PollInterval     string            `koanf:"pollInterval"`
 	OutputPath       string            `koanf:"outputPath"`
 	ModuleBasePath   string            `koanf:"moduleBasePath"`
-	BufToken         string            `koanf:"bufToken"`
+	BufToken         string            `koanf:"bufToken" sops:"secret"`
 	BufBinaryPath    string            `koanf:"bufBinaryPath"`
 	CustomBsrModules map[string]string `koanf:"customBsrModules"`
 }
@@ -119,8 +122,129 @@ type Config struct {
 	Smtp           SmtpConfig          `koanf:"smtp"`
 	Ssh            SshConfig           `koanf:"ssh"`
 	SdkGeneration  SdkGenerationConfig `koanf:"sdkGeneration"`
-	JwtSecret      []byte              `koanf:"jwtSecret"`
+	JwtSecret      []byte              `koanf:"jwtSecret" sops:"secret"`
 	DashboardUrl   string              `koanf:"dashboardUrl"`
+}
+
+func (c *Config) String() string {
+	m := redactStructToMap(reflect.ValueOf(*c))
+	b, err := stdjson.Marshal(m)
+	if err != nil {
+		return fmt.Sprintf("error marshalling config: %v", err)
+	}
+	return string(b)
+}
+
+func (c Config) LogValue() slog.Value {
+	return slog.GroupValue(redactStructToAttrs(reflect.ValueOf(c))...)
+}
+
+func redactStructToAttrs(v reflect.Value) []slog.Attr {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return nil
+	}
+
+	t := v.Type()
+	var attrs []slog.Attr
+
+	for i := 0; i < v.NumField(); i++ {
+		fieldVal := v.Field(i)
+		fieldType := t.Field(i)
+
+		name := fieldType.Tag.Get("koanf")
+		if name == "" {
+			name = fieldType.Name
+		}
+		if idx := strings.Index(name, ","); idx != -1 {
+			name = name[:idx]
+		}
+
+		if fieldType.Tag.Get("sops") == "secret" {
+			attrs = append(attrs, slog.String(name, "[REDACTED]"))
+			continue
+		}
+
+		switch fieldVal.Kind() {
+		case reflect.Struct:
+			nested := redactStructToAttrs(fieldVal)
+			attrs = append(attrs, slog.Attr{
+				Key:   name,
+				Value: slog.GroupValue(nested...),
+			})
+		case reflect.Ptr:
+			if fieldVal.IsNil() {
+				attrs = append(attrs, slog.Any(name, nil))
+			} else {
+				nested := redactStructToAttrs(fieldVal.Elem())
+				attrs = append(attrs, slog.Attr{
+					Key:   name,
+					Value: slog.GroupValue(nested...),
+				})
+			}
+		default:
+			attrs = append(attrs, slog.Any(name, fieldVal.Interface()))
+		}
+	}
+
+	return attrs
+}
+
+func redactStructToMap(v reflect.Value) map[string]interface{} {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return nil
+	}
+
+	t := v.Type()
+	res := make(map[string]interface{})
+
+	for i := 0; i < v.NumField(); i++ {
+		fieldVal := v.Field(i)
+		fieldType := t.Field(i)
+
+		name := fieldType.Tag.Get("koanf")
+		if name == "" {
+			name = fieldType.Name
+		}
+		if idx := strings.Index(name, ","); idx != -1 {
+			name = name[:idx]
+		}
+
+		if fieldType.Tag.Get("sops") == "secret" {
+			res[name] = "[REDACTED]"
+			continue
+		}
+
+		switch fieldVal.Kind() {
+		case reflect.Struct:
+			res[name] = redactStructToMap(fieldVal)
+		case reflect.Ptr:
+			if fieldVal.IsNil() {
+				res[name] = nil
+			} else {
+				res[name] = redactStructToMap(fieldVal.Elem())
+			}
+		case reflect.Slice:
+			if fieldVal.Type().Elem().Kind() == reflect.Uint8 {
+				if fieldType.Tag.Get("sops") == "secret" {
+					res[name] = "[REDACTED]"
+				} else {
+					res[name] = string(fieldVal.Bytes())
+				}
+			} else {
+				res[name] = fieldVal.Interface()
+			}
+		default:
+			res[name] = fieldVal.Interface()
+		}
+	}
+
+	return res
 }
 
 type ConfigReader interface {
