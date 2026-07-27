@@ -59,7 +59,6 @@ deploy/docker/shared/certbot/www/
 .DS_Store
 .claude/
 .opencode/
-.gitnexus/
 .omo/
 .playwright-mcp/*
 # ^ Agent instruction files are ignored by default. Teams that want to keep

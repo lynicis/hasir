@@ -54,7 +54,6 @@ Hasir is a self-hosted platform for managing Protocol Buffer (protobuf) schemas.
 ├── proto/                  # Buf configuration and protobuf schemas
 ├── scripts/                # Development, setup, and build scripts
 ├── AGENTS.md               # AI developer guidelines and commands
-├── CLAUDE.md               # GitNexus configuration and workflow rules
 ├── DESIGN.md               # Design tokens and visual specifications
 └── README.md               # Main repository readme
 ```
@@ -99,4 +98,4 @@ Always run these commands from the monorepo root unless workspace-specific execu
 - **Git Flow**:
   - Trunk-based development on `main` branch.
   - Release tagging format: `<app>/<semver>` (e.g. `api/v1.0.0`, `dashboard/v1.0.0`).
-- **Refactoring & Impact**: Prior to changing Go or TS symbols, review dependents using GitNexus graph commands (`impact` tool). Ensure no regressions are introduced.
+- **Refactoring & Impact**: Prior to changing Go or TS symbols, review dependents using the `codegraph_explore` tool. Ensure no regressions are introduced.

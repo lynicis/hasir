@@ -1,5 +1,4 @@
 node_modules/
 .codegraph/
-.gitnexus/
 .omo/
 !gen/**

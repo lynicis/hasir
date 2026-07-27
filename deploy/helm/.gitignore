@@ -3,5 +3,4 @@ charts/**/*.tgz
 
 # ai
 .codegraph/
-.gitnexus/
 .omo/

@@ -7,7 +7,7 @@ effectively.
 ## Tooling
 
 Hasir uses **OpenCode** as its primary AI coding assistant, configured via
-`opencode.json` at the root. It is backed by GitNexus (code intelligence),
+`opencode.json` at the root. It is backed by Codegraph (code intelligence),
 PostgreSQL (database tooling), and Next.js (dev server) MCP servers.
 
 AI instructions live in:
@@ -15,8 +15,6 @@ AI instructions live in:
 - **`AGENTS.md`** — Orchestrator-level instructions for AI agents working on
   the monorepo. Defines the project structure, skill routing, and behavioral
   guidelines.
-- **`CLAUDE.md`** — Unified GitNexus skill configuration, providing each AI
-  agent with codebase-awareness across the entire monorepo.
 
 ## Guidelines for AI-Assisted Contributions
 

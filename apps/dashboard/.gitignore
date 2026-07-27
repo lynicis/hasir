@@ -44,5 +44,4 @@ next-env.d.ts
 
 # ai
 .codegraph/
-.gitnexus/
 .omo/

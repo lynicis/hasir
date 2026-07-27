@@ -9,5 +9,4 @@ repos/
 sdk/
 ssh_host_key
 .codegraph/
-.gitnexus/
 .omo/

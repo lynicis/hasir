@@ -49,7 +49,6 @@ export const hasirEslintPreset = defineConfig([
   },
   globalIgnores([
     "**/.next/**",
-    "**/.gitnexus/**",
     "**/.turbo/**",
     "**/out/**",
     "**/build/**",
