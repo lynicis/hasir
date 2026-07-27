@@ -50,6 +50,7 @@ cloud.google.com/go/errorreporting v0.9.0/go.mod h1:V7ojx7z76JITDZNGyDNkIIa9nNEk
 cloud.google.com/go/essentialcontacts v1.12.0/go.mod h1:W8fTL17jP6vmsPHQaCT5rOjWGohEssuqDUroxnjST0A=
 cloud.google.com/go/eventarc v1.25.0/go.mod h1:ncY2NKHKiX+sUjIfxVozrivvmJQ4HWo2znxms7AxlP8=
 cloud.google.com/go/filestore v1.16.0/go.mod h1:szr35omqptDEuXgBbJ8PdVdYM3lf/Md96kNufWr1tVs=
+cloud.google.com/go/firestore v1.6.1/go.mod h1:asNXNOzBdyVQmEU+ggO8UPodTkEVFW5Qx+rwHnAz+EY=
 cloud.google.com/go/firestore v1.24.0/go.mod h1:5aojyjN4olKUnBZDCRWwM+NsdrrCX3t1qfyERZGOonM=
 cloud.google.com/go/functions v1.25.0/go.mod h1:b/tqakoKeAkj9RspEjqswWf5299Lkz9C/742QUD3OEk=
 cloud.google.com/go/gkebackup v1.14.0/go.mod h1:kaD4l/s0ONcb3L9iHC8PzG1XkC5ggPwA/KAl6yAyQGs=
@@ -96,6 +97,7 @@ cloud.google.com/go/security v1.26.0/go.mod h1:nd0i5OHXtJduMt0n6UnEojy7fiTfnfj/P
 cloud.google.com/go/securitycenter v1.45.0/go.mod h1:7mAlzsCsKlEVmciAFORl431laDGpoKGFkSQndAzFs30=
 cloud.google.com/go/servicedirectory v1.17.0/go.mod h1:CtgjXS1idj3s9Q6tB68021Rzk8Q6decV6+ldXC1BoBk=
 cloud.google.com/go/shell v1.13.0/go.mod h1:9WWf3xHQUElP5fL/lB9IJ/MMMnN2W/T86cBp+pXFFWo=
+cloud.google.com/go/spanner v1.85.0/go.mod h1:9zhmtOEoYV06nE4Orbin0dc/ugHzZW9yXuvaM61rpxs=
 cloud.google.com/go/spanner v1.91.0/go.mod h1:8NB5a7qgwIhGD19Ly+vkpKffPL78vIG9RcrgsuREha0=
 cloud.google.com/go/speech v1.36.0/go.mod h1:tiSA8MiX49o1ngq5Ww2JFTvfjKxtAuBKY/UIH6coCPg=
 cloud.google.com/go/storagetransfer v1.19.0/go.mod h1:sy4ImXynHkm9CKmbILtmzLN36PHh7JOhUTpqXf5SvMs=

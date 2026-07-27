@@ -8,15 +8,17 @@ This package manages automatic SDK generation from protobuf schemas using the bu
 |---|---|---|
 | Core Interface | `generator.go` | Defines the Generator and CommandRunner interfaces. |
 | Buf Generator | `buf_generator.go` | Implements SDK generation using the buf CLI. |
-| Registry | `registry.go` | Registers and retrieves generators for different SDK types. |
+| Registry | `registry.go` | Registers and retrieves generators for different SDK types; `RegistryBuilder`, `NewRegistry` + `NewBufRegistry` constructors. |
 | Import Resolver | `buf_resolver.go` | Parses imports and maps them to BSR modules. |
 | Command Runner | `runner.go` | Executes external CLI commands like buf and protoc. |
 | Go Generators | `go_*.go`, `buf_go_*.go` | Generators for Go SDKs (Protobuf, gRPC, ConnectRPC). |
 | JS/TS Generators | `js_*.go`, `buf_js_*.go` | Generators for JavaScript/TypeScript SDKs. |
 | Other Languages | `rust_*.go`, `java_*.go`, `csharp_*.go` | Generators for Rust, Java, and C# SDKs. |
 | Documentation | `documentation.go` | Generates HTML/Markdown documentation from proto files. |
-| Templates | `template/` | Mustache templates for generating documentation. |
+| Templates | `template/` | Mustache templates for docs (note: embedded file named `proto-doc-tempate.mustache` — typo is load-bearing). |
 | Tests | `*_test.go` | Unit and integration tests for generators and resolvers. |
+
+12 generators total: 5 languages (Go, JS/TS, Rust, Java, C#) × protoc/buf variants.
 
 ## CONVENTIONS
 - **Buf-First Generation**: Prefer using `buf` plugins over raw `protoc` commands for new SDK targets.

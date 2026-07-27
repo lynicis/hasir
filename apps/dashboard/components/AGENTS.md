@@ -27,5 +27,9 @@ This directory contains shadcn/ui primitives and custom feature components for t
 - **No Hardcoded API Endpoints**: Do not hardcode API URLs. Use environment variables or configuration helpers.
 
 ## TESTING
-- **Testing Framework**: Use Bun test runner for component unit tests.
-- **Mocking**: Mock Connect-RPC clients and Zustand stores where necessary to isolate component behavior.
+- **Testing Framework**: Use Bun test runner with happy-dom + @testing-library/react for component unit tests.
+- **Mocking**: Mock Connect-RPC clients and Zustand stores via module-level `mock.module`; harness exposes `globalThis.__client` / `__connectQueryMocks` / `__toast` (see `test/bun-setup.ts`).
+
+## NOTES
+- `ui/file-tree.tsx` (507 LOC) is stateful — treat as a feature component, not a dumb primitive.
+- `ssh-api-key-panel.tsx` (597 LOC) is the busiest panel; split before adding more.
