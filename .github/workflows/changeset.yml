@@ -7,13 +7,16 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
 jobs:
   version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
