@@ -262,8 +262,6 @@ func NewConfigReader() ConfigReader {
 	return &EnvConfig{}
 }
 
-type getCwdFunc func() string
-
 var getCwd = func() string {
 	_, currentFile, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(currentFile), "../..")
