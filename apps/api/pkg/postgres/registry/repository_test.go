@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/google/uuid"
@@ -17,8 +16,9 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"go.opentelemetry.io/otel/trace/noop"
 
-	"hasir-api/internal/registry"
-	"hasir-api/pkg/proto"
+	"hasir/api/internal/registry"
+	"hasir/api/pkg/proto"
+	registryv1 "hasir/proto/gen/go/registry/v1"
 )
 
 const (

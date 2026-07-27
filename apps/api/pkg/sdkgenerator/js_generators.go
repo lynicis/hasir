@@ -1,8 +1,6 @@
 package sdkgenerator
 
-import (
-	"path/filepath"
-)
+import "path/filepath"
 
 type JsBufbuildEsGenerator struct {
 	*protocGenerator

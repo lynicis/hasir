@@ -1,11 +1,11 @@
 "use client";
 
-import type { FileTreeNode } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import type { FileTreeNode } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 
-import { getFilePreview, getFileTree } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
-import { RegistryService } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
-import { NodeType } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import { getFilePreview, getFileTree } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
+import { RegistryService } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { NodeType } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { useCallback, useContext, useMemo, useState } from "react";
 import { Code, ConnectError } from "@connectrpc/connect";
@@ -49,8 +49,8 @@ function transformFileTreeNode(
     name: node.name,
     children: isDirectory
       ? node.children.map((child) =>
-          transformFileTreeNode(child, markDirectoriesAsUnloaded)
-        )
+        transformFileTreeNode(child, markDirectoriesAsUnloaded)
+      )
       : undefined,
     isLoaded: isDirectory ? true : undefined,
     isLoading: false,

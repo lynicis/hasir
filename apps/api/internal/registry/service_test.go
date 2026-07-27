@@ -15,14 +15,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"hasir-api/pkg/authentication"
-	"hasir-api/pkg/authorization"
-	"hasir-api/pkg/config"
-	"hasir-api/pkg/proto"
-	"hasir-api/pkg/sdkgenerator"
-
-	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
-	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
+	"hasir/api/pkg/authentication"
+	"hasir/api/pkg/authorization"
+	"hasir/api/pkg/config"
+	"hasir/api/pkg/proto"
+	"hasir/api/pkg/sdkgenerator"
+	registryv1 "hasir/proto/gen/go/registry/v1"
+	"hasir/proto/gen/go/shared"
 )
 
 func initGitRepoWithEmptyCommit(t *testing.T, repoPath string) string {

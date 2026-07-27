@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
-	organizationv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/organization/v1"
-	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
 	"connectrpc.com/connect"
 	"go.uber.org/mock/gomock"
 
-	"hasir-api/internal/registry"
-	"hasir-api/internal/user"
-	"hasir-api/pkg/email"
-	"hasir-api/pkg/proto"
+	"hasir/api/internal/registry"
+	"hasir/api/internal/user"
+	"hasir/api/pkg/email"
+	"hasir/api/pkg/proto"
+	organizationv1 "hasir/proto/gen/go/organization/v1"
+	"hasir/proto/gen/go/shared"
 )
 
 var (

@@ -3,9 +3,8 @@ package registry
 import (
 	"time"
 
-	"hasir-api/pkg/proto"
-
-	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
+	"hasir/api/pkg/proto"
+	registryv1 "hasir/proto/gen/go/registry/v1"
 )
 
 type RepositoryDTO struct {

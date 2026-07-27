@@ -2,9 +2,9 @@ package registry
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"math"
 	"os"
 	"os/exec"
@@ -12,19 +12,19 @@ import (
 	"strings"
 	"time"
 
-	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	"connectrpc.com/connect"
 	"github.com/go-git/go-git/v5"
+	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
-	"hasir-api/pkg/authentication"
-	"hasir-api/pkg/authorization"
-	"hasir-api/pkg/config"
-	"hasir-api/pkg/proto"
-	"hasir-api/pkg/sanitize"
-	"hasir-api/pkg/sdkgenerator"
+	"hasir/api/pkg/authentication"
+	"hasir/api/pkg/authorization"
+	"hasir/api/pkg/config"
+	"hasir/api/pkg/proto"
+	"hasir/api/pkg/sdkgenerator"
+	registryv1 "hasir/proto/gen/go/registry/v1"
 )
 
 const DefaultReposPath = "./repos"
@@ -84,7 +84,7 @@ func (s *service) CreateRepository(
 	ctx context.Context,
 	req *registryv1.CreateRepositoryRequest,
 ) error {
-	repoName := sanitize.EscapeHTML(req.GetName())
+	repoName := html.EscapeString(req.GetName())
 	organizationId := req.GetOrganizationId()
 
 	visibility, ok := proto.VisibilityMap[req.GetVisibility()]
@@ -309,7 +309,7 @@ func (s *service) UpdateRepository(
 		return err
 	}
 
-	repo.Name = sanitize.EscapeHTML(req.GetName())
+	repo.Name = html.EscapeString(req.GetName())
 	repo.Visibility = proto.VisibilityMap[req.GetVisibility()]
 	repo.ManagedByBuf = req.GetManagedByBuf()
 
@@ -687,7 +687,7 @@ func (s *service) GetFileTree(
 	}
 
 	var subPath *string
-	if req.HasPath() {
+	if req.GetPath() != "" {
 		path := req.GetPath()
 		subPath = &path
 	}

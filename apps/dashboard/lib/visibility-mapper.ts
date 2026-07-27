@@ -1,4 +1,4 @@
-import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
+import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
 
 type StrVisibility = "private" | "public";
 

@@ -1,7 +1,7 @@
 
-import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
-import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
+import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
 import { render, screen, waitFor } from "@testing-library/react";
+import { Role } from "@hasir/proto/gen/js/shared/role_pb";
 import userEvent from "@testing-library/user-event";
 
 import { OrganizationDialogForm } from "./organization-dialog-form";

@@ -5,9 +5,10 @@ import (
 	"errors"
 	"strings"
 
-	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
 	"connectrpc.com/connect"
 	"github.com/golang-jwt/jwt/v5"
+
+	"hasir/proto/gen/go/user/v1/userv1connect"
 )
 
 type contextKey string

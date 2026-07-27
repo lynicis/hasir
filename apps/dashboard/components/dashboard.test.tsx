@@ -24,14 +24,14 @@ vi.mock("@connectrpc/connect-query", () => ({
 }));
 
 vi.mock(
-  "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery",
+  "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery",
   () => ({
     getOrganizations: { name: "getOrganizations" },
   })
 );
 
 vi.mock(
-  "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery",
+  "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery",
   () => ({
     getRepositories: { name: "getRepositories" },
   })

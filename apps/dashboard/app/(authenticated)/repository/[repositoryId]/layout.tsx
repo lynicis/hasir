@@ -1,6 +1,6 @@
 "use client";
 
-import { getRepository } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
+import { getRepository } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
 import {
   ArrowLeft,
   Book,
@@ -187,11 +187,10 @@ export default function RepositoryLayout({
                   <button
                     key={tab.id}
                     onClick={() => handleNavigate(tab.href)}
-                    className={`flex w-full items-center gap-3 rounded-none px-3 py-2.5 text-sm font-mono uppercase tracking-[0.06em] font-medium transition-colors ${
-                      isActive
+                    className={`flex w-full items-center gap-3 rounded-none px-3 py-2.5 text-sm font-mono uppercase tracking-[0.06em] font-medium transition-colors ${isActive
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-primary hover:text-primary-foreground"
-                    }`}
+                      }`}
                   >
                     <Icon className="size-4" />
                     <span>{tab.label}</span>

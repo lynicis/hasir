@@ -14,8 +14,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
-	"hasir-api/internal/organization"
-	"hasir-api/pkg/email"
+	"hasir/api/internal/organization"
+	"hasir/api/pkg/email"
 )
 
 type EmailJobQueue struct {

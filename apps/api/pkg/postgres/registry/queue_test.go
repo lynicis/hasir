@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/mock/gomock"
 
-	"hasir-api/internal/registry"
+	"hasir/api/internal/registry"
 )
 
 func setupQueueTestEnvironment(t *testing.T) (*SdkGenerationJobQueue, *pgxpool.Pool, func()) {

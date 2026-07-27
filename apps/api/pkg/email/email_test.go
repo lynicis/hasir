@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"hasir-api/pkg/config"
+	"hasir/api/pkg/config"
 )
 
 func TestNewService(t *testing.T) {

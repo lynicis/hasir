@@ -18,8 +18,8 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 
-	"hasir-api/internal/user"
-	"hasir-api/pkg/config"
+	"hasir/api/internal/user"
+	"hasir/api/pkg/config"
 )
 
 var (

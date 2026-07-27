@@ -12,16 +12,16 @@ import (
 	"path/filepath"
 	"strings"
 
-	"buf.build/gen/go/hasir/hasir/connectrpc/go/registry/v1/registryv1connect"
-	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	"connectrpc.com/connect"
 	"github.com/gliderlabs/ssh"
 	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"hasir-api/internal/user"
-	"hasir-api/pkg/authentication"
+	"hasir/api/internal/user"
+	"hasir/api/pkg/authentication"
+	registryv1 "hasir/proto/gen/go/registry/v1"
+	"hasir/proto/gen/go/registry/v1/registryv1connect"
 )
 
 const banner = `
@@ -104,7 +104,7 @@ func (h *handler) GetRepositories(
 	}
 
 	var organizationId *string
-	if req.Msg.HasOrganizationId() {
+	if req.Msg.OrganizationId != nil {
 		orgId := req.Msg.GetOrganizationId()
 		organizationId = &orgId
 	}

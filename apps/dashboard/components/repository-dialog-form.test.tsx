@@ -1,5 +1,5 @@
 
-import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
+import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
 import { render, screen, waitFor } from "@testing-library/react";
 import { ConnectError, Code } from "@connectrpc/connect";
 import userEvent from "@testing-library/user-event";
@@ -35,7 +35,7 @@ vi.mock("@/stores/registry-store", () => ({
 }));
 
 vi.mock(
-  "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery",
+  "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery",
   () => ({
     getOrganizations: { name: "getOrganizations" },
   })

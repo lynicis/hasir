@@ -3,9 +3,8 @@ package organization
 import (
 	"time"
 
-	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
-
-	"hasir-api/pkg/proto"
+	"hasir/api/pkg/proto"
+	"hasir/proto/gen/go/shared"
 )
 
 type OrganizationDTO struct {

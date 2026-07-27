@@ -6,15 +6,15 @@ import (
 	"math"
 	"net/http"
 
-	"buf.build/gen/go/hasir/hasir/connectrpc/go/organization/v1/organizationv1connect"
-	organizationv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/organization/v1"
-	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"hasir-api/internal/registry"
-	"hasir-api/pkg/authentication"
-	"hasir-api/pkg/proto"
+	"hasir/api/internal/registry"
+	"hasir/api/pkg/authentication"
+	"hasir/api/pkg/proto"
+	organizationv1 "hasir/proto/gen/go/organization/v1"
+	"hasir/proto/gen/go/organization/v1/organizationv1connect"
+	registryv1 "hasir/proto/gen/go/registry/v1"
 )
 
 type handler struct {

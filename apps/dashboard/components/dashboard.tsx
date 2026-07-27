@@ -1,7 +1,7 @@
 "use client";
 
-import { getOrganizations } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
-import { getRepositories } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
+import { getOrganizations } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
+import { getRepositories } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useMemo, useState } from "react";
 import { Settings } from "lucide-react";
@@ -49,18 +49,18 @@ export function Dashboard() {
     () =>
       activeOrgId === "all"
         ? {
-            pagination: {
-              page: repoPage,
-              pageLimit: DEFAULT_PAGINATION.pageLimit,
-            },
-          }
-        : {
-            pagination: {
-              page: repoPage,
-              pageLimit: DEFAULT_PAGINATION.pageLimit,
-            },
-            organizationId: activeOrgId,
+          pagination: {
+            page: repoPage,
+            pageLimit: DEFAULT_PAGINATION.pageLimit,
           },
+        }
+        : {
+          pagination: {
+            page: repoPage,
+            pageLimit: DEFAULT_PAGINATION.pageLimit,
+          },
+          organizationId: activeOrgId,
+        },
     [activeOrgId, repoPage]
   );
 
@@ -131,11 +131,10 @@ export function Dashboard() {
                 <button
                   type="button"
                   onClick={() => handleOrgChange("all")}
-                  className={`flex w-full items-center justify-between rounded-none px-3 py-2.5 text-sm transition-all duration-200 active:scale-[0.99] active:translate-y-[0.5px] ${
-                    activeOrgId === "all"
+                  className={`flex w-full items-center justify-between rounded-none px-3 py-2.5 text-sm transition-all duration-200 active:scale-[0.99] active:translate-y-[0.5px] ${activeOrgId === "all"
                       ? "bg-accent text-accent-foreground font-medium"
                       : "hover:bg-accent/80 hover:text-accent-foreground"
-                  }`}
+                    }`}
                 >
                   <span>All organizations</span>
                 </button>
@@ -167,11 +166,10 @@ export function Dashboard() {
                     return (
                       <div
                         key={org.id}
-                        className={`group flex items-center justify-between rounded-none text-sm transition-all duration-200 ${
-                          isActive
+                        className={`group flex items-center justify-between rounded-none text-sm transition-all duration-200 ${isActive
                             ? "bg-accent text-accent-foreground font-medium"
                             : "hover:bg-accent/80 hover:text-accent-foreground"
-                        }`}
+                          }`}
                       >
                         <button
                           type="button"
@@ -182,9 +180,8 @@ export function Dashboard() {
                         </button>
                         <Link
                           href={`/organization/${org.id}`}
-                          className={`mr-2 p-1.5 text-muted-foreground hover:text-foreground transition-all duration-200 rounded-md hover:bg-background/50 ${
-                            isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100"
-                          }`}
+                          className={`mr-2 p-1.5 text-muted-foreground hover:text-foreground transition-all duration-200 rounded-md hover:bg-background/50 ${isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            }`}
                           title="Organization Settings"
                         >
                           <Settings className="size-3.5 transition-transform duration-500 hover:rotate-45" />
@@ -215,7 +212,7 @@ export function Dashboard() {
                     Showing repositories in{" "}
                     {
                       organizationsList.find(
-                          (organization) => organization.id === activeOrgId
+                        (organization) => organization.id === activeOrgId
                       )?.name
                     }
                   </p>
@@ -259,11 +256,10 @@ export function Dashboard() {
                           <span className="font-medium font-mono">{repo.name}</span>
                           {visibility && (
                             <span
-                              className={`text-xs px-2 py-0.5 rounded-none font-mono uppercase tracking-wider transition-colors ${
-                                visibility === "public"
+                              className={`text-xs px-2 py-0.5 rounded-none font-mono uppercase tracking-wider transition-colors ${visibility === "public"
                                   ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                                   : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                              }`}
+                                }`}
                             >
                               {visibility}
                             </span>

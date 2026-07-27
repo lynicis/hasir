@@ -11,12 +11,11 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	organizationv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/organization/v1"
-
-	"hasir-api/internal/registry"
-	"hasir-api/internal/user"
-	"hasir-api/pkg/email"
-	"hasir-api/pkg/proto"
+	"hasir/api/internal/registry"
+	"hasir/api/internal/user"
+	"hasir/api/pkg/email"
+	"hasir/api/pkg/proto"
+	organizationv1 "hasir/proto/gen/go/organization/v1"
 )
 
 const (

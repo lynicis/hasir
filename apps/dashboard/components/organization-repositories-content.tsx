@@ -1,7 +1,7 @@
 "use client";
 
-import { getRepositories } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
-import { RegistryService } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import { getRepositories } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
+import { RegistryService } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useQuery } from "@connectrpc/connect-query";

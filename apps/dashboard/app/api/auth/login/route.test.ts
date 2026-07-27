@@ -19,7 +19,7 @@ vi.mock("@/lib/session", () => ({
   saveSession: (input: SessionInput) => mockSaveSession(input),
 }));
 
-vi.mock("@buf/hasir_hasir.bufbuild_es/user/v1/user_pb", () => ({
+vi.mock("@hasir/proto/gen/js/user/v1/user_pb", () => ({
   UserService: {},
 }));
 

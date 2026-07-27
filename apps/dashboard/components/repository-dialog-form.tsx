@@ -1,8 +1,8 @@
 "use client";
 
-import { getOrganizations } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
-import { RegistryService } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
-import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
+import { getOrganizations } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
+import { RegistryService } from "@hasir/proto/gen/js/registry/v1/registry_pb";
+import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { useQuery } from "@connectrpc/connect-query";

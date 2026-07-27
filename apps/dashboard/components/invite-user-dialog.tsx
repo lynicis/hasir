@@ -1,7 +1,7 @@
 "use client";
 
-import { OrganizationService } from "@buf/hasir_hasir.bufbuild_es/organization/v1/organization_pb";
-import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
+import { OrganizationService } from "@hasir/proto/gen/js/organization/v1/organization_pb";
+import { Role } from "@hasir/proto/gen/js/shared/role_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";

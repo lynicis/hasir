@@ -1,6 +1,6 @@
 "use client";
 
-import { OrganizationService } from "@buf/hasir_hasir.bufbuild_es/organization/v1/organization_pb";
+import { OrganizationService } from "@hasir/proto/gen/js/organization/v1/organization_pb";
 import { CheckIcon, XIcon, MailIcon, AlertCircleIcon } from "lucide-react";
 import { ConnectError, Code } from "@connectrpc/connect";
 import { useRouter } from "next/navigation";

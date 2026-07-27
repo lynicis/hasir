@@ -8,7 +8,6 @@
       "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**", "build/**", "api"]
     },
     "test": {
-      "dependsOn": ["^build", "proto"],
       "inputs": ["$TURBO_DEFAULT$", "tsconfig.json", "go.mod", "go.sum"],
       "outputs": ["coverage/**", "coverage.txt", "junit.xml"]
     },

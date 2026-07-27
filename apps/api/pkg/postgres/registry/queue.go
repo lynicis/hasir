@@ -14,7 +14,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
-	"hasir-api/internal/registry"
+	"hasir/api/internal/registry"
 )
 
 type SdkGenerationJobQueue struct {

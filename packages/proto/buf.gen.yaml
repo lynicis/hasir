@@ -1,11 +1,30 @@
-# For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-gen-yaml
 version: v2
 
+clean: true
+
 managed:
-    enabled: true
-    override:
-      - file_option: go_package_prefix
-        value: github.com/lynicis/hasir-proto/gen/go
-    disable:
-      - file_option: go_package
-        module: buf.build/bufbuild/protovalidate
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: hasir/proto/gen/go
+  disable:
+    - file_option: go_package_prefix
+      module: buf.build/bufbuild/protovalidate
+
+plugins:
+  - local: ["go", "run", "connectrpc.com/connect/cmd/protoc-gen-connect-go"]
+    out: gen/go
+    opt:
+      - paths=source_relative
+
+  - local: ["go", "run", "google.golang.org/protobuf/cmd/protoc-gen-go"]
+    out: gen/go
+    opt:
+      - paths=source_relative
+
+  - local: ["bunx", "@connectrpc/protoc-gen-connect-query"]
+    out: gen/js
+
+  - local: ["bunx", "@bufbuild/protoc-gen-es"]
+    include_imports: true
+    out: gen/js

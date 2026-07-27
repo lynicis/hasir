@@ -1,7 +1,7 @@
 "use client";
 
-import { getMembers } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
-import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
+import { getMembers } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
+import { Role } from "@hasir/proto/gen/js/shared/role_pb";
 import { Building2, Settings, Users } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
 import { usePathname } from "next/navigation";
@@ -96,11 +96,10 @@ export default function OrganizationLayout({
                   <Link
                     key={tab.id}
                     href={href}
-                    className={`flex w-full items-center gap-3 rounded-none px-3 py-2.5 text-sm font-mono uppercase tracking-[0.06em] font-medium transition-colors ${
-                      isActive
+                    className={`flex w-full items-center gap-3 rounded-none px-3 py-2.5 text-sm font-mono uppercase tracking-[0.06em] font-medium transition-colors ${isActive
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-primary hover:text-primary-foreground"
-                    }`}
+                      }`}
                   >
                     <Icon className="size-4" />
                     <span>{tab.label}</span>

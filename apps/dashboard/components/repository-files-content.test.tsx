@@ -1,7 +1,7 @@
-import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import type { Repository } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 
-import { getFileTree, getFilePreview } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
-import { NodeType } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import { getFileTree, getFilePreview } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
+import { NodeType } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConnectError } from "@connectrpc/connect";

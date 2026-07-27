@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"hasir-api/pkg/email"
+	"hasir/api/pkg/email"
 )
 
 type Queue interface {

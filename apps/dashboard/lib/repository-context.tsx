@@ -1,6 +1,6 @@
 "use client";
 
-import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import type { Repository } from "@hasir/proto/gen/js/registry/v1/registry_pb"
 
 import { createContext } from "react";
 

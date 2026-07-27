@@ -2,7 +2,7 @@
 
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
-import { getCommits } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
+import { getCommits } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useQuery } from "@connectrpc/connect-query";
 import { GitCommit, User } from "lucide-react";
@@ -48,17 +48,14 @@ function formatRelativeTime(timestamp: Date): string {
   const diff = now.diff(date, ["days", "hours", "minutes"]);
 
   if (diff.days >= 1) {
-    return `${Math.floor(diff.days)} day${
-      Math.floor(diff.days) > 1 ? "s" : ""
-    } ago`;
+    return `${Math.floor(diff.days)} day${Math.floor(diff.days) > 1 ? "s" : ""
+      } ago`;
   } else if (diff.hours >= 1) {
-    return `${Math.floor(diff.hours)} hour${
-      Math.floor(diff.hours) > 1 ? "s" : ""
-    } ago`;
+    return `${Math.floor(diff.hours)} hour${Math.floor(diff.hours) > 1 ? "s" : ""
+      } ago`;
   } else {
-    return `${Math.floor(diff.minutes)} minute${
-      Math.floor(diff.minutes) > 1 ? "s" : ""
-    } ago`;
+    return `${Math.floor(diff.minutes)} minute${Math.floor(diff.minutes) > 1 ? "s" : ""
+      } ago`;
   }
 }
 

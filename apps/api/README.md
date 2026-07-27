@@ -215,7 +215,7 @@ curl -X POST http://localhost:8080/hasir.user.v1.UserService/Register \
 ## Project Structure
 
 ```text
-hasir-api/
+hasir/api/
 ├── cmd/                    # Application entrypoints
 ├── internal/               # Private application code
 │   ├── user/              # User domain
@@ -330,7 +330,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-For support, please open an issue in the [GitHub issue tracker](https://github.com/yourusername/hasir-api/issues).
+For support, please open an issue in the [GitHub issue tracker](https://github.com/yourusername/hasir/api/issues).
 
 ---
 

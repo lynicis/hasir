@@ -18,12 +18,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"buf.build/gen/go/hasir/hasir/connectrpc/go/registry/v1/registryv1connect"
-	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
-	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
-
-	"hasir-api/internal/user"
-	"hasir-api/pkg/authentication"
+	"hasir/api/internal/user"
+	"hasir/api/pkg/authentication"
+	registryv1 "hasir/proto/gen/go/registry/v1"
+	"hasir/proto/gen/go/registry/v1/registryv1connect"
+	"hasir/proto/gen/go/shared"
 )
 
 var ErrRepositoryNotFound = connect.NewError(connect.CodeNotFound, errors.New("repository not found"))
@@ -847,7 +846,7 @@ func TestHandler_GetFileTree(t *testing.T) {
 			GetFileTree(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, req *registryv1.GetFileTreeRequest) (*registryv1.GetFileTreeResponse, error) {
 				assert.Equal(t, "test-repo-id", req.GetId())
-				assert.False(t, req.HasPath())
+				assert.False(t, req.GetPath() != "")
 				return expectedFileTree, nil
 			})
 
@@ -896,7 +895,7 @@ func TestHandler_GetFileTree(t *testing.T) {
 			GetFileTree(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, req *registryv1.GetFileTreeRequest) (*registryv1.GetFileTreeResponse, error) {
 				assert.Equal(t, "test-repo-id", req.GetId())
-				assert.True(t, req.HasPath())
+				assert.True(t, req.GetPath() != "")
 				assert.Equal(t, "src", req.GetPath())
 				return expectedFileTree, nil
 			})
@@ -1511,9 +1510,9 @@ func TestParseSdkPath(t *testing.T) {
 			wantOk:         true,
 		},
 		{
-			name:           "invalid path too short",
-			path:           "org-1/repo-1",
-			wantOk:         false,
+			name:   "invalid path too short",
+			path:   "org-1/repo-1",
+			wantOk: false,
 		},
 	}
 

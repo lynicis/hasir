@@ -1,6 +1,6 @@
 "use client";
 
-import { UserService } from "@buf/hasir_hasir.bufbuild_es/user/v1/user_pb";
+import { UserService } from "@hasir/proto/gen/js/user/v1/user_pb";
 import { ConnectError, Code } from "@connectrpc/connect";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";

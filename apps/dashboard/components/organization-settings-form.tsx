@@ -1,11 +1,11 @@
 "use client";
 
-import { getOrganization } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
-import { getMembers } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
-import { OrganizationService } from "@buf/hasir_hasir.bufbuild_es/organization/v1/organization_pb";
-import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
+import { getOrganization } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
+import { getMembers } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
+import { OrganizationService } from "@hasir/proto/gen/js/organization/v1/organization_pb";
 import { useQuery as useMembersQuery } from "@connectrpc/connect-query";
-import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
+import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
+import { Role } from "@hasir/proto/gen/js/shared/role_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useParams, useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";

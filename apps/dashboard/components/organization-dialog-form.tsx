@@ -1,10 +1,10 @@
 "use client";
 
-import { OrganizationService } from "@buf/hasir_hasir.bufbuild_es/organization/v1/organization_pb";
-import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
+import { OrganizationService } from "@hasir/proto/gen/js/organization/v1/organization_pb";
+import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
 import { ArrowLeftIcon, PlusIcon, XIcon } from "lucide-react";
+import { Role } from "@hasir/proto/gen/js/shared/role_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";

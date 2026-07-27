@@ -14,8 +14,8 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"go.opentelemetry.io/otel/trace/noop"
 
-	"hasir-api/internal/organization"
-	"hasir-api/pkg/proto"
+	"hasir/api/internal/organization"
+	"hasir/api/pkg/proto"
 )
 
 const (

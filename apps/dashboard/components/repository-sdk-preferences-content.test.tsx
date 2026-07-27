@@ -1,7 +1,7 @@
 import {
   type Repository,
   SDK,
-} from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+} from "@hasir/proto/gen/js/registry/v1/registry_pb";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import * as connectQueryActual from "@connectrpc/connect-query";

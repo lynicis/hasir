@@ -1,7 +1,7 @@
 "use client";
 
-import { getRecentCommit } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
-import { RegistryService, SDK } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import { getRecentCommit } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
+import { RegistryService, SDK } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { AlertTriangle, Wrench } from "lucide-react";
@@ -143,7 +143,7 @@ const getInitialConfig = (): SdkConfig => {
   const config: SdkConfig = {};
 
   Object.entries(SDK_LANGUAGES).forEach(([langKey, langConfig]) => {
-    const langObj = { enabled: false } as { enabled: boolean; [key: string]: boolean };
+    const langObj = { enabled: false } as { enabled: boolean;[key: string]: boolean };
     langConfig.options.forEach((option) => {
       langObj[option.key] = false;
     });

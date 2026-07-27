@@ -1,8 +1,8 @@
 "use client";
 
-import { getApiKeys } from "@buf/hasir_hasir.connectrpc_query-es/user/v1/user-UserService_connectquery";
-import { getSshKeys } from "@buf/hasir_hasir.connectrpc_query-es/user/v1/user-UserService_connectquery";
-import { UserService } from "@buf/hasir_hasir.bufbuild_es/user/v1/user_pb";
+import { getSshKeys } from "@hasir/proto/gen/js/user/v1/user-UserService_connectquery";
+import { getApiKeys } from "@hasir/proto/gen/js/user/v1/user-UserService_connectquery";
+import { UserService } from "@hasir/proto/gen/js/user/v1/user_pb";
 import { Check, Copy, Key, Plus, Trash2 } from "lucide-react";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { zodResolver } from "@hookform/resolvers/zod";

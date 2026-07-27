@@ -1,7 +1,7 @@
-import type { Organization } from "@buf/hasir_hasir.bufbuild_es/organization/v1/organization_pb";
-import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import type { Organization } from "@hasir/proto/gen/js/organization/v1/organization_pb";
+import type { Repository } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 
-import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
+import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
 import { render, screen } from "@testing-library/react";
 
 import { SearchDropdown } from "./search-dropdown";

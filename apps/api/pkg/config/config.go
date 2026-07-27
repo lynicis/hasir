@@ -1,7 +1,6 @@
 package config
 
 import (
-	stdjson "encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/getsops/sops/v3/decrypt"
+	stdjson "github.com/goccy/go-json"
 	"github.com/knadh/koanf/parsers/json"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env"

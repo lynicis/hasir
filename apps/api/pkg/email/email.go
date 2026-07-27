@@ -10,7 +10,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"hasir-api/pkg/config"
+	"hasir/api/pkg/config"
 )
 
 //go:embed templates/*.html

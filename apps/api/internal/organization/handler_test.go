@@ -12,13 +12,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"buf.build/gen/go/hasir/hasir/connectrpc/go/organization/v1/organizationv1connect"
-	organizationv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/organization/v1"
-	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
+	organizationv1 "hasir/proto/gen/go/organization/v1"
+	"hasir/proto/gen/go/shared"
 
-	"hasir-api/internal/registry"
-	"hasir-api/pkg/authentication"
-	"hasir-api/pkg/proto"
+	"hasir/proto/gen/go/organization/v1/organizationv1connect"
+
+	"hasir/api/internal/registry"
+	"hasir/api/pkg/authentication"
+	"hasir/api/pkg/proto"
 )
 
 func testAuthInterceptor(userID string) connect.UnaryInterceptorFunc {

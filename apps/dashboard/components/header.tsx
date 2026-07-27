@@ -1,9 +1,9 @@
 "use client";
 
-import type { Organization } from "@buf/hasir_hasir.bufbuild_es/organization/v1/organization_pb";
-import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import type { Organization } from "@hasir/proto/gen/js/organization/v1/organization_pb";
+import type { Repository } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 
-import { search } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
+import { search } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
 import { useRef, useEffect, useState, useSyncExternalStore, useMemo } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { Plus, Search } from "lucide-react";

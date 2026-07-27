@@ -15,12 +15,11 @@ import (
 	"go.uber.org/mock/gomock"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"hasir-api/internal"
-	"hasir-api/pkg/authentication"
-
-	"buf.build/gen/go/hasir/hasir/connectrpc/go/user/v1/userv1connect"
-	"buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
-	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
+	"hasir/api/internal"
+	"hasir/api/pkg/authentication"
+	"hasir/proto/gen/go/shared"
+	userv1 "hasir/proto/gen/go/user/v1"
+	"hasir/proto/gen/go/user/v1/userv1connect"
 )
 
 func testAuthInterceptor(userID string) connect.UnaryInterceptorFunc {

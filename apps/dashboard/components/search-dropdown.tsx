@@ -1,7 +1,7 @@
 "use client";
 
-import type { Organization } from "@buf/hasir_hasir.bufbuild_es/organization/v1/organization_pb";
-import type { Repository } from "@buf/hasir_hasir.bufbuild_es/registry/v1/registry_pb";
+import type { Organization } from "@hasir/proto/gen/js/organization/v1/organization_pb";
+import type { Repository } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 
 import { Building2, Package, Search as SearchIcon } from "lucide-react";
 import { forwardRef } from "react";

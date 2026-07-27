@@ -1,8 +1,8 @@
 "use client";
 
-import { getMembers } from "@buf/hasir_hasir.connectrpc_query-es/organization/v1/organization-OrganizationService_connectquery";
-import { OrganizationService } from "@buf/hasir_hasir.bufbuild_es/organization/v1/organization_pb";
-import { Role } from "@buf/hasir_hasir.bufbuild_es/shared/role_pb";
+import { getMembers } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
+import { OrganizationService } from "@hasir/proto/gen/js/organization/v1/organization_pb";
+import { Role } from "@hasir/proto/gen/js/shared/role_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useMemo, useState } from "react";

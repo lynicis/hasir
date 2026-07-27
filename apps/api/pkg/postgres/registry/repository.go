@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
 	"connectrpc.com/connect"
 	"github.com/exaring/otelpgx"
 	"github.com/go-git/go-git/v5"
@@ -21,8 +20,9 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"hasir-api/internal/registry"
-	"hasir-api/pkg/config"
+	"hasir/api/internal/registry"
+	"hasir/api/pkg/config"
+	registryv1 "hasir/proto/gen/go/registry/v1"
 )
 
 var (

@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	userv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/user/v1"
 	"connectrpc.com/connect"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -15,9 +14,10 @@ import (
 	"go.uber.org/mock/gomock"
 	"golang.org/x/crypto/bcrypt"
 
-	"hasir-api/pkg/authentication"
-	"hasir-api/pkg/config"
-	"hasir-api/pkg/email"
+	"hasir/api/pkg/authentication"
+	"hasir/api/pkg/config"
+	"hasir/api/pkg/email"
+	userv1 "hasir/proto/gen/go/user/v1"
 )
 
 var ErrNoRows = connect.NewError(connect.CodeNotFound, errors.New("user not found"))

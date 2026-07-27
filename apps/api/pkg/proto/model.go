@@ -1,6 +1,6 @@
 package proto
 
-import "buf.build/gen/go/hasir/hasir/protocolbuffers/go/shared"
+import "hasir/proto/gen/go/shared"
 
 type Visibility string
 

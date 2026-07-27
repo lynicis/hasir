@@ -1,4 +1,4 @@
-import { UserService } from '@buf/hasir_hasir.bufbuild_es/user/v1/user_pb';
+import { UserService } from '@hasir/proto/gen/js/user/v1/user_pb';
 import { createConnectTransport } from '@connectrpc/connect-web';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@connectrpc/connect';

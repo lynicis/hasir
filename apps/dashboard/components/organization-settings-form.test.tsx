@@ -1,5 +1,5 @@
 
-import { Visibility } from "@buf/hasir_hasir.bufbuild_es/shared/visibility_pb";
+import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
 import { render, screen, waitFor } from "@testing-library/react";
 import { Code, ConnectError } from "@connectrpc/connect";
 import userEvent from "@testing-library/user-event";

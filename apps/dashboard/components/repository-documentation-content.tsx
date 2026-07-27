@@ -1,6 +1,6 @@
 "use client";
 
-import { getRecentCommit } from "@buf/hasir_hasir.connectrpc_query-es/registry/v1/registry-RegistryService_connectquery";
+import { getRecentCommit } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
 import { useQuery } from "@connectrpc/connect-query";
 import { useParams } from "next/navigation";
 import { Book } from "lucide-react";

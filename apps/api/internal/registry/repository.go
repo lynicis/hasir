@@ -3,7 +3,7 @@ package registry
 import (
 	"context"
 
-	registryv1 "buf.build/gen/go/hasir/hasir/protocolbuffers/go/registry/v1"
+	registryv1 "hasir/proto/gen/go/registry/v1"
 )
 
 type Repository interface {
