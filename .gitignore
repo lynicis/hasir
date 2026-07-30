@@ -75,3 +75,4 @@ tmp/
 
 .worktrees/
 !.changeset/config.json
+\n# Worktrees\n.worktrees\nworktrees
