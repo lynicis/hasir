@@ -238,8 +238,8 @@ Hasir Dashboard provides a clean, premium, and highly functional management inte
   "iconLibrary": "lucide",
   "aliases": {
     "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
+    "utils": "@hasir/ui/lib/utils",
+    "ui": "@hasir/ui/components",
     "lib": "@/lib",
     "hooks": "@/hooks"
   },

@@ -1,9 +1,5 @@
 "use client";
 
-import { Check, ChevronDown, Copy, Package } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,9 +7,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from "@hasir/ui/components/dropdown-menu";
+import { Check, ChevronDown, Copy, Package } from "lucide-react";
+import { Button } from "@hasir/ui/components/button";
+import { Input } from "@hasir/ui/components/input";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface SdkUrlsProps {
   organizationId: string;
@@ -48,7 +47,9 @@ export function SdkUrls({ organizationId, repositoryId, commitHash }: SdkUrlsPro
   try {
     const urlObj = new URL(apiUrl);
     host = urlObj.hostname;
-  } catch {}
+  } catch {
+    // fallback to localhost on invalid URL
+  }
 
   const isGo = sdkType.startsWith("go-");
 
@@ -87,10 +88,8 @@ export function SdkUrls({ organizationId, repositoryId, commitHash }: SdkUrlsPro
       <div className="flex w-full items-center gap-2">
         {!isGo && (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-[80px]">
-                {protocol}
-              </Button>
+            <DropdownMenuTrigger render={<Button variant="outline" className="w-[80px]" />}>
+              {protocol}
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={() => setProtocol("HTTPS")}>
@@ -104,11 +103,9 @@ export function SdkUrls({ organizationId, repositoryId, commitHash }: SdkUrlsPro
         )}
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="min-w-[160px] justify-between">
-              <span className="truncate">{selectedSdk?.label}</span>
-              <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
-            </Button>
+          <DropdownMenuTrigger render={<Button variant="outline" className="min-w-[160px] justify-between" />}>
+            <span className="truncate">{selectedSdk?.label}</span>
+            <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-[200px]">
             <DropdownMenuLabel>Go SDKs</DropdownMenuLabel>

@@ -1,16 +1,15 @@
 "use client";
 
 import { Terminal, Key, Shield, GitBranch, Upload, AlertTriangle, ArrowLeft, ExternalLink, BookOpen, Box } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@hasir/ui/components/card";
+import { Alert, AlertTitle, AlertDescription } from "@hasir/ui/components/alert";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { Separator } from "@hasir/ui/components/separator";
+import { Button } from "@hasir/ui/components/button";
 import { useEffect, useState } from "react";
+import { cn } from "@hasir/ui/lib/utils";
 import Link from "next/link";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 interface TocItem {
   id: string;
@@ -90,11 +89,9 @@ export function SshConfigurationContent() {
           <span>Hasir</span>
         </Link>
         <div className="flex-1" />
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/dashboard">
-            <ArrowLeft className="size-4" />
-            <span>Back to Dashboard</span>
-          </Link>
+        <Button variant="ghost" size="sm" render={<Link href="/dashboard" />}>
+          <ArrowLeft className="size-4" />
+          <span>Back to Dashboard</span>
         </Button>
       </header>
 
@@ -315,11 +312,9 @@ cat ~/.ssh/id_ed25519.pub`}</CodeBlock>
                       <li>Give the key a descriptive name (e.g., &quot;Work Laptop&quot;, &quot;Home Desktop&quot;)</li>
                       <li>Click <strong className="text-foreground">Save</strong></li>
                     </ol>
-                    <Button variant="outline" asChild>
-                      <Link href="/profile">
-                        Go to Profile Settings
-                        <ExternalLink className="size-4" />
-                      </Link>
+                    <Button variant="outline" render={<Link href="/profile" />}>
+                      Go to Profile Settings
+                      <ExternalLink className="size-4" />
                     </Button>
                   </div>
                 </div>

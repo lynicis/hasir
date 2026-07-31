@@ -1,9 +1,5 @@
 "use client";
 
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod/v4";
-
 import {
   Dialog,
   DialogContent,
@@ -11,14 +7,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@hasir/ui/components/dialog";
 import {
   FieldLabel,
   Field,
   FieldError,
-} from "@/components/ui/field";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from "@hasir/ui/components/field";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@hasir/ui/components/button";
+import { Input } from "@hasir/ui/components/input";
+import { z } from "zod/v4";
 
 const currentPasswordSchema = z.object({
   currentPassword: z

@@ -1,7 +1,5 @@
 "use client";
 
-import { MoreVertical, Trash2 } from "lucide-react";
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,9 +7,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+} from "@hasir/ui/components/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@hasir/ui/components/avatar";
+import { Button } from "@hasir/ui/components/button";
+import { MoreVertical, Trash2 } from "lucide-react";
 
 export type Permission = "owner" | "author" | "reader";
 
@@ -71,10 +70,8 @@ export function MemberItem({
           </Button>
         ) : (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                {permissionLabels[member.permission]}
-              </Button>
+            <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+              {permissionLabels[member.permission]}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Change Permission</DropdownMenuLabel>
@@ -94,10 +91,8 @@ export function MemberItem({
           </DropdownMenu>
         )}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreVertical className="size-4" />
-            </Button>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+            <MoreVertical className="size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem

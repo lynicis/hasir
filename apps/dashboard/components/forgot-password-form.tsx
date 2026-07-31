@@ -1,25 +1,25 @@
 "use client";
 
-import { UserService } from "@hasir/proto/gen/js/user/v1/user_pb";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import Link from "next/link";
-import { z } from "zod/v4";
-
 import {
   Field,
   FieldDescription,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from "@hasir/ui/components/field";
+import { Card, CardContent, CardHeader, CardTitle } from "@hasir/ui/components/card";
+import { UserService } from "@hasir/proto/gen/js/user/v1/user_pb";
+import { Skeleton } from "@hasir/ui/components/skeleton";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
+import { Button } from "@hasir/ui/components/button";
+import { Input } from "@hasir/ui/components/input";
+import { useEffect, useState } from "react";
+import { cn } from "@hasir/ui/lib/utils";
+import { toast } from "sonner";
+import Link from "next/link";
+import { z } from "zod/v4";
+
 import { useClient } from "@/lib/use-client";
-import { cn } from "@/lib/utils";
 
 const schema = z.object({
   email: z.email({ error: "Please enter a valid email address." }),

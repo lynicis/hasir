@@ -9,7 +9,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@hasir/ui/components/alert-dialog";
 
 import { type OrganizationMember } from "./member-item";
 

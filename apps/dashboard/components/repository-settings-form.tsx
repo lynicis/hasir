@@ -1,35 +1,34 @@
 "use client";
 
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Settings } from "lucide-react";
-import { useEffect } from "react";
-import { z } from "zod/v4";
-
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@hasir/ui/components/select";
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field";
+} from "@hasir/ui/components/field";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from "@hasir/ui/components/card";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Switch } from "@hasir/ui/components/switch";
+import { Button } from "@hasir/ui/components/button";
+import { Input } from "@hasir/ui/components/input";
+import { Settings } from "lucide-react";
+import { useEffect } from "react";
+import { z } from "zod/v4";
 
 const schema = z.object({
   name: z

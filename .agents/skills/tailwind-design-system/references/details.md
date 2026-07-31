@@ -8,7 +8,7 @@
 // components/ui/button.tsx
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from '@/lib/utils'
+import { cn } from '@hasir/ui/lib/utils'
 
 const buttonVariants = cva(
   // Base styles - v4 uses native CSS variables
@@ -72,7 +72,7 @@ export function Button({
 
 ```typescript
 // components/ui/card.tsx
-import { cn } from '@/lib/utils'
+import { cn } from '@hasir/ui/lib/utils'
 
 // React 19: ref is a regular prop, no forwardRef
 export function Card({
@@ -177,7 +177,7 @@ export function CardFooter({
 
 ```typescript
 // components/ui/input.tsx
-import { cn } from '@/lib/utils'
+import { cn } from '@hasir/ui/lib/utils'
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string
@@ -274,7 +274,7 @@ function LoginForm() {
 
 ```typescript
 // components/ui/grid.tsx
-import { cn } from '@/lib/utils'
+import { cn } from '@hasir/ui/lib/utils'
 import { cva, type VariantProps } from 'class-variance-authority'
 
 const gridVariants = cva('grid', {

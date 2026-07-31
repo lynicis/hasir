@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/lynicis/dashboard/blob/master/public/logo.webp" alt="Hasir Dashboard Logo" width="150">
+  <img src="https://github.com/lynicis/hasir/blob/master/packages/ui/src/assets/logo.webp" alt="Hasir Dashboard Logo" width="150">
 
 # Hasir API
 

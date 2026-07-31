@@ -4,10 +4,9 @@ import type { Organization } from "@hasir/proto/gen/js/organization/v1/organizat
 import type { Repository } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 
 import { Building2, Package, Search as SearchIcon } from "lucide-react";
+import { Skeleton } from "@hasir/ui/components/skeleton";
 import { forwardRef } from "react";
 import Link from "next/link";
-
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface SearchDropdownProps {
   query: string;

@@ -9,8 +9,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Spinner } from "@/components/ui/spinner";
+} from "@hasir/ui/components/alert-dialog";
+import { Spinner } from "@hasir/ui/components/spinner";
 
 interface DeleteOrganizationDialogProps {
   open: boolean;

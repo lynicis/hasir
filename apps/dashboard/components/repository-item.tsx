@@ -1,9 +1,8 @@
 "use client";
 
+import { Button } from "@hasir/ui/components/button";
 import { Trash2 } from "lucide-react";
 import Link from "next/link";
-
-import { Button } from "@/components/ui/button";
 
 export interface OrganizationRepository {
   id: string;

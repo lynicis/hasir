@@ -1,6 +1,7 @@
 "use client";
 
 import { getMembers } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
+import { Card, CardContent, CardHeader, CardTitle } from "@hasir/ui/components/card";
 import { Role } from "@hasir/proto/gen/js/shared/role_pb";
 import { Building2, Settings, Users } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
@@ -10,7 +11,6 @@ import Link from "next/link";
 
 import type { Permission } from "@/components/member-item";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSession } from "@/lib/session-provider";
 import { customRetry } from "@/lib/query-retry";
 

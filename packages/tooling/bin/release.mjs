@@ -4,6 +4,8 @@
 // file exists so the monorepo has a single discoverable `hasir-release`
 // CLI from `bunx @hasir/tooling` if someone wants to skip the shell path.
 
+/* global process, console, URL */
+
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 

@@ -1,3 +1,4 @@
+import Logo from "@hasir/ui/logo.svg";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -6,7 +7,7 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 w-full border-b border-border/40 premium-glass">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 sm:px-8">
         <div className="flex items-center gap-2">
-          <Image src="/logo.svg" alt="Hasir Logo" width={24} height={24} />
+          <Image src={Logo} alt="Hasir Logo" width={24} height={24} />
           <span className="font-semibold tracking-tight text-foreground">hasir</span>
         </div>
 

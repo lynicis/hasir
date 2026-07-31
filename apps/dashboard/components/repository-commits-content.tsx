@@ -2,25 +2,25 @@
 
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
-import { getCommits } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
-import { Code, ConnectError } from "@connectrpc/connect";
-import { useQuery } from "@connectrpc/connect-query";
-import { GitCommit, User } from "lucide-react";
-import { useMemo, useState } from "react";
-import { DateTime } from "luxon";
-
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Pagination } from "@/components/ui/pagination";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@hasir/ui/components/card";
+import { getCommits } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
+import { Alert, AlertDescription, AlertTitle } from "@hasir/ui/components/alert";
+import { Avatar, AvatarFallback } from "@hasir/ui/components/avatar";
+import { Pagination } from "@hasir/ui/components/pagination";
+import { Separator } from "@hasir/ui/components/separator";
+import { Code, ConnectError } from "@connectrpc/connect";
+import { Skeleton } from "@hasir/ui/components/skeleton";
+import { useQuery } from "@connectrpc/connect-query";
+import { GitCommit, User } from "lucide-react";
+import { useMemo, useState } from "react";
+import { DateTime } from "luxon";
+
 import { customRetry } from "@/lib/query-retry";
 
 interface RepositoryCommitsContentProps {

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-nova",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "iconLibrary": "lucide",
+  "rtl": false,
+  "menuColor": "default",
+  "menuAccent": "subtle",
+  "aliases": {
+    "components": "@hasir/ui/components",
+    "utils": "@hasir/ui/lib/utils",
+    "ui": "@hasir/ui/components",
+    "lib": "@hasir/ui/lib",
+    "hooks": "@hasir/ui/hooks"
+  },
+  "registries": {
+    "@magicui": "https://magicui.design/r/{name}"
+  }
+}

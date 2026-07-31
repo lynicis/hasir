@@ -1,36 +1,36 @@
 "use client";
 
-import { OrganizationService } from "@hasir/proto/gen/js/organization/v1/organization_pb";
-import { Role } from "@hasir/proto/gen/js/shared/role_pb";
-import { Code, ConnectError } from "@connectrpc/connect";
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { UserPlus } from "lucide-react";
-import { toast } from "sonner";
-import { z } from "zod/v4";
-
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@hasir/ui/components/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@hasir/ui/components/select";
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from "@hasir/ui/components/field";
+import { OrganizationService } from "@hasir/proto/gen/js/organization/v1/organization_pb";
+import { Role } from "@hasir/proto/gen/js/shared/role_pb";
+import { Code, ConnectError } from "@connectrpc/connect";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@hasir/ui/components/button";
+import { Input } from "@hasir/ui/components/input";
+import { UserPlus } from "lucide-react";
+import { toast } from "sonner";
+import { z } from "zod/v4";
+
 import { useClient } from "@/lib/use-client";
 
 const inviteUserSchema = z.object({
@@ -163,6 +163,7 @@ export function InviteUserDialog({
                     <Select
                       value={selectValue}
                       onValueChange={(value) => {
+                        if (!value) return;
                         const roleKey =
                           value.toUpperCase() as keyof typeof Role;
                         const roleValue = Role[roleKey];

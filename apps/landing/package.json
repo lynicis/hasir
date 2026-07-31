@@ -12,6 +12,7 @@
     "vuln": "bun audit"
   },
   "dependencies": {
+    "@hasir/ui": "workspace:*",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.24.0",

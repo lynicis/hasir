@@ -1,13 +1,3 @@
 {
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "lib": ["ESNext"],
-    "strict": true,
-    "noEmit": true,
-    "skipLibCheck": true
-  },
-  "include": ["packages/*/src"],
-  "exclude": ["node_modules", "apps", "deploy", "docker", "packages/proto"]
+  "extends": "@hasir/typescript-config/base.json"
 }

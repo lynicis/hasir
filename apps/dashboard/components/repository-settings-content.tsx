@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@hasir/ui/components/card";
 import { getRepository } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
 import { RegistryService } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
@@ -8,15 +15,9 @@ import { useParams, useRouter } from "next/navigation";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@hasir/ui/components/button";
 import { toast } from "sonner";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   reverseVisibilityMapper,
   visibilityMapper,
@@ -26,7 +27,6 @@ import { RepositorySettingsForm } from "@/components/repository-settings-form";
 import { type OrganizationRepository } from "@/components/repository-item";
 import { useRegistryStore } from "@/stores/registry-store";
 import { customRetry } from "@/lib/query-retry";
-import { Button } from "@/components/ui/button";
 import { useClient } from "@/lib/use-client";
 
 export default function RepositorySettingsContent() {

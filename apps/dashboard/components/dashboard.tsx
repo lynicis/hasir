@@ -2,6 +2,9 @@
 
 import { getOrganizations } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
 import { getRepositories } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
+import { Card, CardHeader, CardTitle } from "@hasir/ui/components/card";
+import { Pagination } from "@hasir/ui/components/pagination";
+import { Skeleton } from "@hasir/ui/components/skeleton";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useMemo, useState } from "react";
 import { Settings } from "lucide-react";
@@ -9,11 +12,8 @@ import { toast } from "sonner";
 import Link from "next/link";
 
 import { OrganizationDialogForm } from "@/components/organization-dialog-form";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { reverseVisibilityMapper } from "@/lib/visibility-mapper";
 import { useRegistryStore } from "@/stores/registry-store";
-import { Pagination } from "@/components/ui/pagination";
-import { Skeleton } from "@/components/ui/skeleton";
 import { customRetry } from "@/lib/query-retry";
 import { isNotFoundError } from "@/lib/utils";
 

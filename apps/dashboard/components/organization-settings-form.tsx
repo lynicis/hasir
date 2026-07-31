@@ -1,10 +1,25 @@
 "use client";
 
 import { getOrganization } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@hasir/ui/components/card";
 import { getMembers } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@hasir/ui/components/field";
 import { OrganizationService } from "@hasir/proto/gen/js/organization/v1/organization_pb";
+import { RadioGroup, RadioGroupItem } from "@hasir/ui/components/radio-group";
 import { useQuery as useMembersQuery } from "@connectrpc/connect-query";
 import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
+import { Separator } from "@hasir/ui/components/separator";
 import { Role } from "@hasir/proto/gen/js/shared/role_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useParams, useRouter } from "next/navigation";
@@ -12,37 +27,22 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@hasir/ui/components/button";
+import { Input } from "@hasir/ui/components/input";
 import { toast } from "sonner";
 import { z } from "zod/v4";
 
 import type { Permission } from "@/components/member-item";
 
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
-import {
   reverseVisibilityMapper,
   visibilityMapper,
 } from "@/lib/visibility-mapper";
 import { DeleteOrganizationDialog } from "@/components/delete-organization-dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { InviteUserDialog } from "@/components/invite-user-dialog";
 import { useRegistryStore } from "@/stores/registry-store";
-import { Separator } from "@/components/ui/separator";
 import { useSession } from "@/lib/session-provider";
-import { Button } from "@/components/ui/button";
 import { customRetry } from "@/lib/query-retry";
-import { Input } from "@/components/ui/input";
 import { isNotFoundError } from "@/lib/utils";
 import { useClient } from "@/lib/use-client";
 

@@ -1,11 +1,10 @@
 "use client";
 
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@hasir/ui/components/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@hasir/ui/components/tabs";
 import { BookOpen, Copy, Check } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface SdkInstallGuideDialogProps {
   organizationId: string;
@@ -21,7 +20,9 @@ export function SdkInstallGuideDialog({ organizationId, repositoryId, commitHash
   try {
     const urlObj = new URL(apiUrl);
     host = urlObj.hostname;
-  } catch { }
+  } catch {
+    // fallback to default host
+  }
 
   const goImportPath = `${host}/sdk/${organizationId}/${repositoryId}/${commitHash}/go-connectrpc`;
   const goEnvCommands = `go env -w GOPRIVATE=${host}\ngo env -w GONOSUMDB=${host}\ngo env -w GOINSECURE=${host}`;
@@ -52,13 +53,15 @@ client := userv1connect.NewUserServiceClient(http.DefaultClient, "${apiUrl}")`;
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <button
-          className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-          aria-label="View SDK installation guide"
-        >
-          <BookOpen className="size-4" />
-        </button>
+      <DialogTrigger
+        render={
+          <button
+            className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            aria-label="View SDK installation guide"
+          />
+        }
+      >
+        <BookOpen className="size-4" />
       </DialogTrigger>
       <DialogContent className="max-w-xl">
         <DialogHeader>

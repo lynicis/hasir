@@ -1,18 +1,17 @@
 "use client";
 
-import { Check, Copy, HelpCircle } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
-import Link from "next/link";
-
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from "@hasir/ui/components/dropdown-menu";
+import { Check, Copy, HelpCircle } from "lucide-react";
+import { Button } from "@hasir/ui/components/button";
+import { Input } from "@hasir/ui/components/input";
+import { useState } from "react";
+import { toast } from "sonner";
+import Link from "next/link";
 
 interface CloneUrlsProps {
   repositoryId: string;
@@ -48,10 +47,8 @@ export function CloneUrls({ repositoryId }: CloneUrlsProps) {
     <div className="flex w-full max-w-lg flex-col gap-1">
       <div className="flex items-center gap-2">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-[80px]">
-              {protocol}
-            </Button>
+          <DropdownMenuTrigger render={<Button variant="outline" className="w-[80px]" />}>
+            {protocol}
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem onClick={() => setProtocol("HTTPS")}>

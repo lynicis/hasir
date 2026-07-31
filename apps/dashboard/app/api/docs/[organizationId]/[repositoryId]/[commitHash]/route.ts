@@ -51,7 +51,9 @@ async function fetchBackendDocs(url: string, accessToken: string) {
       } else {
         details = await response.text();
       }
-    } catch {}
+    } catch {
+      // ignore non-json response
+    }
 
     return { error: details ?? `Backend error (${response.status})`, status: response.status };
   }

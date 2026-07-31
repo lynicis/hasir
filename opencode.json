@@ -25,6 +25,15 @@
         "-y",
         "next-devtools-mcp@latest"
       ]
+    },
+    "shadcn": {
+      "type": "local",
+      "command": [
+        "bunx",
+        "-y",
+        "shadcn@latest",
+        "mcp"
+      ]
     }
   }
 }

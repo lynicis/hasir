@@ -1,15 +1,14 @@
 "use client";
 
-import { UserPlus } from "lucide-react";
-
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+} from "@hasir/ui/components/card";
+import { Button } from "@hasir/ui/components/button";
+import { UserPlus } from "lucide-react";
 
 import {
   MemberItem,

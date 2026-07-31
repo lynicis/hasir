@@ -1,10 +1,10 @@
-interface IWorkflowStep {
+interface WorkflowStepProps {
   number: string;
   title: string;
   description: string;
 }
 
-export function WorkflowStep({ number, title, description }: IWorkflowStep) {
+export function WorkflowStep({ number, title, description }: WorkflowStepProps) {
   return (
     <div className="flex gap-6">
       <div className="font-mono text-2xl font-bold text-border select-none">{number}</div>

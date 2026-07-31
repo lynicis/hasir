@@ -3,29 +3,29 @@
 import type { FileTreeNode } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 
 import { getFilePreview, getFileTree } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
-import { RegistryService } from "@hasir/proto/gen/js/registry/v1/registry_pb";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { NodeType } from "@hasir/proto/gen/js/registry/v1/registry_pb";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { useCallback, useContext, useMemo, useState } from "react";
-import { Code, ConnectError } from "@connectrpc/connect";
-import { useQuery } from "@connectrpc/connect-query";
-import { Files, FileText } from "lucide-react";
-
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@hasir/ui/components/card";
 import {
   TreeWithLazyLoad,
   type ExtendedTreeViewElement,
-} from "@/components/ui/file-tree";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+} from "@hasir/ui/components/file-tree";
+import { Alert, AlertDescription, AlertTitle } from "@hasir/ui/components/alert";
+import { RegistryService } from "@hasir/proto/gen/js/registry/v1/registry_pb";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { NodeType } from "@hasir/proto/gen/js/registry/v1/registry_pb";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { useCallback, useContext, useMemo, useState } from "react";
+import { Code, ConnectError } from "@connectrpc/connect";
+import { Skeleton } from "@hasir/ui/components/skeleton";
+import { useQuery } from "@connectrpc/connect-query";
+import { Files, FileText } from "lucide-react";
+
 import { RepositoryContext } from "@/lib/repository-context";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useClient } from "@/lib/use-client";
 
 function transformFileTreeNode(
@@ -331,8 +331,8 @@ export default function RepositoryFilesContent() {
                   ) : (
                     <div className="p-2">
                       <TreeWithLazyLoad
-                        fileTree={fileTree}
-                        selectedFile={selectedFile}
+                        elements={fileTree}
+                        initialSelectedId={selectedFile}
                         onFolderExpand={loadFolderContents}
                         onFileSelect={setSelectedFile}
                       />

@@ -4,27 +4,27 @@ import type { Organization } from "@hasir/proto/gen/js/organization/v1/organizat
 import type { Repository } from "@hasir/proto/gen/js/registry/v1/registry_pb";
 
 import { search } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@hasir/ui/components/popover";
 import { useRef, useEffect, useState, useSyncExternalStore, useMemo } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@hasir/ui/components/avatar";
+import { InputGroupAddon } from "@hasir/ui/components/input-group";
 import { useQuery } from "@connectrpc/connect-query";
+import { Button } from "@hasir/ui/components/button";
+import { Input } from "@hasir/ui/components/input";
+import { Kbd } from "@hasir/ui/components/kbd";
 import { Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDebounce } from "@/lib/use-debounce";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Kbd } from "@/components/ui/kbd";
 
 import { OrganizationDialogForm } from "./organization-dialog-form";
 import { RepositoryDialogForm } from "./repository-dialog-form";
-import { InputGroupAddon } from "./ui/input-group";
 import { SearchDropdown } from "./search-dropdown";
 import { ModeToggle } from "./theme-toggle";
 
@@ -234,11 +234,9 @@ export function Header() {
             open={isCreatePopoverOpen}
             onOpenChange={setIsCreatePopoverOpen}
           >
-            <PopoverTrigger asChild>
-              <Button variant="default" size="default" className="gap-1.5">
-                <Plus className="size-4" aria-hidden="true" />
-                <span>Create</span>
-              </Button>
+            <PopoverTrigger render={<Button variant="default" size="default" className="gap-1.5" />}>
+              <Plus className="size-4" aria-hidden="true" />
+              <span>Create</span>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-52">
               <div className="flex flex-col gap-1">
@@ -267,18 +265,18 @@ export function Header() {
           </Popover>
           <ModeToggle />
           <Popover>
-            <PopoverTrigger asChild>
+            <PopoverTrigger render={
               <Button
                 variant="outline"
                 size="icon"
                 className="rounded-full p-0"
                 aria-label="Open user menu"
-              >
-                <Avatar className="h-7 w-7">
-                  <AvatarImage src="" alt="User profile" />
-                  <AvatarFallback>HS</AvatarFallback>
-                </Avatar>
-              </Button>
+              />
+            }>
+              <Avatar className="h-7 w-7">
+                <AvatarImage src="" alt="User profile" />
+                <AvatarFallback>HS</AvatarFallback>
+              </Avatar>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-40">
               <div className="flex flex-col gap-1">

@@ -1,0 +1,10 @@
+{
+  "extends": "@hasir/typescript-config/react-library.json",
+  "compilerOptions": {
+    "paths": {
+      "@hasir/ui/*": ["./src/*"]
+    }
+  },
+  "include": ["."],
+  "exclude": ["node_modules", "dist"]
+}

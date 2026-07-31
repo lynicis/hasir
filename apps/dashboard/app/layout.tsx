@@ -1,4 +1,4 @@
-import "./globals.css";
+import "@hasir/ui/dashboard.css";
 
 import type { Metadata } from "next";
 

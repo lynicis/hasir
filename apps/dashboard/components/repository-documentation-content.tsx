@@ -1,23 +1,23 @@
 "use client";
 
-import { getRecentCommit } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
-import { useQuery } from "@connectrpc/connect-query";
-import { useParams } from "next/navigation";
-import { Book } from "lucide-react";
-import { useContext } from "react";
-
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+} from "@hasir/ui/components/card";
+import { getRecentCommit } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
+import { Alert, AlertDescription, AlertTitle } from "@hasir/ui/components/alert";
+import { Skeleton } from "@hasir/ui/components/skeleton";
+import { useQuery } from "@connectrpc/connect-query";
+import { useParams } from "next/navigation";
+import { Book } from "lucide-react";
+import { useContext } from "react";
+
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { RepositoryContext } from "@/lib/repository-context";
 import { useDocumentation } from "@/lib/use-documentation";
-import { Skeleton } from "@/components/ui/skeleton";
 import { customRetry } from "@/lib/query-retry";
 
 function DocumentationSkeleton() {

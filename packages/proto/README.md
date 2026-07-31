@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="../apps/dashboard/public/logo.svg" alt="Hasir Logo" width="120" />
+    <img src="../packages/assets/src/logo.webp" alt="Hasir Logo" width="120" />
 
 # Hasir Proto
 

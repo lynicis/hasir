@@ -3,11 +3,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { TransportProvider } from "@connectrpc/connect-query";
+import { Toaster } from "@hasir/ui/components/sonner";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { authInterceptor } from "@/lib/auth-interceptor";
 import { SessionProvider } from "@/lib/session-provider";
-import { Toaster } from "@/components/ui/sonner";
 
 const finalTransport = createConnectTransport({
   baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "",

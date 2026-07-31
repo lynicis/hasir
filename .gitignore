@@ -61,6 +61,7 @@ deploy/docker/shared/certbot/www/
 .opencode/
 .omo/
 .playwright-mcp/*
+.serena/
 # ^ Agent instruction files are ignored by default. Teams that want to keep
 # CLAUDE.md/AGENTS.md tracked should `git add -f` the file once.
 

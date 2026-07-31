@@ -5,6 +5,8 @@
 // This file exists so it can be invoked directly from a script in case turbo
 // isn't available in the developer's shell.
 
+/* global process, console, URL */
+
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 

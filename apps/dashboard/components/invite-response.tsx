@@ -1,23 +1,23 @@
 "use client";
 
-import { OrganizationService } from "@hasir/proto/gen/js/organization/v1/organization_pb";
-import { CheckIcon, XIcon, MailIcon, AlertCircleIcon } from "lucide-react";
-import { ConnectError, Code } from "@connectrpc/connect";
-import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
-
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+} from "@hasir/ui/components/card";
+import { OrganizationService } from "@hasir/proto/gen/js/organization/v1/organization_pb";
+import { CheckIcon, XIcon, MailIcon, AlertCircleIcon } from "lucide-react";
+import { ConnectError, Code } from "@connectrpc/connect";
+import { Skeleton } from "@hasir/ui/components/skeleton";
+import { Button } from "@hasir/ui/components/button";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { cn } from "@hasir/ui/lib/utils";
+import { toast } from "sonner";
+
 import { useClient } from "@/lib/use-client";
-import { cn } from "@/lib/utils";
 
 type InviteStatus =
   | "loading"

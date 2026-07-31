@@ -9,19 +9,19 @@ import {
   Settings,
   Wrench,
 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@hasir/ui/components/card";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { Code, ConnectError } from "@connectrpc/connect";
+import { Skeleton } from "@hasir/ui/components/skeleton";
 import { useQuery } from "@connectrpc/connect-query";
+import { Button } from "@hasir/ui/components/button";
 import { useEffect, useMemo } from "react";
 import { toast } from "sonner";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type OrganizationRepository } from "@/components/repository-item";
 import { reverseVisibilityMapper } from "@/lib/visibility-mapper";
 import { RepositoryContext } from "@/lib/repository-context";
 import { CloneUrls } from "@/components/clone-urls";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { customRetry } from "@/lib/query-retry";
 
 type TabType =

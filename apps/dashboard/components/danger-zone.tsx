@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import {
   Dialog,
   DialogContent,
@@ -9,15 +7,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@hasir/ui/components/dialog";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+} from "@hasir/ui/components/card";
+import { Button } from "@hasir/ui/components/button";
+import { useState } from "react";
 
 interface DangerZoneProps {
   onDelete: () => void | Promise<void>;

@@ -1,16 +1,5 @@
 "use client";
 
-import { OrganizationService } from "@hasir/proto/gen/js/organization/v1/organization_pb";
-import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { ArrowLeftIcon, PlusIcon, XIcon } from "lucide-react";
-import { Role } from "@hasir/proto/gen/js/shared/role_pb";
-import { Code, ConnectError } from "@connectrpc/connect";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
-import { toast } from "sonner";
-import { z } from "zod/v4";
-
 import {
   Dialog,
   DialogContent,
@@ -18,27 +7,38 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@hasir/ui/components/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@hasir/ui/components/select";
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+} from "@hasir/ui/components/field";
+import { OrganizationService } from "@hasir/proto/gen/js/organization/v1/organization_pb";
+import { RadioGroup, RadioGroupItem } from "@hasir/ui/components/radio-group";
+import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { ArrowLeftIcon, PlusIcon, XIcon } from "lucide-react";
+import { Role } from "@hasir/proto/gen/js/shared/role_pb";
+import { Code, ConnectError } from "@connectrpc/connect";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@hasir/ui/components/button";
+import { Input } from "@hasir/ui/components/input";
+import { cn } from "@hasir/ui/lib/utils";
+import { useState } from "react";
+import { toast } from "sonner";
+import { z } from "zod/v4";
+
 import { visibilityMapper } from "@/lib/visibility-mapper";
 import { useRegistryStore } from "@/stores/registry-store";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useClient } from "@/lib/use-client";
-import { cn } from "@/lib/utils";
 
 const organizationSchema = z.object({
   name: z

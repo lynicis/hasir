@@ -1,11 +1,12 @@
-// path: eslint.config.mjs
-// Root ESLint config. Re-exports the shared preset from packages/config so
-// every workspace (apps/*, packages/*) inherits the same rules. The preset
-// itself lives in packages/config/eslint.config.mjs — see ADR-0001.
-import sharedConfig from "./packages/config/eslint.config.mjs";
+import { config as baseConfig } from "@hasir/eslint-config/base";
+import { nextJsConfig } from "@hasir/eslint-config/next-js";
 
-const eslintConfig = [
-  ...sharedConfig,
+export default [
+  ...baseConfig,
+  {
+    files: ["apps/dashboard/**/*.ts", "apps/dashboard/**/*.tsx", "apps/landing/**/*.ts", "apps/landing/**/*.tsx"],
+    ...nextJsConfig[nextJsConfig.length - 2], // The next plugin config
+  },
   {
     ignores: [
       "**/node_modules/**",
@@ -16,9 +17,8 @@ const eslintConfig = [
       "**/coverage/**",
       "**/*.tsbuildinfo",
       "**/next-env.d.ts",
-      "apps/api/**"
+      "apps/api/**",
+      ".worktrees/**"
     ]
   }
 ];
-
-export default eslintConfig;

@@ -1,15 +1,5 @@
 "use client";
 
-import { getOrganizations } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
-import { RegistryService } from "@hasir/proto/gen/js/registry/v1/registry_pb";
-import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
-import { useQuery } from "@connectrpc/connect-query";
-import { useEffect } from "react";
-import { toast } from "sonner";
-import { z } from "zod/v4";
-
 import {
   Dialog,
   DialogContent,
@@ -17,27 +7,37 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@hasir/ui/components/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@hasir/ui/components/select";
+import { getOrganizations } from "@hasir/proto/gen/js/organization/v1/organization-OrganizationService_connectquery";
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+} from "@hasir/ui/components/field";
+import { RegistryService } from "@hasir/proto/gen/js/registry/v1/registry_pb";
+import { RadioGroup, RadioGroupItem } from "@hasir/ui/components/radio-group";
+import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
+import { useQuery } from "@connectrpc/connect-query";
+import { Switch } from "@hasir/ui/components/switch";
+import { Button } from "@hasir/ui/components/button";
+import { Input } from "@hasir/ui/components/input";
+import { useEffect } from "react";
+import { toast } from "sonner";
+import { z } from "zod/v4";
+
 import { visibilityMapper } from "@/lib/visibility-mapper";
 import { useRegistryStore } from "@/stores/registry-store";
-import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
 import { customRetry } from "@/lib/query-retry";
-import { Input } from "@/components/ui/input";
 import { useClient } from "@/lib/use-client";
 
 const repositorySchema = z.object({

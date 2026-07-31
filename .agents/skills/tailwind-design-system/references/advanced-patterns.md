@@ -59,7 +59,7 @@ Advanced Tailwind CSS v4 patterns including animations, dark mode theming, custo
 ```typescript
 // components/ui/dialog.tsx - Using native popover API
 import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { cn } from '@/lib/utils'
+import { cn } from '@hasir/ui/lib/utils'
 
 const DialogPortal = DialogPrimitive.Portal
 

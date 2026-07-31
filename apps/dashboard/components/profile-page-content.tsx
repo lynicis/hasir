@@ -1,17 +1,17 @@
 "use client";
 
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@hasir/ui/components/tabs";
 import { UserService } from "@hasir/proto/gen/js/user/v1/user_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import { PasswordConfirmationDialog } from "@/components/password-confirmation-dialog";
 import { SshApiKeyPanel } from "@/components/ssh-api-key-panel";
 import { ProfileForm } from "@/components/profile-form";

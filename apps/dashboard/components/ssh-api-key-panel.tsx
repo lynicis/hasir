@@ -1,36 +1,36 @@
 "use client";
 
-import { getSshKeys } from "@hasir/proto/gen/js/user/v1/user-UserService_connectquery";
-import { getApiKeys } from "@hasir/proto/gen/js/user/v1/user-UserService_connectquery";
-import { UserService } from "@hasir/proto/gen/js/user/v1/user_pb";
-import { Check, Copy, Key, Plus, Trash2 } from "lucide-react";
-import { Code, ConnectError } from "@connectrpc/connect";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@connectrpc/connect-query";
-import { useForm } from "react-hook-form";
-import { useState } from "react";
-import { toast } from "sonner";
-import { z } from "zod/v4";
-
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@hasir/ui/components/card";
 import {
   Field,
   FieldDescription,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field";
-import { Pagination } from "@/components/ui/pagination";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
+} from "@hasir/ui/components/field";
+import { getSshKeys } from "@hasir/proto/gen/js/user/v1/user-UserService_connectquery";
+import { getApiKeys } from "@hasir/proto/gen/js/user/v1/user-UserService_connectquery";
+import { UserService } from "@hasir/proto/gen/js/user/v1/user_pb";
+import { Check, Copy, Key, Plus, Trash2 } from "lucide-react";
+import { Pagination } from "@hasir/ui/components/pagination";
+import { Separator } from "@hasir/ui/components/separator";
+import { Code, ConnectError } from "@connectrpc/connect";
+import { Textarea } from "@hasir/ui/components/textarea";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@connectrpc/connect-query";
+import { Button } from "@hasir/ui/components/button";
+import { Input } from "@hasir/ui/components/input";
+import { useForm } from "react-hook-form";
+import { useState } from "react";
+import { toast } from "sonner";
+import { z } from "zod/v4";
+
 import { customRetry } from "@/lib/query-retry";
-import { Input } from "@/components/ui/input";
 import { useClient } from "@/lib/use-client";
 
 type NewApiKey = {

@@ -1,3 +1,4 @@
+import Logo from "@hasir/ui/logo.svg";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -8,7 +9,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8 mb-16">
           <div className="flex flex-col gap-4 md:col-span-1">
             <div className="flex items-center gap-2">
-              <Image src="/logo.svg" alt="Hasir Logo" width={24} height={24} />
+              <Image src={Logo} alt="Hasir Logo" width={24} height={24} />
               <span className="font-semibold text-foreground">hasir</span>
             </div>
             <p className="text-sm text-muted-foreground mt-2 max-w-xs">

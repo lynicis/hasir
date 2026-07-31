@@ -1,16 +1,15 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+} from "@hasir/ui/components/card";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Skeleton } from "@hasir/ui/components/skeleton";
+import { Button } from "@hasir/ui/components/button";
 
 import { RepositoryItem, type OrganizationRepository } from "./repository-item";
 

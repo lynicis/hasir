@@ -1,33 +1,33 @@
 "use client";
 
-import { getRecentCommit } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
-import { RegistryService, SDK } from "@hasir/proto/gen/js/registry/v1/registry_pb";
-import { useContext, useEffect, useMemo, useState } from "react";
-import { useQuery } from "@connectrpc/connect-query";
-import { AlertTriangle, Wrench } from "lucide-react";
-import { useParams } from "next/navigation";
-import { toast } from "sonner";
-
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@hasir/ui/components/card";
+import { getRecentCommit } from "@hasir/proto/gen/js/registry/v1/registry-RegistryService_connectquery";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from "@/components/ui/alert";
+} from "@hasir/ui/components/alert";
+import { RegistryService, SDK } from "@hasir/proto/gen/js/registry/v1/registry_pb";
+import { useContext, useEffect, useMemo, useState } from "react";
+import { Skeleton } from "@hasir/ui/components/skeleton";
+import { useQuery } from "@connectrpc/connect-query";
+import { AlertTriangle, Wrench } from "lucide-react";
+import { Switch } from "@hasir/ui/components/switch";
+import { Button } from "@hasir/ui/components/button";
+import { Label } from "@hasir/ui/components/label";
+import { useParams } from "next/navigation";
+import { toast } from "sonner";
+
 import { SdkInstallGuideDialog } from "@/components/sdk-install-guide-dialog";
 import { RepositoryContext } from "@/lib/repository-context";
-import { Skeleton } from "@/components/ui/skeleton";
 import { SdkUrls } from "@/components/sdk-urls";
-import { Switch } from "@/components/ui/switch";
 import { customRetry } from "@/lib/query-retry";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { useClient } from "@/lib/use-client";
 
 interface SdkOption {

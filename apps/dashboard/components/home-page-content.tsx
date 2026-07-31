@@ -2,11 +2,11 @@
 
 import { LayoutDashboard, LogIn, User, UserPlus } from "lucide-react";
 import { motion, type Variants } from "framer-motion";
+import { Button } from "@hasir/ui/components/button";
 import Image from "next/image";
 import Link from "next/link";
 
 import { useSession } from "@/lib/session-provider";
-import { Button } from "@/components/ui/button";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -42,7 +42,7 @@ export default function HomePageContent() {
       {/* Dynamic ambient spotlight backdrops */}
       <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-10 right-1/4 w-[600px] h-[600px] bg-secondary/5 rounded-full blur-[140px] pointer-events-none" />
-      
+
       <section className="relative flex min-h-[90vh] w-full items-center justify-center px-6 py-24">
         <motion.div
           className="relative z-10 flex max-w-4xl flex-col items-center text-center"
@@ -94,50 +94,42 @@ export default function HomePageContent() {
           >
             {isLoggedIn ? (
               <>
-                <Button 
-                  asChild 
-                  size="lg" 
+                <Button
+                  render={<Link href="/dashboard" className="flex items-center gap-2" />}
+                  size="lg"
                   className="min-w-[160px] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-100"
                 >
-                  <Link href="/dashboard" className="flex items-center gap-2">
-                    <LayoutDashboard className="w-4 h-4" />
-                    Dashboard
-                  </Link>
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
                 </Button>
                 <Button
-                  asChild
+                  render={<Link href="/profile" className="flex items-center gap-2" />}
                   variant="outline"
                   size="lg"
                   className="min-w-[160px] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-100"
                 >
-                  <Link href="/profile" className="flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    Profile
-                  </Link>
+                  <User className="w-4 h-4" />
+                  Profile
                 </Button>
               </>
             ) : (
               <>
-                <Button 
-                  asChild 
-                  size="lg" 
+                <Button
+                  render={<Link href="/login" className="flex items-center gap-2" />}
+                  size="lg"
                   className="min-w-[160px] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-100"
                 >
-                  <Link href="/login" className="flex items-center gap-2">
-                    <LogIn className="w-4 h-4" />
-                    Login
-                  </Link>
+                  <LogIn className="w-4 h-4" />
+                  Login
                 </Button>
                 <Button
-                  asChild
+                  render={<Link href="/register" className="flex items-center gap-2" />}
                   variant="outline"
                   size="lg"
                   className="min-w-[160px] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-100"
                 >
-                  <Link href="/register" className="flex items-center gap-2">
-                    <UserPlus className="w-4 h-4" />
-                    Register
-                  </Link>
+                  <UserPlus className="w-4 h-4" />
+                  Register
                 </Button>
               </>
             )}

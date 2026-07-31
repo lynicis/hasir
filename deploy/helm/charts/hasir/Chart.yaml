@@ -4,7 +4,7 @@ description: A Helm chart for deploying the Hasir stack on Kubernetes
 type: application
 version: 0.1.1
 appVersion: "0.1.1"
-icon: "https://raw.githubusercontent.com/lynicis/hasir/refs/heads/main/apps/dashboard/public/logo.webp"
+icon: "https://raw.githubusercontent.com/lynicis/hasir/refs/heads/main/packages/ui/src/assets/logo.webp"
 
 dependencies:
   - name: postgresql
