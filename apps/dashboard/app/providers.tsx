@@ -5,13 +5,14 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { TransportProvider } from "@connectrpc/connect-query";
 import { Toaster } from "@hasir/ui/components/sonner";
 
+import { idempotencyInterceptor } from "@/lib/idempotency-interceptor";
 import { ThemeProvider } from "@/components/theme-provider";
 import { authInterceptor } from "@/lib/auth-interceptor";
 import { SessionProvider } from "@/lib/session-provider";
 
 const finalTransport = createConnectTransport({
   baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "",
-  interceptors: [authInterceptor],
+  interceptors: [authInterceptor, idempotencyInterceptor],
 });
 
 const queryClient = new QueryClient();

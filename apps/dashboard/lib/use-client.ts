@@ -3,11 +3,12 @@ import { createClient, type Client } from "@connectrpc/connect";
 import { type DescService } from "@bufbuild/protobuf";
 import { useMemo } from "react";
 
+import { idempotencyInterceptor } from "./idempotency-interceptor";
 import { authInterceptor } from "./auth-interceptor";
 
 const transport = createConnectTransport({
   baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "",
-  interceptors: [authInterceptor]
+  interceptors: [authInterceptor, idempotencyInterceptor]
 });
 
 

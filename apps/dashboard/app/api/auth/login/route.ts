@@ -4,11 +4,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@connectrpc/connect';
 import { decodeJwt, type JWTPayload } from "jose";
 
+import { idempotencyInterceptor } from '@/lib/idempotency-interceptor';
 import { saveSession } from '@/lib/session';
 
 const transport = createConnectTransport({
   baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
   useBinaryFormat: true,
+  interceptors: [idempotencyInterceptor],
 });
 
 export async function POST(request: NextRequest) {

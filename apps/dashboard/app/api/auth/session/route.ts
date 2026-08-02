@@ -13,10 +13,12 @@ import {
   refreshSession,
   saveSession
 } from '@/lib/session';
+import { idempotencyInterceptor } from '@/lib/idempotency-interceptor';
 
 const transport = createConnectTransport({
   baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
   useBinaryFormat: true,
+  interceptors: [idempotencyInterceptor],
 });
 
 export async function GET() {
