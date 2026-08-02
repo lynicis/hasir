@@ -43,116 +43,59 @@ func NewAuthInterceptor(jwtSecret []byte) *AuthInterceptor {
 	}
 }
 
-func (a *AuthInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
-	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-		if a.publicMethods[req.Spec().Procedure] {
+func (i *AuthInterceptor) Interceptor() connect.UnaryInterceptorFunc {
+	return func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			if i.publicMethods[req.Spec().Procedure] {
+				return next(ctx, req)
+			}
+
+			authHeader := req.Header().Get("Authorization")
+			if authHeader == "" {
+				return nil, ErrMissingToken
+			}
+
+			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+			if tokenString == authHeader {
+				return nil, ErrInvalidToken
+			}
+
+			token, err := jwt.ParseWithClaims(tokenString, &JwtClaims{}, func(token *jwt.Token) (any, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, errors.New("unexpected signing method")
+				}
+
+				return i.jwtSecret, nil
+			})
+
+			if err != nil {
+				if errors.Is(err, jwt.ErrTokenExpired) {
+					return nil, ErrTokenExpired
+				}
+				return nil, ErrInvalidToken
+			}
+
+			if !token.Valid {
+				return nil, ErrInvalidToken
+			}
+
+			claims, ok := token.Claims.(*JwtClaims)
+			if !ok {
+				return nil, ErrInvalidClaims
+			}
+
+			userID, err := claims.GetSubject()
+			if err != nil {
+				return nil, ErrInvalidClaims
+			}
+
+			ctx = context.WithValue(ctx, UserIDKey, userID)
+
+			email := claims.Email
+			ctx = context.WithValue(ctx, UserEmailKey, email)
+
 			return next(ctx, req)
 		}
-
-		authHeader := req.Header().Get("Authorization")
-		if authHeader == "" {
-			return nil, ErrMissingToken
-		}
-
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == authHeader {
-			return nil, ErrInvalidToken
-		}
-
-		token, err := jwt.ParseWithClaims(tokenString, &JwtClaims{}, func(token *jwt.Token) (any, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, errors.New("unexpected signing method")
-			}
-
-			return a.jwtSecret, nil
-		})
-
-		if err != nil {
-			if errors.Is(err, jwt.ErrTokenExpired) {
-				return nil, ErrTokenExpired
-			}
-			return nil, ErrInvalidToken
-		}
-
-		if !token.Valid {
-			return nil, ErrInvalidToken
-		}
-
-		claims, ok := token.Claims.(*JwtClaims)
-		if !ok {
-			return nil, ErrInvalidClaims
-		}
-
-		userID, err := claims.GetSubject()
-		if err != nil {
-			return nil, ErrInvalidClaims
-		}
-
-		ctx = context.WithValue(ctx, UserIDKey, userID)
-
-		email := claims.Email
-		ctx = context.WithValue(ctx, UserEmailKey, email)
-
-		return next(ctx, req)
-	}
-}
-
-func (a *AuthInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
-	return next
-}
-
-func (a *AuthInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
-	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		if a.publicMethods[conn.Spec().Procedure] {
-			return next(ctx, conn)
-		}
-
-		authHeader := conn.RequestHeader().Get("Authorization")
-		if authHeader == "" {
-			return ErrMissingToken
-		}
-
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == authHeader {
-			return ErrInvalidToken
-		}
-
-		token, err := jwt.ParseWithClaims(tokenString, &JwtClaims{}, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, errors.New("unexpected signing method")
-			}
-
-			return a.jwtSecret, nil
-		})
-
-		if err != nil {
-			if errors.Is(err, jwt.ErrTokenExpired) {
-				return ErrTokenExpired
-			}
-
-			return ErrInvalidToken
-		}
-
-		if !token.Valid {
-			return ErrInvalidToken
-		}
-
-		claims, ok := token.Claims.(*JwtClaims)
-		if !ok {
-			return ErrInvalidClaims
-		}
-
-		userID, err := claims.GetSubject()
-		if err != nil {
-			return ErrInvalidClaims
-		}
-
-		ctx = context.WithValue(ctx, UserIDKey, userID)
-
-		email := claims.Email
-		ctx = context.WithValue(ctx, UserEmailKey, email)
-
-		return next(ctx, conn)
 	}
 }
 

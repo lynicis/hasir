@@ -127,7 +127,7 @@ func main() {
 	interceptors := []connect.Interceptor{
 		validate.NewInterceptor(),
 		idempotencyInterceptor.Interceptor(),
-		authInterceptor,
+		authInterceptor.Interceptor(),
 	}
 	if cfg.Otel.Enabled {
 		otelInterceptor, err := otelconnect.NewInterceptor(
