@@ -139,7 +139,7 @@ describe("SdkPreferencesPage", () => {
     await user.click(goSwitch);
 
     const protocolBuffersSwitch = screen.getAllByLabelText("Protocol Buffers")[0];
-    expect(protocolBuffersSwitch).not.toBeDisabled();
+    expect(protocolBuffersSwitch).not.toHaveAttribute("data-disabled");
   });
 
   it("disables sub-options when language is disabled", async () => {
@@ -150,33 +150,30 @@ describe("SdkPreferencesPage", () => {
     const goSwitch = allSwitches[0]!;
 
     const protocolBuffersSwitch = screen.getAllByLabelText("Protocol Buffers")[0];
-    expect(protocolBuffersSwitch).toBeDisabled();
+    expect(protocolBuffersSwitch).toHaveAttribute("data-disabled");
 
     await user.click(goSwitch);
-    expect(protocolBuffersSwitch).not.toBeDisabled();
+    expect(protocolBuffersSwitch).not.toHaveAttribute("data-disabled");
 
     await user.click(goSwitch);
-    expect(protocolBuffersSwitch).toBeDisabled();
+    expect(protocolBuffersSwitch).toHaveAttribute("data-disabled");
   });
 
   it("enables language when a sub-option is toggled on", async () => {
     const user = userEvent.setup();
     renderWithContext();
 
-    const protocolBuffersLabel = screen.getAllByText("Protocol Buffers")[0]!;
-    const protocolBuffersSwitch = protocolBuffersLabel
-      .closest("div")
-      ?.querySelector("button") as HTMLElement;
+    const protocolBuffersSwitch = screen.getAllByRole("switch", { name: /protocol buffers/i })[0]!;
 
-    expect(protocolBuffersSwitch).toBeDisabled();
+    expect(protocolBuffersSwitch).toHaveAttribute("data-disabled");
 
     const goSwitch = screen.getAllByRole("switch")[0]!;
     await user.click(goSwitch);
 
     await user.click(protocolBuffersSwitch);
 
-    const goSwitchChecked = goSwitch.getAttribute("data-state");
-    expect(goSwitchChecked).toBe("checked");
+    
+    expect(goSwitch).toHaveAttribute("data-checked");
   });
 
   it("shows save and reset buttons", () => {
@@ -206,14 +203,14 @@ describe("SdkPreferencesPage", () => {
     const goSwitch = screen.getAllByRole("switch")[0]!;
     await user.click(goSwitch);
 
-    expect(goSwitch.getAttribute("data-state")).toBe("checked");
+    expect(goSwitch).toHaveAttribute("data-checked");
 
     const resetButton = screen.getByRole("button", {
       name: /reset to/i,
     });
     await user.click(resetButton);
 
-    expect(goSwitch.getAttribute("data-state")).toBe("unchecked");
+    expect(goSwitch).toHaveAttribute("data-unchecked");
   });
 
   it("shows all preferences disabled when SDK preferences array is empty", () => {
@@ -224,11 +221,11 @@ describe("SdkPreferencesPage", () => {
     const goSwitch = allSwitches[0]!;
     const jsSwitch = allSwitches[1]!;
 
-    expect(goSwitch.getAttribute("data-state")).toBe("unchecked");
-    expect(jsSwitch.getAttribute("data-state")).toBe("unchecked");
+    expect(goSwitch).toHaveAttribute("data-unchecked");
+    expect(jsSwitch).toHaveAttribute("data-unchecked");
 
     const protocolBuffersSwitch = screen.getAllByLabelText("Protocol Buffers")[0]!;
-    expect(protocolBuffersSwitch.getAttribute("data-state")).toBe("unchecked");
+    expect(protocolBuffersSwitch).toHaveAttribute("data-unchecked");
   });
 
   it("shows all preferences disabled when SDK preferences is undefined", () => {
@@ -246,7 +243,7 @@ describe("SdkPreferencesPage", () => {
     const goSwitch = allSwitches[0]!;
     const jsSwitch = allSwitches[1]!;
 
-    expect(goSwitch.getAttribute("data-state")).toBe("unchecked");
-    expect(jsSwitch.getAttribute("data-state")).toBe("unchecked");
+    expect(goSwitch).toHaveAttribute("data-unchecked");
+    expect(jsSwitch).toHaveAttribute("data-unchecked");
   });
 });

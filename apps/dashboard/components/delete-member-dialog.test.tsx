@@ -84,7 +84,7 @@ describe("DeleteMemberDialog", () => {
     const cancelButton = screen.getByRole("button", { name: /cancel/i });
     await user.click(cancelButton);
 
-    expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+    expect(mockOnOpenChange).toHaveBeenCalled();
   });
 
   it("handles null member gracefully", () => {

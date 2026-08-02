@@ -400,9 +400,8 @@ export default function RepositorySdkPreferencesContent() {
                       checked={
                         (config[langKey]?.[option.key] as boolean) || false
                       }
-                      onCheckedChange={() =>
-                        handleSubOptionToggle(langKey, option.key)
-                      }
+                      onCheckedChange={() => handleSubOptionToggle(langKey, option.key)}
+                      disabled={isManagedByBuf || isSubmitting || !config[langKey]?.enabled}
                       disabled={
                         isManagedByBuf ||
                         !config[langKey]?.enabled ||

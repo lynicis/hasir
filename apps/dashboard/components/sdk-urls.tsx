@@ -4,7 +4,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuLabel, DropdownMenuGroup,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@hasir/ui/components/dropdown-menu";
@@ -108,7 +108,7 @@ export function SdkUrls({ organizationId, repositoryId, commitHash }: SdkUrlsPro
             <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-[200px]">
-            <DropdownMenuLabel>Go SDKs</DropdownMenuLabel>
+            <DropdownMenuGroup><DropdownMenuLabel>Go SDKs</DropdownMenuLabel></DropdownMenuGroup>
             {goOptions.map((option) => (
               <DropdownMenuItem
                 key={option.value}
@@ -118,7 +118,7 @@ export function SdkUrls({ organizationId, repositoryId, commitHash }: SdkUrlsPro
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>JavaScript SDKs</DropdownMenuLabel>
+            <DropdownMenuGroup><DropdownMenuLabel>JavaScript SDKs</DropdownMenuLabel></DropdownMenuGroup>
             {jsOptions.map((option) => (
               <DropdownMenuItem
                 key={option.value}

@@ -140,3 +140,11 @@ mock.module("sonner", () => ({
 
 
 
+(globalThis as any).BASE_UI_ANIMATIONS_DISABLED = true;
+if (typeof Element.prototype.getAnimations === "undefined") {
+  Element.prototype.getAnimations = () => [];
+}
+if (typeof globalThis.requestAnimationFrame === "undefined") {
+  globalThis.requestAnimationFrame = (cb) => setTimeout(cb, 0);
+  globalThis.cancelAnimationFrame = (id) => clearTimeout(id as any);
+}

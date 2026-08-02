@@ -4,7 +4,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuLabel, DropdownMenuGroup,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@hasir/ui/components/dropdown-menu";
@@ -74,7 +74,7 @@ export function MemberItem({
               {permissionLabels[member.permission]}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Change Permission</DropdownMenuLabel>
+              <DropdownMenuGroup><DropdownMenuLabel>Change Permission</DropdownMenuLabel></DropdownMenuGroup>
               <DropdownMenuSeparator />
               {Object.entries(permissionLabels).map(([value, label]) => (
                 <DropdownMenuItem

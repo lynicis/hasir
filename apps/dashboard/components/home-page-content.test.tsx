@@ -4,6 +4,12 @@ import { render, screen } from "@testing-library/react";
 
 import HomePageContent from "./home-page-content";
 
+
+vi.mock("next/image", () => ({
+  __esModule: true,
+  default: ({ src, alt, ...props }: any) => <img src={src} alt={alt} {...props} />
+}));
+
 vi.mock("next/link", () => ({
   __esModule: true,
   default: ({

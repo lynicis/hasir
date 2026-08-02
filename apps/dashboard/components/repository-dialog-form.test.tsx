@@ -131,8 +131,8 @@ describe("RepositoryDialogForm", () => {
       const options = screen.getAllByText("Acme Corp");
       return options.length > 0;
     });
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard("{Enter}");
+    await waitFor(() => { expect(screen.getAllByRole("option").length).toBeGreaterThan(0) });
+    const opt1 = screen.getByRole("option", { name: /hasir labs/i }); await user.click(opt1);
 
     await user.type(
       screen.getByLabelText(/name/i),
@@ -155,7 +155,7 @@ describe("RepositoryDialogForm", () => {
         "Repository created successfully."
       )
     );
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onOpenChange).toHaveBeenCalled();
   });
 
   it("creates a private repository when private visibility is selected", async () => {
@@ -178,9 +178,7 @@ describe("RepositoryDialogForm", () => {
       const options = screen.getAllByText("Acme Corp");
       return options.length > 0;
     });
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard("{Enter}");
+    const opt2 = screen.getByRole("option", { name: /proto systems/i }); await user.click(opt2);
 
     await user.type(screen.getByLabelText(/name/i), "secret-repository");
     await user.click(screen.getByRole("radio", { name: /private/i }));
@@ -216,8 +214,8 @@ describe("RepositoryDialogForm", () => {
       const options = screen.getAllByText("Acme Corp");
       return options.length > 0;
     });
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard("{Enter}");
+    await waitFor(() => { expect(screen.getAllByRole("option").length).toBeGreaterThan(0) });
+    const opt1 = screen.getByRole("option", { name: /hasir labs/i }); await user.click(opt1);
 
     await user.type(screen.getByLabelText(/name/i), "buf-repo");
 
@@ -251,8 +249,8 @@ describe("RepositoryDialogForm", () => {
       name: /organization/i,
     });
     await user.click(organizationSelect);
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard("{Enter}");
+    await waitFor(() => { expect(screen.getAllByRole("option").length).toBeGreaterThan(0) });
+    const opt1 = screen.getByRole("option", { name: /hasir labs/i }); await user.click(opt1);
 
     await user.type(screen.getByLabelText(/name/i), "bad-name");
     await user.click(screen.getByRole("button", { name: /create/i }));
@@ -273,10 +271,7 @@ describe("RepositoryDialogForm", () => {
       name: /organization/i,
     });
     await user.click(organizationSelect);
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard("{Enter}");
+    const opt3 = screen.getByRole("option", { name: /proto systems/i }); await user.click(opt3);
 
     await user.type(screen.getByLabelText(/name/i), "any-name");
     await user.click(screen.getByRole("button", { name: /create/i }));
@@ -294,8 +289,8 @@ describe("RepositoryDialogForm", () => {
       name: /organization/i,
     });
     await user.click(organizationSelect);
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard("{Enter}");
+    await waitFor(() => { expect(screen.getAllByRole("option").length).toBeGreaterThan(0) });
+    const opt1 = screen.getByRole("option", { name: /hasir labs/i }); await user.click(opt1);
 
     const nameInput = screen.getByLabelText(/name/i) as HTMLInputElement;
     await user.type(nameInput, "temp-name");

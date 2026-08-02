@@ -571,7 +571,7 @@ describe("RepositorySettingsForm", () => {
       expect(screen.getByLabelText("Repository Name")).toBeInTheDocument();
       expect(screen.getByLabelText("Visibility")).toBeInTheDocument();
       expect(
-        screen.getByLabelText("Managed by Buf")
+        screen.getByRole("switch", { name: "Managed by Buf" })
       ).toBeInTheDocument();
     });
 

@@ -128,7 +128,7 @@ function Pagination({
   disabled,
   className,
 }: PaginationProps) {
-  if (totalPages <= 1) return null
+  if (!totalPages || totalPages <= 1) return null
 
   return (
     <PaginationRoot className={className}>
@@ -140,11 +140,18 @@ function Pagination({
             className={disabled || currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
           />
         </PaginationItem>
-        <PaginationItem>
-          <span className="text-sm text-muted-foreground mx-4">
-            Page {currentPage} of {totalPages}
-          </span>
-        </PaginationItem>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+          <PaginationItem key={page}>
+            <PaginationLink
+              onClick={() => onPageChange(page)}
+              isActive={currentPage === page}
+              disabled={disabled}
+              className={disabled ? "pointer-events-none opacity-50" : "cursor-pointer"}
+            >
+              {page.toString()}
+            </PaginationLink>
+          </PaginationItem>
+        ))}
         <PaginationItem>
           <PaginationNext
             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}

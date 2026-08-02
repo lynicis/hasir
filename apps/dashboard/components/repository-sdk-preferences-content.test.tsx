@@ -187,7 +187,7 @@ describe("RepositorySdkPreferencesContent", () => {
     await user.click(goSwitch);
 
     const protocolBuffersSwitch = screen.getAllByLabelText(/protocol buffers/i)[0];
-    expect(protocolBuffersSwitch).not.toBeDisabled();
+    expect(protocolBuffersSwitch).not.toHaveAttribute("data-disabled");
   });
 
   it("throws error when used outside RepositoryLayout", () => {
@@ -406,7 +406,7 @@ describe("RepositorySdkPreferencesContent", () => {
       const switches = screen.getAllByRole("switch");
 
       for (const switchEl of switches) {
-        expect(switchEl).toBeDisabled();
+        expect(switchEl).toHaveAttribute("data-disabled");
       }
     });
 
@@ -464,7 +464,7 @@ describe("RepositorySdkPreferencesContent", () => {
       const goSwitch = switches[0]!;
 
       expect(goSwitch).toBeChecked();
-      expect(goSwitch).toBeDisabled();
+      expect(goSwitch).toHaveAttribute("data-disabled");
     });
 
     it("does not show alert banner when managedByBuf is false", () => {
