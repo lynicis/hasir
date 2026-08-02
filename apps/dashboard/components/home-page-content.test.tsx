@@ -7,7 +7,14 @@ import HomePageContent from "./home-page-content";
 
 vi.mock("next/image", () => ({
   __esModule: true,
-  default: ({ src, alt, ...props }: any) => <img src={src} alt={alt} {...props} />
+  default: ({ src, alt, ...props }: ComponentProps<"img"> & { priority?: boolean }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { priority, ...rest } = props;
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={src} alt={alt} {...rest} />
+    );
+  }
 }));
 
 vi.mock("next/link", () => ({

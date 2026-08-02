@@ -15,9 +15,11 @@ import { InputGroupAddon } from "@hasir/ui/components/input-group";
 import { useQuery } from "@connectrpc/connect-query";
 import { Button } from "@hasir/ui/components/button";
 import { Input } from "@hasir/ui/components/input";
+import LogoLight from "@hasir/ui/logo-light.svg";
 import { Kbd } from "@hasir/ui/components/kbd";
 import { Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Logo from "@hasir/ui/logo.svg";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -137,14 +139,14 @@ export function Header() {
           className="flex items-center gap-2 text-base font-medium text-foreground"
         >
           <Image
-            src="/logo.svg"
+            src={Logo}
             alt="Hasir Logo"
             width={20}
             height={20}
             className="size-5 hidden dark:block"
           />
           <Image
-            src="/logo-light.svg"
+            src={LogoLight}
             alt="Hasir Logo"
             width={20}
             height={20}

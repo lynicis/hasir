@@ -3,6 +3,8 @@
 import { LayoutDashboard, LogIn, User, UserPlus } from "lucide-react";
 import { motion, type Variants } from "framer-motion";
 import { Button } from "@hasir/ui/components/button";
+import LogoLight from "@hasir/ui/logo-light.svg";
+import Logo from "@hasir/ui/logo.svg";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -57,7 +59,7 @@ export default function HomePageContent() {
             <div className="rounded-xl bg-card border p-4 relative group hover:border-primary/45 transition-colors duration-500">
               <div className="absolute inset-0 bg-primary/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <Image
-                src="/logo.svg"
+                src={Logo}
                 alt="Hasir Logo"
                 width={40}
                 height={40}
@@ -65,7 +67,7 @@ export default function HomePageContent() {
                 priority
               />
               <Image
-                src="/logo-light.svg"
+                src={LogoLight}
                 alt="Hasir Logo"
                 width={40}
                 height={40}
@@ -96,6 +98,7 @@ export default function HomePageContent() {
               <>
                 <Button
                   render={<Link href="/dashboard" className="flex items-center gap-2" />}
+                  nativeButton={false}
                   size="lg"
                   className="min-w-[160px] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-100"
                 >
@@ -104,6 +107,7 @@ export default function HomePageContent() {
                 </Button>
                 <Button
                   render={<Link href="/profile" className="flex items-center gap-2" />}
+                  nativeButton={false}
                   variant="outline"
                   size="lg"
                   className="min-w-[160px] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-100"
@@ -116,6 +120,7 @@ export default function HomePageContent() {
               <>
                 <Button
                   render={<Link href="/login" className="flex items-center gap-2" />}
+                  nativeButton={false}
                   size="lg"
                   className="min-w-[160px] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-100"
                 >
@@ -124,6 +129,7 @@ export default function HomePageContent() {
                 </Button>
                 <Button
                   render={<Link href="/register" className="flex items-center gap-2" />}
+                  nativeButton={false}
                   variant="outline"
                   size="lg"
                   className="min-w-[160px] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-100"
