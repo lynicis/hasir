@@ -13,9 +13,7 @@ const (
 	MemberRoleOwner  = "owner"
 )
 
-var (
-	ErrMemberNotFound = connect.NewError(connect.CodeNotFound, errors.New("member not found"))
-)
+var ErrMemberNotFound = connect.NewError(connect.CodeNotFound, errors.New("member not found"))
 
 type MemberRoleChecker interface {
 	GetMemberRole(ctx context.Context, organizationId, userId string) (string, error)

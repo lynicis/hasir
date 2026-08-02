@@ -2,18 +2,20 @@ package authorization
 
 import "context"
 
-type OrgRepositoryAdapter struct {
-	repo interface {
-		GetMemberRoleString(ctx context.Context, organizationId, userId string) (string, error)
+type OrganizationRepository interface {
+	GetMemberRoleString(ctx context.Context, organizationId, userId string) (string, error)
+}
+
+type OrganizationRepositoryAdapter struct {
+	repo OrganizationRepository
+}
+
+func NewOrgRepositoryAdapter(repo OrganizationRepository) *OrganizationRepositoryAdapter {
+	return &OrganizationRepositoryAdapter{
+		repo: repo,
 	}
 }
 
-func NewOrgRepositoryAdapter(repo interface {
-	GetMemberRoleString(ctx context.Context, organizationId, userId string) (string, error)
-}) *OrgRepositoryAdapter {
-	return &OrgRepositoryAdapter{repo: repo}
-}
-
-func (a *OrgRepositoryAdapter) GetMemberRole(ctx context.Context, organizationId, userId string) (string, error) {
+func (a *OrganizationRepositoryAdapter) GetMemberRole(ctx context.Context, organizationId, userId string) (string, error) {
 	return a.repo.GetMemberRoleString(ctx, organizationId, userId)
 }

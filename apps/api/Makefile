@@ -23,6 +23,7 @@ generate-mocks:
 	go tool mockgen -package=email -destination=pkg/email/email_mock.go -source=pkg/email/email.go
 	go tool mockgen -package=authorization -destination=pkg/authorization/authorization_mock.go -source=pkg/authorization/authorization.go
 	go tool mockgen -package=idempotency -destination=pkg/idempotency/interceptor_mock.go -source=pkg/idempotency/interceptor.go IdempotencyRepository
+	go tool mockgen -package=authorization -destination=pkg/authorization/adapter_mock.go -source=pkg/authorization/adapter.go OrganizationRepository
 
 lint:
 	go tool golangci-lint run ./...

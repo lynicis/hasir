@@ -4,49 +4,51 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	gomock "go.uber.org/mock/gomock"
 )
 
-type fakeOrgRepo struct {
-	role string
-	err  error
+func TestNewOrgRepositoryAdapter(t *testing.T) {
+	repo := NewOrgRepositoryAdapter(nil)
+
+	assert.NotNil(t, repo)
 }
 
-func (f *fakeOrgRepo) GetMemberRoleString(_ context.Context, _ string, _ string) (string, error) {
-	return f.role, f.err
-}
+func TestOrgRepositoryAdapter_GetMemberRole(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
 
-func TestOrgRepositoryAdapter_GetMemberRole_ForwardsCall(t *testing.T) {
-	t.Parallel()
+	t.Run("happy path", func(t *testing.T) {
+		ctx := context.Background()
+		wantRole := "owner"
 
-	ctx := context.Background()
-	wantRole := "owner"
-	repo := &fakeOrgRepo{role: wantRole}
+		repo := NewMockOrganizationRepository(mockController)
+		repo.EXPECT().GetMemberRoleString(ctx, "org-1", "user-1").Return(wantRole, nil).Times(1)
 
-	adapter := NewOrgRepositoryAdapter(repo)
+		adapter := NewOrgRepositoryAdapter(repo)
 
-	role, err := adapter.GetMemberRole(ctx, "org-1", "user-1")
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if role != wantRole {
-		t.Fatalf("expected role %q, got %q", wantRole, role)
-	}
-}
+		role, err := adapter.GetMemberRole(ctx, "org-1", "user-1")
 
-func TestOrgRepositoryAdapter_GetMemberRole_PropagatesError(t *testing.T) {
-	t.Parallel()
+		assert.NoError(t, err)
+		assert.Equal(t, wantRole, role)
+	})
 
-	ctx := context.Background()
-	wantErr := errors.New("boom")
-	repo := &fakeOrgRepo{err: wantErr}
+	t.Run("error", func(t *testing.T) {
+		ctx := context.Background()
+		wantErr := errors.New("boom")
 
-	adapter := NewOrgRepositoryAdapter(repo)
+		repo := NewMockOrganizationRepository(mockController)
+		repo.EXPECT().GetMemberRoleString(ctx, "org-1", "user-1").Return("", wantErr).Times(1)
 
-	_, err := adapter.GetMemberRole(ctx, "org-1", "user-1")
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-	if !errors.Is(err, wantErr) {
-		t.Fatalf("expected error %v, got %v", wantErr, err)
-	}
+		adapter := NewOrgRepositoryAdapter(repo)
+
+		_, err := adapter.GetMemberRole(ctx, "org-1", "user-1")
+		if err == nil {
+			t.Fatalf("expected error, got nil")
+		}
+		if !errors.Is(err, wantErr) {
+			t.Fatalf("expected error %v, got %v", wantErr, err)
+		}
+	})
 }
