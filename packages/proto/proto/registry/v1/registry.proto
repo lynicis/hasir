@@ -146,13 +146,31 @@ message GetFilePreviewResponse {
 
 service RegistryService {
   rpc CreateRepository(CreateRepositoryRequest) returns (google.protobuf.Empty);
-  rpc GetRepositories(GetRepositoriesRequest) returns (GetRepositoriesResponse);
-  rpc DeleteRepository(DeleteRepositoryRequest) returns (google.protobuf.Empty);
-  rpc UpdateRepository(UpdateRepositoryRequest) returns (google.protobuf.Empty);
-  rpc GetRepository(GetRepositoryRequest) returns (Repository);
-  rpc GetCommits(GetCommitsRequest) returns (GetCommitsResponse);
-  rpc GetRecentCommit(GetRecentCommitRequest) returns (Commit);
-  rpc GetFileTree(GetFileTreeRequest) returns (GetFileTreeResponse);
-  rpc GetFilePreview(GetFilePreviewRequest) returns (GetFilePreviewResponse);
-  rpc UpdateSdkPreferences(UpdateSdkPreferencesRequest) returns (google.protobuf.Empty);
+  rpc GetRepositories(GetRepositoriesRequest) returns (GetRepositoriesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc DeleteRepository(DeleteRepositoryRequest) returns (google.protobuf.Empty) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  rpc UpdateRepository(UpdateRepositoryRequest) returns (google.protobuf.Empty) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  rpc GetRepository(GetRepositoryRequest) returns (Repository) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetCommits(GetCommitsRequest) returns (GetCommitsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetRecentCommit(GetRecentCommitRequest) returns (Commit) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetFileTree(GetFileTreeRequest) returns (GetFileTreeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetFilePreview(GetFilePreviewRequest) returns (GetFilePreviewResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc UpdateSdkPreferences(UpdateSdkPreferencesRequest) returns (google.protobuf.Empty) {
+    option idempotency_level = IDEMPOTENT;
+  }
 }

@@ -138,6 +138,7 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+UserServiceDeleteAccountProcedure,
 			connect.WithSchema(userServiceMethods.ByName("DeleteAccount")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		createApiKey: connect.NewClient[v1.CreateApiKeyRequest, v1.CreateApiKeyResponse](
@@ -150,12 +151,14 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+UserServiceGetApiKeysProcedure,
 			connect.WithSchema(userServiceMethods.ByName("GetApiKeys")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		revokeApiKey: connect.NewClient[v1.RevokeKeyRequest, emptypb.Empty](
 			httpClient,
 			baseURL+UserServiceRevokeApiKeyProcedure,
 			connect.WithSchema(userServiceMethods.ByName("RevokeApiKey")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		createSshKey: connect.NewClient[v1.CreateSshKeyRequest, emptypb.Empty](
@@ -168,12 +171,14 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+UserServiceGetSshKeysProcedure,
 			connect.WithSchema(userServiceMethods.ByName("GetSshKeys")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		revokeSshKey: connect.NewClient[v1.RevokeKeyRequest, emptypb.Empty](
 			httpClient,
 			baseURL+UserServiceRevokeSshKeyProcedure,
 			connect.WithSchema(userServiceMethods.ByName("RevokeSshKey")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -325,6 +330,7 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		UserServiceDeleteAccountProcedure,
 		svc.DeleteAccount,
 		connect.WithSchema(userServiceMethods.ByName("DeleteAccount")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceCreateApiKeyHandler := connect.NewUnaryHandler(
@@ -337,12 +343,14 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		UserServiceGetApiKeysProcedure,
 		svc.GetApiKeys,
 		connect.WithSchema(userServiceMethods.ByName("GetApiKeys")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceRevokeApiKeyHandler := connect.NewUnaryHandler(
 		UserServiceRevokeApiKeyProcedure,
 		svc.RevokeApiKey,
 		connect.WithSchema(userServiceMethods.ByName("RevokeApiKey")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceCreateSshKeyHandler := connect.NewUnaryHandler(
@@ -355,12 +363,14 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		UserServiceGetSshKeysProcedure,
 		svc.GetSshKeys,
 		connect.WithSchema(userServiceMethods.ByName("GetSshKeys")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceRevokeSshKeyHandler := connect.NewUnaryHandler(
 		UserServiceRevokeSshKeyProcedure,
 		svc.RevokeSshKey,
 		connect.WithSchema(userServiceMethods.ByName("RevokeSshKey")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/user.v1.UserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -103,11 +103,21 @@ service UserService {
   rpc ForgotPassword(ForgotPasswordRequest) returns (google.protobuf.Empty);
   rpc ResetPassword(ResetPasswordRequest) returns (google.protobuf.Empty);
   rpc UpdateUser(UpdateUserRequest) returns (TokenEnvelope);
-  rpc DeleteAccount(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc DeleteAccount(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option idempotency_level = IDEMPOTENT;
+  }
   rpc CreateApiKey(CreateApiKeyRequest) returns (CreateApiKeyResponse);
-  rpc GetApiKeys(shared.Pagination) returns (KeyResponse);
-  rpc RevokeApiKey(RevokeKeyRequest) returns (google.protobuf.Empty);
+  rpc GetApiKeys(shared.Pagination) returns (KeyResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc RevokeApiKey(RevokeKeyRequest) returns (google.protobuf.Empty) {
+    option idempotency_level = IDEMPOTENT;
+  }
   rpc CreateSshKey(CreateSshKeyRequest) returns (google.protobuf.Empty);
-  rpc GetSshKeys(shared.Pagination) returns (KeyResponse);
-  rpc RevokeSshKey(RevokeKeyRequest) returns (google.protobuf.Empty);
+  rpc GetSshKeys(shared.Pagination) returns (KeyResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc RevokeSshKey(RevokeKeyRequest) returns (google.protobuf.Empty) {
+    option idempotency_level = IDEMPOTENT;
+  }
 }

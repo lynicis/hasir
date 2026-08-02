@@ -101,54 +101,63 @@ func NewRegistryServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			httpClient,
 			baseURL+RegistryServiceGetRepositoriesProcedure,
 			connect.WithSchema(registryServiceMethods.ByName("GetRepositories")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		deleteRepository: connect.NewClient[v1.DeleteRepositoryRequest, emptypb.Empty](
 			httpClient,
 			baseURL+RegistryServiceDeleteRepositoryProcedure,
 			connect.WithSchema(registryServiceMethods.ByName("DeleteRepository")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		updateRepository: connect.NewClient[v1.UpdateRepositoryRequest, emptypb.Empty](
 			httpClient,
 			baseURL+RegistryServiceUpdateRepositoryProcedure,
 			connect.WithSchema(registryServiceMethods.ByName("UpdateRepository")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		getRepository: connect.NewClient[v1.GetRepositoryRequest, v1.Repository](
 			httpClient,
 			baseURL+RegistryServiceGetRepositoryProcedure,
 			connect.WithSchema(registryServiceMethods.ByName("GetRepository")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getCommits: connect.NewClient[v1.GetCommitsRequest, v1.GetCommitsResponse](
 			httpClient,
 			baseURL+RegistryServiceGetCommitsProcedure,
 			connect.WithSchema(registryServiceMethods.ByName("GetCommits")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getRecentCommit: connect.NewClient[v1.GetRecentCommitRequest, v1.Commit](
 			httpClient,
 			baseURL+RegistryServiceGetRecentCommitProcedure,
 			connect.WithSchema(registryServiceMethods.ByName("GetRecentCommit")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getFileTree: connect.NewClient[v1.GetFileTreeRequest, v1.GetFileTreeResponse](
 			httpClient,
 			baseURL+RegistryServiceGetFileTreeProcedure,
 			connect.WithSchema(registryServiceMethods.ByName("GetFileTree")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getFilePreview: connect.NewClient[v1.GetFilePreviewRequest, v1.GetFilePreviewResponse](
 			httpClient,
 			baseURL+RegistryServiceGetFilePreviewProcedure,
 			connect.WithSchema(registryServiceMethods.ByName("GetFilePreview")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		updateSdkPreferences: connect.NewClient[v1.UpdateSdkPreferencesRequest, emptypb.Empty](
 			httpClient,
 			baseURL+RegistryServiceUpdateSdkPreferencesProcedure,
 			connect.WithSchema(registryServiceMethods.ByName("UpdateSdkPreferences")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -249,54 +258,63 @@ func NewRegistryServiceHandler(svc RegistryServiceHandler, opts ...connect.Handl
 		RegistryServiceGetRepositoriesProcedure,
 		svc.GetRepositories,
 		connect.WithSchema(registryServiceMethods.ByName("GetRepositories")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	registryServiceDeleteRepositoryHandler := connect.NewUnaryHandler(
 		RegistryServiceDeleteRepositoryProcedure,
 		svc.DeleteRepository,
 		connect.WithSchema(registryServiceMethods.ByName("DeleteRepository")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	registryServiceUpdateRepositoryHandler := connect.NewUnaryHandler(
 		RegistryServiceUpdateRepositoryProcedure,
 		svc.UpdateRepository,
 		connect.WithSchema(registryServiceMethods.ByName("UpdateRepository")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	registryServiceGetRepositoryHandler := connect.NewUnaryHandler(
 		RegistryServiceGetRepositoryProcedure,
 		svc.GetRepository,
 		connect.WithSchema(registryServiceMethods.ByName("GetRepository")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	registryServiceGetCommitsHandler := connect.NewUnaryHandler(
 		RegistryServiceGetCommitsProcedure,
 		svc.GetCommits,
 		connect.WithSchema(registryServiceMethods.ByName("GetCommits")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	registryServiceGetRecentCommitHandler := connect.NewUnaryHandler(
 		RegistryServiceGetRecentCommitProcedure,
 		svc.GetRecentCommit,
 		connect.WithSchema(registryServiceMethods.ByName("GetRecentCommit")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	registryServiceGetFileTreeHandler := connect.NewUnaryHandler(
 		RegistryServiceGetFileTreeProcedure,
 		svc.GetFileTree,
 		connect.WithSchema(registryServiceMethods.ByName("GetFileTree")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	registryServiceGetFilePreviewHandler := connect.NewUnaryHandler(
 		RegistryServiceGetFilePreviewProcedure,
 		svc.GetFilePreview,
 		connect.WithSchema(registryServiceMethods.ByName("GetFilePreview")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	registryServiceUpdateSdkPreferencesHandler := connect.NewUnaryHandler(
 		RegistryServiceUpdateSdkPreferencesProcedure,
 		svc.UpdateSdkPreferences,
 		connect.WithSchema(registryServiceMethods.ByName("UpdateSdkPreferences")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/registry.v1.RegistryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

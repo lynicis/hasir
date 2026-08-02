@@ -786,7 +786,7 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"total_page\x18\x03 \x01(\x05R\ttotalPage\"*\n" +
 	"\x10RevokeKeyRequest\x12\x16\n" +
-	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id2\xeb\x06\n" +
+	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id2\x84\a\n" +
 	"\vUserService\x12<\n" +
 	"\bRegister\x12\x18.user.v1.RegisterRequest\x1a\x16.google.protobuf.Empty\x126\n" +
 	"\x05Login\x12\x15.user.v1.LoginRequest\x1a\x16.user.v1.TokenEnvelope\x12H\n" +
@@ -794,16 +794,16 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\x0eForgotPassword\x12\x1e.user.v1.ForgotPasswordRequest\x1a\x16.google.protobuf.Empty\x12F\n" +
 	"\rResetPassword\x12\x1d.user.v1.ResetPasswordRequest\x1a\x16.google.protobuf.Empty\x12@\n" +
 	"\n" +
-	"UpdateUser\x12\x1a.user.v1.UpdateUserRequest\x1a\x16.user.v1.TokenEnvelope\x12?\n" +
-	"\rDeleteAccount\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\x12K\n" +
-	"\fCreateApiKey\x12\x1c.user.v1.CreateApiKeyRequest\x1a\x1d.user.v1.CreateApiKeyResponse\x126\n" +
+	"UpdateUser\x12\x1a.user.v1.UpdateUserRequest\x1a\x16.user.v1.TokenEnvelope\x12D\n" +
+	"\rDeleteAccount\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x03\x90\x02\x02\x12K\n" +
+	"\fCreateApiKey\x12\x1c.user.v1.CreateApiKeyRequest\x1a\x1d.user.v1.CreateApiKeyResponse\x12;\n" +
 	"\n" +
-	"GetApiKeys\x12\x12.shared.Pagination\x1a\x14.user.v1.KeyResponse\x12A\n" +
-	"\fRevokeApiKey\x12\x19.user.v1.RevokeKeyRequest\x1a\x16.google.protobuf.Empty\x12D\n" +
-	"\fCreateSshKey\x12\x1c.user.v1.CreateSshKeyRequest\x1a\x16.google.protobuf.Empty\x126\n" +
+	"GetApiKeys\x12\x12.shared.Pagination\x1a\x14.user.v1.KeyResponse\"\x03\x90\x02\x01\x12F\n" +
+	"\fRevokeApiKey\x12\x19.user.v1.RevokeKeyRequest\x1a\x16.google.protobuf.Empty\"\x03\x90\x02\x02\x12D\n" +
+	"\fCreateSshKey\x12\x1c.user.v1.CreateSshKeyRequest\x1a\x16.google.protobuf.Empty\x12;\n" +
 	"\n" +
-	"GetSshKeys\x12\x12.shared.Pagination\x1a\x14.user.v1.KeyResponse\x12A\n" +
-	"\fRevokeSshKey\x12\x19.user.v1.RevokeKeyRequest\x1a\x16.google.protobuf.EmptyBx\n" +
+	"GetSshKeys\x12\x12.shared.Pagination\x1a\x14.user.v1.KeyResponse\"\x03\x90\x02\x01\x12F\n" +
+	"\fRevokeSshKey\x12\x19.user.v1.RevokeKeyRequest\x1a\x16.google.protobuf.Empty\"\x03\x90\x02\x02Bx\n" +
 	"\vcom.user.v1B\tUserProtoP\x01Z!hasir/proto/gen/go/user/v1;userv1\xa2\x02\x03UXX\xaa\x02\aUser.V1\xca\x02\aUser\\V1\xe2\x02\x13User\\V1\\GPBMetadata\xea\x02\bUser::V1b\x06proto3"
 
 var (

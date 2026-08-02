@@ -40,7 +40,9 @@ import (
 	"hasir/api/pkg/authorization"
 	"hasir/api/pkg/config"
 	"hasir/api/pkg/email"
+	"hasir/api/pkg/idempotency"
 	_ "hasir/api/pkg/log"
+	postgresIdempotency "hasir/api/pkg/postgres/idempotency"
 	postgresOrganization "hasir/api/pkg/postgres/organization"
 	postgresRegistry "hasir/api/pkg/postgres/registry"
 	postgresUser "hasir/api/pkg/postgres/user"
@@ -75,6 +77,7 @@ func main() {
 		traceProvider = initTracer(cfg)
 	}
 
+	idempotencyPgRepository := postgresIdempotency.NewIdempotencyRepository(cfg, traceProvider)
 	userPgRepository := postgresUser.NewPgRepository(cfg, traceProvider)
 	repositoryPgRepository := postgresRegistry.NewPgRepository(cfg, traceProvider)
 	organizationPgRepository := postgresOrganization.NewOrganizationRepository(cfg, traceProvider)
@@ -119,8 +122,13 @@ func main() {
 	)
 
 	authInterceptor := authentication.NewAuthInterceptor(cfg.JwtSecret)
+	idempotencyInterceptor := idempotency.NewIdempotencyInterceptor(idempotencyPgRepository)
 
-	interceptors := []connect.Interceptor{validate.NewInterceptor(), authInterceptor}
+	interceptors := []connect.Interceptor{
+		validate.NewInterceptor(),
+		idempotencyInterceptor.Interceptor(),
+		authInterceptor,
+	}
 	if cfg.Otel.Enabled {
 		otelInterceptor, err := otelconnect.NewInterceptor(
 			otelconnect.WithTracerProvider(traceProvider),

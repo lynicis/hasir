@@ -113,15 +113,33 @@ message DeleteMemberRequest {
 
 service OrganizationService {
   rpc CreateOrganization(CreateOrganizationRequest) returns (google.protobuf.Empty);
-  rpc GetOrganizations(GetOrganizationsRequest) returns (GetOrganizationsResponse);
-  rpc GetOrganization(GetOrganizationRequest) returns (GetOrganizationResponse);
-  rpc UpdateOrganization(UpdateOrganizationRequest) returns (google.protobuf.Empty);
-  rpc DeleteOrganization(DeleteOrganizationRequest) returns (google.protobuf.Empty);
+  rpc GetOrganizations(GetOrganizationsRequest) returns (GetOrganizationsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetOrganization(GetOrganizationRequest) returns (GetOrganizationResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc UpdateOrganization(UpdateOrganizationRequest) returns (google.protobuf.Empty) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  rpc DeleteOrganization(DeleteOrganizationRequest) returns (google.protobuf.Empty) {
+    option idempotency_level = IDEMPOTENT;
+  }
   rpc InviteMember(InviteMemberRequest) returns (google.protobuf.Empty);
-  rpc IsInvitationValid(IsInvitationValidRequest) returns (google.protobuf.Empty);
+  rpc IsInvitationValid(IsInvitationValidRequest) returns (google.protobuf.Empty) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc RespondToInvitation(RespondToInvitationRequest) returns (google.protobuf.Empty);
-  rpc GetMembers(GetMembersRequest) returns (GetMembersResponse);
-  rpc UpdateMemberRole(UpdateMemberRoleRequest) returns (google.protobuf.Empty);
-  rpc DeleteMember(DeleteMemberRequest) returns (google.protobuf.Empty);
-  rpc Search(SearchRequest) returns (SearchResponse);
+  rpc GetMembers(GetMembersRequest) returns (GetMembersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc UpdateMemberRole(UpdateMemberRoleRequest) returns (google.protobuf.Empty) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  rpc DeleteMember(DeleteMemberRequest) returns (google.protobuf.Empty) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  rpc Search(SearchRequest) returns (SearchResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }

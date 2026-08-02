@@ -1113,21 +1113,21 @@ const file_organization_v1_organization_proto_rawDesc = "" +
 	"\x04role\x18\x03 \x01(\x0e2\f.shared.RoleB\b\xbaH\x05\x82\x01\x02 \x00R\x04role\"k\n" +
 	"\x13DeleteMemberRequest\x12/\n" +
 	"\x0forganization_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0eorganizationId\x12#\n" +
-	"\tmember_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bmemberId2\xba\b\n" +
+	"\tmember_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bmemberId2\xe7\b\n" +
 	"\x13OrganizationService\x12X\n" +
-	"\x12CreateOrganization\x12*.organization.v1.CreateOrganizationRequest\x1a\x16.google.protobuf.Empty\x12g\n" +
-	"\x10GetOrganizations\x12(.organization.v1.GetOrganizationsRequest\x1a).organization.v1.GetOrganizationsResponse\x12d\n" +
-	"\x0fGetOrganization\x12'.organization.v1.GetOrganizationRequest\x1a(.organization.v1.GetOrganizationResponse\x12X\n" +
-	"\x12UpdateOrganization\x12*.organization.v1.UpdateOrganizationRequest\x1a\x16.google.protobuf.Empty\x12X\n" +
-	"\x12DeleteOrganization\x12*.organization.v1.DeleteOrganizationRequest\x1a\x16.google.protobuf.Empty\x12L\n" +
-	"\fInviteMember\x12$.organization.v1.InviteMemberRequest\x1a\x16.google.protobuf.Empty\x12V\n" +
-	"\x11IsInvitationValid\x12).organization.v1.IsInvitationValidRequest\x1a\x16.google.protobuf.Empty\x12Z\n" +
-	"\x13RespondToInvitation\x12+.organization.v1.RespondToInvitationRequest\x1a\x16.google.protobuf.Empty\x12U\n" +
+	"\x12CreateOrganization\x12*.organization.v1.CreateOrganizationRequest\x1a\x16.google.protobuf.Empty\x12l\n" +
+	"\x10GetOrganizations\x12(.organization.v1.GetOrganizationsRequest\x1a).organization.v1.GetOrganizationsResponse\"\x03\x90\x02\x01\x12i\n" +
+	"\x0fGetOrganization\x12'.organization.v1.GetOrganizationRequest\x1a(.organization.v1.GetOrganizationResponse\"\x03\x90\x02\x01\x12]\n" +
+	"\x12UpdateOrganization\x12*.organization.v1.UpdateOrganizationRequest\x1a\x16.google.protobuf.Empty\"\x03\x90\x02\x02\x12]\n" +
+	"\x12DeleteOrganization\x12*.organization.v1.DeleteOrganizationRequest\x1a\x16.google.protobuf.Empty\"\x03\x90\x02\x02\x12L\n" +
+	"\fInviteMember\x12$.organization.v1.InviteMemberRequest\x1a\x16.google.protobuf.Empty\x12[\n" +
+	"\x11IsInvitationValid\x12).organization.v1.IsInvitationValidRequest\x1a\x16.google.protobuf.Empty\"\x03\x90\x02\x01\x12Z\n" +
+	"\x13RespondToInvitation\x12+.organization.v1.RespondToInvitationRequest\x1a\x16.google.protobuf.Empty\x12Z\n" +
 	"\n" +
-	"GetMembers\x12\".organization.v1.GetMembersRequest\x1a#.organization.v1.GetMembersResponse\x12T\n" +
-	"\x10UpdateMemberRole\x12(.organization.v1.UpdateMemberRoleRequest\x1a\x16.google.protobuf.Empty\x12L\n" +
-	"\fDeleteMember\x12$.organization.v1.DeleteMemberRequest\x1a\x16.google.protobuf.Empty\x12I\n" +
-	"\x06Search\x12\x1e.organization.v1.SearchRequest\x1a\x1f.organization.v1.SearchResponseB\xb8\x01\n" +
+	"GetMembers\x12\".organization.v1.GetMembersRequest\x1a#.organization.v1.GetMembersResponse\"\x03\x90\x02\x01\x12Y\n" +
+	"\x10UpdateMemberRole\x12(.organization.v1.UpdateMemberRoleRequest\x1a\x16.google.protobuf.Empty\"\x03\x90\x02\x02\x12Q\n" +
+	"\fDeleteMember\x12$.organization.v1.DeleteMemberRequest\x1a\x16.google.protobuf.Empty\"\x03\x90\x02\x02\x12N\n" +
+	"\x06Search\x12\x1e.organization.v1.SearchRequest\x1a\x1f.organization.v1.SearchResponse\"\x03\x90\x02\x01B\xb8\x01\n" +
 	"\x13com.organization.v1B\x11OrganizationProtoP\x01Z1hasir/proto/gen/go/organization/v1;organizationv1\xa2\x02\x03OXX\xaa\x02\x0fOrganization.V1\xca\x02\x0fOrganization\\V1\xe2\x02\x1bOrganization\\V1\\GPBMetadata\xea\x02\x10Organization::V1b\x06proto3"
 
 var (

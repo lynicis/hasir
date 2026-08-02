@@ -1349,19 +1349,19 @@ const file_registry_v1_registry_proto_rawDesc = "" +
 	"\bNodeType\x12\x19\n" +
 	"\x15NODE_TYPE_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eNODE_TYPE_FILE\x10\x01\x12\x17\n" +
-	"\x13NODE_TYPE_DIRECTORY\x10\x022\xd5\x06\n" +
+	"\x13NODE_TYPE_DIRECTORY\x10\x022\x82\a\n" +
 	"\x0fRegistryService\x12P\n" +
-	"\x10CreateRepository\x12$.registry.v1.CreateRepositoryRequest\x1a\x16.google.protobuf.Empty\x12\\\n" +
-	"\x0fGetRepositories\x12#.registry.v1.GetRepositoriesRequest\x1a$.registry.v1.GetRepositoriesResponse\x12P\n" +
-	"\x10DeleteRepository\x12$.registry.v1.DeleteRepositoryRequest\x1a\x16.google.protobuf.Empty\x12P\n" +
-	"\x10UpdateRepository\x12$.registry.v1.UpdateRepositoryRequest\x1a\x16.google.protobuf.Empty\x12K\n" +
-	"\rGetRepository\x12!.registry.v1.GetRepositoryRequest\x1a\x17.registry.v1.Repository\x12M\n" +
+	"\x10CreateRepository\x12$.registry.v1.CreateRepositoryRequest\x1a\x16.google.protobuf.Empty\x12a\n" +
+	"\x0fGetRepositories\x12#.registry.v1.GetRepositoriesRequest\x1a$.registry.v1.GetRepositoriesResponse\"\x03\x90\x02\x01\x12U\n" +
+	"\x10DeleteRepository\x12$.registry.v1.DeleteRepositoryRequest\x1a\x16.google.protobuf.Empty\"\x03\x90\x02\x02\x12U\n" +
+	"\x10UpdateRepository\x12$.registry.v1.UpdateRepositoryRequest\x1a\x16.google.protobuf.Empty\"\x03\x90\x02\x02\x12P\n" +
+	"\rGetRepository\x12!.registry.v1.GetRepositoryRequest\x1a\x17.registry.v1.Repository\"\x03\x90\x02\x01\x12R\n" +
 	"\n" +
-	"GetCommits\x12\x1e.registry.v1.GetCommitsRequest\x1a\x1f.registry.v1.GetCommitsResponse\x12K\n" +
-	"\x0fGetRecentCommit\x12#.registry.v1.GetRecentCommitRequest\x1a\x13.registry.v1.Commit\x12P\n" +
-	"\vGetFileTree\x12\x1f.registry.v1.GetFileTreeRequest\x1a .registry.v1.GetFileTreeResponse\x12Y\n" +
-	"\x0eGetFilePreview\x12\".registry.v1.GetFilePreviewRequest\x1a#.registry.v1.GetFilePreviewResponse\x12X\n" +
-	"\x14UpdateSdkPreferences\x12(.registry.v1.UpdateSdkPreferencesRequest\x1a\x16.google.protobuf.EmptyB\x98\x01\n" +
+	"GetCommits\x12\x1e.registry.v1.GetCommitsRequest\x1a\x1f.registry.v1.GetCommitsResponse\"\x03\x90\x02\x01\x12P\n" +
+	"\x0fGetRecentCommit\x12#.registry.v1.GetRecentCommitRequest\x1a\x13.registry.v1.Commit\"\x03\x90\x02\x01\x12U\n" +
+	"\vGetFileTree\x12\x1f.registry.v1.GetFileTreeRequest\x1a .registry.v1.GetFileTreeResponse\"\x03\x90\x02\x01\x12^\n" +
+	"\x0eGetFilePreview\x12\".registry.v1.GetFilePreviewRequest\x1a#.registry.v1.GetFilePreviewResponse\"\x03\x90\x02\x01\x12]\n" +
+	"\x14UpdateSdkPreferences\x12(.registry.v1.UpdateSdkPreferencesRequest\x1a\x16.google.protobuf.Empty\"\x03\x90\x02\x02B\x98\x01\n" +
 	"\x0fcom.registry.v1B\rRegistryProtoP\x01Z)hasir/proto/gen/go/registry/v1;registryv1\xa2\x02\x03RXX\xaa\x02\vRegistry.V1\xca\x02\vRegistry\\V1\xe2\x02\x17Registry\\V1\\GPBMetadata\xea\x02\fRegistry::V1b\x06proto3"
 
 var (

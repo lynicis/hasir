@@ -109,24 +109,28 @@ func NewOrganizationServiceClient(httpClient connect.HTTPClient, baseURL string,
 			httpClient,
 			baseURL+OrganizationServiceGetOrganizationsProcedure,
 			connect.WithSchema(organizationServiceMethods.ByName("GetOrganizations")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getOrganization: connect.NewClient[v1.GetOrganizationRequest, v1.GetOrganizationResponse](
 			httpClient,
 			baseURL+OrganizationServiceGetOrganizationProcedure,
 			connect.WithSchema(organizationServiceMethods.ByName("GetOrganization")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		updateOrganization: connect.NewClient[v1.UpdateOrganizationRequest, emptypb.Empty](
 			httpClient,
 			baseURL+OrganizationServiceUpdateOrganizationProcedure,
 			connect.WithSchema(organizationServiceMethods.ByName("UpdateOrganization")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		deleteOrganization: connect.NewClient[v1.DeleteOrganizationRequest, emptypb.Empty](
 			httpClient,
 			baseURL+OrganizationServiceDeleteOrganizationProcedure,
 			connect.WithSchema(organizationServiceMethods.ByName("DeleteOrganization")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		inviteMember: connect.NewClient[v1.InviteMemberRequest, emptypb.Empty](
@@ -139,6 +143,7 @@ func NewOrganizationServiceClient(httpClient connect.HTTPClient, baseURL string,
 			httpClient,
 			baseURL+OrganizationServiceIsInvitationValidProcedure,
 			connect.WithSchema(organizationServiceMethods.ByName("IsInvitationValid")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		respondToInvitation: connect.NewClient[v1.RespondToInvitationRequest, emptypb.Empty](
@@ -151,24 +156,28 @@ func NewOrganizationServiceClient(httpClient connect.HTTPClient, baseURL string,
 			httpClient,
 			baseURL+OrganizationServiceGetMembersProcedure,
 			connect.WithSchema(organizationServiceMethods.ByName("GetMembers")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		updateMemberRole: connect.NewClient[v1.UpdateMemberRoleRequest, emptypb.Empty](
 			httpClient,
 			baseURL+OrganizationServiceUpdateMemberRoleProcedure,
 			connect.WithSchema(organizationServiceMethods.ByName("UpdateMemberRole")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		deleteMember: connect.NewClient[v1.DeleteMemberRequest, emptypb.Empty](
 			httpClient,
 			baseURL+OrganizationServiceDeleteMemberProcedure,
 			connect.WithSchema(organizationServiceMethods.ByName("DeleteMember")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		search: connect.NewClient[v1.SearchRequest, v1.SearchResponse](
 			httpClient,
 			baseURL+OrganizationServiceSearchProcedure,
 			connect.WithSchema(organizationServiceMethods.ByName("Search")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -284,24 +293,28 @@ func NewOrganizationServiceHandler(svc OrganizationServiceHandler, opts ...conne
 		OrganizationServiceGetOrganizationsProcedure,
 		svc.GetOrganizations,
 		connect.WithSchema(organizationServiceMethods.ByName("GetOrganizations")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	organizationServiceGetOrganizationHandler := connect.NewUnaryHandler(
 		OrganizationServiceGetOrganizationProcedure,
 		svc.GetOrganization,
 		connect.WithSchema(organizationServiceMethods.ByName("GetOrganization")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	organizationServiceUpdateOrganizationHandler := connect.NewUnaryHandler(
 		OrganizationServiceUpdateOrganizationProcedure,
 		svc.UpdateOrganization,
 		connect.WithSchema(organizationServiceMethods.ByName("UpdateOrganization")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	organizationServiceDeleteOrganizationHandler := connect.NewUnaryHandler(
 		OrganizationServiceDeleteOrganizationProcedure,
 		svc.DeleteOrganization,
 		connect.WithSchema(organizationServiceMethods.ByName("DeleteOrganization")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	organizationServiceInviteMemberHandler := connect.NewUnaryHandler(
@@ -314,6 +327,7 @@ func NewOrganizationServiceHandler(svc OrganizationServiceHandler, opts ...conne
 		OrganizationServiceIsInvitationValidProcedure,
 		svc.IsInvitationValid,
 		connect.WithSchema(organizationServiceMethods.ByName("IsInvitationValid")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	organizationServiceRespondToInvitationHandler := connect.NewUnaryHandler(
@@ -326,24 +340,28 @@ func NewOrganizationServiceHandler(svc OrganizationServiceHandler, opts ...conne
 		OrganizationServiceGetMembersProcedure,
 		svc.GetMembers,
 		connect.WithSchema(organizationServiceMethods.ByName("GetMembers")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	organizationServiceUpdateMemberRoleHandler := connect.NewUnaryHandler(
 		OrganizationServiceUpdateMemberRoleProcedure,
 		svc.UpdateMemberRole,
 		connect.WithSchema(organizationServiceMethods.ByName("UpdateMemberRole")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	organizationServiceDeleteMemberHandler := connect.NewUnaryHandler(
 		OrganizationServiceDeleteMemberProcedure,
 		svc.DeleteMember,
 		connect.WithSchema(organizationServiceMethods.ByName("DeleteMember")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	organizationServiceSearchHandler := connect.NewUnaryHandler(
 		OrganizationServiceSearchProcedure,
 		svc.Search,
 		connect.WithSchema(organizationServiceMethods.ByName("Search")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/organization.v1.OrganizationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
