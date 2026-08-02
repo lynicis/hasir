@@ -28,5 +28,4 @@ jobs:
           publish-script: bun run release
           version-script: bunx changeset version
           create-github-releases: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GHCR_PAT }}
+          github-token: ${{ secrets.GHCR_PAT }}
