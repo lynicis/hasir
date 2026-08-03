@@ -40,7 +40,7 @@
       "cache": false
     }
   },
-  "globalDependencies": ["bunfig.toml", "turbo.json", "package.json", "tsconfig.base.json", "CODEOWNERS"],
+  "globalDependencies": ["bunfig.toml", "turbo.json", "package.json", "tsconfig.base.json"],
   "globalEnv": [
     "NODE_ENV",
     "NEXT_PUBLIC_API_URL",

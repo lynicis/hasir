@@ -89,7 +89,7 @@ export function SshConfigurationContent() {
           <span>Hasir</span>
         </Link>
         <div className="flex-1" />
-        <Button variant="ghost" size="sm" render={<Link href="/dashboard" />}>
+        <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/dashboard" />}>
           <ArrowLeft className="size-4" />
           <span>Back to Dashboard</span>
         </Button>
@@ -312,7 +312,7 @@ cat ~/.ssh/id_ed25519.pub`}</CodeBlock>
                       <li>Give the key a descriptive name (e.g., &quot;Work Laptop&quot;, &quot;Home Desktop&quot;)</li>
                       <li>Click <strong className="text-foreground">Save</strong></li>
                     </ol>
-                    <Button variant="outline" render={<Link href="/profile" />}>
+                    <Button variant="outline" nativeButton={false} render={<Link href="/profile" />}>
                       Go to Profile Settings
                       <ExternalLink className="size-4" />
                     </Button>

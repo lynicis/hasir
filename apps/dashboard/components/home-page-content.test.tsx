@@ -69,11 +69,11 @@ describe("HomePageContent", () => {
 
     render(<HomePageContent />);
 
-    expect(screen.getByRole("link", { name: /login/i })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /login/i })).toHaveAttribute(
       "href",
       "/login"
     );
-    expect(screen.getByRole("link", { name: /register/i })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /register/i })).toHaveAttribute(
       "href",
       "/register"
     );
@@ -91,11 +91,11 @@ describe("HomePageContent", () => {
 
     render(<HomePageContent />);
 
-    expect(screen.getByRole("link", { name: /dashboard/i })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /dashboard/i })).toHaveAttribute(
       "href",
       "/dashboard"
     );
-    expect(screen.getByRole("link", { name: /profile/i })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /profile/i })).toHaveAttribute(
       "href",
       "/profile"
     );

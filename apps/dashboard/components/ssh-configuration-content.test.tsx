@@ -77,7 +77,7 @@ describe("SshConfigurationContent", () => {
   it("renders a link to the profile page", () => {
     render(<SshConfigurationContent />);
 
-    const profileLink = screen.getByRole("link", {
+    const profileLink = screen.getByRole("button", {
       name: /Go to Profile Settings/,
     });
 
@@ -97,7 +97,7 @@ describe("SshConfigurationContent", () => {
   it("renders the back to dashboard link", () => {
     render(<SshConfigurationContent />);
 
-    const dashboardLink = screen.getByRole("link", {
+    const dashboardLink = screen.getByRole("button", {
       name: /Back to Dashboard/,
     });
 

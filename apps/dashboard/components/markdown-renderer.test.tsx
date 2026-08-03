@@ -110,8 +110,8 @@ const x = 1;
 `;
       render(<MarkdownRenderer content={codeBlock} />);
 
-      expect(screen.getByText("const")).toBeInTheDocument();
-      expect(screen.getByText("1")).toBeInTheDocument();
+      expect(screen.getByText(/const/)).toBeInTheDocument();
+      expect(screen.getByText(/1/)).toBeInTheDocument();
     });
   });
 

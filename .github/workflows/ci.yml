@@ -120,7 +120,7 @@ jobs:
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: apps/api/coverage.out,apps/dashboard/junit.xml
+          files: apps/api/coverage.out,apps/dashboard/coverage/lcov.info
           flags: api,dashboard
           fail_ci_if_error: false
 
