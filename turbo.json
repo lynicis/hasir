@@ -9,7 +9,7 @@
     },
     "test": {
       "inputs": ["$TURBO_DEFAULT$", "tsconfig.json", "go.mod", "go.sum"],
-      "outputs": ["coverage/**", "coverage.txt", "junit.xml"]
+      "outputs": ["coverage.out", "junit.xml"]
     },
     "lint": {
       "dependsOn": ["^lint"],
