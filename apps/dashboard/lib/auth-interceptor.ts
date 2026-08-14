@@ -1,5 +1,7 @@
 import { type Interceptor, Code, ConnectError } from "@connectrpc/connect";
 
+import { getCsrfToken } from "./csrf";
+
 const publicMethods = ['login', 'register', 'forgotpassword', 'resetpassword'];
 
 function isPublicPage(): boolean {
@@ -27,7 +29,12 @@ function isPublicMethod(req: { url?: string }): boolean {
 
 async function destroySession(): Promise<void> {
   try {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await fetch('/api/auth/logout', { 
+      method: 'POST',
+      headers: {
+        'X-CSRF-Token': getCsrfToken(),
+      }
+    });
   } catch (error) {
     console.warn('Failed to destroy session:', error);
   }

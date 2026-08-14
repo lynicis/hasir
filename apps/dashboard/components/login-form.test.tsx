@@ -46,16 +46,19 @@ describe("LoginForm", () => {
     await user.click(screen.getByRole("button", { name: /login/i }));
 
     await waitFor(() =>
-      expect(mockFetch).toHaveBeenCalledWith("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: "hello@example.com",
-          password: "password123",
-        }),
-      })
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/auth/login",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({
+            email: "hello@example.com",
+            password: "password123",
+          }),
+        })
+      )
     );
   });
 

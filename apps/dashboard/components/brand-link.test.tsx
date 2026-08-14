@@ -58,7 +58,9 @@ describe("BrandLink", () => {
 
     const image = screen.getByAltText("Hasir Logo");
 
-    expect(image).toHaveAttribute("src", "/logo.webp");
+    // Since we import the logo, it's either an absolute path string (in bun test) or a Next.js object.
+    expect(image).toHaveAttribute("src");
+    expect(image.getAttribute("src")).toContain("logo.webp");
     expect(image).toHaveAttribute("width", "24");
     expect(image).toHaveAttribute("height", "24");
     expect(image).toHaveClass("size-6");

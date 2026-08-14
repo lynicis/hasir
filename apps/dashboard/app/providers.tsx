@@ -7,12 +7,13 @@ import { Toaster } from "@hasir/ui/components/sonner";
 
 import { idempotencyInterceptor } from "@/lib/idempotency-interceptor";
 import { ThemeProvider } from "@/components/theme-provider";
+import { csrfInterceptor } from "@/lib/csrf-interceptor";
 import { authInterceptor } from "@/lib/auth-interceptor";
 import { SessionProvider } from "@/lib/session-provider";
 
 const finalTransport = createConnectTransport({
   baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "",
-  interceptors: [authInterceptor, idempotencyInterceptor],
+  interceptors: [csrfInterceptor, authInterceptor, idempotencyInterceptor],
 });
 
 const queryClient = new QueryClient();

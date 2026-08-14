@@ -79,4 +79,52 @@ describe('proxy', () => {
     expect(response.status).not.toBe(307);
     expect(response.headers.get('Content-Security-Policy')).toBeNull();
   });
+
+  it('should set hasir-csrf cookie on GET requests if not present', async () => {
+    const rootUrl = 'http://localhost:3000/';
+    const request = new NextRequest(new URL(rootUrl));
+    const response = await proxy(request);
+
+    const setCookie = response.headers.get('set-cookie');
+    expect(setCookie).toContain('hasir-csrf=');
+  });
+
+  it('should return 403 for POST requests without a CSRF token', async () => {
+    const apiUrl = 'http://localhost:3000/api/auth/login';
+    const request = new NextRequest(new URL(apiUrl), { method: 'POST' });
+    
+    // Cookie exists but header is missing
+    request.cookies.set('hasir-csrf', 'valid-token');
+    
+    const response = await proxy(request);
+    
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error).toBe('Invalid CSRF token');
+  });
+
+  it('should return 403 for POST requests with a mismatched CSRF token', async () => {
+    const apiUrl = 'http://localhost:3000/api/auth/login';
+    const request = new NextRequest(new URL(apiUrl), { method: 'POST' });
+    
+    request.cookies.set('hasir-csrf', 'valid-token');
+    request.headers.set('x-csrf-token', 'invalid-token');
+    
+    const response = await proxy(request);
+    
+    expect(response.status).toBe(403);
+  });
+
+  it('should allow POST requests with matching CSRF token', async () => {
+    const apiUrl = 'http://localhost:3000/api/auth/login';
+    const request = new NextRequest(new URL(apiUrl), { method: 'POST' });
+    
+    const token = 'valid-token';
+    request.cookies.set('hasir-csrf', token);
+    request.headers.set('x-csrf-token', token);
+    
+    const response = await proxy(request);
+    
+    expect(response.status).not.toBe(403);
+  });
 });

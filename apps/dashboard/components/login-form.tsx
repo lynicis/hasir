@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { z } from "zod/v4";
 
+import { getCsrfToken } from "@/lib/csrf";
+
 const schema = z.object({
   email: z.email({ error: "Please enter a valid email address." }),
   password: z
@@ -54,6 +56,7 @@ export function LoginForm({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-CSRF-Token": getCsrfToken(),
         },
         body: JSON.stringify({ email, password }),
       });

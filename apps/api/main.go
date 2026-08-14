@@ -42,6 +42,7 @@ import (
 	"hasir/api/pkg/email"
 	"hasir/api/pkg/idempotency"
 	_ "hasir/api/pkg/log"
+	"hasir/api/pkg/csrf"
 	postgresIdempotency "hasir/api/pkg/postgres/idempotency"
 	postgresOrganization "hasir/api/pkg/postgres/organization"
 	postgresRegistry "hasir/api/pkg/postgres/registry"
@@ -123,8 +124,10 @@ func main() {
 
 	authInterceptor := authentication.NewAuthInterceptor(cfg.JwtSecret)
 	idempotencyInterceptor := idempotency.NewIdempotencyInterceptor(idempotencyPgRepository)
+	csrfInterceptor := csrf.NewCsrfInterceptor(cfg.DashboardUrl, cfg.Server.PublicUrl)
 
 	interceptors := []connect.Interceptor{
+		csrfInterceptor.Interceptor(),
 		validate.NewInterceptor(),
 		idempotencyInterceptor.Interceptor(),
 		authInterceptor.Interceptor(),
@@ -149,7 +152,16 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	handler := cors.AllowAll().Handler(mux)
+	
+	corsOptions := cors.Options{
+		AllowedOrigins: []string{
+			strings.TrimRight(cfg.DashboardUrl, "/"),
+			strings.TrimRight(cfg.Server.PublicUrl, "/"),
+		},
+		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowedHeaders: []string{"*"},
+	}
+	handler := cors.New(corsOptions).Handler(mux)
 	for _, handler := range handlers {
 		path, h := handler.RegisterRoutes()
 		mux.Handle(path, h)

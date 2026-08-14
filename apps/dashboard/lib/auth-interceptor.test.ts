@@ -187,9 +187,10 @@ describe("authInterceptor", () => {
       );
 
       expect(global.fetch).toHaveBeenCalledWith("/api/auth/session");
-      expect(global.fetch).toHaveBeenCalledWith("/api/auth/logout", {
+      expect(global.fetch).toHaveBeenCalledWith("/api/auth/logout", expect.objectContaining({
         method: "POST",
-      });
+        headers: expect.any(Object)
+      }));
       expect(mockReplaceState).toHaveBeenCalledWith(null, "", "/login");
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -225,9 +226,10 @@ describe("authInterceptor", () => {
         ConnectError
       );
 
-      expect(global.fetch).toHaveBeenCalledWith("/api/auth/logout", {
+      expect(global.fetch).toHaveBeenCalledWith("/api/auth/logout", expect.objectContaining({
         method: "POST",
-      });
+        headers: expect.any(Object)
+      }));
       expect(mockReplaceState).toHaveBeenCalledWith(null, "", "/login");
     });
 

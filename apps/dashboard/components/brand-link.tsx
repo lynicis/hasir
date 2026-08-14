@@ -1,3 +1,4 @@
+import logo from "@hasir/ui/logo.webp";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -20,7 +21,7 @@ export function BrandLink({
       }`.trim()}
     >
       <Image
-        src="/logo.webp"
+        src={logo}
         alt="Hasir Logo"
         width={24}
         height={24}
