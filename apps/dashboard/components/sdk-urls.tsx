@@ -26,7 +26,13 @@ type SdkType =
   | "go-grpc"
   | "js-bufbuild-es"
   | "js-protobuf"
-  | "js-connectrpc";
+  | "js-connectrpc"
+  | "java-protobuf"
+  | "java-grpc"
+  | "csharp-protobuf"
+  | "csharp-grpc"
+  | "rust-protobuf"
+  | "rust-grpc";
 
 const SDK_OPTIONS: { value: SdkType; label: string; group: string }[] = [
   { value: "go-protobuf", label: "Go / Protocol Buffers", group: "Go" },
@@ -35,6 +41,12 @@ const SDK_OPTIONS: { value: SdkType; label: string; group: string }[] = [
   { value: "js-bufbuild-es", label: "JS / @bufbuild/es", group: "JavaScript" },
   { value: "js-protobuf", label: "JS / protocolbuffers", group: "JavaScript" },
   { value: "js-connectrpc", label: "JS / @connectrpc", group: "JavaScript" },
+  { value: "java-protobuf", label: "Java / Protocol Buffers", group: "Java" },
+  { value: "java-grpc", label: "Java / gRPC", group: "Java" },
+  { value: "csharp-protobuf", label: "C# / Protocol Buffers", group: "C#" },
+  { value: "csharp-grpc", label: "C# / gRPC", group: "C#" },
+  { value: "rust-protobuf", label: "Rust / Protocol Buffers", group: "Rust" },
+  { value: "rust-grpc", label: "Rust / gRPC", group: "Rust" },
 ];
 
 export function SdkUrls({ organizationId, repositoryId, commitHash }: SdkUrlsProps) {
@@ -77,6 +89,9 @@ export function SdkUrls({ organizationId, repositoryId, commitHash }: SdkUrlsPro
   const selectedSdk = SDK_OPTIONS.find((opt) => opt.value === sdkType);
   const goOptions = SDK_OPTIONS.filter((opt) => opt.group === "Go");
   const jsOptions = SDK_OPTIONS.filter((opt) => opt.group === "JavaScript");
+  const javaOptions = SDK_OPTIONS.filter((opt) => opt.group === "Java");
+  const csharpOptions = SDK_OPTIONS.filter((opt) => opt.group === "C#");
+  const rustOptions = SDK_OPTIONS.filter((opt) => opt.group === "Rust");
 
   return (
     <div className="flex w-full flex-col gap-3">
@@ -120,6 +135,36 @@ export function SdkUrls({ organizationId, repositoryId, commitHash }: SdkUrlsPro
             <DropdownMenuSeparator />
             <DropdownMenuGroup><DropdownMenuLabel>JavaScript SDKs</DropdownMenuLabel></DropdownMenuGroup>
             {jsOptions.map((option) => (
+              <DropdownMenuItem
+                key={option.value}
+                onClick={() => setSdkType(option.value)}
+              >
+                {option.label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup><DropdownMenuLabel>Java SDKs</DropdownMenuLabel></DropdownMenuGroup>
+            {javaOptions.map((option) => (
+              <DropdownMenuItem
+                key={option.value}
+                onClick={() => setSdkType(option.value)}
+              >
+                {option.label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup><DropdownMenuLabel>C# SDKs</DropdownMenuLabel></DropdownMenuGroup>
+            {csharpOptions.map((option) => (
+              <DropdownMenuItem
+                key={option.value}
+                onClick={() => setSdkType(option.value)}
+              >
+                {option.label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup><DropdownMenuLabel>Rust SDKs</DropdownMenuLabel></DropdownMenuGroup>
+            {rustOptions.map((option) => (
               <DropdownMenuItem
                 key={option.value}
                 onClick={() => setSdkType(option.value)}

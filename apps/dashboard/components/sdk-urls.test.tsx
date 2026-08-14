@@ -181,6 +181,12 @@ describe("SdkUrls", () => {
       { name: /JS \/ @bufbuild\/es/, expected: "js-bufbuild-es", isGo: false },
       { name: /JS \/ protocolbuffers/, expected: "js-protobuf", isGo: false },
       { name: /JS \/ @connectrpc/, expected: "js-connectrpc", isGo: false },
+      { name: /Java \/ Protocol Buffers/, expected: "java-protobuf", isGo: false },
+      { name: /Java \/ gRPC/, expected: "java-grpc", isGo: false },
+      { name: /C# \/ Protocol Buffers/, expected: "csharp-protobuf", isGo: false },
+      { name: /C# \/ gRPC/, expected: "csharp-grpc", isGo: false },
+      { name: /Rust \/ Protocol Buffers/, expected: "rust-protobuf", isGo: false },
+      { name: /Rust \/ gRPC/, expected: "rust-grpc", isGo: false },
     ];
 
     for (const { name, expected, isGo } of sdkTypes) {
