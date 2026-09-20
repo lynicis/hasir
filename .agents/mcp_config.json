@@ -1,0 +1,24 @@
+{
+    "mcpServers": {
+        "typescript-lsp": {
+            "command": "./.agents/bin/ts-lsp"
+        },
+        "go-lsp": {
+            "command": "./.agents/bin/go-lsp"
+        },
+        "shadcn": {
+            "command": "bunx",
+            "args": [
+                "shadcn@latest",
+                "mcp"
+            ]
+        },
+        "next-devtools": {
+            "command": "bunx",
+            "args": [
+                "-y",
+                "next-devtools-mcp@latest"
+            ]
+        }
+    }
+}

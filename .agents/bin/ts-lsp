@@ -1,0 +1,9 @@
+#!/bin/bash
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+exec mcp-language-server \
+  --workspace "$ROOT" \
+  --lsp typescript-language-server \
+  -- \
+  --stdio

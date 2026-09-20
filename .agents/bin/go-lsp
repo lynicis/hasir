@@ -1,0 +1,43 @@
+#!/bin/bash
+set -euo pipefail
+
+# Ensure we're running from the repository root.
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+
+if [[ -z "$ROOT" ]]; then
+  echo "Error: not inside a Git repository." >&2
+  exit 1
+fi
+
+cd "$ROOT"
+
+# Check for Go.
+if ! command -v go >/dev/null 2>&1; then
+  echo "Error: Go is not installed or not on PATH." >&2
+  echo "Install Go from https://go.dev/dl/" >&2
+  exit 1
+fi
+
+# Install/update gopls.
+echo "Installing gopls..."
+go install golang.org/x/tools/gopls@latest
+
+# Make sure the Go bin directory is available.
+GOBIN="$(go env GOBIN)"
+if [[ -z "$GOBIN" ]]; then
+  GOBIN="$(go env GOPATH)/bin"
+fi
+
+export PATH="$GOBIN:$PATH"
+
+if ! command -v gopls >/dev/null 2>&1; then
+  echo "Error: gopls was installed but is not on PATH." >&2
+  echo "Add this directory to PATH: $GOBIN" >&2
+  exit 1
+fi
+
+echo "Using: $(command -v gopls)"
+gopls version
+
+# Start the native gopls MCP server.
+exec gopls mcp
