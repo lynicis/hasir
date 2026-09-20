@@ -10,7 +10,7 @@ repos:
       - id: check-json
 
   - repo: https://github.com/lynicis/actup
-    rev: v0.5.1
+    rev: v0.7.7
     hooks:
       - id: actup-check
 

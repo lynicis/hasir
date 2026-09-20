@@ -13,7 +13,7 @@ jobs:
   version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -23,7 +23,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Create Release Pull Request or Publish
         id: changesets
-        uses: changesets/action@v2.0.0-next.3
+        uses: changesets/action@v2.1.2
         with:
           publish-script: bun run release
           version-script: bunx changeset version
