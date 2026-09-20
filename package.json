@@ -13,10 +13,10 @@
     "type": "git",
     "url": "https://github.com/lynicis/hasir"
   },
-  "packageManager": "bun@1.3.14",
+  "packageManager": "bun@1.4.2",
   "engines": {
-    "bun": ">=1.3.14",
-    "node": ">=22.0.0"
+    "bun": ">=1.4",
+    "node": ">=24"
   },
   "workspaces": [
     "apps/*",
@@ -42,27 +42,27 @@
     "design:lint": "designmd lint DESIGN.md"
   },
   "devDependencies": {
-    "@bufbuild/buf": "^1.72.0",
-    "@bufbuild/protoc-gen-es": "^2.13.0",
-    "@changesets/cli": "^2.31.1",
+    "@bufbuild/buf": "^1.73.0",
+    "@bufbuild/protoc-gen-es": "^2.15.0",
+    "@changesets/cli": "^3.0.3",
     "@connectrpc/protoc-gen-connect-es": "^1.7.0",
-    "@connectrpc/protoc-gen-connect-query": "^2.2.0",
-    "@eslint/js": "^9",
+    "@connectrpc/protoc-gen-connect-query": "^2.3.1",
+    "@eslint/js": "^9.39.5",
     "@google/design.md": "^0.4.0",
     "@hasir/eslint-config": "workspace:*",
     "@hasir/typescript-config": "workspace:*",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.12",
-    "eslint-plugin-perfectionist": "^5.10.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.3.5",
+    "eslint-plugin-perfectionist": "^5.11.1",
     "rimraf": "^6.1.3",
-    "turbo": "^2.10.7",
+    "turbo": "^2.11.2",
     "typescript": "^5.9.3"
   },
   "overrides": {
     "postcss": "8.5.23",
     "@hono/node-server": ">=2.0.5",
     "fast-uri": ">=3.1.4",
-    "next": "16.2.12",
+    "next": "16.3.5",
     "sharp": ">=0.35.0"
   },
   "trustedDependencies": [
@@ -72,6 +72,6 @@
     "unrs-resolver"
   ],
   "dependencies": {
-    "next": "^16.2.12"
+    "next": "16.3.5"
   }
 }

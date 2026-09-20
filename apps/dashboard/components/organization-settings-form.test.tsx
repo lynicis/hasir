@@ -5,7 +5,6 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import userEvent from "@testing-library/user-event";
 
 import { useRegistryStore } from "@/stores/registry-store";
-import { useSession } from "@/lib/session-provider";
 import { useClient } from "@/lib/use-client";
 
 import { OrganizationSettingsForm } from "./organization-settings-form";
@@ -37,10 +36,6 @@ vi.mock("@/stores/registry-store", () => ({
   useRegistryStore: vi.fn(),
 }));
 
-vi.mock("@/lib/session-provider", () => ({
-  useSession: mockUseSession,
-}));
-
 vi.mock("sonner", () => ({
   toast: {
     success: toastSuccess,
@@ -52,10 +47,11 @@ const mockUpdateOrganization = vi.fn();
 const mockDeleteOrganization = vi.fn();
 const mockedUseClient = useClient as unknown as Mock;
 const mockedUseRegistryStore = useRegistryStore as unknown as Mock;
-const mockedUseSession = useSession as unknown as Mock;
+const mockedUseSession = mockUseSession;
 
 describe("OrganizationSettingsForm", () => {
   beforeEach(() => {
+    globalThis.__sessionMock = () => mockedUseSession();
     mockedUseClient.mockReturnValue({
       updateOrganization: mockUpdateOrganization,
       deleteOrganization: mockDeleteOrganization,

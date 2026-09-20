@@ -1,21 +1,15 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { useSession } from "@/lib/session-provider";
-
 import { ProfileForm } from "./profile-form";
 
-vi.mock("@/lib/session-provider", () => ({
-  useSession: vi.fn(),
-}));
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockedUseSession = useSession as any;
+const mockedUseSession = vi.fn();
 
 describe("ProfileForm", () => {
   const mockOnSubmit = vi.fn();
 
   beforeEach(() => {
+    globalThis.__sessionMock = () => mockedUseSession();
     mockedUseSession.mockReturnValue({
       session: {
         user: { email: "test@example.com" },

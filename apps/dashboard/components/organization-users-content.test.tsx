@@ -12,11 +12,6 @@ vi.mock("@connectrpc/connect-query", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
 
-const mockUseSession = vi.fn();
-vi.mock("@/lib/session-provider", () => ({
-  useSession: () => mockUseSession(),
-}));
-
 const mockUpdateMemberRole = vi.fn();
 const mockDeleteMember = vi.fn();
 const mockUseClient = vi.fn();
@@ -35,8 +30,11 @@ vi.mock("sonner", () => ({
   },
 }));
 
+const mockUseSession = vi.fn();
+
 describe("UsersPage", () => {
   beforeEach(() => {
+    globalThis.__sessionMock = () => mockUseSession();
     mockUseQuery.mockReset();
     mockUseSession.mockReset();
     mockUseClient.mockReset();

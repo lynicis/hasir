@@ -18,8 +18,8 @@
     "vuln": "bun audit"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.14",
-    "bun-types": "^1.3.14",
+    "@types/bun": "^1.4.2",
+    "bun-types": "^1.4.2",
     "typescript": "^5.9.3"
   }
 }

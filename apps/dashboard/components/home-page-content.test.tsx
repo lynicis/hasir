@@ -44,11 +44,10 @@ vi.mock("framer-motion", () => ({
 
 const mockUseSession = vi.fn();
 
-vi.mock("@/lib/session-provider", () => ({
-  useSession: () => mockUseSession(),
-}));
-
 describe("HomePageContent", () => {
+  beforeEach(() => {
+    globalThis.__sessionMock = () => mockUseSession();
+  });
   it("renders the main heading and description", () => {
     mockUseSession.mockReturnValue({
       session: null,

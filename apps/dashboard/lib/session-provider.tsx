@@ -20,6 +20,9 @@ const SessionContext = createContext<SessionContextType>({
 
 export function useSession() {
   const context = useContext(SessionContext);
+  if (process.env.NODE_ENV === "test" && globalThis.__sessionMock) {
+    return globalThis.__sessionMock();
+  }
   if (!context) {
     throw new Error("useSession must be used within a SessionProvider");
   }

@@ -24,16 +24,6 @@ vi.mock("next/image", () => ({
   ),
 }));
 
-vi.mock("@/lib/session-provider", () => ({
-  useSession: () => ({
-    session: {
-      user: { id: "user-123", email: "test@example.com" },
-    },
-    loading: false,
-    refreshSession: vi.fn(),
-  }),
-  SessionProvider: ({ children }: { children: ReactNode }) => children,
-}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({

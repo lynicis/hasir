@@ -11,19 +11,6 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-vi.mock("@/lib/session-provider", () => ({
-  useSession: () => ({
-    session: {
-      user: {
-        id: "123",
-        email: "test@example.com",
-      },
-      accessToken: "mock-token",
-    },
-    refreshSession: mockRefreshSession,
-  }),
-}));
-
 vi.mock("@/lib/use-client", () => ({
   useClient: () => ({
     updateUser: vi.fn(),
@@ -32,6 +19,20 @@ vi.mock("@/lib/use-client", () => ({
 }));
 
 describe("ProfilePageContent", () => {
+  beforeEach(() => {
+    globalThis.__sessionMock = () => ({
+      loading: false,
+      session: {
+        user: {
+          id: "123",
+          email: "test@example.com",
+        },
+        accessToken: "mock-token",
+      },
+      refreshSession: mockRefreshSession,
+    });
+  });
+
   it("renders the profile tabs", () => {
     render(<ProfilePageContent />);
 

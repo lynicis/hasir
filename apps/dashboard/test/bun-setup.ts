@@ -15,6 +15,7 @@ import { beforeEach } from "bun:test";
 const { cleanup } = require("@testing-library/react");
 
 beforeEach(() => {
+  globalThis.__sessionMock = null;
   if (typeof document !== "undefined" && document.body) {
     document.body.innerHTML = "";
   }
@@ -22,6 +23,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  globalThis.__sessionMock = null;
   if (typeof document !== "undefined" && document.body) {
     document.body.innerHTML = "";
     const root = document.createElement("div");
