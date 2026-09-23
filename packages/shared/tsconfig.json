@@ -3,11 +3,18 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ESNext"],
+    "types": [
+      "bun"
+    ],
+    "lib": [
+      "ESNext",
+    ],
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }

@@ -1,46 +1,116 @@
 {
-  "$schema": "https://v2-10-6.turborepo.dev/schema.json",
+  "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
   "tasks": {
     "build": {
-      "dependsOn": ["^build", "proto"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*", "tsconfig.json", "next.config.ts", "go.mod", "go.sum"],
-      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**", "build/**", "api"]
+      "dependsOn": [
+        "^build",
+        "proto"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env*",
+        "tsconfig.json",
+        "next.config.ts",
+        "go.mod",
+        "go.sum"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "!.next/dev/**",
+        "dist/**",
+        "build/**",
+        "api"
+      ]
     },
     "test": {
-      "inputs": ["$TURBO_DEFAULT$", "tsconfig.json", "go.mod", "go.sum"],
-      "outputs": ["coverage.out", "junit.xml"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "tsconfig.json",
+        "go.mod",
+        "go.sum"
+      ],
+      "outputs": [
+        "coverage.out",
+        "junit.xml"
+      ]
     },
     "lint": {
-      "dependsOn": ["^lint"],
-      "inputs": ["$TURBO_DEFAULT$", "eslint.config.mjs", ".golangci.yaml"]
+      "dependsOn": [
+        "^lint"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "eslint.config.mjs",
+        ".golangci.yaml"
+      ]
     },
     "typecheck": {
-      "dependsOn": ["^build", "proto"],
-      "inputs": ["$TURBO_DEFAULT$", "tsconfig.json"]
+      "dependsOn": [
+        "^build",
+        "proto"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "tsconfig.json"
+      ]
     },
-    "dev": { "cache": false, "persistent": true },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
     "proto": {
-      "dependsOn": ["^proto"],
-      "inputs": ["$TURBO_DEFAULT$", "buf.yaml", "buf.gen.yaml", "buf.lock", "**/*.proto"],
-      "outputs": ["gen/**", "**/gen/**"],
+      "dependsOn": [
+        "^proto"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "buf.yaml",
+        "buf.gen.yaml",
+        "buf.lock",
+        "**/*.proto"
+      ],
+      "outputs": [
+        "gen/**",
+        "**/gen/**"
+      ],
       "cache": true
     },
-    "generate": { "dependsOn": ["^generate"] },
+    "generate": {
+      "dependsOn": [
+        "^generate"
+      ]
+    },
     "docker": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", "Dockerfile", "docker-bake.hcl"],
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "Dockerfile",
+        "docker-bake.hcl"
+      ],
       "outputs": [],
       "cache": false
     },
-    "format": { "cache": false },
-    "clean": { "cache": false },
+    "format": {
+      "cache": false
+    },
+    "clean": {
+      "cache": false
+    },
     "vuln": {
       "dependsOn": [],
       "cache": false
     }
   },
-  "globalDependencies": ["bunfig.toml", "turbo.json", "package.json", "tsconfig.base.json"],
+  "globalDependencies": [
+    "bunfig.toml",
+    "turbo.json",
+    "package.json",
+    "tsconfig.base.json"
+  ],
   "globalEnv": [
     "NODE_ENV",
     "NEXT_PUBLIC_API_URL",
