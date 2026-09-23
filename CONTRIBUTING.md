@@ -24,13 +24,17 @@ hasir/
 │   ├── dashboard/     # Next.js 16 management UI (:3000)
 │   └── landing/       # Next.js 16 marketing site (:3001, Vercel deploy)
 ├── packages/
-│   ├── proto/         # Protobuf schemas + buf workspace → @hasir/proto
-│   ├── shared/        # TS shared utils (log, otel)
-│   └── config/        # Shared eslint preset + tsconfig.base
+│   ├── proto/              # Protobuf schemas + buf workspace → @hasir/proto
+│   ├── ui/                 # Shared component library (shadcn/ui + Radix)
+│   ├── shared/             # TS shared utils (log, otel)
+│   ├── tooling/            # CLI bins (proto-gen.mjs, release.mjs)
+│   ├── eslint-config/      # Shared ESLint preset
+│   └── typescript-config/  # Shared tsconfig.base
 ├── deploy/
 │   ├── helm/          # Kubernetes Helm chart
 │   └── docker/        # Docker Compose + nginx
-├── docs/              # ADRs + design plans
+├── docs/              # Legacy documentation & ADRs
+├── openspec/          # OpenSpec standard: specs, changes, config.yaml
 └── scripts/
 ```
 

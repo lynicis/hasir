@@ -1,5 +1,8 @@
 # Hasir Platform Monorepo Architecture Documentation
 
+> [!NOTE]
+> **Historical document.** This is the execution blueprint for migrating the five standalone repositories into this monorepo. The migration is complete, so some details (proto layout, release tags, tooling) no longer reflect the codebase. See [`CONTEXT.md`](../CONTEXT.md) and [`openspec/`](../openspec/) for current architecture.
+
 ## 1. Executive Summary
 
 This document defines the architecture and execution blueprint for migrating the Hasir platform from five standalone repositories into a single unified monorepo. The primary goal is to establish a production-ready repository structure that supports independent builds, testing, and deployments while scaling to dozens of services.

@@ -1,5 +1,8 @@
 # Hasir Platform Monorepo Migration Guide
 
+> [!NOTE]
+> **Historical document.** This guide describes how the five legacy repositories were imported into this monorepo. The migration is complete — see [`CONTEXT.md`](../CONTEXT.md) and [`openspec/`](../openspec/) for current structure.
+
 ## 5. Migration Strategy
 
 This section evaluates different approaches for migrating the five standalone repositories into the single monorepo. The goal is to consolidate the codebases while preserving history and minimizing disruption.

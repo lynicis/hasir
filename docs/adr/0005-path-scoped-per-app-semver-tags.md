@@ -1,7 +1,7 @@
 # 0005. Path-Scoped Per-App SemVer Tags
 
 ## Status
-Accepted
+Superseded by the Changesets release strategy — tags now follow `hasir-<app>@<semver>` (see [`docs/RELEASE.md`](../RELEASE.md) and `openspec/specs/release-strategy/spec.md`).
 
 ## Date
 2026-07-14

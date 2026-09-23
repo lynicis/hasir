@@ -24,7 +24,7 @@ Hasir is a self-hosted platform for managing Protocol Buffer (protobuf) schemas.
 |---|---|
 | **API** | Go 1.26, ConnectRPC (Connect + gRPC + gRPC-Web), `pgx/v5`, raw SQL migrations, `buf` tooling integration |
 | **SSH Server** | `gliderlabs/ssh` + `golang.org/x/crypto/ssh` (port `:2222`) |
-| **Frontend** | Next.js 16, React, TypeScript, Bun 1.3.14, Tailwind CSS v4, shadcn/ui + Radix primitives |
+| **Frontend** | Next.js 16, React, TypeScript, Bun 1.4, Tailwind CSS v4, shadcn/ui + Radix primitives |
 | **UI Package** | `packages/ui` — shared component library (60+ components) consumed by `apps/dashboard` |
 | **Proto** | Buf CLI, protobuf schemas in `packages/proto/proto/` |
 | **Observability** | OpenTelemetry (OTLP gRPC export), Zap structured logging |
@@ -64,8 +64,7 @@ Hasir is a self-hosted platform for managing Protocol Buffer (protobuf) schemas.
 │   ├── docker/             # Docker Compose + Nginx templates + Certbot scripts
 │   └── helm/               # Kubernetes Helm chart
 ├── docs/
-│   ├── adr/                # Architecture Decision Records
-│   └── plans/              # Dated design docs and implementation plans
+│   └── adr/                # Architecture Decision Records (+ legacy docs)
 ├── openspec/               # OpenSpec change artifacts (specs/, changes/, archive/)
 ├── packages/
 │   ├── proto/              # Buf config + protobuf definitions (organization, registry, shared, user services)

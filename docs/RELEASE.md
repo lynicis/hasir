@@ -1,6 +1,6 @@
 # Hasir Platform Monorepo Release Strategy
 
-## 24. Release Strategy
+## Release Strategy
 
 This document defines the release strategy, versioning model, and branching strategy for the Hasir platform monorepo. The goal is to enable independent releases of services while maintaining a stable and predictable codebase.
 
@@ -50,7 +50,7 @@ When a repository maintainer is ready to release, they merge the **"Version Pack
 1. The `changeset.yml` workflow triggers again, but this time it detects the version bumps.
 2. It automatically creates Git tags (e.g., `hasir-api@1.5.0`) and publishes GitHub Releases.
 3. The newly created tags trigger downstream workflows:
-   - `.github/workflows/docker.yml`: Builds Docker images, tags them (e.g., `ghcr.io/lynicis/api:1.5.0`), and publishes them to GHCR.
+   - `.github/workflows/docker.yml`: Builds Docker images, tags them (e.g., `ghcr.io/lynicis/hasir-api:1.5.0`), and publishes them to GHCR.
    - `.github/workflows/helm-release.yml`: Packages the Helm chart and publishes it to the chart registry.
 
 ---

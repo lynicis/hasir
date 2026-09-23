@@ -7,7 +7,7 @@
 **Self-hosted schema registry with Git-native workflows, automatic SDK generation, and a management dashboard.**
 
 [![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev)
-[![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=next.js&logoColor=white)](https://nextjs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](https://nextjs.org)
 [![Buf](https://img.shields.io/badge/Buf-Protobuf-4353FF?logo=buf&logoColor=white)](https://buf.build)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![codecov](https://codecov.io/gh/lynicis/hasir/branch/main/graph/badge.svg?token=au9Erb4Kl7)](https://codecov.io/gh/lynicis/hasir)
@@ -55,10 +55,10 @@ Requires a Linux server with Docker, a domain name pointing to it, and ports `80
 ```bash
 # Clone and enter the deployment directory
 git clone https://github.com/lynicis/hasir.git
-cd hasir/docker
+cd hasir/deploy/docker
 
 # Run setup — installs Docker, configures firewall, bootstraps TLS
-make setup
+./scripts/setup.sh
 
 # Configure environment
 cp .env.example .env
@@ -89,8 +89,8 @@ The dashboard is available at `https://your-domain.com` and Git SSH at port `222
 ### Kubernetes (Helm)
 
 ```bash
-helm dependency update deploy/helm/hasir
-helm install hasir deploy/helm/hasir -f deploy/helm/hasir/values.yaml
+helm dependency update deploy/helm/charts/hasir
+helm install hasir deploy/helm/charts/hasir -f deploy/helm/charts/hasir/values.yaml
 ```
 
 See [`deploy/helm/`](deploy/helm/) for chart values and templates.
@@ -142,7 +142,7 @@ For contributors working on Hasir itself.
 
 | Tool | Version |
 | ---- | ------- |
-| [Bun](https://bun.sh) | >= 1.3.14 |
+| [Bun](https://bun.sh) | >= 1.4.0 |
 | [Go](https://go.dev) | >= 1.26 |
 | [Node.js](https://nodejs.org) | >= 22 |
 | [Buf](https://buf.build/docs/installation) | Latest |
@@ -172,7 +172,6 @@ The API runs at `http://localhost:8080` and the dashboard at `http://localhost:3
 | `make typecheck` | TypeScript type checking                         |
 | `make proto`     | Regenerate code from `.proto` definitions        |
 | `make docker`    | Build all Docker images (Buildx Bake)            |
-| `make helm-lint` | Lint and validate Helm charts                    |
 | `make clean`     | Remove build artifacts and caches                |
 | `make release`   | Tag and release a service (`app=api bump=patch`) |
 
@@ -181,10 +180,12 @@ The API runs at `http://localhost:8080` and the dashboard at `http://localhost:3
 ```
 apps/api/            Go API service (ConnectRPC, PostgreSQL, JWT, SSH)
 apps/dashboard/      Next.js dashboard (React, shadcn/ui, Tailwind)
-proto/               Protocol buffer definitions (Buf)
-packages/            Shared configs (eslint, tsconfig, UI components)
+apps/landing/        Marketing site (Next.js, Vercel deploy)
+packages/proto/      Protobuf schemas + buf workspace
+packages/ui/         Shared component library (shadcn/ui + Radix)
 deploy/helm/         Helm chart for Kubernetes deployment
 deploy/docker/       Docker Compose stack (nginx, certbot)
+openspec/            Specifications and change artifacts
 docs/                Architecture docs and ADRs
 ```
 
@@ -193,7 +194,7 @@ docs/                Architecture docs and ADRs
 | Document | Description |
 | -------- | ----------- |
 | [Architecture](docs/ARCHITECTURE.md) | System design and component boundaries |
-| [Migration Guide](docs/MIGRATION.md) | Database and breaking-change migrations |
+| [Migration Guide](docs/MIGRATION.md) | Legacy git history import guide (5-repo migration) |
 | [Release Strategy](docs/RELEASE.md) | Versioning, tagging, and release workflow |
 | [ADRs](docs/adr/) | Architecture Decision Records |
 | [Docker Stack](deploy/docker/README.md) | Full deployment and operations guide |

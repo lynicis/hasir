@@ -1,13 +1,13 @@
 # Hasir Stack Helm Chart
 
 <p align="center">
-  <a href="https://github.com/lynicis/helm-charts">
+  <a href="https://github.com/lynicis/hasir">
     <img src="https://img.shields.io/badge/Helm-v3-blue.svg?logo=helm" alt="Helm v3">
   </a>
   <a href="https://kubernetes.io">
     <img src="https://img.shields.io/badge/Kubernetes-1.19+-blue.svg?logo=kubernetes" alt="Kubernetes 1.19+">
   </a>
-  <a href="https://github.com/lynicis/helm-charts/blob/main/LICENSE">
+  <a href="https://github.com/lynicis/hasir/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
   </a>
 </p>
@@ -71,13 +71,13 @@ helm repo update
 Make sure you update the chart dependencies first:
 
 ```bash
-helm dependency update charts/hasir
+helm dependency update deploy/helm/charts/hasir
 ```
 
 Then, install the chart using:
 
 ```bash
-helm install hasir charts/hasir --namespace hasir --create-namespace
+helm install hasir deploy/helm/charts/hasir --namespace hasir --create-namespace
 ```
 
 ### 3. Customizing Configuration
@@ -85,7 +85,7 @@ helm install hasir charts/hasir --namespace hasir --create-namespace
 You can override values during installation using a custom values file:
 
 ```bash
-helm install hasir charts/hasir -f my-values.yaml --namespace hasir
+helm install hasir deploy/helm/charts/hasir -f my-values.yaml --namespace hasir
 ```
 
 ---
