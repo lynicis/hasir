@@ -6,6 +6,7 @@
     "docs/ARCHITECTURE.md",
     "docs/RELEASE.md"
   ],
+  "lsp": true,
   "mcp": {
     "postgresql": {
       "type": "local",
