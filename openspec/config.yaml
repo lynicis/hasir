@@ -1,0 +1,140 @@
+schema: spec-driven
+
+context: |
+  # Hasir — Self-hosted Protobuf Schema Registry
+
+  ## Monorepo Structure
+  - `apps/api/` — Go 1.26 API server (ConnectRPC, PostgreSQL, JWT, Git-over-SSH via gliderlabs/ssh on :2222)
+  - `apps/dashboard/` — Next.js 16 management UI (App Router, `(authenticated)` route group)
+  - `apps/landing/` — Next.js 16 marketing site (Vercel deploy, port 3001)
+  - `packages/proto/` — Protobuf schemas managed via buf CLI
+  - `packages/shared/` — Shared TS utilities (logging, OpenTelemetry)
+  - `packages/ui/` — Shared UI component library
+  - `packages/eslint-config/`, `packages/typescript-config/` — Shared lint/TS configs
+  - `packages/tooling/` — CLI bins: proto-gen.mjs, release.mjs
+  - `deploy/helm/` — Kubernetes Helm chart
+  - `deploy/docker/` — Docker Compose + nginx
+
+  ## Tech Stack
+  - **Backend**: Go 1.26, ConnectRPC, PostgreSQL (raw SQL migrations only, no ORM), JWT, gliderlabs SSH
+  - **Frontend**: Next.js 16 App Router, React, TypeScript (strict: noUncheckedIndexedAccess, verbatimModuleSyntax)
+  - **Protos**: Buf CLI, protovalidate constraints
+  - **Build**: Turborepo + Bun 1.3.14 (package manager)
+  - **Deploy**: Helm/GHCR, Docker Compose, Vercel (landing)
+  - **Observability**: OpenTelemetry
+
+  ## Conventions
+  - Conventional commits (e.g. `feat(api): ...`, `fix(dashboard): ...`)
+  - Changesets for per-app versioning (`hasir-api@x.y.z`)
+  - Raw SQL migrations only — files in `apps/api/migrations/` (numbered up/down pairs)
+  - Buf for all proto work; never commit generated protobuf code
+  - Single ESLint preset in `packages/eslint-config` (Perfectionist sort-imports)
+  - No `@ts-ignore`, `@ts-expect-error`, or `as any`
+  - No plaintext secrets (SOPS-encrypted)
+  - `main` is always deployable; no long-lived release branches
+
+  ## Domain Concepts
+  - **Registry**: The core service — stores, versions, and serves .proto schemas
+  - **Organization**: Top-level tenant grouping users and registries
+  - **Repository**: A named collection of proto schemas within an organization
+  - **SDK Generation**: buf CLI orchestration in `apps/api/pkg/sdkgenerator`; triggered after git push
+  - **SSH Operations**: `registry.SshOperationRead/Write` — git-over-SSH read/write paths
+  - **Authentication**: JWT-based; `authentication.MustGetUserID` (~18 callers across the codebase)
+
+  ## Key Paths
+  - API domain logic: `apps/api/internal/{user,registry,organization}/`
+  - API entry point: `apps/api/main.go`
+  - Dashboard pages: `apps/dashboard/app/`
+  - Proto schemas: `packages/proto/proto/**/v1/`
+  - Migrations: `apps/api/migrations/`
+  - CI/CD: `.github/workflows/` (9 workflows, 3 release channels)
+
+  ## Release & Versioning
+  - Release tool: Changesets (`@changesets/cli`) in independent mode
+  - Tag format: `hasir-api@<semver>` / `hasir-dashboard@<semver>` / `hasir-helm@*` / `proto/v*`
+  - Three release channels: Apps (Docker → GHCR), Helm chart (chart-releaser), Proto schemas (BSR)
+  - Workflow: developer runs `bunx changeset` → merges PR → "Version Packages" PR auto-created → maintainer merges → tags + Docker images published automatically
+  - Rollback: `helm rollback <release> <revision>` or redeploy previous GHCR image tag
+
+  ## Infrastructure & Deployment
+  - Container registry: GHCR (`ghcr.io/lynicis/hasir-api`, `ghcr.io/lynicis/hasir-dashboard`)
+  - Docker build: `docker buildx bake` via `deploy/docker/shared/docker-bake.hcl`; Dockerfiles in `deploy/docker/api/` and `deploy/docker/dashboard/`
+  - Local compose: `deploy/docker/docker-compose.yml` (Postgres :5432, API :8080, Dashboard :3000, nginx)
+  - Kubernetes: Helm chart at `deploy/helm/charts/hasir`; ingress via Traefik; TLS via cert-manager
+  - Secrets: Mozilla SOPS + `age` keys for local; AWS/GCP KMS for prod; `helm-secrets` for cluster deploys
+
+  ## Architectural Specs (openspec/specs/)
+  - `monorepo-tooling/` — Turborepo + Bun workspace decisions (from ADR-0001)
+  - `proto-pipeline/` — flat proto layout, local codegen, no BSR import (from ADR-0002, 0003, 0004)
+  - `release-strategy/` — Changesets independent versioning, trunk-based development (from ADR-0005, 0006)
+  - `secrets-management/` — SOPS + age, runtime redaction, helm-secrets (from ADR-0007 superseded, SOPS design)
+  - `ci-cd/` — Vercel remote cache, git-filter-repo history import, workflow separation (from ADR-0008, 0009)
+
+rules:
+  proposal:
+    - Keep proposals under 400 words
+    - Always include a "Non-goals" section
+    - Identify which app(s) are affected (api, dashboard, landing, or shared packages)
+    - Note whether a database migration is required
+    - Flag if protobuf schemas are touched and whether any change is breaking (field removal, type change, rename, field number reuse)
+    - Flag if new environment variables or secrets are introduced and confirm they will be handled via SOPS, not hardcoded
+
+  specs:
+    - Use WHEN/THEN/AND scenario format for all behavioral requirements
+    - Mark requirements as ADDED, MODIFIED, or REMOVED
+    - Reference specific Go types or TypeScript interfaces when relevant
+    - Each scenario must be independently testable
+    - TEST PYRAMID — every capability must include scenarios at all three levels (1) Unit — pure function or method in isolation; (2) Integration — service/repo layer with real DB or external call; (3) E2E — full request path from HTTP/SSH entrypoint to response
+    - IDEMPOTENCY — for any write operation (POST/PUT/mutation/SSH push) include an explicit scenario confirming that repeating the same operation with identical inputs produces the same result and does not corrupt state; required for both apps/api handlers and packages/proto service definitions
+    - UI specs must reference a named section or component from design.md; do not invent visual behavior not described there
+
+  design:
+    - Always state whether a PostgreSQL migration is needed and give its filename pattern (NNN_description.{up,down}.sql)
+    - For Go changes: note affected service/handler/repo layer
+    - For frontend changes: note whether SSR/RSC or client component, and cite the relevant design.md section governing the UI being built or changed
+    - PROTOBUF LIFECYCLE — if any .proto file changes, state explicitly whether the change is backward-compatible or breaking; backward-compatible (additive — new fields, messages, RPCs) requires regeneration only; breaking (removed/renamed fields, changed types or numbers, removed RPCs) MUST introduce a new package version (e.g. v1 -> v2) and keep the old version until all consumers migrate
+    - No environment variable or secret may be hardcoded; new config values must be declared in the config struct (apps/api/config.json for dev, HASIR_* env vars for prod)
+
+  tasks:
+    - Break tasks into chunks of max 2 hours of work
+    - Each task must have a concrete verify step (test command, observable behavior, or delivered artifact)
+    - Order tasks: schema/migration -> proto (if changed) -> domain logic -> transport layer -> UI -> tests -> changeset entry
+    - Separate API tasks from Dashboard tasks when both are affected
+    - COVERAGE GATE — include an explicit task "Verify test coverage >=85% for changed packages" with verify `go test -cover ./...` for Go or `bun test --coverage` for TS; the task must not be marked done until the threshold is met
+    - PROTO REGENERATION — if any .proto file is touched, include a task "Run `make proto` and verify buf lint passes" with verify `buf lint` exits 0 with zero warnings
+    - BREAKING PROTO VERSION — if the design flags a breaking proto change, include a task "Create new package version directory (e.g. hasirv2) and update all imports" before any implementation task
+    - IDEMPOTENCY TASK — for every idempotent write operation, include a task "Write idempotency test: call [operation] twice with identical input, assert state is identical after both calls"
+    - MIGRATION TEST — if any new migration file is added under apps/api/migrations/, include a task "Update apps/api/migrations_test.go to register the new migration pair" with verify `go test ./apps/api/... -run TestMigrations` passes
+    - CHANGESET ENTRY — the final task in every change must be "Run `bun changeset` to create a changeset entry for affected app(s)" with verify: a new file appears under .changeset/; never manually bump package.json versions
+    - SECRETS SCAN — include a task "Run `make vuln` and grep changed files for hardcoded secrets (tokens, keys, passwords, connection strings with embedded credentials)" with verify `make vuln` exits 0 and grep finds no hits
+
+operations:
+  new:
+    guidance:
+      - Before creating a new change, create a dedicated git worktree so implementation is isolated from main (`git worktree add ../hasir-<change-name> -b <change-name>`); all implementation work happens inside that worktree
+      - Include the worktree branch name in the proposal under an "Implementation Branch" heading
+
+  apply:
+    guidance:
+      - WORKTREE — confirm you are inside the change's dedicated git worktree (not main) before editing any file
+      - PROTO — if any .proto file is modified run `make proto` immediately, then `buf lint`, then `buf breaking --against .git#branch=main`; if breaking changes are detected, stop and introduce a version directory before continuing
+      - MIGRATION TEST — if any new file is added under apps/api/migrations/, update apps/api/migrations_test.go to register the new up/down pair before running any other tests; verify `go test ./apps/api/... -run TestMigrations` passes
+      - BUILD — run `make build` (or per-app equivalent) after every task; zero errors and zero warnings required before the next task begins
+      - LINT & FORMAT — run `make lint`, `make typecheck`, and `bun prettier --check` (for TS files) after every task; fix all issues before marking done
+      - COVERAGE — after all code tasks, run `go test -coverprofile=coverage.out ./...` for Go and `bun test --coverage` for TS; coverage must be >=85% for every package touched; do not archive if threshold is not met
+      - VULNERABILITY SCAN — run `make vuln` before marking apply complete; zero high/critical vulnerabilities allowed; medium vulnerabilities must be documented in the change summary
+      - SECRETS CHECK — grep changed files for hardcoded secrets (API keys, passwords, tokens, DSNs with embedded credentials); any hit is a blocking failure; values in apps/api/config.json used only in MODE=development are exempt
+      - UI COMPLIANCE — for any dashboard or landing UI change, read design.md in the relevant app directory; every visual or interaction decision must be traceable to a named section there; undocumented UI decisions must be added to design.md before the task is closed
+      - IDEMPOTENCY VERIFICATION — for every idempotency task, run the operation twice against a test database and assert identical final state; must be automated in the test suite, not verified manually
+      - CHANGESET — changeset task must be the final step and committed as part of the PR; never skip it
+
+  archive:
+    guidance:
+      - Verify all quality gates passed before archiving: build, lint, typecheck, coverage >=85%, vuln scan, secrets scan, proto lint (if proto touched), changeset entry present
+      - List every file changed grouped by app/package
+      - State the final test coverage percentage for each changed package
+      - Note any follow-up work or known limitations
+      - If a breaking proto change was made, confirm the old version is still in place and document the deprecation timeline
+      - Confirm the .changeset/ file is present; if missing run `bun changeset` before archiving
+
+

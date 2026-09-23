@@ -10,6 +10,7 @@ guidelines for working with this monorepo.
 - [Development Workflow](#development-workflow)
 - [Code Style](#code-style)
 - [Testing](#testing)
+- [Database Migrations](#database-migrations)
 - [Pull Requests](#pull-requests)
 - [Issues](#issues)
 - [Code of Conduct](#code-of-conduct)
@@ -19,91 +20,179 @@ guidelines for working with this monorepo.
 ```
 hasir/
 ├── apps/
-│   ├── api/            # Go API server
-│   └── dashboard/      # Next.js dashboard
+│   ├── api/           # Go 1.26 API + Git-over-SSH (:8080, SSH :2222)
+│   ├── dashboard/     # Next.js 16 management UI (:3000)
+│   └── landing/       # Next.js 16 marketing site (:3001, Vercel deploy)
+├── packages/
+│   ├── proto/         # Protobuf schemas + buf workspace → @hasir/proto
+│   ├── shared/        # TS shared utils (log, otel)
+│   └── config/        # Shared eslint preset + tsconfig.base
 ├── deploy/
-│   └── helm/           # Helm chart deployment
-├── docker/             # Docker Compose environment
-├── proto/              # Protocol Buffers / Buf definitions
-└── .github/
-    └── workflows/      # CI/CD (monorepo-level only)
+│   ├── helm/          # Kubernetes Helm chart
+│   └── docker/        # Docker Compose + nginx
+├── docs/              # ADRs + design plans
+└── scripts/
 ```
 
 Each app has its own `Makefile`, dependency file, and tests. The root
-`Makefile` delegates to each.
+`Makefile` delegates to each via [Turborepo](https://turbo.build).
 
 ## Getting Started
 
 ### Prerequisites
 
-- Go 1.22+
-- Node.js 20+
-- Docker & Docker Compose (for local environment)
+- Go 1.26+
+- Bun 1.4+
+- Docker & Docker Compose (required for API integration tests and local Postgres)
 - Helm (for deployment work)
 - Buf CLI (for protobuf changes)
 
 ### Quick Setup
 
 ```bash
-make install        # install toolchain dependencies
-make dev            # start local development environment
-```
+# 1. Install all dependencies and generate protobuf code
+make setup          # bun install + buf generate + helm dep update
 
-See each app's `README.md` for app-specific setup.
+# 2. Start local Postgres (required for API)
+cd apps/api && make run-postgres   # docker run -p 5432:5432 postgres:alpine
+
+# 3. Edit dev config (committed with safe defaults)
+# apps/api/config.json — set MODE=development; loaded automatically in dev
+
+# 4. Start all apps in parallel
+make dev            # turbo run dev --parallel (API :8080, Dashboard :3000)
+```
 
 ## Development Workflow
 
-1. **Branch**: Create a feature branch from `main`.
-2. **Small commits**: Keep commits atomic and well-described.
-3. **Changes scoped to apps**: A commit should ideally touch only one app
-   unless the change is cross-cutting (e.g., shared proto changes).
-4. **Update generated code**: If you change `.proto` files, regenerate:
+1. **Branch**: Create a feature branch from `main` — no long-lived branches.
+2. **Small commits**: Keep commits atomic and well-described using
+   [Conventional Commits](https://www.conventionalcommits.org)
+   (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, etc.).
+3. **Scope changes**: A commit should ideally touch only one app unless the
+   change is cross-cutting (e.g., shared proto or package changes).
+4. **Regenerate after proto changes**:
    ```bash
-   make proto
+   make proto   # buf generate → writes into packages/proto/gen/ (gitignored)
    ```
-5. **Check CI locally before pushing**:
+5. **Regenerate mocks after Go interface changes**:
    ```bash
-   make lint
-   make test
+   cd apps/api && make generate-mocks
+   ```
+6. **Check locally before pushing**:
+   ```bash
+   make lint       # ESLint (JS/TS) + golangci-lint (Go)
+   make typecheck  # tsc --noEmit across all TS workspaces
+   make test       # all tests (Docker required for integration tests)
    ```
 
 ## Code Style
 
-- **Go**: Follow standard `gofmt` / `golangci-lint` rules. Project has a
-  `.golangci.yaml` at `apps/api/`.
-- **TypeScript/React**: Follow the project's ESLint + Prettier config in
-  `apps/dashboard/`.
-- **Protobuf**: Follow Buf's lint and breaking-change rules.
-- **Commit messages**: Use conventional commits
-  (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, etc.).
+### TypeScript / Next.js
+
+- **Strict TS**: `noUncheckedIndexedAccess`, `verbatimModuleSyntax` — no
+  `@ts-ignore`, `@ts-expect-error`, or `as any`.
+- **Import order**: Perfectionist ESLint plugin, sorted by line-length
+  descending. Use the `@/*` path alias inside `apps/dashboard`.
+- **No inline styles**: Tailwind CSS utility classes only.
+- **State management**: TanStack Query for server state; Zustand
+  (`stores/registry-store.ts`) for invalidation counters only.
+- **API calls**: Always use `useClient(Service)` from `lib/use-client.ts` —
+  never fetch the API directly (except `use-documentation.ts` via `/api/docs`
+  proxy).
+- **Auto-fix**:
+  ```bash
+  cd apps/dashboard && bun run lint:fix
+  ```
+
+### Go
+
+- **Linter**: `golangci-lint` via `go tool golangci-lint` (pinned in
+  `go.mod` tool directives). Auto-fix with `cd apps/api && make lint-fix`.
+- **Mocks**: `gomock` for service/handler mocks; `testcontainers` for
+  repository-layer integration tests.
+- **SQL**: Hand-built SQL only — no ORMs.
+- **No cross-runtime deps**: Do not add Node.js/JS dependencies to the Go
+  service.
+- **Subprocess calls**: Do not use `exec.Command` outside the
+  `CommandRunner` interface in `pkg/sdkgenerator`.
+
+### Protobuf
+
+- Schemas live in `packages/proto/proto/<domain>/v1/*.proto` (double-nested).
+- **Never commit `gen/` output** — it is gitignored (ADR-0003) and rebuilt
+  on demand.
+- CI runs `buf lint` + `buf breaking` against `main` on every PR touching
+  `packages/proto/**`.
 
 ## Testing
 
+### API (Go)
+
 ```bash
-make test       # run all tests across all apps
+# From monorepo root
+make test               # turbo run test --affected
+
+# From apps/api/ directly
+go test -count=1 -coverprofile=coverage.out -covermode=atomic ./...
 ```
 
-- Go tests use the standard `testing` package with mockgen-generated mocks.
-- Dashboard tests use Vitest.
-- Always write tests for new functionality.
-- Update existing tests when behavior changes.
+Repository-layer tests use **testcontainers** (real Postgres — Docker
+required). Service and handler tests use **gomock**.
+
+### Dashboard (Bun)
+
+```bash
+# From monorepo root
+turbo run test --filter=hasir-dashboard
+
+# From apps/dashboard/ directly
+bun test
+bun test --watch
+bun test --coverage
+bun test <filename>   # e.g. bun test components/login-form
+```
+
+Test stack: **bun test + happy-dom + @testing-library/react**. No Vitest,
+Jest, MSW, or Playwright. Tests are co-located with source (`*.test.tsx` /
+`*.test.ts`). Always add or update tests for changed code.
+
+### All tests
+
+```bash
+make test
+```
+
+## Database Migrations
+
+- Migrations live in `apps/api/migrations/` as raw SQL pairs
+  (`NNNNNN_name.{up,down}.sql`).
+- Applied automatically at API startup via `golang-migrate`.
+- **Never use an ORM** for migrations — raw SQL files only.
+- `migrations_test.go` (testcontainers) is the canonical schema assertion.
 
 ## Pull Requests
 
-1. PRs should target `main`.
-2. Title should follow conventional commits.
-3. Description should explain:
-   - What the change does
-   - Why it's needed
-   - How it was tested
+1. PRs target `main` — it is always deployable.
+2. **Title format**: `[scope] Brief description`
+   (e.g. `[api] Fix JWT renewal race`, `[dashboard] Add org invite UI`).
+3. Description should explain what the change does, why it's needed, and how
+   it was tested.
 4. Keep PRs focused — one logical change per PR.
-5. Ensure CI passes before requesting review.
+5. **Required before opening a PR**:
+   - `make lint` — must pass
+   - `make typecheck` — must pass
+   - `make test` — all tests green
+   - `make proto` — if `.proto` files changed
+   - `make generate-mocks` — if Go interfaces changed
+6. Do not commit generated code (`packages/proto/gen/`) or unencrypted
+   secrets (use SOPS).
 
 ### Review Process
 
 - At least one approval is required before merging.
-- If you're a first-time contributor, a maintainer will review within
-  a few business days.
+- First-time contributors: a maintainer will review within a few business
+  days.
 - Address review feedback with additional commits — we squash on merge.
 
 ## Issues
@@ -113,6 +202,19 @@ make test       # run all tests across all apps
 - **Feature requests**: Explain the use case and why it belongs in Hasir
   rather than as an external tool.
 - **Security issues**: Do **not** file a public issue. See `SECURITY.md`.
+
+## Common Gotchas
+
+- **Proto double-nesting**: schemas are at `packages/proto/proto/<domain>/v1/`
+  not `proto/<domain>/v1/`.
+- **Turbo `--affected`**: relies on git diff vs the default base ref; in a
+  fresh clone, run without `--affected` first.
+- **testcontainers**: API integration tests require Docker running locally.
+- **`config.json` secrets**: `apps/api/ssh_host_key` and `config.sops.json`
+  are committed — treat them as sensitive.
+- **SSH transport**: Git-over-SSH paths have zero test coverage.
+- **`turbo.json` globalDependencies**: references `CODEOWNERS` which does not
+  exist — ignore the warning.
 
 ## Code of Conduct
 

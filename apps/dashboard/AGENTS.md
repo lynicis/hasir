@@ -39,6 +39,7 @@ Auth route handlers: `api/auth/login` (Connect login → decode JWT → iron-ses
 - **Colocated Tests**: `.test.tsx`/`.test.ts` next to the source; module-level `mock.module` mocks exposed via `globalThis.__client` / `__connectQueryMocks` / `__toast`.
 - **Test Stack**: bun test + happy-dom + @testing-library/react. NO vitest/jest/MSW/playwright (README is stale).
 - **Import Ordering**: Perfectionist plugin, line-length desc. `@/*` → `./*` alias. Next `output: standalone`; `turbopack.root` = monorepo root.
+- **Planning & Specs**: Follow the monorepo OpenSpec standard (`openspec/`); no standalone plan docs.
 
 ## ANTI-PATTERNS
 - **No Custom Fetch**: No fetch/axios to the backend — use Connect-RPC. Sole exception: `use-documentation.ts` via the `/api/docs` proxy.

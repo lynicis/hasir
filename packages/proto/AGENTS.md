@@ -20,6 +20,7 @@ packages/proto/
 - All proto work via buf CLI: root `make proto` = turbo `proto` task = `buf generate` here.
 - Generated code (`gen/`) is gitignored (ADR-0003) — regenerated on demand, cached by turbo.
 - CI (`proto.yml`): `buf lint` + `buf breaking` against main on every PR touching `packages/proto/**`.
+- Planning & specs: Follow the monorepo OpenSpec standard (`openspec/`); proto schema changes must be planned via OpenSpec.
 
 ## RELEASE
 - Tag `proto/v*` → `proto-release.yml` → buf lint/breaking/push to BSR (with label).

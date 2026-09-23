@@ -43,6 +43,7 @@ apps/api/
 - Mocks generated per domain: user, registry, organization, email, authorization.
 - Migrations: raw SQL pairs `NNNNNN_name.{up,down}.sql`; golang-migrate runs `file://migrations` at startup; `migrations_test.go` (testcontainers) is the canonical schema assertion (12 tables + matview + pg_trgm).
 - Run `make` targets from the monorepo root (Turborepo); thin `package.json` wrapper only.
+- Planning & specifications: follow the monorepo OpenSpec standard (`openspec/`); no ad-hoc plan files.
 
 ## ANTI-PATTERNS
 - DO NOT use ORMs for migrations; raw SQL files in `migrations/` only.

@@ -60,7 +60,7 @@ typography:
     fontWeight: 600
   card-title:
     fontFamily: Geist Sans
-    fontWeight: 600
+    fontWeight: 500
   dialog-title:
     fontFamily: Geist Sans
     fontSize: 1.125rem
@@ -91,6 +91,8 @@ rounded:
   md: 10px
   lg: 12px
   xl: 16px
+  card: 4px      # --radius-card: sharp 4px for all cards
+  button: 0px    # --radius-button: fully sharp buttons
 
 spacing:
   # Dashboard Spacing
@@ -99,40 +101,40 @@ spacing:
   md: 16px
   lg: 32px
   xl: 64px
-  gap-card: 24px
-  padding-card: 24px
+  gap-card: 16px   # card-spacing (--spacing(4))
+  padding-card: 16px
 
 components:
   button-default:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.primary-foreground}"
-    rounded: "{rounded.md}"
-    padding: 16px
+    rounded: "{rounded.button}"
+    height: 32px
   button-destructive:
-    backgroundColor: "{colors.destructive}"
-    textColor: "#ffffff"
-    rounded: "{rounded.md}"
-    padding: 16px
+    backgroundColor: "{colors.destructive}/10"
+    textColor: "{colors.destructive}"
+    rounded: "{rounded.button}"
+    height: 32px
   button-outline:
     backgroundColor: "{colors.background}"
     textColor: "{colors.foreground}"
-    rounded: "{rounded.md}"
-    padding: 16px
+    rounded: "{rounded.button}"
+    height: 32px
   button-secondary:
     backgroundColor: "{colors.secondary}"
     textColor: "{colors.secondary-foreground}"
-    rounded: "{rounded.md}"
-    padding: 16px
+    rounded: "{rounded.button}"
+    height: 32px
   button-ghost:
-    backgroundColor: "{colors.accent}"
-    textColor: "{colors.accent-foreground}"
-    rounded: "{rounded.md}"
-    padding: 16px
+    backgroundColor: "{colors.muted}"
+    textColor: "{colors.foreground}"
+    rounded: "{rounded.button}"
+    height: 32px
   card:
     backgroundColor: "{colors.card}"
     textColor: "{colors.card-foreground}"
-    rounded: "{rounded.xl}"
-    padding: 24px
+    rounded: "{rounded.card}"
+    ring: "ring-1 ring-foreground/10"
   dialog:
     backgroundColor: "{colors.card}"
     textColor: "{colors.card-foreground}"
@@ -143,9 +145,10 @@ components:
     textColor: "{colors.popover-foreground}"
     rounded: "{rounded.md}"
   input:
-    backgroundColor: "{colors.input}"
+    backgroundColor: "transparent"
     textColor: "{colors.foreground}"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.lg}"
+    height: 32px
   border-indicator:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.border}"
@@ -200,16 +203,16 @@ Hasir Dashboard provides a clean, premium, and highly functional management inte
 
 | Layer | Technology | Version |
 |---|---|---|
-| Framework | Next.js (App Router) | 16.2.10 |
-| UI Library | React | 19.2.7 |
+| Framework | Next.js (App Router) | 16.3.5 |
+| UI Library | React | 19.3.0 |
 | Language | TypeScript | 6.x (strict) |
-| Package Manager | Bun | ~1.3 |
+| Package Manager | Bun | ~1.4 |
 | Styling | Tailwind CSS | 4.x |
 | Component System | shadcn/ui (new-york style) | 4.x |
-| Primitives | Radix UI | Various |
+| Primitives | **@base-ui/react** | 1.8.x |
 | Variant Management | class-variance-authority (CVA) | 0.7.x |
 | Class Merging | clsx + tailwind-merge via `cn()` | — |
-| Icons | Lucide React | 1.24.x |
+| Icons | Lucide React | 1.27.x |
 | Animation | tw-animate-css + Framer Motion | 12.x |
 | Forms | react-hook-form + @hookform/resolvers | 7.x / 5.x |
 | Validation | Zod v4 | 4.x |
@@ -221,6 +224,9 @@ Hasir Dashboard provides a clean, premium, and highly functional management inte
 | Markdown | react-markdown + remark-gfm + rehype-raw/sanitize | — |
 | Syntax Highlighting | react-syntax-highlighter (vscDarkPlus) | 16.x |
 
+> [!IMPORTANT]
+> **@base-ui/react** is the primitive layer for `Button` and `Input`. It replaces the previous direct Radix UI usage for those components. All other complex primitives (`DropdownMenu`, `Dialog`, `Tabs`, etc.) continue to use Radix UI via the `radix-ui` umbrella package.
+
 ### Configuration
 
 **shadcn/ui** (`components.json`):
@@ -231,7 +237,7 @@ Hasir Dashboard provides a clean, premium, and highly functional management inte
   "rsc": true,
   "tsx": true,
   "tailwind": {
-    "css": "app/globals.css",
+    "css": "../../packages/ui/src/styles/dashboard.css",
     "baseColor": "neutral",
     "cssVariables": true
   },
@@ -248,6 +254,9 @@ Hasir Dashboard provides a clean, premium, and highly functional management inte
   }
 }
 ```
+
+> [!NOTE]
+> The global CSS entry point has moved to `packages/ui/src/styles/dashboard.css` (exported as `@hasir/ui/dashboard.css`). The dashboard's `app/layout.tsx` imports it from the shared UI package — not from a local `app/globals.css`.
 
 ### Utility Function
 
@@ -369,7 +378,7 @@ font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 |---|---|---|
 | Hero heading | `text-6xl font-extrabold tracking-tighter sm:text-7xl md:text-8xl` | Landing page |
 | Page title (Card) | `text-xl font-semibold` | Settings, dashboard headings |
-| Card title | `font-semibold leading-none` | Default CardTitle |
+| Card title | `text-base font-medium leading-snug` | Default CardTitle |
 | Dialog title | `text-lg leading-none font-semibold` | — |
 | Body / description | `text-sm text-muted-foreground` | CardDescription, FieldDescription |
 | Input text | `text-base md:text-sm` | Responsive sizing |
@@ -379,75 +388,86 @@ font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 | Error text | `text-sm font-normal text-destructive` | FieldError |
 
 ## 4. Component Stylings
-* **Buttons:** Sharp, squared-off edges (0px border radius). Primary CTAs use dark text on a white filled background. Active and hover states employ high-contrast monochrome transitions.
-* **Cards/Containers:** Subtly rounded corners (4px radius). Styled with Surface Panel background (`#101213`) and Hairline Border (`#202223`). Absolutely zero box-shadows are used for elevation.
-* **Inputs/Forms:** Defined by Hairline Border stroke and Surface Panel background. Focus states utilize a precise White Signal or Warm Amber Accent hairline border. No rounded pills or soft shadow effects.
+* **Buttons:** Fully sharp edges (`--radius-button: 0px`). All buttons use `@base-ui/react/button` as the underlying primitive. The `destructive` variant is now a soft tint (`bg-destructive/10 text-destructive`), not a filled background — reserving solid destructive fills for `AlertDialog` confirm actions only.
+* **Cards/Containers:** Sharp 4px radius (`--radius-card: 4px`). Uses `ring-1 ring-foreground/10` for elevation instead of `border shadow-sm`. Absolutely zero box-shadows are used for standard cards.
+* **Inputs/Forms:** Built on `@base-ui/react/input`. Defined by `border border-input` stroke and transparent background. Focus states use `focus-visible:ring-3 focus-visible:ring-ring/50`. No rounded pills or soft shadow effects.
 
-### UI Primitives (`components/ui/`)
+### UI Primitives (`@hasir/ui/components/`)
 
 #### Button
 
-CVA-based with 6 variants and 6 sizes. Custom `isLoading` prop adds a `Spinner` and disables interaction.
+CVA-based with 6 variants and 7 sizes. Built on `@base-ui/react/button`. Custom `isLoading` prop adds a `Spinner` and disables interaction.
 
 **Variants:**
 
 | Variant | Light Appearance | Dark Adjustment |
 |---|---|---|
-| `default` | `bg-primary text-primary-foreground hover:bg-primary/90` | Primary inverts (near-white bg) |
-| `destructive` | `bg-destructive text-white hover:bg-destructive/90` | `dark:bg-destructive/60` |
-| `outline` | `border bg-background shadow-xs hover:bg-accent` | `dark:bg-input/30 dark:border-input dark:hover:bg-input/50` |
-| `secondary` | `bg-secondary text-secondary-foreground hover:bg-secondary/80` | — |
-| `ghost` | `hover:bg-accent hover:text-accent-foreground` | `dark:hover:bg-accent/50` |
+| `default` | `bg-primary text-primary-foreground hover:bg-primary/80` | Primary inverts (near-white bg) |
+| `destructive` | `bg-destructive/10 text-destructive hover:bg-destructive/20` | `dark:bg-destructive/20 dark:hover:bg-destructive/30` |
+| `outline` | `border-border bg-background hover:bg-muted` | `dark:border-input dark:bg-input/30 dark:hover:bg-input/50` |
+| `secondary` | `bg-secondary text-secondary-foreground hover:bg-[color-mix(...)]` | — |
+| `ghost` | `hover:bg-muted hover:text-foreground` | `dark:hover:bg-muted/50` |
 | `link` | `text-primary underline-offset-4 hover:underline` | — |
 
 **Sizes:**
 
-| Size | Dimensions |
-|---|---|
-| `default` | `h-9 px-4 py-2` (with icon: `px-3`) |
-| `sm` | `h-8 px-3` (with icon: `px-2.5`, `gap-1.5`) |
-| `lg` | `h-10 px-6` (with icon: `px-4`) |
-| `icon` | `size-9` (36px square) |
-| `icon-sm` | `size-8` (32px square) |
-| `icon-lg` | `size-10` (40px square) |
+| Size | Dimensions | Notes |
+|---|---|---|
+| `default` | `h-8 gap-1.5 px-2.5` | Standard action buttons |
+| `xs` | `h-6 px-2 text-xs` | Compact inline actions; uses `rounded-md` override |
+| `sm` | `h-7 px-2.5 text-[0.8rem]` | Small actions; uses `rounded-md` override |
+| `lg` | `h-9 px-2.5` | Larger emphasis buttons |
+| `icon` | `size-8` (32px square) | Standard icon button |
+| `icon-xs` | `size-6` (24px square) | Small icon button |
+| `icon-sm` | `size-7` (28px square) | Medium icon button |
+| `icon-lg` | `size-9` (36px square) | Large icon button |
+
+> [!NOTE]
+> `xs` and `sm` sizes use `rounded-[min(var(--radius-md),12px)]` — they have slightly rounded corners to feel proportional despite `--radius-button: 0px` on default/lg sizes.
 
 **Loading State:**
 - Prepends an animated `Spinner` (`Loader2Icon` with `animate-spin`)
-- Sets `cursor-progress`, `disabled`, `aria-busy`, and `data-loading`
+- Sets `disabled` automatically when `isLoading` is true
 - SVGs inside buttons default to `size-4` via `[&_svg:not([class*='size-'])]:size-4`
 
-**Focus Style:** `focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]`
+**Focus Style:** `focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50`
 
-**Pressed Animation:** `active:scale-[0.98] active:translate-y-[1px] transition-transform duration-100`
+**Aria support:** `aria-expanded` adjusts background; `aria-invalid` adds destructive ring; `active:not-aria-[haspopup]:translate-y-px` for press feedback.
 
 #### Card
 
 Composable sub-components: `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter`.
 
+Has a `size` prop (`"default"` | `"sm"`) that scales `--card-spacing` from `--spacing(4)` (16px) to `--spacing(3)` (12px).
+
 | Part | Key Classes |
 |---|---|
-| Card | `bg-card text-card-foreground rounded-xl border shadow-sm py-6 gap-6` |
-| CardHeader | `px-6 gap-2`, grid with auto-rows, action slot support |
-| CardTitle | `font-semibold leading-none` |
-| CardDescription | `text-muted-foreground text-sm` |
-| CardContent | `px-6` |
-| CardFooter | `flex items-center px-6` |
+| Card | `flex flex-col rounded-[var(--radius-card)] bg-card ring-1 ring-foreground/10 py-(--card-spacing) gap-(--card-spacing)` |
+| CardHeader | `px-(--card-spacing) gap-1`, grid with `auto-rows-min`, action slot support |
+| CardTitle | `text-base font-medium leading-snug` (sm: `text-sm`) |
+| CardDescription | `text-sm text-muted-foreground` |
+| CardContent | `px-(--card-spacing)` |
+| CardFooter | `flex items-center rounded-b-[var(--radius-card)] border-t bg-muted/50 p-(--card-spacing)` |
 
 All parts use `data-slot` attributes for CSS targeting.
 
+> [!IMPORTANT]
+> Card no longer uses `border shadow-sm`. Elevation is achieved via `ring-1 ring-foreground/10`, which renders as a hairline outline that works in both light and dark modes without alpha-blending issues.
+
 #### Input
 
-Custom implementation with a **masked password** variant. When `type="password"`, the Input component renders a `PasswordInput` that replaces each character with `*` while maintaining the actual value in a ref. This prevents browser autofill preview leaks.
+Built on `@base-ui/react/input`. No longer a masked password variant — inputs are standard native inputs.
 
 **Base Input Style:**
 ```css
-h-9 rounded-md border bg-transparent px-3 py-1 text-base md:text-sm shadow-xs
-selection:bg-primary selection:text-primary-foreground
+h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1
+text-base md:text-sm transition-colors outline-none
 dark:bg-input/30
 ```
 
-**Focus:** `focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]`
-**Invalid:** `aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive`
+**Focus:** `focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50`
+**Invalid:** `aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40`
+**Disabled:** `disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50`
 
 #### Alert
 
@@ -489,6 +509,19 @@ Composable form field primitives: `FieldSet`, `FieldGroup`, `Field`, `FieldLabel
 **FieldError:** Renders role="alert", deduplicates error messages, shows as bullet list when multiple.
 **FieldDescription:** Links inside descriptions get `underline underline-offset-4 hover:text-primary`.
 
+#### Empty
+
+Composable empty-state primitives: `Empty`, `EmptyHeader`, `EmptyMedia`, `EmptyTitle`, `EmptyDescription`, `EmptyContent`.
+
+| Part | Key Classes |
+|---|---|
+| `Empty` | `flex flex-col items-center justify-center gap-4 rounded-xl border-dashed p-6 text-center` |
+| `EmptyHeader` | `flex max-w-sm flex-col items-center gap-2` |
+| `EmptyMedia` | CVA: `default` (transparent bg) or `icon` (muted bg square, `size-8`) |
+| `EmptyTitle` | `text-sm font-medium tracking-tight` |
+| `EmptyDescription` | `text-sm/relaxed text-muted-foreground` with auto-linked anchors |
+| `EmptyContent` | `flex flex-col items-center gap-2.5` for CTA buttons |
+
 #### Pagination
 
 Custom component (not shadcn default). Uses outline buttons with delta-2 sliding window.
@@ -525,10 +558,17 @@ All icons are `size-4`. Styling uses design tokens:
 ### Feature Components
 
 - **Authentication Forms:** `login-form`, `register-form`, `forgot-password-form`, `reset-password-form`, `password-confirmation-dialog`. Follow centered card layout, zod validation, explicit loading/error states.
-- **Header:** Fixed top bar with brand link, quick search (`Cmd+K`), creation dropdown, theme toggler, and user menu.
-- **Dashboard:** Listing cards for Organizations and Repositories with pagination and custom empty states.
-- **Organization / Repository Detail:** Uses a vertical sidebar tabs layout (`Radix Tab` component) for navigation.
-- **Member Management:** `members-list`, `member-item`, `invite-user-dialog`, `invite-response`. Permission gated based on roles.
+- **Header:** Fixed top bar with brand link, quick search (`Cmd+K`) that opens a live `SearchDropdown`, creation dropdown, theme toggler, and user menu.
+- **Search Dropdown:** `search-dropdown` — a `forwardRef` dropdown surfacing live Organization and Repository results with skeleton loading states.
+- **Dashboard:** Listing cards for Organizations and Repositories with pagination and `Empty`-component empty states.
+- **Organization Detail:** Uses a vertical sidebar tabs layout with sub-routes for Users, Repositories, and Settings.
+- **Repository Detail:** Vertical sidebar tabs layout with sub-routes for Documentation, Files, Commits, SDK Preferences, and Settings.
+- **Member Management:** `members-list`, `member-item`, `invite-user-dialog`, `delete-member-dialog`. Permission-gated based on roles.
+- **Organization Management:** `organization-settings-content`, `organization-settings-form`, `organization-repositories-content`, `organization-users-content`, `delete-organization-dialog`.
+- **Repository Management:** `repository-settings-content`, `repository-settings-form`, `repository-files-content`, `repository-commits-content`, `repository-documentation-content`, `repository-sdk-preferences-content`, `delete-repository-dialog`.
+- **SDK URLs:** `sdk-urls` — dropdown with copy-to-clipboard for SDK access URLs per language/version.
+- **SSH & API Key Panel:** `ssh-api-key-panel` — manages SSH public keys and API keys (list, add, delete, copy) within a card using pagination.
+- **SSH Configuration Docs:** Public docs page at `/docs/ssh-configuration` with `ssh-configuration-content` and `ssh-configuration-client`.
 - **Danger Zone Pattern:** A card with `border-destructive/50` containing a destructive action button that triggers a confirmation Dialog.
 - **Clone URLs:** Popover with SSH/HTTPS clone links and copy-to-clipboard actions.
 - **Markdown Renderer:** Built with `react-markdown` + `remark-gfm` + `rehype-raw` + `rehype-sanitize`.
@@ -548,30 +588,30 @@ Used exclusively on the landing page (`home-page-content.tsx`):
 - **Item pattern:** spring physics y-axis transition.
 
 #### CSS Transitions
-- Buttons: `transition-all` base, active scale click transitions.
+- Buttons: `transition-all` base, active translate-y press transitions.
 - Theme toggle icons: rotation + scale transitions.
 - Hover states: `transition-colors duration-500` (e.g. landing cards).
 
 ## 5. Layout Principles
 * **Whitespace & Grids:** Anchored to an 8px baseline grid with clean alignment and generous margins.
-* **Aesthetic Restraint:** Structure is defined purely by 1px hairline borders rather than shadows. The amber accent is strictly reserved for high-signal alerts or cursors rather than general styling.
+* **Aesthetic Restraint:** Structure is defined purely by `ring-1 ring-foreground/10` hairline outlines rather than shadows or borders. The amber accent is strictly reserved for high-signal alerts or cursors rather than general styling.
 
 ### Layout & Spacing conventions
 
 | Context | Gap / Padding |
 |---|---|
-| Card internal gap | `gap-6` (24px) between header/content/footer |
-| Card padding | `px-6 py-6` (24px) |
+| Card internal gap | `gap-(--card-spacing)` = `gap-4` (16px) default, `gap-3` (12px) sm |
+| Card padding | `px-(--card-spacing) py-(--card-spacing)` |
 | Form field gap | `gap-6` via FieldSet, `gap-7` via FieldGroup |
 | Dialog padding | `p-6` with `gap-4` between sections |
 | Section spacing | `gap-4` between form fields, `gap-1.5` between label+input |
 | Page max-width | `max-w-2xl mx-auto` (typical content pages) |
-| Button internal gap | `gap-2` (default), `gap-1.5` (sm) |
+| Button internal gap | `gap-1.5` (default/lg), `gap-1` (sm/xs) |
 
 ### Provider Stack
 
 ```
-<TransportProvider>          ← ConnectRPC transport (binary, with auth interceptor)
+<TransportProvider>          ← ConnectRPC transport (binary, with csrf + auth + idempotency interceptors)
   <QueryClientProvider>      ← TanStack Query cache
     <SessionProvider>        ← JWT session context
       <ThemeProvider>        ← next-themes (class strategy)
@@ -583,42 +623,65 @@ Used exclusively on the landing page (`home-page-content.tsx`):
 </TransportProvider>
 ```
 
+**ConnectRPC Interceptors (applied in order):**
+1. `csrfInterceptor` — injects CSRF token from session cookie into every mutating request
+2. `authInterceptor` — attaches Bearer JWT from iron-session to Authorization header
+3. `idempotencyInterceptor` — adds `Idempotency-Key` header to safe non-idempotent mutations
+
 ### Route Structure
 
 ```
 app/
-├── layout.tsx               # Root: Geist fonts, antialiased body, Providers
-├── page.tsx                 # Landing: HomePageContent (Framer Motion)
-├── login/page.tsx           # Public: LoginForm
-├── register/page.tsx        # Public: RegisterForm
-├── forgot-password/page.tsx # Public: ForgotPasswordForm
-├── reset-password/page.tsx  # Public: ResetPasswordForm
-├── invite/[token]/page.tsx  # Public: InviteResponse
+├── layout.tsx                    # Root: Geist fonts, antialiased body, Providers
+├── providers.tsx                 # Client-side: Transport + Query + Session + Theme + Toaster
+├── page.tsx                      # Landing: HomePageContent (Framer Motion)
+├── login/page.tsx                # Public: LoginForm
+├── register/page.tsx             # Public: RegisterForm
+├── forgot-password/page.tsx      # Public: ForgotPasswordForm
+├── reset-password/[token]/page.tsx # Public: ResetPasswordForm
+├── docs/
+│   └── ssh-configuration/page.tsx # Public: SSH setup guide (no header)
+├── api/
+│   ├── auth/login/               # iron-session login route
+│   ├── auth/logout/              # iron-session logout route
+│   ├── auth/session/             # JWT session read route
+│   └── docs/[organizationId]/[repositoryId]/[commitHash]/
+│                                 # Server-side proxy: fetches proto docs from API
 └── (authenticated)/
-    ├── layout.tsx           # HeaderClient wrapper
-    ├── dashboard/page.tsx   # Dashboard (org/repo listing)
-    ├── profile/page.tsx     # ProfilePageContent (tabs)
+    ├── layout.tsx                # HeaderClient wrapper
+    ├── invite/[token]/page.tsx   # InviteResponse (within auth group)
+    ├── dashboard/page.tsx        # Dashboard (org/repo listing)
+    ├── profile/page.tsx          # ProfilePageContent (tabs)
     ├── organization/
     │   └── [id]/
-    │       ├── layout.tsx   # Sidebar layout (Users/Org/Repos tabs)
-    │       └── page.tsx
+    │       ├── layout.tsx        # Sidebar layout (tabs)
+    │       ├── page.tsx          # Overview redirect
+    │       ├── users/page.tsx    # Member management
+    │       ├── repositories/page.tsx # Org repositories
+    │       └── settings/page.tsx # Org settings + danger zone
     └── repository/
         └── [repositoryId]/
-            ├── layout.tsx   # Sidebar layout (Docs/Files/Commits/SDK/Settings)
-            └── page.tsx
+            ├── layout.tsx        # Sidebar layout (tabs)
+            ├── page.tsx          # Overview redirect
+            ├── documentation/page.tsx
+            ├── files/page.tsx
+            ├── commits/page.tsx
+            ├── sdk-preferences/page.tsx
+            └── settings/page.tsx
 ```
 
 ### Page Layout Patterns
 
 - **Landing page:** Full-viewport hero, centered content, `noise-bg` texture, ambient spotlights, Framer Motion stagger animations.
 - **Auth pages:** Centered `Card` at `max-w-md`, minimal chrome, no header.
+- **Docs pages:** Public, no header, standalone layout (e.g. SSH configuration guide).
 - **Authenticated pages:** `HeaderClient` at top, content below. No fixed sidebar at the app level — sidebars are per-entity (org, repo).
 - **Entity detail pages (org, repo):** Two-column layout — left sidebar nav (tabs) + right content area. Sidebar rendered as vertical `Tabs` list with Radix.
 - **Settings / profile pages:** Single-column centered content at `max-w-2xl`, cards stacked vertically.
 
 ## 6. Elevation & Depth
 
-Visual depth is achieved through **Tonal Layers** rather than heavy shadows. The background uses a soft off-white or very light green, while primary content sits on pure white cards.
+Visual depth is achieved through **Tonal Layers** rather than heavy shadows. The background uses a soft off-white or very light grey, while primary content sits on pure white cards outlined by `ring-1 ring-foreground/10`.
 
 ### Premium Visual Texture
 
@@ -668,8 +731,10 @@ Base radius: `--radius: 0.75rem` (12px). Computed variants:
 | `--radius-md` | `calc(var(--radius) - 2px)` | 10px |
 | `--radius-lg` | `var(--radius)` | 12px |
 | `--radius-xl` | `calc(var(--radius) + 4px)` | 16px |
+| `--radius-card` | Fixed | **4px** — sharp card corners |
+| `--radius-button` | Fixed | **0px** — fully flat button corners |
 
-Components use `rounded-md` (10px) by default. Cards use `rounded-xl` (16px). Dialogs use `rounded-lg` (12px).
+Components use `rounded-md` (10px) by default in popovers/dropdowns. Cards use `rounded-[var(--radius-card)]` (4px). Dialogs use `rounded-lg` (12px). Buttons are fully sharp (`0px`) except `xs`/`sm` sizes which use `rounded-[min(var(--radius-md),12px)]` for proportionality.
 
 ## 8. Do's and Don'ts
 
@@ -686,8 +751,12 @@ Components use `rounded-md` (10px) by default. Cards use `rounded-xl` (16px). Di
 - **Do** use a vertical sidebar tab structure for entity details (org/repo dashboards).
 - **Do** style danger zones with `border-destructive/50`.
 - **Do** manage accessibility roles (`role="alert"`, `role="status"`, `aria-busy`, etc.) across all interactions.
+- **Do** use `Empty` / `EmptyHeader` / `EmptyMedia` / `EmptyTitle` / `EmptyDescription` / `EmptyContent` for empty states — never roll custom empty state markup.
+- **Do** use `@base-ui/react/button` and `@base-ui/react/input` primitives via the `@hasir/ui` wrappers — never import from `@base-ui/react` directly in the dashboard.
 - **Don't** suppress type checking errors with `as any`, `@ts-ignore`, or `@ts-expect-error`.
 - **Don't** use inline alerts for transient success/error messages.
 - **Don't** mix rounded and sharp corners in the same view.
 - **Don't** define custom spacing classes; always stick to Tailwind defaults.
 - **Don't** hardcode light/dark theme values; always refer to the CSS theme variables.
+- **Don't** add `border` or `shadow` to cards — use `ring-1 ring-foreground/10` for the hairline outline.
+- **Don't** use the `destructive` button variant for filled red CTAs — it's a soft tint. Use `AlertDialog` with its `AlertDialogAction` for confirmed destructive operations.
