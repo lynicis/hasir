@@ -58,7 +58,6 @@ deploy/docker/shared/certbot/www/
 *.code-workspace
 .DS_Store
 .claude/
-.opencode/
 .omo/
 .playwright-mcp/*
 .serena/
