@@ -154,33 +154,34 @@ export default function ProfilePageContent() {
   }
 
   return (
-    <div className="container mx-auto max-w-2xl min-h-screen flex flex-col justify-center gap-6 py-8 px-4">
-      <Tabs defaultValue="profile">
-        <TabsList>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="access">SSH / API key</TabsTrigger>
-        </TabsList>
+    <div className="min-h-[calc(100vh-4.5rem)] bg-background px-6 py-6">
+      <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-6">
+        <Tabs defaultValue="profile" className="flex flex-col w-full gap-6">
+          <TabsList>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="access">SSH / API key</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="profile">
-          <ProfileForm
-            onSubmit={handleProfileSubmit}
-            resetTrigger={resetTrigger}
-          />
-        </TabsContent>
+          <TabsContent value="profile" className="space-y-6">
+            <ProfileForm
+              onSubmit={handleProfileSubmit}
+              resetTrigger={resetTrigger}
+            />
+            <DangerZone onDelete={handleDeleteAccount} isDeleting={isDeleting} />
+          </TabsContent>
 
-        <TabsContent value="access">
-          <SshApiKeyPanel />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="access">
+            <SshApiKeyPanel />
+          </TabsContent>
+        </Tabs>
 
-      <PasswordConfirmationDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        onConfirm={handlePasswordConfirm}
-        onCancel={handleDialogCancel}
-      />
-
-      <DangerZone onDelete={handleDeleteAccount} isDeleting={isDeleting} />
+        <PasswordConfirmationDialog
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          onConfirm={handlePasswordConfirm}
+          onCancel={handleDialogCancel}
+        />
+      </div>
     </div>
   );
 }

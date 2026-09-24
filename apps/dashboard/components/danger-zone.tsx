@@ -28,7 +28,7 @@ export function DangerZone({ onDelete, isDeleting = false }: DangerZoneProps) {
 
   return (
     <>
-      <Card className="mt-6 border-destructive/50">
+      <Card className="border-destructive/50">
         <CardHeader>
           <CardTitle className="text-xl text-destructive">
             Danger Zone
