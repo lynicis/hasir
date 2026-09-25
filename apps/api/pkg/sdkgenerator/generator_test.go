@@ -816,6 +816,30 @@ func TestDocumentationGenerator_Generate_WithExistingBufGenYaml(t *testing.T) {
 	assert.NoError(t, err, "existing buf.gen.yaml should not be deleted")
 }
 
+func TestGenerateFromRepo_WithBufGenYaml(t *testing.T) {
+	ctx := context.Background()
+	mockRunner := NewMockCommandRunner()
+	g := NewDocumentationGenerator(mockRunner)
+
+	tmpDir := t.TempDir()
+	outputPath := filepath.Join(tmpDir, "docs")
+
+	// Create proto file, buf.yaml, and existing buf.gen.yaml
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "user.proto"), []byte("syntax = \"proto3\";"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "buf.yaml"), []byte("version: v2\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "buf.gen.yaml"), []byte("version: v2\n"), 0o644))
+
+	output, err := GenerateFromRepo(ctx, g, tmpDir, outputPath, "")
+	require.NoError(t, err)
+	require.NotNil(t, output)
+
+	// Verify generator was called (mockRunner received calls, not skipped)
+	require.Len(t, mockRunner.Calls, 2)
+	assert.Equal(t, "buf", mockRunner.Calls[0].Name)
+	assert.Equal(t, "buf", mockRunner.Calls[1].Name)
+	assert.Contains(t, mockRunner.Calls[1].Args, "--template")
+}
+
 func initBareRepoWithFiles(t *testing.T, files map[string]string) string {
 	t.Helper()
 

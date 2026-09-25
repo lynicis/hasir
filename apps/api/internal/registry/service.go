@@ -14,6 +14,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -108,7 +109,7 @@ func (s *service) CreateRepository(
 		return connect.NewError(connect.CodeInternal, errors.New("failed to create repository directory"))
 	}
 
-	_, err = git.PlainInit(repoPath, true)
+	gitRepo, err := git.PlainInit(repoPath, true)
 	if err != nil {
 		if errors.Is(err, git.ErrRepositoryAlreadyExists) {
 			zap.L().Warn("repository already exists on filesystem", zap.String("path", repoPath))
@@ -117,6 +118,7 @@ func (s *service) CreateRepository(
 
 		return connect.NewError(connect.CodeInternal, errors.New("failed to initialize git repository"))
 	}
+	_ = gitRepo.Storer.SetReference(plumbing.NewSymbolicReference(plumbing.HEAD, plumbing.ReferenceName("refs/heads/main")))
 
 	now := time.Now().UTC()
 	repoDTO := &RepositoryDTO{
@@ -822,7 +824,34 @@ func (s *service) TriggerSdkGeneration(ctx context.Context, repositoryId, commit
 		jobs = append(jobs, job)
 	}
 
+	if len(jobs) == 0 && repo.ManagedByBuf {
+		repoFullPath := filepath.Join(s.rootPath, repositoryId)
+		if detectedSdks := detectSdksFromRepoCommit(repoFullPath, commitHash); len(detectedSdks) > 0 {
+			zap.L().Info("auto-detected SDKs from buf.gen.yaml",
+				zap.String("repositoryId", repositoryId),
+				zap.String("commitHash", commitHash),
+				zap.Int("sdkCount", len(detectedSdks)))
+
+			for _, sdk := range detectedSdks {
+				job := &SdkGenerationJobDTO{
+					Id:           uuid.NewString(),
+					RepositoryId: repositoryId,
+					CommitHash:   commitHash,
+					Sdk:          sdk,
+					Status:       SdkGenerationJobStatusPending,
+					Attempts:     0,
+					MaxAttempts:  5,
+					CreatedAt:    now,
+				}
+				jobs = append(jobs, job)
+			}
+		}
+	}
+
 	if len(jobs) == 0 {
+		zap.L().Info("no SDK preferences enabled for repository, skipping SDK generation",
+			zap.String("repositoryId", repositoryId),
+			zap.String("commitHash", commitHash))
 		// Trigger documentation generation asynchronously to not block the git client
 		// #nosec G118 -- background goroutine needs to outlive the request context
 		go func() {
@@ -863,6 +892,105 @@ func (s *service) TriggerSdkGeneration(ctx context.Context, repositoryId, commit
 		zap.Int("jobCount", len(jobs)))
 
 	return nil
+}
+
+func detectSdksFromRepoCommit(repoPath, commitHash string) []SDK {
+	if commitHash == "" {
+		commitHash = "HEAD"
+	}
+
+	// #nosec G204 -- repoPath and commitHash are validated repository path and ref
+	cmd := exec.Command("git", "ls-tree", "-r", "--name-only", commitHash)
+	cmd.Dir = repoPath
+	output, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	var bufGenPaths []string
+	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		if filepath.Base(line) == "buf.gen.yaml" {
+			bufGenPaths = append(bufGenPaths, line)
+		}
+	}
+
+	if len(bufGenPaths) == 0 {
+		return nil
+	}
+
+	var allSdks []SDK
+	seen := make(map[SDK]bool)
+
+	for _, p := range bufGenPaths {
+		// #nosec G204 -- p is from git ls-tree output
+		showCmd := exec.Command("git", "show", fmt.Sprintf("%s:%s", commitHash, p))
+		showCmd.Dir = repoPath
+		content, showErr := showCmd.Output()
+		if showErr != nil {
+			continue
+		}
+
+		for _, sdk := range detectSdksFromBufGen(content) {
+			if !seen[sdk] {
+				seen[sdk] = true
+				allSdks = append(allSdks, sdk)
+			}
+		}
+	}
+
+	return allSdks
+}
+
+func detectSdksFromBufGen(content []byte) []SDK {
+	text := string(content)
+	var sdks []SDK
+	seen := make(map[SDK]bool)
+
+	add := func(sdk SDK) {
+		if !seen[sdk] {
+			seen[sdk] = true
+			sdks = append(sdks, sdk)
+		}
+	}
+
+	if strings.Contains(text, "connect-go") || strings.Contains(text, "connectrpc/go") {
+		add(SdkGoConnectRpc)
+	}
+	if strings.Contains(text, "protoc-gen-go") || strings.Contains(text, "protocolbuffers/go") {
+		add(SdkGoProtobuf)
+	}
+	if strings.Contains(text, "grpc-go") || strings.Contains(text, "go-grpc") || strings.Contains(text, "grpc/go") {
+		add(SdkGoGrpc)
+	}
+	if strings.Contains(text, "connect-query") || strings.Contains(text, "connectrpc/es") {
+		add(SdkJsConnectrpc)
+	}
+	if strings.Contains(text, "bufbuild/es") || strings.Contains(text, "protoc-gen-es") {
+		add(SdkJsBufbuildEs)
+	}
+	if strings.Contains(text, "protobuf/js") || strings.Contains(text, "protocolbuffers/js") {
+		add(SdkJsProtobuf)
+	}
+	if strings.Contains(text, "prost") {
+		add(SdkRustProtobuf)
+	}
+	if strings.Contains(text, "tonic") {
+		add(SdkRustGrpc)
+	}
+	if strings.Contains(text, "protocolbuffers/java") {
+		add(SdkJavaProtobuf)
+	}
+	if strings.Contains(text, "grpc/java") {
+		add(SdkJavaGrpc)
+	}
+	if strings.Contains(text, "protocolbuffers/csharp") {
+		add(SdkCsharpProtobuf)
+	}
+	if strings.Contains(text, "grpc/csharp") {
+		add(SdkCsharpGrpc)
+	}
+
+	return sdks
 }
 
 func (s *service) GenerateSDK(ctx context.Context, repositoryId, commitHash string, sdk SDK) error {

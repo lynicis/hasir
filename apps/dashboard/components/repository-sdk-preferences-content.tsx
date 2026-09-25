@@ -241,7 +241,6 @@ export default function RepositorySdkPreferencesContent() {
   }, [error, repository]);
 
   const handleLanguageToggle = (language: string) => {
-    if (isManagedByBuf) return;
     setConfig((prev) => {
       const current = prev[language] || { enabled: false };
       return {
@@ -260,7 +259,6 @@ export default function RepositorySdkPreferencesContent() {
   };
 
   const handleSubOptionToggle = (language: string, option: string) => {
-    if (isManagedByBuf) return;
     setConfig((prev) => {
       const current = prev[language] || { enabled: false };
       const currentValue = (current as Record<string, boolean>)[option] || false;
@@ -360,9 +358,8 @@ export default function RepositorySdkPreferencesContent() {
           <AlertTriangle className="size-4" />
           <AlertTitle>Managed by Buf</AlertTitle>
           <AlertDescription>
-            SDK generation preferences are configured externally and cannot be
-            modified here. Use the Buf Schema Registry to configure SDK
-            generation for this repository.
+            This repository is configured to use the Buf CLI toolchain for SDK
+            generation. Configure which SDKs to generate below.
           </AlertDescription>
         </Alert>
       )}
@@ -376,7 +373,7 @@ export default function RepositorySdkPreferencesContent() {
                 <Switch
                   checked={config[langKey]?.enabled || false}
                   onCheckedChange={() => handleLanguageToggle(langKey)}
-                  disabled={isManagedByBuf || isSubmitting}
+                  disabled={isSubmitting}
                 />
               </CardTitle>
               <CardDescription>{langConfig.description}</CardDescription>
@@ -402,7 +399,6 @@ export default function RepositorySdkPreferencesContent() {
                       }
                       onCheckedChange={() => handleSubOptionToggle(langKey, option.key)}
                       disabled={
-                        isManagedByBuf ||
                         !config[langKey]?.enabled ||
                         isSubmitting
                       }
@@ -415,7 +411,6 @@ export default function RepositorySdkPreferencesContent() {
         ))}
       </div>
 
-      {!isManagedByBuf && (
         <div className="flex items-center gap-3">
           <Button
             type="button"
@@ -434,7 +429,6 @@ export default function RepositorySdkPreferencesContent() {
             Reset to Defaults
           </Button>
         </div>
-      )}
 
       {repository && (
         <Card>

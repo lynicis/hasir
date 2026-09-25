@@ -350,12 +350,58 @@ func (h *GitSshHandler) triggerSdkGenerationAfterPush(repoPath string) {
 }
 
 func (h *GitSshHandler) getLatestCommitHash(repoPath string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", "HEAD")
+	return getLatestCommitHash(repoPath)
+}
+
+func getLatestCommitHash(repoPath string) (string, error) {
+	// #nosec G204 -- repoPath is validated repository path
+	cmd := exec.Command("git", "rev-parse", "--verify", "HEAD")
 	cmd.Dir = repoPath
 
 	output, err := cmd.Output()
+	if err == nil {
+		return strings.TrimSpace(string(output)), nil
+	}
+
+	// HEAD may point to an unborn branch (e.g. repo created with master, pushed to main).
+	// Resolve and point HEAD to an existing branch (preferring main, then master, then first available).
+	// #nosec G204 -- repoPath is validated repository path
+	branchCmd := exec.Command("git", "for-each-ref", "--format=%(refname:short)", "refs/heads/")
+	branchCmd.Dir = repoPath
+	branchOut, branchErr := branchCmd.Output()
+	if branchErr != nil {
+		return "", fmt.Errorf("failed to list branches: %w", branchErr)
+	}
+
+	branches := strings.Fields(string(branchOut))
+	if len(branches) == 0 {
+		return "", errors.New("repository has no commits")
+	}
+
+	target := branches[0]
+	for _, b := range branches {
+		if b == "main" {
+			target = "main"
+			break
+		}
+		if b == "master" && target != "main" {
+			target = "master"
+		}
+	}
+
+	// #nosec G204 -- repoPath is validated repository path, target is from refs/heads/
+	symCmd := exec.Command("git", "symbolic-ref", "HEAD", "refs/heads/"+target)
+	symCmd.Dir = repoPath
+	if symErr := symCmd.Run(); symErr != nil {
+		return "", fmt.Errorf("failed to update HEAD to %s: %w", target, symErr)
+	}
+
+	// #nosec G204 -- repoPath is validated repository path
+	cmd = exec.Command("git", "rev-parse", "--verify", "HEAD")
+	cmd.Dir = repoPath
+	output, err = cmd.Output()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get commit hash after updating HEAD: %w", err)
 	}
 
 	return strings.TrimSpace(string(output)), nil
@@ -560,15 +606,7 @@ func (h *GitHttpHandler) handleReceivePack(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *GitHttpHandler) getLatestCommitHash(repoPath string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = repoPath
-
-	output, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-
-	return strings.TrimSpace(string(output)), nil
+	return getLatestCommitHash(repoPath)
 }
 
 type SdkHttpHandler struct {

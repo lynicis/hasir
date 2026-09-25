@@ -1474,6 +1474,127 @@ func TestService_TriggerSdkGeneration(t *testing.T) {
 	})
 }
 
+func TestService_TriggerSdkGeneration_AutoDetectBufGen(t *testing.T) {
+	t.Run("auto-detects SDKs from buf.gen.yaml when managed by buf and no explicit preferences", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockQueue := NewMockSdkGenerationQueue(ctrl)
+
+		tmpDir := t.TempDir()
+		sdkDir := t.TempDir()
+		repoID := "repo-123"
+		repoPath := filepath.Join(tmpDir, repoID)
+		require.NoError(t, os.MkdirAll(repoPath, 0o750))
+
+		// Create repo with proto file and buf.gen.yaml
+		protoFile := filepath.Join(repoPath, "test.proto")
+		require.NoError(t, os.WriteFile(protoFile, []byte("syntax = \"proto3\";"), 0o644))
+		bufGenFile := filepath.Join(repoPath, "buf.gen.yaml")
+		bufGenContent := `version: v2
+plugins:
+  - local: ["go", "run", "connectrpc.com/connect/cmd/protoc-gen-connect-go"]
+    out: gen/go
+  - local: ["go", "run", "google.golang.org/protobuf/cmd/protoc-gen-go"]
+    out: gen/go
+  - local: ["bunx", "@bufbuild/protoc-gen-es"]
+    out: gen/js
+`
+		require.NoError(t, os.WriteFile(bufGenFile, []byte(bufGenContent), 0o644))
+
+		cmds := [][]string{
+			{"git", "init"},
+			{"git", "config", "user.email", "test@test.com"},
+			{"git", "config", "user.name", "Test"},
+			{"git", "add", "."},
+			{"git", "commit", "-m", "add proto and buf.gen.yaml"},
+		}
+		for _, args := range cmds {
+			cmd := exec.Command(args[0], args[1:]...)
+			cmd.Dir = repoPath
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "command %v failed: %s", args, string(out))
+		}
+		cmd := exec.Command("git", "rev-parse", "HEAD")
+		cmd.Dir = repoPath
+		out, err := cmd.Output()
+		require.NoError(t, err)
+		commitHash := strings.TrimSpace(string(out))
+
+		runner := sdkgenerator.NewDefaultCommandRunner()
+		svc := &service{
+			repository:   mockRepo,
+			sdkQueue:     mockQueue,
+			rootPath:     tmpDir,
+			sdkPath:      sdkDir,
+			docGenerator: sdkgenerator.NewDocumentationGenerator(runner),
+		}
+
+		ctx := context.Background()
+		orgID := "org-123"
+
+		mockRepo.EXPECT().
+			GetRepositoryById(ctx, repoID).
+			Return(&RepositoryDTO{
+				Id:             repoID,
+				ManagedByBuf:   true,
+				OrganizationId: orgID,
+			}, nil)
+
+		mockRepo.EXPECT().
+			GetSdkPreferences(ctx, repoID).
+			Return([]SdkPreferencesDTO{}, nil)
+
+		mockQueue.EXPECT().
+			EnqueueSdkGenerationJobs(ctx, gomock.Len(3)).
+			DoAndReturn(func(_ context.Context, jobs []*SdkGenerationJobDTO) error {
+				sdks := make(map[SDK]bool)
+				for _, j := range jobs {
+					sdks[j.Sdk] = true
+					assert.Equal(t, repoID, j.RepositoryId)
+					assert.Equal(t, commitHash, j.CommitHash)
+				}
+				assert.True(t, sdks[SdkGoConnectRpc])
+				assert.True(t, sdks[SdkGoProtobuf])
+				assert.True(t, sdks[SdkJsBufbuildEs])
+				return nil
+			})
+
+		err = svc.TriggerSdkGeneration(ctx, repoID, commitHash)
+		require.NoError(t, err)
+	})
+}
+
+func TestDetectSdksFromBufGen(t *testing.T) {
+	yamlContent := `version: v2
+plugins:
+  - local: ["go", "run", "connectrpc.com/connect/cmd/protoc-gen-connect-go"]
+  - local: ["go", "run", "google.golang.org/protobuf/cmd/protoc-gen-go"]
+  - local: ["go", "run", "google.golang.org/grpc/cmd/protoc-gen-go-grpc"]
+  - local: ["bunx", "@connectrpc/protoc-gen-connect-query"]
+  - local: ["bunx", "@bufbuild/protoc-gen-es"]
+  - local: ["protoc-gen-prost"]
+  - local: ["protoc-gen-tonic"]
+  - remote: buf.build/protocolbuffers/java
+  - remote: buf.build/grpc/java
+  - remote: buf.build/protocolbuffers/csharp
+  - remote: buf.build/grpc/csharp
+  - remote: buf.build/protocolbuffers/js
+`
+	sdks := detectSdksFromBufGen([]byte(yamlContent))
+	assert.Contains(t, sdks, SdkGoConnectRpc)
+	assert.Contains(t, sdks, SdkGoProtobuf)
+	assert.Contains(t, sdks, SdkGoGrpc)
+	assert.Contains(t, sdks, SdkJsConnectrpc)
+	assert.Contains(t, sdks, SdkJsBufbuildEs)
+	assert.Contains(t, sdks, SdkRustProtobuf)
+	assert.Contains(t, sdks, SdkRustGrpc)
+	assert.Contains(t, sdks, SdkJavaProtobuf)
+	assert.Contains(t, sdks, SdkJavaGrpc)
+	assert.Contains(t, sdks, SdkCsharpProtobuf)
+	assert.Contains(t, sdks, SdkCsharpGrpc)
+	assert.Contains(t, sdks, SdkJsProtobuf)
+}
+
 func TestService_GenerateSDK(t *testing.T) {
 	t.Run("error - repository not found", func(t *testing.T) {
 		ctrl := gomock.NewController(t)

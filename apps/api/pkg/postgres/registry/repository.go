@@ -10,6 +10,8 @@ import (
 	"github.com/exaring/otelpgx"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -788,7 +790,7 @@ func (r *PgRepository) GetCommits(ctx context.Context, repoPath string, page, pa
 		return nil, 0, connect.NewError(connect.CodeNotFound, errors.New("failed to open git repository"))
 	}
 
-	ref, err := repo.Head()
+	ref, err := getRepoHead(repo)
 	if err != nil {
 		span.RecordError(err)
 		return nil, 0, connect.NewError(connect.CodeNotFound, errors.New("failed to get repository HEAD"))
@@ -869,7 +871,7 @@ func (r *PgRepository) GetRecentCommit(ctx context.Context, repoPath string) (*r
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("failed to open git repository"))
 	}
 
-	ref, err := repo.Head()
+	ref, err := getRepoHead(repo)
 	if err != nil {
 		span.RecordError(err)
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("failed to get repository HEAD"))
@@ -908,7 +910,7 @@ func (r *PgRepository) GetFileTree(ctx context.Context, repoPath string, subPath
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("failed to open git repository"))
 	}
 
-	ref, err := repo.Head()
+	ref, err := getRepoHead(repo)
 	if err != nil {
 		span.RecordError(err)
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("failed to get repository HEAD"))
@@ -1026,7 +1028,7 @@ func (r *PgRepository) GetFilePreview(ctx context.Context, repoPath, filePath st
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("failed to open git repository"))
 	}
 
-	ref, err := repo.Head()
+	ref, err := getRepoHead(repo)
 	if err != nil {
 		span.RecordError(err)
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("failed to get repository HEAD"))
@@ -1115,4 +1117,36 @@ func detectMimeType(filePath string, content []byte) string {
 		return "application/octet-stream"
 	}
 	return "text/plain"
+}
+
+func getRepoHead(repo *git.Repository) (*plumbing.Reference, error) {
+	ref, err := repo.Head()
+	if err == nil {
+		return ref, nil
+	}
+
+	branches, bErr := repo.Branches()
+	if bErr != nil {
+		return nil, err
+	}
+	defer branches.Close()
+
+	var candidate *plumbing.Reference
+	_ = branches.ForEach(func(b *plumbing.Reference) error {
+		if b.Name() == "refs/heads/main" {
+			candidate = b
+			return storer.ErrStop
+		}
+		if candidate == nil || b.Name() == "refs/heads/master" {
+			candidate = b
+		}
+		return nil
+	})
+
+	if candidate != nil {
+		_ = repo.Storer.SetReference(plumbing.NewSymbolicReference(plumbing.HEAD, candidate.Name()))
+		return candidate, nil
+	}
+
+	return nil, err
 }

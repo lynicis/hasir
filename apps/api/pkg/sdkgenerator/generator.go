@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -198,19 +197,7 @@ func GenerateFromRepo(ctx context.Context, generator Generator, repoPath, output
 		GoPackagePrefix: goPackagePrefix,
 	}
 
-	isBufSpecFileExists, err := input.isBufSpecFileExists()
-	if err != nil {
-		return nil, fmt.Errorf("failed to check buf spec file: %w", err)
-	}
-
-	if !isBufSpecFileExists {
-		return generator.Generate(ctx, input)
-	}
-
-	return &GeneratorOutput{
-		OutputPath: absOutputPath,
-		FilesCount: len(protoFiles),
-	}, nil
+	return generator.Generate(ctx, input)
 }
 
 func FindProtoFiles(repoPath string) ([]string, error) {
@@ -248,6 +235,10 @@ func FindProtoFilesInBareRepo(repoPath, commitHash string) ([]string, error) {
 
 	output, err := cmd.Output()
 	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
+			return nil, fmt.Errorf("git ls-tree failed (%w): %s", err, strings.TrimSpace(string(exitErr.Stderr)))
+		}
 		return nil, fmt.Errorf("git ls-tree failed: %w", err)
 	}
 
@@ -264,25 +255,4 @@ func FindProtoFilesInBareRepo(repoPath, commitHash string) ([]string, error) {
 	}
 
 	return protoFiles, nil
-}
-
-func (i GeneratorInput) isBufSpecFileExists() (bool, error) {
-	var isBufSpecFileExists = false
-	var errFound = errors.New("found")
-	if err := filepath.WalkDir(i.RepoPath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if !d.IsDir() && d.Name() == "buf.gen.yaml" {
-			isBufSpecFileExists = true
-			return errFound
-		}
-
-		return nil
-	}); err != nil && !errors.Is(err, errFound) {
-		return false, err
-	}
-
-	return isBufSpecFileExists, nil
 }

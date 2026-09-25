@@ -390,12 +390,13 @@ describe("RepositorySdkPreferencesContent", () => {
       expect(screen.getByText("Managed by Buf")).toBeInTheDocument();
       expect(
         screen.getByText(
-          /sdk generation preferences are configured externally and cannot be modified here/i
+          /this repository is configured to use the buf cli toolchain for sdk generation/i
         )
       ).toBeInTheDocument();
     });
 
-    it("disables all language toggle switches", () => {
+    it("allows language toggle switches to be interactive", async () => {
+      const user = userEvent.setup();
       render(
         <RepositoryContext.Provider value={managedContextValue}>
           <RepositorySdkPreferencesContent />
@@ -404,13 +405,14 @@ describe("RepositorySdkPreferencesContent", () => {
       );
 
       const switches = screen.getAllByRole("switch");
+      const goSwitch = switches[0]!;
 
-      for (const switchEl of switches) {
-        expect(switchEl).toHaveAttribute("data-disabled");
-      }
+      expect(goSwitch).not.toHaveAttribute("data-disabled");
+      await user.click(goSwitch);
+      expect(goSwitch).toBeChecked();
     });
 
-    it("does not render Save Configuration or Reset to Defaults buttons", () => {
+    it("renders Save Configuration and Reset to Defaults buttons", () => {
       render(
         <RepositoryContext.Provider value={managedContextValue}>
           <RepositorySdkPreferencesContent />
@@ -419,11 +421,11 @@ describe("RepositorySdkPreferencesContent", () => {
       );
 
       expect(
-        screen.queryByRole("button", { name: /save configuration/i })
-      ).not.toBeInTheDocument();
+        screen.getByRole("button", { name: /save configuration/i })
+      ).toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: /reset to defaults/i })
-      ).not.toBeInTheDocument();
+        screen.getByRole("button", { name: /reset to defaults/i })
+      ).toBeInTheDocument();
     });
 
     it("still renders the Download SDK section", () => {
@@ -437,7 +439,7 @@ describe("RepositorySdkPreferencesContent", () => {
       expect(screen.getByText("Download SDK")).toBeInTheDocument();
     });
 
-    it("displays existing SDK preferences as read-only", () => {
+    it("displays existing SDK preferences", () => {
       const managedWithPreferences: Repository = {
         ...mockRepository,
         managedByBuf: true,
@@ -464,7 +466,6 @@ describe("RepositorySdkPreferencesContent", () => {
       const goSwitch = switches[0]!;
 
       expect(goSwitch).toBeChecked();
-      expect(goSwitch).toHaveAttribute("data-disabled");
     });
 
     it("does not show alert banner when managedByBuf is false", () => {

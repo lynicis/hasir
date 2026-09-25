@@ -14,6 +14,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/go-git/go-git/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -1801,4 +1802,55 @@ func bearerToken(t *testing.T, secret string, subject string) string {
 	require.NoError(t, err)
 
 	return "Bearer " + signed
+}
+
+func TestGetLatestCommitHash(t *testing.T) {
+	t.Run("resolves unborn HEAD when main branch was pushed", func(t *testing.T) {
+		bareDir := t.TempDir()
+		workDir := t.TempDir()
+
+		// Bare repo initialized with default master HEAD
+		_, err := git.PlainInit(bareDir, true)
+		require.NoError(t, err)
+
+		// Client repo creates commit on main and pushes to bare
+		runGit := func(dir string, args ...string) {
+			cmd := exec.Command("git", args...)
+			cmd.Dir = dir
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "git %v failed: %s", args, string(out))
+		}
+
+		runGit(workDir, "init", "-b", "main")
+		runGit(workDir, "config", "user.name", "Test")
+		runGit(workDir, "config", "user.email", "test@test.com")
+		require.NoError(t, os.WriteFile(filepath.Join(workDir, "foo.proto"), []byte("syntax = \"proto3\";"), 0o644))
+		runGit(workDir, "add", ".")
+		runGit(workDir, "commit", "-m", "initial")
+		runGit(workDir, "push", bareDir, "main")
+
+		// Verify HEAD was pointing to master before
+		headBefore, err := os.ReadFile(filepath.Join(bareDir, "HEAD"))
+		require.NoError(t, err)
+		assert.Equal(t, "ref: refs/heads/master\n", string(headBefore))
+
+		// getLatestCommitHash should resolve unborn HEAD, update it to main, and return the commit hash
+		hash, err := getLatestCommitHash(bareDir)
+		require.NoError(t, err)
+		assert.NotEmpty(t, hash)
+
+		// Verify HEAD now points to main
+		headAfter, err := os.ReadFile(filepath.Join(bareDir, "HEAD"))
+		require.NoError(t, err)
+		assert.Equal(t, "ref: refs/heads/main\n", string(headAfter))
+	})
+
+	t.Run("returns error when repo has no commits", func(t *testing.T) {
+		bareDir := t.TempDir()
+		_, err := git.PlainInit(bareDir, true)
+		require.NoError(t, err)
+
+		_, err = getLatestCommitHash(bareDir)
+		require.Error(t, err)
+	})
 }
