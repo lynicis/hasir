@@ -1,36 +1,19 @@
-# PROTO PACKAGE KNOWLEDGE BASE
+# Proto Package Instructions (`packages/proto`)
 
-## OVERVIEW
-Protobuf schema source of truth + buf workspace. Publishes to the Buf Schema Registry (BSR) via its own release channel. npm package `@hasir/proto` wraps generated code for TS consumers.
+## Commands
+| Task | Command |
+|------|---------|
+| Generate Go & TS code (`gen/`) | `make proto` (from repo root) |
+| Lint schemas | `bunx buf lint` |
+| Check breaking changes vs `main` | `bunx buf breaking --against '../../.git#branch=main,subdir=packages/proto'` |
 
-## STRUCTURE
-```
-packages/proto/
-├── proto/                 # Schemas — DOUBLE-NESTED path
-│   └── {user,organization,registry,shared}/v1/*.proto
-├── buf.yaml               # Workspace + lint/breaking config
-├── buf.gen.yaml           # Codegen targets (go + js)
-├── buf.lock
-├── gen/{go,js}/           # Generated output — GITIGNORED, never commit
-├── go.mod / Makefile      # Go module for the generated Go SDK
-└── package.json           # @hasir/proto npm wrapper
-```
+## Code Map
+| Path | Purpose |
+|------|---------|
+| `proto/{user,organization,registry,shared}/v1/*.proto` | Protobuf schema definitions (double-nested path) |
+| `buf.yaml`, `buf.gen.yaml` | Buf workspace, lint/breaking rules, and codegen targets |
+| `gen/{go,js}/` | Generated Go and TS SDKs (gitignored, ADR-0003) |
 
-## CONVENTIONS
-- All proto work via buf CLI: root `make proto` = turbo `proto` task = `buf generate` here.
-- Generated code (`gen/`) is gitignored (ADR-0003) — regenerated on demand, cached by turbo.
-- CI (`proto.yml`): `buf lint` + `buf breaking` against main on every PR touching `packages/proto/**`.
-- Planning & specs: Follow the monorepo OpenSpec standard (`openspec/`); proto schema changes must be planned via OpenSpec.
-
-## RELEASE
-- Tag `proto/v*` → `proto-release.yml` → buf lint/breaking/push to BSR (with label).
-- Independent of app releases (`hasir-*@`) and helm (`hasir-helm@`).
-
-## ANTI-PATTERNS
-- NEVER commit `gen/` output or generated buf configs.
-- NEVER hand-edit generated files.
-- NEVER merge breaking schema changes casually — CI enforces `buf breaking` vs main.
-
-## NOTES
-- Import paths use the double nesting: `proto/<domain>/v1/file.proto`.
-- Older docs (README/ARCHITECTURE) claiming a root-level `proto/` dir are stale — schemas live here.
+## Key Conventions
+- Use double-nested import paths (`proto/<domain>/v1/<file>.proto`).
+- Publish schema releases to the Buf Schema Registry via `proto/v*` tags (`proto-release.yml`), independent of app and Helm tags.
