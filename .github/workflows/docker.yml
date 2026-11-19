@@ -9,22 +9,27 @@ on:
 permissions:
   packages: write
   contents: read
+  id-token: write
+  attestations: write
 
 jobs:
   bake:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
-      - uses: docker/setup-qemu-action@v4
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
 
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GHCR_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine Target
         id: target
@@ -48,4 +53,20 @@ jobs:
             -f deploy/docker/shared/docker-bake.hcl \
             --set "*.cache-from=type=gha" \
             --set "*.cache-to=type=gha,mode=max" \
+            --set "*.attest=type=provenance,mode=max" \
+            --set "*.attest=type=sbom" \
+            --metadata-file /tmp/bake-metadata.json \
             --push ${{ steps.target.outputs.name }}
+
+      - name: Install Cosign
+        if: steps.target.outputs.name != ''
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+
+      - name: Sign container image
+        if: steps.target.outputs.name != ''
+        env:
+          TARGET_NAME: ${{ steps.target.outputs.name }}
+        run: |
+          IMAGE="ghcr.io/${{ github.repository_owner }}/hasir-${TARGET_NAME}"
+          DIGEST=$(jq -r --arg t "$TARGET_NAME" '.[$t]["containerimage.digest"]' /tmp/bake-metadata.json)
+          cosign sign --yes "${IMAGE}@${DIGEST}"

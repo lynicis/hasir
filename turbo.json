@@ -40,12 +40,18 @@
     },
     "lint": {
       "dependsOn": [
-        "^lint"
+        "^lint",
+        "//#lint:actions"
       ],
       "inputs": [
         "$TURBO_DEFAULT$",
         "eslint.config.mjs",
         ".golangci.yaml"
+      ]
+    },
+    "//#lint:actions": {
+      "inputs": [
+        ".github/workflows/**"
       ]
     },
     "typecheck": {

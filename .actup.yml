@@ -1,12 +1,12 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/lynicis/actup/main/schema.json
 
-pins: {}
-
 actions:
   actions/cache: v6
   actions/checkout: v7
+  actions/dependency-review-action: v5.0.1
   actions/setup-go: v7
   actions/setup-python: v7
+  aquasecurity/trivy-action: v0.36.0
   azure/setup-helm: v5
   bufbuild/buf-action: v1
   changesets/action: v2.1.2
@@ -19,4 +19,6 @@ actions:
   helm/chart-testing-action: v2
   helm/kind-action: v1
   oven-sh/setup-bun: v2
-  securego/gosec: master
+  securego/gosec: v2.22.4
+  sigstore/cosign-installer: v3
+  trufflesecurity/trufflehog: v3.99.9

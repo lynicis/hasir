@@ -2,17 +2,50 @@ version: 2
 
 updates:
   - package-ecosystem: "gomod"
-    directory: "/apps/api"
+    directories:
+      - "/apps/api"
+      - "/packages/proto"
     schedule:
       interval: "weekly"
-    # Rebase onto main automatically so grouped PRs do not go stale the way
-    # the individually-opened bumps in #5-#13 did.
+      day: "monday"
     rebase-strategy: "auto"
+    open-pull-requests-limit: 5
     groups:
       # One PR per week for routine minor and patch bumps (runtime modules and
-      # the pinned CI tools alike). Major bumps stay ungrouped so a breaking
-      # upgrade is reviewed on its own.
-      apps-api-go-minor-patch:
+      # pinned CI tools alike). Major bumps stay ungrouped for isolated review.
+      go-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "bun"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      bun-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "docker"
+    directories:
+      - "/apps/api"
+      - "/apps/dashboard"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      docker-minor-patch:
         patterns:
           - "*"
         update-types:

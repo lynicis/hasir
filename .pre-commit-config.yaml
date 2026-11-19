@@ -72,3 +72,12 @@ repos:
         language: system
         pass_filenames: false
         files: ^proto/
+
+  # --- GitHub Actions (.github/workflows/) ---
+  - repo: local
+    hooks:
+      - id: actionlint
+        name: actionlint
+        entry: actionlint
+        language: system
+        files: ^\.github/workflows/

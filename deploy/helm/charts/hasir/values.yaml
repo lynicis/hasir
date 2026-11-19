@@ -111,3 +111,6 @@ postgresql:
   persistence:
     enabled: true
     size: 8Gi
+
+networkPolicy:
+  enabled: true

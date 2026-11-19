@@ -16,7 +16,7 @@
   "packageManager": "bun@1.4.4",
   "engines": {
     "bun": ">=1.4",
-    "node": ">=24"
+    "node": ">=26"
   },
   "workspaces": [
     "apps/*",
@@ -27,6 +27,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
+    "lint:actions": "actionlint",
     "typecheck": "turbo run typecheck",
     "dev": "turbo run dev --parallel",
     "proto": "turbo run proto",
@@ -62,6 +63,7 @@
     "postcss": "8.5.23",
     "@hono/node-server": ">=2.0.5",
     "fast-uri": ">=3.1.4",
+    "fflate": ">=0.7.5",
     "minimatch": "^11.0.9",
     "next": "16.4.6",
     "sharp": ">=0.35.0",

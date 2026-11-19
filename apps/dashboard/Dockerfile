@@ -1,4 +1,4 @@
-FROM oven/bun:1-alpine AS build
+FROM oven/bun:1.4-alpine AS build
 WORKDIR /app
 
 # Copy root package files and all workspace member package.jsons
@@ -17,7 +17,7 @@ COPY . .
 
 RUN bunx turbo run build --filter=hasir-dashboard
 
-FROM node:24-alpine AS release
+FROM node:26-alpine AS release
 WORKDIR /app
 
 RUN adduser --system --uid 1001 hasir
