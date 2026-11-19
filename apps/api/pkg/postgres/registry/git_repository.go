@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 
 	"connectrpc.com/connect"
@@ -14,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"hasir/api/internal/registry"
 	registryv1 "hasir/proto/gen/go/registry/v1"
 )
 
@@ -27,6 +29,9 @@ func openRepoAndHead(span trace.Span, repoPath string) (*git.Repository, *plumbi
 	ref, err := getRepoHead(repo)
 	if err != nil {
 		span.RecordError(err)
+		if errors.Is(err, plumbing.ErrReferenceNotFound) {
+			return nil, nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("failed to get repository HEAD: %w", registry.ErrEmptyRepository))
+		}
 		return nil, nil, connect.NewError(connect.CodeNotFound, errors.New("failed to get repository HEAD"))
 	}
 

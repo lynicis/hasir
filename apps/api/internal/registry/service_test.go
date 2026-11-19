@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -2104,6 +2106,66 @@ func TestService_ProcessSdkTrigger(t *testing.T) {
 
 		err := svc.ProcessSdkTrigger(ctx, repoID, repoPath)
 		require.NoError(t, err)
+	})
+
+	t.Run("success - no jobs when repository is explicitly empty", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockQueue := NewMockSdkGenerationQueue(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			sdkQueue:   mockQueue,
+		}
+
+		ctx := context.Background()
+		const repoID = "repo-123"
+		const repoPath = "./repos/repo-123"
+
+		mockRepo.EXPECT().
+			GetSdkPreferences(ctx, repoID).
+			Return([]SdkPreferencesDTO{
+				{Id: "pref-1", RepositoryId: repoID, Sdk: SdkGoProtobuf, Status: true},
+			}, nil)
+
+		mockRepo.EXPECT().
+			GetCommits(ctx, repoPath, 1, 10000).
+			Return(nil, 0, connect.NewError(connect.CodeNotFound, fmt.Errorf("failed to get repository HEAD: %w", ErrEmptyRepository)))
+
+		err := svc.ProcessSdkTrigger(ctx, repoID, repoPath)
+		require.NoError(t, err)
+	})
+
+	t.Run("error - returns unexpected git read failure to worker", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockRepo := NewMockRepository(ctrl)
+		mockQueue := NewMockSdkGenerationQueue(ctrl)
+
+		svc := &service{
+			rootPath:   "./repos",
+			repository: mockRepo,
+			sdkQueue:   mockQueue,
+		}
+
+		ctx := context.Background()
+		const repoID = "repo-123"
+		const repoPath = "./repos/repo-123"
+
+		mockRepo.EXPECT().
+			GetSdkPreferences(ctx, repoID).
+			Return([]SdkPreferencesDTO{
+				{Id: "pref-1", RepositoryId: repoID, Sdk: SdkGoProtobuf, Status: true},
+			}, nil)
+
+		readErr := connect.NewError(connect.CodeNotFound, errors.New("failed to open git repository"))
+		mockRepo.EXPECT().
+			GetCommits(ctx, repoPath, 1, 10000).
+			Return(nil, 0, readErr)
+
+		err := svc.ProcessSdkTrigger(ctx, repoID, repoPath)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, readErr)
 	})
 
 	t.Run("success - no jobs when all preferences disabled", func(t *testing.T) {

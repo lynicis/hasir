@@ -170,13 +170,16 @@ func (h *GitHttpHandler) handleReceivePack(w http.ResponseWriter, r *http.Reques
 	pktLine := fmt.Sprintf("%04x%s", len(message)+4, message)
 	_, _ = w.Write([]byte(pktLine))
 
+	unlock := lockRepoRefUpdate(repoPath)
 	// #nosec G204 G702 -- repoPath validated via isValidPathComponent + DB auth check
 	cmd := exec.Command("git-receive-pack", "--stateless-rpc", repoPath)
 	cmd.Stdin = r.Body
 	cmd.Stdout = w
 	cmd.Stderr = w
 
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	unlock()
+	if err != nil {
 		zap.L().Error("git-receive-pack failed", zap.Error(err))
 		return
 	}

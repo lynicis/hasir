@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/gliderlabs/ssh"
 	"go.uber.org/zap"
@@ -124,13 +125,25 @@ func (h *GitSshHandler) HandleSession(session ssh.Session, userId string) error 
 		zap.String("command", gitCmd),
 		zap.String("repoPath", absRepoPath))
 
+	var unlock func()
+	if operation == SshOperationWrite {
+		unlock = lockRepoRefUpdate(absRepoPath)
+	}
+
 	if err := execCmd.Start(); err != nil {
+		if unlock != nil {
+			unlock()
+		}
 		zap.L().Error("Failed to start git command", zap.Error(err))
 		return fmt.Errorf("failed to start %s: %w", gitCmd, err)
 	}
 
-	if err := execCmd.Wait(); err != nil {
-		return err
+	waitErr := execCmd.Wait()
+	if unlock != nil {
+		unlock()
+	}
+	if waitErr != nil {
+		return waitErr
 	}
 
 	if operation == SshOperationWrite {
@@ -178,14 +191,54 @@ func triggerSdkGenerationAfterPush(ctx context.Context, svc Service, repoPath st
 	}
 }
 
-func getLatestCommitHash(repoPath string) (string, error) {
+var (
+	repoRefLocksMu sync.Mutex
+	repoRefLocks   = make(map[string]*sync.Mutex)
+)
+
+func lockRepoRefUpdate(repoPath string) func() {
+	key := filepath.Clean(repoPath)
+	if abs, err := filepath.Abs(key); err == nil {
+		key = abs
+	}
+
+	repoRefLocksMu.Lock()
+	mu, ok := repoRefLocks[key]
+	if !ok {
+		mu = &sync.Mutex{}
+		repoRefLocks[key] = mu
+	}
+	repoRefLocksMu.Unlock()
+
+	mu.Lock()
+	return mu.Unlock
+}
+
+func resolveHeadCommit(repoPath string) (string, error) {
 	// #nosec G204 -- repoPath is validated repository path
 	cmd := exec.Command("git", "rev-parse", "--verify", "HEAD")
 	cmd.Dir = repoPath
 
 	output, err := cmd.Output()
-	if err == nil {
-		return strings.TrimSpace(string(output)), nil
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(string(output)), nil
+}
+
+func getLatestCommitHash(repoPath string) (string, error) {
+	if hash, err := resolveHeadCommit(repoPath); err == nil {
+		return hash, nil
+	}
+
+	// Coordinate fallback HEAD repair with ref updates so HEAD is only rewritten
+	// while its current target remains unborn.
+	unlock := lockRepoRefUpdate(repoPath)
+	defer unlock()
+
+	if hash, err := resolveHeadCommit(repoPath); err == nil {
+		return hash, nil
 	}
 
 	// HEAD may point to an unborn branch (e.g. repo created with master, pushed to main).
@@ -214,6 +267,10 @@ func getLatestCommitHash(repoPath string) (string, error) {
 		}
 	}
 
+	if hash, err := resolveHeadCommit(repoPath); err == nil {
+		return hash, nil
+	}
+
 	// #nosec G204 -- repoPath is validated repository path, target is from refs/heads/
 	symCmd := exec.Command("git", "symbolic-ref", "HEAD", "refs/heads/"+target)
 	symCmd.Dir = repoPath
@@ -221,13 +278,10 @@ func getLatestCommitHash(repoPath string) (string, error) {
 		return "", fmt.Errorf("failed to update HEAD to %s: %w", target, symErr)
 	}
 
-	// #nosec G204 -- repoPath is validated repository path
-	cmd = exec.Command("git", "rev-parse", "--verify", "HEAD")
-	cmd.Dir = repoPath
-	output, err = cmd.Output()
+	hash, err := resolveHeadCommit(repoPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to get commit hash after updating HEAD: %w", err)
 	}
 
-	return strings.TrimSpace(string(output)), nil
+	return hash, nil
 }

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -1562,6 +1563,51 @@ func TestSdkHttpHandler_ServeHTTP(t *testing.T) {
 		assert.Contains(t, bodyStr, `content="127.0.0.1/sdk/org-1/repo-1/commit-1/go-connectrpc git http://127.0.0.1:8080/sdk/org-1/repo-1/commit-1/go-connectrpc"`)
 	})
 
+	t.Run("advertises SDK repository root for nested Go packages", func(t *testing.T) {
+		tempDir := t.TempDir()
+		gitDir := filepath.Join(tempDir, "org-1", "repo-1", "commit-1", "go-connectrpc", ".git")
+		require.NoError(t, os.MkdirAll(gitDir, 0o755))
+
+		h := NewSdkHttpHandler(tempDir)
+		req := httptest.NewRequest(http.MethodGet, "/sdk/org-1/repo-1/commit-1/go-connectrpc/example/v1?go-get=1", nil)
+		req.Host = "127.0.0.1:8080"
+		rec := httptest.NewRecorder()
+
+		h.ServeHTTP(rec, req)
+
+		res := rec.Result()
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+		body, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+		bodyStr := string(body)
+
+		assert.Contains(t, bodyStr, `content="127.0.0.1/sdk/org-1/repo-1/commit-1/go-connectrpc git http://127.0.0.1:8080/sdk/org-1/repo-1/commit-1/go-connectrpc"`)
+		assert.NotContains(t, bodyStr, "/example/v1")
+	})
+
+	t.Run("advertises SDK repository root for legacy 3-part nested Go packages", func(t *testing.T) {
+		tempDir := t.TempDir()
+		gitDir := filepath.Join(tempDir, "org-1", "repo-1", "go-protobuf", ".git")
+		require.NoError(t, os.MkdirAll(gitDir, 0o755))
+
+		h := NewSdkHttpHandler(tempDir)
+		req := httptest.NewRequest(http.MethodGet, "/sdk/org-1/repo-1/go-protobuf/example/v1?go-get=1", nil)
+		req.Host = "registry.example.com"
+		req.Header.Set("X-Forwarded-Proto", "https")
+		rec := httptest.NewRecorder()
+
+		h.ServeHTTP(rec, req)
+
+		res := rec.Result()
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+		body, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+		bodyStr := string(body)
+
+		assert.Contains(t, bodyStr, `content="registry.example.com/sdk/org-1/repo-1/go-protobuf git https://registry.example.com/sdk/org-1/repo-1/go-protobuf"`)
+		assert.NotContains(t, bodyStr, "/example/v1")
+	})
+
 	t.Run("returns 404 when git repo does not exist", func(t *testing.T) {
 		tempDir := t.TempDir()
 		h := NewSdkHttpHandler(tempDir)
@@ -1852,5 +1898,67 @@ func TestGetLatestCommitHash(t *testing.T) {
 
 		_, err = getLatestCommitHash(bareDir)
 		require.Error(t, err)
+	})
+
+	t.Run("does not replace HEAD that becomes valid before fallback repair acquires lock", func(t *testing.T) {
+		bareDir := t.TempDir()
+		workDir := t.TempDir()
+
+		_, err := git.PlainInit(bareDir, true)
+		require.NoError(t, err)
+
+		runGit := func(dir string, args ...string) string {
+			cmd := exec.Command("git", args...)
+			cmd.Dir = dir
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "git %v failed: %s", args, string(out))
+			return strings.TrimSpace(string(out))
+		}
+
+		// Point bare HEAD at unborn main.
+		runGit(bareDir, "symbolic-ref", "HEAD", "refs/heads/main")
+
+		// Push a topic branch first so refs/heads/topic exists while HEAD (main) is still unborn.
+		runGit(workDir, "init", "-b", "topic")
+		runGit(workDir, "config", "user.name", "Test")
+		runGit(workDir, "config", "user.email", "test@test.com")
+		require.NoError(t, os.WriteFile(filepath.Join(workDir, "topic.proto"), []byte("syntax = \"proto3\";"), 0o644))
+		runGit(workDir, "add", ".")
+		runGit(workDir, "commit", "-m", "topic commit")
+		runGit(workDir, "push", bareDir, "topic")
+
+		// Hold the per-repo ref-update lock to simulate an in-flight push creating main
+		// after getLatestCommitHash's initial unborn HEAD check.
+		unlock := lockRepoRefUpdate(bareDir)
+
+		resultCh := make(chan struct {
+			hash string
+			err  error
+		}, 1)
+		go func() {
+			h, e := getLatestCommitHash(bareDir)
+			resultCh <- struct {
+				hash string
+				err  error
+			}{hash: h, err: e}
+		}()
+
+		// While the lock is held, create and push main so HEAD resolves to main.
+		runGit(workDir, "checkout", "-b", "main")
+		require.NoError(t, os.WriteFile(filepath.Join(workDir, "main.proto"), []byte("syntax = \"proto3\";"), 0o644))
+		runGit(workDir, "add", ".")
+		runGit(workDir, "commit", "-m", "main commit")
+		mainHash := runGit(workDir, "rev-parse", "HEAD")
+		runGit(workDir, "push", bareDir, "main")
+
+		unlock()
+
+		res := <-resultCh
+		require.NoError(t, res.err)
+		assert.Equal(t, mainHash, res.hash)
+
+		headAfter, err := os.ReadFile(filepath.Join(bareDir, "HEAD"))
+		require.NoError(t, err)
+		assert.Equal(t, "ref: refs/heads/main\n", string(headAfter))
 	})
 }

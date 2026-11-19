@@ -470,6 +470,87 @@ describe("SshApiKeyPanel", () => {
         screen.queryByRole("button", { name: /copy api key/i })
       ).not.toBeInTheDocument();
     });
+
+    it("preserves and allows copying the created API key when refresh fails", async () => {
+      const user = userEvent.setup({ delay: null });
+      const writeTextSpy = vi.spyOn(navigator.clipboard, "writeText");
+
+      mockUserClient.createApiKey.mockResolvedValueOnce({
+        key: "ephemeral-secret-key-999",
+      });
+      mockApiKeys.refetch.mockRejectedValueOnce(new Error("network error"));
+
+      render(<SshApiKeyPanel />, { wrapper });
+
+      const keyNameInput = screen.getByLabelText(/^key name$/i, {
+        selector: "#api-key-name",
+      });
+      const generateButton = screen.getByRole("button", {
+        name: /generate key/i,
+      });
+
+      await user.type(keyNameInput, "Fallback Key");
+      await user.click(generateButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("ephemeral-secret-key-999")
+        ).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        expect(toastError).toHaveBeenCalledWith(
+          "API key created, but failed to refresh the list.",
+          expect.any(Object)
+        );
+      });
+
+      const copyButton = screen.getByRole("button", { name: /copy api key/i });
+      await user.click(copyButton);
+
+      await waitFor(() => {
+        expect(writeTextSpy).toHaveBeenCalledWith("ephemeral-secret-key-999");
+      });
+      expect(toastSuccess).toHaveBeenCalledWith(
+        "Copied to clipboard",
+        expect.any(Object)
+      );
+    });
+
+    it("preserves the created API key when refreshed list has no matching row", async () => {
+      const user = userEvent.setup({ delay: null });
+
+      mockUserClient.createApiKey.mockResolvedValueOnce({
+        key: "unmatched-secret-key-777",
+      });
+      mockApiKeys.refetch.mockResolvedValueOnce({
+        data: {
+          keys: [{ id: "other-id", name: "Different Key" }],
+          totalPage: 1,
+        },
+      });
+
+      render(<SshApiKeyPanel />, { wrapper });
+
+      const keyNameInput = screen.getByLabelText(/^key name$/i, {
+        selector: "#api-key-name",
+      });
+      const generateButton = screen.getByRole("button", {
+        name: /generate key/i,
+      });
+
+      await user.type(keyNameInput, "Off Page Key");
+      await user.click(generateButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("unmatched-secret-key-777")
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByRole("button", { name: /copy api key/i })
+      ).toBeInTheDocument();
+    });
   });
 
   describe("Form Validation", () => {

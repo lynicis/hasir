@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -75,5 +76,62 @@ func TestNewPool_Errors(t *testing.T) {
 		assert.Nil(t, pool)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to acquire connection")
+	})
+}
+
+type fakePoolConn struct {
+	pingErr error
+	onRel   func()
+}
+
+func (c *fakePoolConn) Ping(_ context.Context) error { return c.pingErr }
+func (c *fakePoolConn) Release()                     { c.onRel() }
+
+type fakePoolVerifier struct {
+	acquireErr error
+	pingErr    error
+	released   bool
+	closed     bool
+	events     []string
+}
+
+func (p *fakePoolVerifier) Acquire(_ context.Context) (poolConn, error) {
+	if p.acquireErr != nil {
+		return nil, p.acquireErr
+	}
+	return &fakePoolConn{
+		pingErr: p.pingErr,
+		onRel: func() {
+			p.released = true
+			p.events = append(p.events, "release")
+		},
+	}, nil
+}
+
+func (p *fakePoolVerifier) Close() {
+	p.closed = true
+	p.events = append(p.events, "close")
+}
+
+func TestVerifyPoolConnection(t *testing.T) {
+	t.Run("releases connection before closing pool when ping fails", func(t *testing.T) {
+		pool := &fakePoolVerifier{pingErr: errors.New("ping timeout")}
+
+		err := verifyPoolConnection(context.Background(), pool)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to ping database")
+		assert.True(t, pool.released)
+		assert.True(t, pool.closed)
+		assert.Equal(t, []string{"release", "close"}, pool.events)
+	})
+
+	t.Run("releases connection and keeps pool open when ping succeeds", func(t *testing.T) {
+		pool := &fakePoolVerifier{}
+
+		err := verifyPoolConnection(context.Background(), pool)
+		require.NoError(t, err)
+		assert.True(t, pool.released)
+		assert.False(t, pool.closed)
+		assert.Equal(t, []string{"release"}, pool.events)
 	})
 }

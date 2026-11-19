@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -108,6 +109,8 @@ func (s *service) enqueueSdkTriggerJob(ctx context.Context, repositoryId, repoPa
 	return nil
 }
 
+var ErrEmptyRepository = errors.New("repository has no commits")
+
 func (s *service) ProcessSdkTrigger(ctx context.Context, repositoryId, repoPath string) error {
 	sdkPreferences, err := s.repository.GetSdkPreferences(ctx, repositoryId)
 	if err != nil {
@@ -129,11 +132,14 @@ func (s *service) ProcessSdkTrigger(ctx context.Context, repositoryId, repoPath 
 
 	commits, _, err := s.repository.GetCommits(ctx, repoPath, 1, 10000)
 	if err != nil {
-		zap.L().Debug("no commits found in repository, skipping SDK generation",
-			zap.String("repositoryId", repositoryId),
-			zap.Error(err),
-		)
-		return nil
+		if errors.Is(err, ErrEmptyRepository) {
+			zap.L().Debug("no commits found in repository, skipping SDK generation",
+				zap.String("repositoryId", repositoryId),
+				zap.Error(err),
+			)
+			return nil
+		}
+		return err
 	}
 
 	if len(commits) == 0 {
