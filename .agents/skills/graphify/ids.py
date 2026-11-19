@@ -1,0 +1,225 @@
+"""Single source of truth for node-ID normalization.
+
+Three independent producers must agree on node IDs or the graph splits a single
+entity into disconnected ghost nodes:
+
+1. The AST extractor (``extract._make_id``) — deterministic, per-language.
+2. The semantic subagents (LLM) — follow the node-ID spec in the skill prompt.
+3. The graph builder (``build._normalize_id``) — reconciles edge endpoints when
+   the LLM emits IDs with slightly different punctuation or casing than the AST.
+
+Historically the normalization recipe was copy-pasted into ``extract._make_id``
+and ``build._normalize_id`` and kept in sync only by mirrored docstrings, which
+is exactly how the recurring ID-drift bug class crept in (#811 Unicode collapse,
+#550 same-filename collisions, #1033 AST-vs-LLM file-node mismatch, #1104). This
+module exists so the recipe lives in one place and the two callers can no longer
+diverge.
+
+The recipe: iterate ``casefold`` then NFKC-normalize to a fixpoint (casefold can
+*expand* a character into a base letter plus a combining mark — ``İ`` -> ``i`` +
+U+0307 — and NFKC then recomposes what can be recomposed; because the two do not
+commute and neither is a fixpoint of the other, a single pass is not
+caseless-stable), then replace runs of non-word characters with a single
+underscore (``re.UNICODE`` so CJK/Cyrillic/Arabic/accented-Latin letters survive
+instead of collapsing to a per-file node), collapse repeated underscores, then
+strip leading/trailing underscores.
+
+Casefolding runs BEFORE the non-word filter, not after. With it last, the
+combining marks casefold introduces were never filtered: ``İslemYap`` produced
+``i̇slemyap`` — an id containing U+0307, which is not a ``\\w`` character — and a
+second pass collapsed it to ``i_slemyap``, so the function was not idempotent
+and the builder's re-normalization disagreed with the extractor's ``make_id``
+for any Turkish identifier (#2614).
+
+Casefolding runs in a FIXPOINT LOOP, not once. A single ``NFKC(casefold(...))``
+left ``normalize_id(s) != normalize_id(s.casefold())`` for some combining-mark
+sequences (Greek ypogegrammeni U+0345 followed by a combining accent):
+pre-casefolding turns U+0345 into ``ι``, which NFKC composes with the accent into
+a precomposed char the single pass never reached. Iterating to a fixpoint —
+casefold first, on the raw input — makes the result caseless-stable regardless of
+how many times the caller has already casefolded.
+"""
+from __future__ import annotations
+
+import hashlib
+import re
+import unicodedata
+from pathlib import Path
+
+__all__ = ["normalize_id", "make_id", "decl_salt", "DeclIdRegistry"]
+
+
+def normalize_id(s: str) -> str:
+    r"""Normalize a single ID string to its canonical form.
+
+    Guarantees, all enforced by tests:
+
+    - Idempotent: ``normalize_id(normalize_id(s)) == normalize_id(s)``.
+    - The result contains only ``\w`` characters and ``_``.
+    - Caseless-stable: ``normalize_id(s) == normalize_id(s.casefold())``.
+
+    casefold and NFKC do not commute, and neither is a fixpoint of the other:
+    casefolding a char can expand it into a base letter plus a combining mark
+    (``İ`` -> ``i`` + U+0307), and NFKC can then recompose that mark with an
+    adjacent one into a different precomposed char. A single ``NFKC(casefold(...))``
+    pass therefore left ``normalize_id(s) != normalize_id(s.casefold())`` for some
+    combining-mark sequences (e.g. Greek ypogegrammeni U+0345 followed by a
+    combining accent): pre-casefolding turned U+0345 into ``ι`` which NFKC then
+    composed with the accent, reaching a form the single-pass recipe never saw.
+
+    So iterate ``casefold`` then ``NFKC`` to a fixpoint (casefold FIRST, on the
+    raw input, so a caller that pre-casefolds lands on the same fixpoint). The
+    loop is bounded — Unicode caseless folding converges in one or two steps —
+    with a hard cap as a termination guard. Only then apply the ``[^\w]+`` filter,
+    so every combining mark casefold introduced has been fully normalized before
+    it is filtered (#2614 and its combining-mark follow-on).
+    """
+    cur = s
+    for _ in range(6):
+        nxt = unicodedata.normalize("NFKC", cur.casefold())
+        if nxt == cur:
+            break
+        cur = nxt
+    cur = re.sub(r"[^\w]+", "_", cur, flags=re.UNICODE)
+    cur = re.sub(r"_+", "_", cur)
+    return cur.strip("_")
+
+
+def decl_salt(name: str) -> str:
+    """Stable 12-hex digest appended when a declaration id collides (#4854)."""
+    return hashlib.sha1(
+        name.encode("utf-8", "replace"), usedforsecurity=False
+    ).hexdigest()[:12]
+
+
+class DeclIdRegistry:
+    """Assign unique ids to declarations in one file.
+
+    Ownership is keyed by the id the declaration would have used plus its kind.
+    The first declaration to claim an id keeps it; a later one whose names
+    normalize alike is salted apart when it is a different kind spelled
+    differently (``class Foo`` / ``function foo``, #4904) or the same kind
+    spelled differently only by leading/trailing underscores (``_save`` /
+    ``save``, #2810). A same-kind respelling that differs otherwise (``Foo`` /
+    ``FOO``) and an identical spelling (prototype + body, a reopened class) reuse
+    the id. A reference lookup by name only answers when exactly one
+    declaration in the file spells that name; an ambiguous name keeps the
+    caller's existing fallback.
+    """
+
+    def __init__(self, reserved_ids=()):
+        self._assigned: dict[tuple[str, str], str] = {}
+        self._owners: dict[str, tuple[str, str]] = {
+            rid: ("file", rid) for rid in reserved_ids
+        }
+        self._by_name: dict[tuple[str, str], set[str]] = {}
+        self._salted: set[str] = set()
+        self._spelled: dict[str, str] = {}
+        self._respelled: dict[tuple[str, str, str], str] = {}
+
+    def resolve(self, nid: str, name: str, kind: str, taken) -> str:
+        key = (kind, nid)
+        owner = self._owners.get(nid)
+        if owner == key:
+            first = self._spelled.get(nid, name)
+            if name == first or name.strip("_") != first.strip("_"):
+                return self._assigned[key]
+            # Same kind, spelled apart only by underscores (`_save` then
+            # `save`): two declarations, not a re-declaration (#2810). Salted
+            # from the spelling like any other collision, memoised per spelling.
+            respelled = self._respelled.get((kind, nid, name))
+            if respelled is not None:
+                return respelled
+            candidate = self._salt(nid, name, kind, taken)
+            self._owners[candidate] = (kind, candidate)
+            self._assigned[(kind, candidate)] = candidate
+            self._respelled[(kind, nid, name)] = candidate
+            return candidate
+        if nid not in taken and owner is None:
+            self._owners[nid] = key
+            self._assigned[key] = nid
+            self._spelled[nid] = name
+            self._by_name.setdefault((kind, normalize_id(name)), set()).add(nid)
+            return nid
+        assigned = self._assigned.get(key)
+        if assigned is not None:
+            return assigned
+        # An id already used by a real declaration is a duplicate reference to
+        # that declaration (prototype owner, same name re-declared); reuse it
+        # instead of minting a second node. Only a salted id, whose owner stole
+        # the spelling from this declaration, forces a counter-salt (#4854). A
+        # different kind only counts as a duplicate when spelled the same (TS
+        # `class Foo` + `namespace Foo`): `class Foo` + `function foo` are two (#4904).
+        if (nid in taken and owner is not None and owner[0] != "file"
+                and nid not in self._salted
+                and (owner[0] == kind or self._spelled.get(nid) == name)):
+            return nid
+        candidate = self._salt(nid, name, kind, taken)
+        self._owners[candidate] = key
+        self._assigned[key] = candidate
+        return candidate
+
+    def _salt(self, nid: str, name: str, kind: str, taken) -> str:
+        """Mint and record a salted id for ``name``; the caller records ownership."""
+        base = make_id(nid, decl_salt(name))
+        candidate = base
+        counter = 2
+        while candidate in taken or candidate in self._owners:
+            candidate = make_id(base, str(counter))
+            counter += 1
+        self._salted.add(candidate)
+        self._spelled[candidate] = name
+        self._by_name.setdefault((kind, normalize_id(name)), set()).add(candidate)
+        return candidate
+
+    def lookup(self, name: str, kinds=("type", "fn", "var", "ns", "alias")) -> str | None:
+        norm = normalize_id(name)
+        # A declaration spelled exactly like the reference wins over one that
+        # only normalizes alike: once #4904 keeps `Session` and `session()`
+        # apart, `Session s;` names the declaration spelled `Session`, whatever
+        # its kind. Without an exact spelling the kind order decides, as before.
+        exact = {i for kind in kinds for i in self._by_name.get((kind, norm), ())
+                 if self._spelled.get(i) == name}
+        if len(exact) == 1:
+            return next(iter(exact))
+        for kind in kinds:
+            ids = self._by_name.get((kind, norm))
+            if ids:
+                return next(iter(ids)) if len(ids) == 1 else None
+        return None
+
+
+def make_id(*parts: str) -> str:
+    """Build a canonical node ID from one or more name parts.
+
+    Parts are joined with ``_`` (after stripping stray ``_``/``.`` edges from each
+    part) and then run through :func:`normalize_id`, so the result is identical to
+    what the builder produces from the joined string.
+    """
+    return normalize_id("_".join(p.strip("_.") for p in parts if p))
+
+
+def _file_stem(path: Path) -> str:
+    """Stem used as the node-ID prefix for a file and its symbols.
+
+    The full path (extension dropped) is preserved as path segments; ``make_id``
+    later collapses the separators to underscores. Using every segment — not just
+    the immediate parent dir (#1504) — means same-named files in different
+    directories get distinct IDs instead of colliding into one
+    last-writer-wins node:
+
+        docs/v1/api/README.md -> docs/v1/api/README -> docs_v1_api_readme
+        docs/v2/api/README.md -> docs/v2/api/README -> docs_v2_api_readme
+
+    Top-level files keep a bare stem (``setup.py`` -> ``setup``). When passed an
+    absolute path the whole path is encoded; the extract() id-remap post-pass
+    re-derives the canonical repo-relative form from ``source_file`` so the on-disk
+    location can't leak into the persisted IDs (#502).
+
+    Returns "" for a path with no name (``Path('.')`` — a source_file that equals
+    the scan root, so it has no per-file stem). Guarding here keeps
+    ``path.with_suffix("")`` from raising ``ValueError: '.' has an empty name`` and
+    protects every caller, not just ``_semantic_id_remap`` (#1618)."""
+    if not path.name:
+        return ""
+    return path.with_suffix("").as_posix()

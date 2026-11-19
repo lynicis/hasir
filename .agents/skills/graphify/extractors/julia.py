@@ -1,0 +1,503 @@
+"""julia — moved verbatim from graphify/extract.py."""
+from __future__ import annotations
+
+from graphify.ids import DeclIdRegistry
+from graphify.extractors.base import _file_stem, _make_id, _read_source_bytes, _read_text
+from graphify.extractors.engine import _semantic_reference_edge
+from pathlib import Path
+
+
+def extract_julia(path: Path) -> dict:
+    """Extract modules, structs, functions, imports, and calls from a .jl file."""
+    try:
+        import tree_sitter_julia as tsjulia
+        from tree_sitter import Language, Parser
+    except ImportError:
+        return {"nodes": [], "edges": [], "error": "tree-sitter-julia not installed"}
+
+    try:
+        language = Language(tsjulia.language())
+        parser = Parser(language)
+        source = _read_source_bytes(path)
+        tree = parser.parse(source)
+        root = tree.root_node
+    except Exception as e:
+        return {"nodes": [], "edges": [], "error": str(e)}
+
+    stem = _file_stem(path)
+    str_path = str(path)
+    nodes: list[dict] = []
+    edges: list[dict] = []
+    seen_ids: set[str] = set()
+    function_bodies: list[tuple[str, object]] = []
+
+    def add_node(nid: str, label: str, line: int) -> None:
+        if nid not in seen_ids:
+            seen_ids.add(nid)
+            nodes.append({
+                "id": nid,
+                "label": label,
+                "file_type": "code",
+                "source_file": str_path,
+                "source_location": f"L{line}",
+            })
+
+    def add_edge(src: str, tgt: str, relation: str, line: int,
+                 confidence: str = "EXTRACTED", weight: float = 1.0,
+                 context: str | None = None) -> None:
+        edge = {
+            "source": src,
+            "target": tgt,
+            "relation": relation,
+            "confidence": confidence,
+            "source_file": str_path,
+            "source_location": f"L{line}",
+            "weight": weight,
+        }
+        if context:
+            edge["context"] = context
+        edges.append(edge)
+
+    file_nid = _make_id(str(path))
+    add_node(file_nid, path.name, 1)
+    decl_registry = DeclIdRegistry(reserved_ids=(file_nid,))
+
+    def decl_id(nid: str, name: str, kind: str) -> str:
+        return decl_registry.resolve(nid, name, kind, seen_ids)
+
+    def ensure_named_node(name: str, line: int) -> str:
+        nid = _make_id(stem, name)
+        if nid in seen_ids:
+            return nid
+        nid = _make_id(name)
+        if nid not in seen_ids:
+            # The name isn't defined in this file, so this is a cross-file reference
+            # (e.g. a `Thing` type annotation imported from another module). Emit a
+            # SOURCELESS stub — like the inheritance-base path below — so the
+            # corpus-level rewire can collapse it onto the real definition. A sourced
+            # stub here makes _disambiguate_colliding_node_ids bake the referencing
+            # file's path (with extension) into the id and blocks the rewire, which is
+            # the phantom-duplicate-node bug (#1402).
+            seen_ids.add(nid)
+            nodes.append({
+                "id": nid,
+                "label": name,
+                "file_type": "code",
+                "source_file": "",
+                "source_location": "",
+                "origin_file": str_path,
+            })
+        return nid
+
+    def _type_name_of(node) -> str | None:
+        """Read a type name, unwrapping a parametric head.
+
+        A parametric declaration (`Box{T}`, `Shape{T}`) wraps the real name in a
+        `parametrized_type_expression`; a plain declaration is a bare identifier.
+        """
+        if node is None:
+            return None
+        if node.type == "identifier":
+            return _read_text(node, source)
+        if node.type == "parametrized_type_expression":
+            ident = next((c for c in node.children if c.type == "identifier"), None)
+            return _read_text(ident, source) if ident else None
+        return None
+
+    def _type_head_names(type_head) -> tuple[str | None, str | None]:
+        """Return (type_name, supertype_name) from a Julia `type_head`.
+
+        A bare declaration (`Foo`) exposes an `identifier`; a subtyping
+        declaration (`Foo <: Bar`) wraps both names in a `binary_expression`.
+        Either name may itself be parametric (`Box{T}`, `Sq{T} <: Shape{T}`), so
+        the operands are read through `_type_name_of`. Both the struct and
+        abstract-type paths need this, so parse it once.
+        """
+        bin_expr = next(
+            (c for c in type_head.children if c.type == "binary_expression"), None
+        )
+        if bin_expr:
+            operands = [
+                c for c in bin_expr.children
+                if c.type in ("identifier", "parametrized_type_expression")
+            ]
+            if operands:
+                name = _type_name_of(operands[0])
+                super_name = _type_name_of(operands[-1]) if len(operands) >= 2 else None
+                return name, super_name
+            return None, None
+        name_node = next(
+            (c for c in type_head.children
+             if c.type in ("identifier", "parametrized_type_expression")), None
+        )
+        return _type_name_of(name_node), None
+
+    def _type_head_params(type_head) -> set[str]:
+        """Type-parameter names declared in a parametric head (`{T}`, `{T,U}`,
+        `{T<:Number}`). These are not real types, so they must not become phantom
+        field-type reference nodes (e.g. a struct field `value::T`)."""
+        pte = None
+        for c in type_head.children:
+            if c.type == "parametrized_type_expression":
+                pte = c
+                break
+            if c.type == "binary_expression":
+                pte = next(
+                    (cc for cc in c.children if cc.type == "parametrized_type_expression"),
+                    None,
+                )
+                break
+        if pte is None:
+            return set()
+        curly = next((c for c in pte.children if c.type == "curly_expression"), None)
+        if curly is None:
+            return set()
+        params: set[str] = set()
+        for c in curly.children:
+            if c.type == "identifier":
+                params.add(_read_text(c, source))
+            elif c.type == "binary_expression":  # constrained param `T <: Number`
+                first = next((cc for cc in c.children if cc.type == "identifier"), None)
+                if first:
+                    params.add(_read_text(first, source))
+        return params
+
+    def _unwrap_call_expression(node):
+        """Return the `call_expression` at or under `node`, unwrapping any
+        `where_expression` (`f(x::T) where {T}`) and `typed_expression`
+        (`f(x)::Float64`) wrappers around the call head; otherwise None."""
+        while node is not None and node.type in ("where_expression", "typed_expression"):
+            node = node.children[0] if node.children else None
+        if node is not None and node.type == "call_expression":
+            return node
+        return None
+
+    def _functor_type_name(node) -> str | None:
+        """Bare type name of a functor's receiver annotation, or None.
+
+        Handles `Box`, parametric `Box{T}`, qualified `Mod.Box` and
+        `Mod.Box{T}`. Any other node yields None.
+        """
+        while node is not None:
+            if node.type == "identifier":
+                return _read_text(node, source)
+            if node.type == "parametrized_type_expression":
+                node = node.children[0] if node.children else None
+            elif node.type == "field_expression":
+                node = node.children[-1] if node.children else None
+            else:
+                return None
+        return None
+
+    def _def_name(call) -> tuple[str, str] | None:
+        """(bare_name, label) for the callee of a method definition.
+
+        Handles `foo`, `+`, `Base.show`, `Base.:+`, and functors `(c::Circle)(x)`.
+        The id uses the bare name so methods of one generic function share a node
+        (multiple dispatch) and in-file calls resolve to it; the label keeps the
+        qualifier so `Base.show()` extensions stay recognisable.
+        """
+        if call is None or not call.children:
+            return None
+        callee = call.children[0]
+        if callee.type in ("identifier", "operator"):
+            name = _read_text(callee, source)
+            return name, name
+        if callee.type == "field_expression" and callee.children:
+            last = callee.children[-1]
+            if last.type == "quote_expression":  # Base.:+
+                last = next((c for c in last.children
+                             if c.type in ("operator", "identifier")), None)
+            if last is not None and last.type in ("identifier", "operator"):
+                return _read_text(last, source), _read_text(callee, source)
+            return None
+        if callee.type == "parenthesized_expression":
+            # functor: (c::Circle)(x) or (::Circle)(x) -> call operator on Circle
+            typed = next((c for c in callee.children
+                          if c.type in ("typed_expression", "unary_typed_expression")), None)
+            if typed is not None and typed.children:
+                # The type is always the last child. Never fall back to another
+                # identifier: in `(b::Mod.Box)` that would be the variable `b`.
+                tname = _functor_type_name(typed.children[-1])
+                if tname:
+                    return tname + "#call", f"({tname})"
+        return None
+
+    def _func_name_from_signature(sig_node) -> tuple[str, str] | None:
+        """(bare_name, label) from a Julia `signature` node, or None.
+
+        `where` clauses and `::RetType` annotations wrap the call head, so
+        unwrap those before reading the callee.
+        """
+        for child in sig_node.children:
+            call = _unwrap_call_expression(child)
+            if call is not None:
+                return _def_name(call)
+        return None
+
+    def walk_calls(body_node, func_nid: str) -> None:
+        if body_node is None:
+            return
+        t = body_node.type
+        if t in ("function_definition", "short_function_definition"):
+            return
+        if t == "call_expression" and body_node.children:
+            callee = body_node.children[0]
+            # Direct call: foo(...)
+            if callee.type == "identifier":
+                callee_name = _read_text(callee, source)
+                target_nid = _make_id(stem, callee_name)
+                add_edge(func_nid, target_nid, "calls", body_node.start_point[0] + 1,
+                         confidence="EXTRACTED", context="call")
+            # Method call: obj.method(...)
+            elif callee.type == "field_expression" and len(callee.children) >= 3:
+                method_node = callee.children[-1]
+                method_name = _read_text(method_node, source)
+                target_nid = _make_id(stem, method_name)
+                add_edge(func_nid, target_nid, "calls", body_node.start_point[0] + 1,
+                         confidence="EXTRACTED", context="call")
+        # Broadcast call: foo.(xs)
+        elif t == "broadcast_call_expression" and body_node.children:
+            callee = body_node.children[0]
+            if callee.type == "identifier":
+                add_edge(func_nid, _make_id(stem, _read_text(callee, source)), "calls",
+                         body_node.start_point[0] + 1, confidence="EXTRACTED", context="call")
+        # Pipe: x |> foo, xs .|> foo
+        elif t == "binary_expression" and len(body_node.children) == 3:
+            op, rhs = body_node.children[1], body_node.children[2]
+            if _read_text(op, source) in ("|>", ".|>") and rhs.type == "identifier":
+                add_edge(func_nid, _make_id(stem, _read_text(rhs, source)), "calls",
+                         body_node.start_point[0] + 1, confidence="EXTRACTED", context="call")
+        for child in body_node.children:
+            walk_calls(child, func_nid)
+
+    def walk(node, scope_nid: str) -> None:
+        t = node.type
+
+        # Module
+        if t == "module_definition":
+            name_node = next((c for c in node.children if c.type == "identifier"), None)
+            if name_node:
+                mod_name = _read_text(name_node, source)
+                mod_nid = decl_id(_make_id(stem, mod_name), mod_name, "ns")
+                line = node.start_point[0] + 1
+                add_node(mod_nid, mod_name, line)
+                add_edge(file_nid, mod_nid, "defines", line)
+                for child in node.children:
+                    walk(child, mod_nid)
+            return
+
+        # Struct (struct / mutable struct — both map to struct_definition in tree-sitter-julia)
+        if t == "struct_definition":
+            # type_head may contain: identifier (simple) or binary_expression (Foo <: Bar)
+            type_head = next((c for c in node.children if c.type == "type_head"), None)
+            if not type_head:
+                return
+            struct_name, super_name = _type_head_names(type_head)
+            if not struct_name:
+                return
+            struct_nid = decl_id(_make_id(stem, struct_name), struct_name, "type")
+            line = node.start_point[0] + 1
+            add_node(struct_nid, struct_name, line)
+            add_edge(scope_nid, struct_nid, "defines", line)
+            if super_name:
+                add_edge(struct_nid, ensure_named_node(super_name, line),
+                         "inherits", line, confidence="EXTRACTED")
+            # Field types: each `name::Type` lowers to a typed_expression child of struct_definition
+            type_params = _type_head_params(type_head)
+            for child in node.children:
+                if child.type == "typed_expression":
+                    type_ids = [c for c in child.children if c.type == "identifier"]
+                    if len(type_ids) >= 2:
+                        field_line = child.start_point[0] + 1
+                        type_name = _read_text(type_ids[-1], source)
+                        if type_name in type_params:
+                            continue  # a declared type parameter, not a real type
+                        type_nid = ensure_named_node(type_name, field_line)
+                        edges.append(_semantic_reference_edge(
+                            struct_nid, type_nid, "field", str_path, field_line))
+            return
+
+        # Abstract type
+        if t == "abstract_definition":
+            # type_head is a bare `identifier` (`abstract type Foo end`) or a
+            # `binary_expression` for the subtyping form (`abstract type Foo <: Bar end`).
+            # The latter was dropped entirely — abstract types are the backbone of
+            # Julia's dispatch hierarchies, so an intermediate `Foo <: Bar` vanishing
+            # broke the inheritance chain and lost the type node itself.
+            type_head = next((c for c in node.children if c.type == "type_head"), None)
+            if type_head:
+                abs_name, super_name = _type_head_names(type_head)
+                if abs_name:
+                    abs_nid = decl_id(_make_id(stem, abs_name), abs_name, "type")
+                    line = node.start_point[0] + 1
+                    add_node(abs_nid, abs_name, line)
+                    add_edge(scope_nid, abs_nid, "defines", line)
+                    if super_name:
+                        add_edge(abs_nid, ensure_named_node(super_name, line),
+                                 "inherits", line, confidence="EXTRACTED")
+            return
+
+        # Function: function foo(...) ... end
+        if t == "function_definition":
+            sig_node = next((c for c in node.children if c.type == "signature"), None)
+            if sig_node:
+                named = _func_name_from_signature(sig_node)
+                if named:
+                    func_name, label = named
+                    func_nid = decl_id(_make_id(stem, func_name), func_name, "fn")
+                    line = node.start_point[0] + 1
+                    add_node(func_nid, f"{label}()", line)
+                    add_edge(scope_nid, func_nid, "defines", line)
+                    function_bodies.append((func_nid, node))
+            return
+
+        # Macro: macro foo(...) ... end. Same grammar shape as a function (a
+        # `signature` wrapping a call_expression). Without this branch every
+        # macro definition was dropped, even though macros are first-class,
+        # heavily used definitions in Julia.
+        if t == "macro_definition":
+            sig_node = next((c for c in node.children if c.type == "signature"), None)
+            if sig_node:
+                named = _func_name_from_signature(sig_node)
+                macro_name = named[0] if named else None
+                if macro_name:
+                    macro_nid = _make_id(stem, "@" + macro_name)
+                    line = node.start_point[0] + 1
+                    add_node(macro_nid, f"@{macro_name}", line)
+                    add_edge(scope_nid, macro_nid, "defines", line)
+                    function_bodies.append((macro_nid, node))
+            return
+
+        # @enum: `@enum Name a b c` or `@enum Name begin a; b end`. This lowers
+        # to a macrocall_expression; the first identifier in the argument list is
+        # the enum type, the rest (including those inside a begin/end block) are
+        # its members. Other macro calls fall through so definitions nested in
+        # e.g. an `@testset begin ... end` are still walked.
+        if t == "macrocall_expression":
+            macro_id = next((c for c in node.children if c.type == "macro_identifier"), None)
+            macro_name = None
+            if macro_id is not None:
+                id_node = next((c for c in macro_id.children if c.type == "identifier"), None)
+                if id_node is not None:
+                    macro_name = _read_text(id_node, source)
+            if macro_name == "enum":
+                arglist = next((c for c in node.children if c.type == "macro_argument_list"), None)
+                # First positional arg is the enum type; the rest are members.
+                # A member can be a bare `identifier` (`red`) or an `assignment`
+                # for an explicit value (`red = 1`); the block form nests them in
+                # a `compound_statement`. The type may itself be a
+                # `typed_expression` for a typed enum (`Color::UInt8`).
+                arg_nodes = []
+                if arglist is not None:
+                    for c in arglist.children:
+                        if c.type in ("identifier", "typed_expression", "assignment"):
+                            arg_nodes.append(c)
+                        elif c.type == "compound_statement":
+                            arg_nodes.extend(
+                                cc for cc in c.children
+                                if cc.type in ("identifier", "assignment")
+                            )
+
+                def _member_ident(n):
+                    # bare identifier, or the LHS identifier of `name = value`,
+                    # or the base name of a typed head `Color::UInt8`
+                    if n.type == "identifier":
+                        return n
+                    return next((cc for cc in n.children if cc.type == "identifier"), None)
+
+                type_node = _member_ident(arg_nodes[0]) if arg_nodes else None
+                if type_node is not None:
+                    enum_name = _read_text(type_node, source)
+                    line = node.start_point[0] + 1
+                    enum_nid = decl_id(_make_id(stem, enum_name), enum_name, "type")
+                    add_node(enum_nid, enum_name, line)
+                    add_edge(scope_nid, enum_nid, "defines", line)
+                    for member in arg_nodes[1:]:
+                        m_node = _member_ident(member)
+                        if m_node is None:
+                            continue
+                        m_name = _read_text(m_node, source)
+                        m_line = m_node.start_point[0] + 1
+                        m_nid = _make_id(stem, enum_name, m_name)
+                        add_node(m_nid, m_name, m_line)
+                        # enum members use `case_of` (the tree-sitter convention
+                        # shared by C#/Java/Kotlin/Swift/TS), not `contains`.
+                        add_edge(enum_nid, m_nid, "case_of", m_line)
+                return
+            for child in node.children:
+                walk(child, scope_nid)
+            return
+
+        # Short function: foo(x) = expr  (and the `where` form: g(x::T) where {T} = expr)
+        if t == "assignment":
+            lhs = node.children[0] if node.children else None
+            named = _def_name(_unwrap_call_expression(lhs))
+            if named:
+                func_name, label = named
+                func_nid = decl_id(_make_id(stem, func_name), func_name, "fn")
+                line = node.start_point[0] + 1
+                add_node(func_nid, f"{label}()", line)
+                add_edge(scope_nid, func_nid, "defines", line)
+                # Only walk the RHS (index 2 after lhs and operator) to avoid self-loops
+                rhs = node.children[-1] if len(node.children) >= 3 else None
+                if rhs:
+                    function_bodies.append((func_nid, rhs))
+            return
+
+        # Using / Import
+        if t in ("using_statement", "import_statement"):
+            line = node.start_point[0] + 1
+
+            def _julia_mod_name(n):
+                # identifier (`Foo`), scoped_identifier (`Base.Threads`), or
+                # import_path (relative `..Sibling`) -> the module name. Only bare
+                # identifiers were handled, so qualified/relative imports — and the
+                # scoped package of a `selected_import` — were silently dropped.
+                if n.type == "import_path":
+                    ids = [c for c in n.children if c.type == "identifier"]
+                    return _read_text(ids[-1], source) if ids else None
+                if n.type in ("identifier", "scoped_identifier"):
+                    return _read_text(n, source)
+                return None
+
+            def _emit_import(name):
+                if not name:
+                    return
+                imp_nid = _make_id(name)
+                add_node(imp_nid, name, line)
+                add_edge(scope_nid, imp_nid, "imports", line, context="import")
+
+            for child in node.children:
+                if child.type in ("identifier", "scoped_identifier", "import_path"):
+                    _emit_import(_julia_mod_name(child))
+                elif child.type == "selected_import":
+                    # `import Base.Threads: nthreads` — the package (first named
+                    # child) may itself be a scoped_identifier/import_path.
+                    pkg = next(
+                        (c for c in child.children
+                         if c.type in ("identifier", "scoped_identifier", "import_path")),
+                        None,
+                    )
+                    if pkg is not None:
+                        _emit_import(_julia_mod_name(pkg))
+            return
+
+        for child in node.children:
+            walk(child, scope_nid)
+
+    walk(root, file_nid)
+
+    for func_nid, body_node in function_bodies:
+        # For function_definition nodes, walk children directly to avoid
+        # the boundary check returning early on the top-level node itself.
+        # Skip the "signature" child — it contains the function's own call_expression
+        # which would create a self-loop.
+        if body_node.type in ("function_definition", "macro_definition"):
+            for child in body_node.children:
+                if child.type != "signature":
+                    walk_calls(child, func_nid)
+        else:
+            walk_calls(body_node, func_nid)
+
+    return {"nodes": nodes, "edges": edges}

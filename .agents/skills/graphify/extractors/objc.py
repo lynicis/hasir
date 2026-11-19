@@ -1,0 +1,815 @@
+"""objc — moved verbatim from graphify/extract.py."""
+from __future__ import annotations
+
+from graphify.extractors.base import _file_stem, _make_id, _read_source_bytes, _read_text
+from graphify.extractors.engine import _cpp_declarator_name, _semantic_reference_edge
+from graphify.extractors.resolution import _resolve_c_include_path
+from graphify.security import sanitize_metadata
+from pathlib import Path
+from typing import Any
+import re
+
+# A category stem splits only when both halves look like plain ObjC identifiers, so
+# `C++Bridge.h` and `Foo+.h` are left intact.
+_OBJC_STEM_PART = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+# Declaration markers, matching what the generic engine puts on every other
+# language's definitions (#2438): `_callable` says "a real callable, not a
+# same-named data symbol", and `_callable_class` narrows that to a type, which is
+# callable only through a constructor. Passes that index declarations gate on
+# these, so a node without them is invisible to them.
+_CALLABLE = ("_callable",)
+_CALLABLE_CLASS = ("_callable", "_callable_class")
+
+
+def _objc_category_base_stem(stem: str) -> str:
+    """Strip an ObjC category/extension suffix from a file stem (``Foo+Cat`` -> ``Foo``).
+
+    A category (``@interface Foo (Cat)``) or class extension (``@interface Foo ()``)
+    declares members of an EXISTING class, so its class node must key to the same id
+    as ``Foo.h``'s ``@interface Foo`` instead of minting a second class node (#1556).
+    Only the final path segment is considered, and only a well-formed
+    ``Name+Suffix`` pair is split.
+
+    Mirrors ``_decldef_class_stem``, which already compares sibling header/impl files
+    by the stem before ``+``.
+    """
+    head, sep, tail = stem.rpartition("/")
+    base, plus, suffix = tail.partition("+")
+    if not plus or not _OBJC_STEM_PART.fullmatch(base) or not _OBJC_STEM_PART.fullmatch(suffix):
+        return stem
+    return f"{head}{sep}{base}"
+
+
+def _objc_is_category(node) -> bool:
+    """True for ``@interface/@implementation Foo (Cat)`` and ``Foo ()``.
+
+    The grammar emits the parentheses as anonymous children only for a category or
+    class extension; a generic class (``@interface Box<T>``) uses
+    ``parameterized_arguments`` instead, so it is not matched.
+    """
+    return any(c.type == "(" for c in node.children)
+
+
+def _objc_local_var_types(body_node, source: bytes, table: dict[str, str]) -> None:
+    """Collect ``var -> ClassName`` from ObjC local declarations (``Foo *f = ...;``)
+    in a method body, for receiver typing in the cross-file message-send pass
+    (#1556). Only a capitalized ``type_identifier`` with a single named declarator
+    is recorded; a built-in/lower-cased type or an un-nameable declarator is skipped
+    (precision over recall). Reuses the C++ declarator unwrapper (identical grammar).
+    """
+    stack = [body_node]
+    while stack:
+        n = stack.pop()
+        if n.type == "method_definition" and n is not body_node:
+            continue
+        if n.type == "declaration":
+            type_node = n.child_by_field_name("type")
+            if type_node is None:
+                for c in n.children:
+                    if c.type == "type_identifier":
+                        type_node = c
+                        break
+            if type_node is not None and type_node.type == "type_identifier":
+                type_name = _read_text(type_node, source).strip()
+                declarators = [
+                    c for c in n.children
+                    if c.type in ("identifier", "pointer_declarator", "init_declarator")
+                ]
+                if type_name and type_name[:1].isupper() and len(declarators) == 1:
+                    var = _cpp_declarator_name(declarators[0], source)
+                    if var and var not in table:
+                        table[var] = type_name
+        for c in n.children:
+            stack.append(c)
+
+def extract_objc(path: Path) -> dict:
+    """Extract interfaces, implementations, protocols, methods, and imports from .m/.mm/.h files."""
+    try:
+        import tree_sitter_objc as tsobjc
+        from tree_sitter import Language, Parser
+    except ImportError:
+        return {"nodes": [], "edges": [], "error": "tree_sitter_objc not installed"}
+
+    try:
+        language = Language(tsobjc.language())
+        parser = Parser(language)
+        source = _read_source_bytes(path)
+        # tree-sitter-objc cannot expand these argument-less annotation macros (no
+        # trailing ';'), and their presence before @interface makes the parser fail to
+        # emit a class_interface node (#1475). Blank them to equal-length spaces so byte
+        # offsets / line numbers are preserved and the interface parses.
+        _OBJC_BLANK_MACROS = (b"NS_ASSUME_NONNULL_BEGIN", b"NS_ASSUME_NONNULL_END")
+        for _m in _OBJC_BLANK_MACROS:
+            source = source.replace(_m, b" " * len(_m))
+        tree = parser.parse(source)
+        root = tree.root_node
+    except Exception as e:
+        return {"nodes": [], "edges": [], "error": str(e)}
+
+    stem = _file_stem(path)
+    str_path = str(path)
+    nodes: list[dict] = []
+    edges: list[dict] = []
+    seen_ids: set[str] = set()
+    method_bodies: list[tuple[str, Any, str]] = []
+    # #1556: unresolved message sends saved for the cross-file ObjC resolver, plus a
+    # per-file `var -> ClassName` table from `Foo *f = ...;` local declarations.
+    raw_calls: list[dict] = []
+    objc_type_table: dict[str, str] = {}
+    # #1556: per-CLASS `field -> ClassName` tables from `@property Bar *bar;` and
+    # ivar `Bar *_bar;` declarations, keyed by the class nid the .h/.m pair share
+    # (preserved by _merge_decl_def_classes), so the cross-file resolver can type a
+    # `[self.bar doIt]` / `[_bar doIt]` receiver. A conflicting redeclaration of the
+    # same (class, field) tombstones the entry (None) — drop, don't guess.
+    objc_field_types: dict[str, dict[str, str | None]] = {}
+
+    def add_node(nid: str, label: str, line: int, markers: tuple[str, ...] = ()) -> None:
+        if nid not in seen_ids:
+            seen_ids.add(nid)
+            node = {"id": nid, "label": label, "file_type": "code",
+                    "source_file": str_path, "source_location": f"L{line}"}
+            for marker in markers:
+                node[marker] = True
+            nodes.append(node)
+
+    def add_edge(src: str, tgt: str, relation: str, line: int,
+                 confidence: str = "EXTRACTED", weight: float = 1.0,
+                 context: str | None = None,
+                 metadata: dict | None = None) -> None:
+        edge = {"source": src, "target": tgt, "relation": relation,
+                "confidence": confidence, "source_file": str_path,
+                "source_location": f"L{line}", "weight": weight}
+        if context:
+            edge["context"] = context
+        if metadata:
+            edge["metadata"] = metadata
+        edges.append(edge)
+
+    file_nid = _make_id(str(path))
+    add_node(file_nid, path.name, 1)
+
+    def _read(node) -> str:
+        return source[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
+
+    def _get_name(node, field: str) -> str | None:
+        n = node.child_by_field_name(field)
+        return _read(n) if n else None
+
+    def _type_identifiers(node):
+        """Yield every type_identifier under a property's type node, descending
+        through generic_specifier/type_name so NSArray<Product *> yields both
+        NSArray and the element type Product (the generic case was invisible
+        because the type was wrapped in a generic_specifier, not a bare
+        type_identifier child) (#1475)."""
+        if node.type == "type_identifier":
+            yield node
+            return
+        for c in node.children:
+            yield from _type_identifiers(c)
+
+    def ensure_named_node(name: str, line: int) -> str:
+        nid = _make_id(stem, name)
+        if nid in seen_ids:
+            return nid
+        nid = _make_id(name)
+        if nid not in seen_ids:
+            # The name isn't defined in this file, so this is a cross-file reference
+            # (e.g. a `Thing` type annotation imported from another module). Emit a
+            # SOURCELESS stub — like the inheritance-base path below — so the
+            # corpus-level rewire can collapse it onto the real definition. A sourced
+            # stub here makes _disambiguate_colliding_node_ids bake the referencing
+            # file's path (with extension) into the id and blocks the rewire, which is
+            # the phantom-duplicate-node bug (#1402).
+            seen_ids.add(nid)
+            nodes.append({
+                "id": nid,
+                "label": name,
+                "file_type": "code",
+                "source_file": "",
+                "source_location": "",
+                "origin_file": str_path,
+            })
+        return nid
+
+    def _field_decl_entry(sd) -> tuple[str, str] | None:
+        """``(field, TypeName)`` from a property/ivar ``struct_declaration``, else None.
+
+        Precision gates (#1556): the type must be a BARE capitalized
+        ``type_identifier`` DIRECTLY under the struct_declaration — a
+        ``generic_specifier`` (``NSArray<Bar *>``) or ``typedefed_specifier``
+        (``id<P>``) wraps its type_identifier, so both are naturally excluded and
+        never type a receiver — and there must be exactly one ``struct_declarator``
+        whose name unwraps via the C++ declarator unwrapper (identical grammar).
+        """
+        type_ids = [s for s in sd.children if s.type == "type_identifier"]
+        declarators = [s for s in sd.children if s.type == "struct_declarator"]
+        if len(type_ids) != 1 or len(declarators) != 1:
+            return None
+        type_name = _read(type_ids[0]).strip()
+        if not type_name or not type_name[:1].isupper():
+            return None
+        # struct_declarator wraps ONE pointer_declarator (`*bar`) or identifier
+        # (`bar`); anything else (bitfields, arrays) has more children -> bail.
+        inner = declarators[0].children
+        if len(inner) != 1:
+            return None
+        field = _cpp_declarator_name(inner[0], source)
+        if not field:
+            return None
+        return field, type_name
+
+    def _record_field_type(cls_nid: str, field: str, type_name: str) -> None:
+        table = objc_field_types.setdefault(cls_nid, {})
+        if field in table:
+            if table[field] != type_name:
+                table[field] = None  # conflicting redeclaration -> drop, don't guess
+        else:
+            table[field] = type_name
+
+    def _collect_instance_variables(ivars_node, cls_nid: str) -> None:
+        """Record field types from an ``instance_variables`` block (``{ Bar *_b; }``)
+        under an @interface or @implementation. No nodes/edges are emitted here;
+        the table only feeds receiver typing in the cross-file resolver (#1556).
+        """
+        for iv in ivars_node.children:
+            if iv.type != "instance_variable":
+                continue
+            for sd in iv.children:
+                if sd.type == "struct_declaration":
+                    entry = _field_decl_entry(sd)
+                    if entry is not None:
+                        _record_field_type(cls_nid, *entry)
+
+    def _emit_enum(enum_spec, name: str, line: int,
+                   mapped_members: list[tuple[str, int]] | None = None) -> None:
+        """Emit a C-style enum type node plus a node + `case_of` edge per
+        enumerator, mirroring how every other language with enums models them
+        (Java #1719, C++ #3939, Swift). Objective-C is an object-oriented
+        extractor that already emits @interface/@protocol types, but plain
+        `enum`/`typedef enum` definitions were dropped entirely.
+        """
+        enum_nid = _make_id(stem, name)
+        add_node(enum_nid, name, line)
+        add_edge(file_nid, enum_nid, "contains", line)
+        if mapped_members is None:
+            body = next((c for c in enum_spec.children if c.type == "enumerator_list"), None)
+            if body is None:
+                return
+            mapped_members = []
+            for member in body.children:
+                if member.type != "enumerator":
+                    continue
+                mname = next((_read(c) for c in member.children if c.type == "identifier"), None)
+                if mname:
+                    mapped_members.append((mname, member.start_point[0] + 1))
+        for mname, m_line in mapped_members:
+            member_nid = _make_id(enum_nid, mname)
+            add_node(member_nid, mname, m_line)
+            add_edge(enum_nid, member_nid, "case_of", m_line)
+
+    def _macro_enum_members() -> list[tuple[str, int, list[tuple[str, int]]]]:
+        """Validate selected typedef macros without changing the original parse tree.
+
+        The Objective-C grammar does not expose these bodies as enum_specifiers.
+        Its macro header still has structural fields and tokens; use those to
+        select a declaration, then parse only its unchanged brace-delimited body
+        as a standalone enum. Every member must map back to the same source bytes.
+        """
+        def descendants(node, kind: str):
+            if node.type == kind:
+                yield node
+            for child in node.children:
+                yield from descendants(child, kind)
+
+        def leaves(node):
+            if node.type == "comment":
+                return
+            if not node.children:
+                yield node
+            else:
+                for child in node.children:
+                    yield from leaves(child)
+
+        source_leaves = list(leaves(root))
+        accepted = []
+        for macro in descendants(root, "macro_type_specifier"):
+            macro_name = macro.child_by_field_name("name")
+            if macro_name is None or _read(macro_name) not in (
+                "NS_ENUM", "NS_OPTIONS", "NS_CLOSED_ENUM"
+            ):
+                continue
+
+            # The closest preceding structural token in an enclosing node must
+            # be typedef. This excludes bare macro uses and text in definitions.
+            ancestor = macro.parent
+            while ancestor is not None:
+                preceding = [token for token in leaves(ancestor)
+                             if token.end_byte <= macro.start_byte]
+                if preceding and preceding[-1].type == "typedef":
+                    break
+                ancestor = ancestor.parent
+            if ancestor is None:
+                continue
+
+            tokens = list(leaves(macro))
+            opens = [token for token in tokens if token.type == "("]
+            closes = [token for token in tokens if token.type == ")"]
+            commas = [token for token in tokens if token.type == ","]
+            if len(opens) != 1 or len(closes) != 1 or len(commas) != 1:
+                continue
+            opening, closing, comma = opens[0], closes[0], commas[0]
+            if not (opening.end_byte <= comma.start_byte < comma.end_byte <= closing.start_byte):
+                continue
+            underlying = [node for node in descendants(macro, "type_descriptor")
+                          if opening.end_byte <= node.start_byte
+                          and node.end_byte <= comma.start_byte]
+            outer_types = [node for node in underlying if not any(
+                other is not node and other.start_byte <= node.start_byte
+                and node.end_byte <= other.end_byte for other in underlying
+            )]
+            names = [token for token in tokens
+                     if comma.end_byte <= token.start_byte < closing.start_byte
+                     and token.is_named]
+            if len(outer_types) != 1 or len(names) != 1 or names[0].type not in (
+                "identifier", "type_identifier"
+            ):
+                continue
+            # Valid headers also have grammar ERROR wrappers. Check complete
+            # argument spans rather than ignoring extra tokens inside them.
+            underlying_type = outer_types[0]
+            if any(token.is_missing for token in tokens) or any(
+                opening.end_byte <= token.start_byte < comma.start_byte
+                and not (underlying_type.start_byte <= token.start_byte
+                         and token.end_byte <= underlying_type.end_byte)
+                or comma.end_byte <= token.start_byte < closing.start_byte
+                and not (names[0].start_byte <= token.start_byte
+                         and token.end_byte <= names[0].end_byte)
+                for token in tokens
+            ):
+                continue
+
+            following = [token for token in source_leaves
+                         if token.start_byte >= macro.end_byte]
+            if not following or following[0].type != "{":
+                continue
+            open_brace = following[0]
+            depth = 0
+            close_brace = None
+            for token in following:
+                if token.type == "{":
+                    depth += 1
+                elif token.type == "}":
+                    depth -= 1
+                    if depth == 0:
+                        close_brace = token
+                        break
+                if depth < 0:
+                    break
+            if close_brace is None:
+                continue
+            after_body = [token for token in source_leaves
+                          if token.start_byte >= close_brace.end_byte]
+            if not after_body or after_body[0].type != ";":
+                continue
+
+            name_bytes = source[names[0].start_byte:names[0].end_byte]
+            body_bytes = source[open_brace.start_byte:close_brace.end_byte]
+            prefix = b"enum " + name_bytes + b" "
+            fragment = prefix + body_bytes + b";"
+            fragment_root = parser.parse(fragment).root_node
+            enum_specs = list(descendants(fragment_root, "enum_specifier"))
+            if fragment_root.has_error or len(enum_specs) != 1:
+                continue
+            enum_spec = enum_specs[0]
+            enum_name = enum_spec.child_by_field_name("name")
+            body = enum_spec.child_by_field_name("body")
+            if (enum_name is None or fragment[enum_name.start_byte:enum_name.end_byte] != name_bytes
+                    or enum_spec.has_error or body is None or body.type != "enumerator_list"
+                    or body.has_error or body.start_byte != len(prefix)
+                    or body.end_byte != len(prefix) + len(body_bytes)):
+                continue
+            # Conditional members need preprocessor handling. Do not emit a
+            # partial enum when a clean body contains unsupported child nodes.
+            if any(child.type not in {"{", "}", ",", "comment", "enumerator", "attribute_specifier"}
+                   for child in body.children):
+                continue
+
+            members: list[tuple[str, int]] = []
+            previous_member_end = None
+            for member in body.children:
+                if member.type != "enumerator":
+                    continue
+                # This grammar can accept `Bad Other` as two clean enumerators.
+                # Require the separator token before every later member.
+                if previous_member_end is not None and not any(
+                    token.type == "," and previous_member_end <= token.start_byte < member.start_byte
+                    for token in body.children
+                ):
+                    break
+                identifier = member.child_by_field_name("name")
+                if identifier is None:
+                    identifier = next((c for c in member.children if c.type == "identifier"), None)
+                if identifier is None or member.has_error or identifier.start_byte < body.start_byte:
+                    break
+                original_start = open_brace.start_byte + identifier.start_byte - body.start_byte
+                original_end = open_brace.start_byte + identifier.end_byte - body.start_byte
+                name = fragment[identifier.start_byte:identifier.end_byte]
+                if original_end > close_brace.end_byte or source[original_start:original_end] != name:
+                    break
+                line = open_brace.start_point[0] + identifier.start_point[0] - body.start_point[0] + 1
+                members.append((name.decode("utf-8", errors="replace"), line))
+                previous_member_end = member.end_byte
+            else:
+                accepted.append((_read(names[0]), macro.start_point[0] + 1, members))
+        return accepted
+
+    macro_enums = _macro_enum_members()
+
+    def walk(node, parent_nid: str | None = None) -> None:
+        t = node.type
+        line = node.start_point[0] + 1
+
+        if t == "preproc_include":
+            # #import <Foundation/Foundation.h> or #import "MyClass.h"
+            for child in node.children:
+                if child.type == "system_lib_string":
+                    raw = _read(child).strip("<>")
+                    module = raw.split("/")[-1].replace(".h", "")
+                    if module:
+                        tgt_nid = _make_id(module)
+                        add_edge(file_nid, tgt_nid, "imports", line, context="import")
+                elif child.type == "string_literal":
+                    # recurse into string_literal to find string_content
+                    for sub in child.children:
+                        if sub.type == "string_content":
+                            raw = _read(sub)
+                            # Resolve the quoted include to a real file so the target id
+                            # matches the (possibly disambiguated) node id _make_id gives
+                            # that file; the bare-stem id never survives
+                            # _disambiguate_colliding_node_ids when a .h/.m pair exists,
+                            # so the edge dangled and was dropped (#1475).
+                            resolved = _resolve_c_include_path(raw, str_path)
+                            if resolved is not None:
+                                add_edge(file_nid, _make_id(str(resolved)), "imports", line, context="import")
+                            else:
+                                module = raw.split("/")[-1].replace(".h", "")
+                                if module:
+                                    add_edge(
+                                        file_nid,
+                                        _make_id(module),
+                                        "imports",
+                                        line,
+                                        context="import",
+                                        metadata=sanitize_metadata({
+                                            "raw_include": raw,
+                                            "include_kind": "quoted",
+                                        }),
+                                    )
+            return
+
+        if t == "module_import":
+            # @import Foundation;  /  @import Foundation.NSString;
+            path_node = node.child_by_field_name("path")
+            if path_node is not None:
+                module = _read(path_node).split(".")[0].strip()
+                if module:
+                    add_edge(file_nid, _make_id(module), "imports", line, context="import")
+            return
+
+        if t == "class_interface":
+            # @interface ClassName : SuperClass <Protocols>
+            # children: @interface, identifier(name), ':', identifier(super), parameterized_arguments, ...
+            identifiers = [c for c in node.children if c.type == "identifier"]
+            if not identifiers:
+                for child in node.children:
+                    walk(child, parent_nid)
+                return
+            name = _read(identifiers[0])
+            # A category / class extension extends an existing class, so key its
+            # class node off the BASE stem (`Foo+Cat.h` -> `Foo`). Without this,
+            # `Foo+Cat.h` minted a SECOND node labelled `Foo`, which made every
+            # `[Foo ...]` receiver ambiguous and tripped the resolver's
+            # single-definition god-node guard — destroying edges the same corpus
+            # produced fine when the members lived in `Foo.h` (#1556).
+            cls_stem = _objc_category_base_stem(stem) if _objc_is_category(node) else stem
+            cls_nid = _make_id(cls_stem, name)
+            add_node(cls_nid, name, line, _CALLABLE_CLASS)
+            add_edge(file_nid, cls_nid, "contains", line)
+            # superclass is second identifier after ':'
+            colon_seen = False
+            for child in node.children:
+                if child.type == ":":
+                    colon_seen = True
+                elif colon_seen and child.type == "identifier":
+                    super_nid = ensure_named_node(_read(child), line)
+                    add_edge(cls_nid, super_nid, "inherits", line)
+                    colon_seen = False
+                elif child.type == "parameterized_arguments":
+                    # protocols adopted: @interface Foo : Bar <Proto1, Proto2>
+                    for sub in child.children:
+                        if sub.type == "type_name":
+                            for s in sub.children:
+                                if s.type == "type_identifier":
+                                    proto_nid = ensure_named_node(_read(s), line)
+                                    add_edge(cls_nid, proto_nid, "implements", line)
+                elif child.type == "property_declaration":
+                    prop_line = child.start_point[0] + 1
+                    for sub in child.children:
+                        if sub.type == "struct_declaration":
+                            # The type is either a direct type_identifier
+                            # (NSString *x) or wrapped in a generic_specifier
+                            # (NSArray<Product *> *xs). Walk every type name in the
+                            # type portion, skipping the declarator (the *field
+                            # name), so generic collections are no longer invisible.
+                            seen_types: set[str] = set()
+                            for s in sub.children:
+                                if s.type in ("struct_declarator", ";"):
+                                    continue
+                                for ti in _type_identifiers(s):
+                                    tname = _read(ti)
+                                    if tname in seen_types:
+                                        continue
+                                    seen_types.add(tname)
+                                    type_nid = ensure_named_node(tname, prop_line)
+                                    edges.append(_semantic_reference_edge(
+                                        cls_nid, type_nid, "field", str_path, prop_line))
+                            # #1556: a bare capitalized property type also types the
+                            # `[self.field msg]` receiver in the cross-file resolver.
+                            entry = _field_decl_entry(sub)
+                            if entry is not None:
+                                _record_field_type(cls_nid, *entry)
+                elif child.type == "instance_variables":
+                    _collect_instance_variables(child, cls_nid)
+                elif child.type == "method_declaration":
+                    walk(child, cls_nid)
+            return
+
+        if t == "class_implementation":
+            # @implementation ClassName
+            name = None
+            for child in node.children:
+                if child.type == "identifier":
+                    name = _read(child)
+                    break
+            if not name:
+                for child in node.children:
+                    walk(child, parent_nid)
+                return
+            impl_stem = _objc_category_base_stem(stem) if _objc_is_category(node) else stem
+            impl_nid = _make_id(impl_stem, name)
+            if impl_nid not in seen_ids:
+                add_node(impl_nid, name, line, _CALLABLE_CLASS)
+                add_edge(file_nid, impl_nid, "contains", line)
+            for child in node.children:
+                if child.type == "instance_variables":
+                    _collect_instance_variables(child, impl_nid)
+                elif child.type == "implementation_definition":
+                    for sub in child.children:
+                        walk(sub, impl_nid)
+            return
+
+        if t == "protocol_declaration":
+            name = None
+            for child in node.children:
+                if child.type == "identifier":
+                    name = _read(child)
+                    break
+            if name:
+                proto_nid = _make_id(stem, name)
+                # A protocol is a type declaration like any other interface, and
+                # the engine marks a Java/C# interface the same way.
+                add_node(proto_nid, f"<{name}>", line, _CALLABLE_CLASS)
+                add_edge(file_nid, proto_nid, "contains", line)
+                # Adopted protocols: `@protocol Derived <Base, Other>`. These
+                # nest under a protocol_reference_list node (distinct from the
+                # parameterized_arguments node used by @interface adoption), so
+                # they were never emitted. Emit an `implements` edge for each,
+                # matching how @interface protocol adoption is handled.
+                for child in node.children:
+                    if child.type == "protocol_reference_list":
+                        for sub in child.children:
+                            if sub.type == "identifier":
+                                base_nid = ensure_named_node(_read(sub), line)
+                                if base_nid != proto_nid:
+                                    add_edge(proto_nid, base_nid, "implements", line)
+                for child in node.children:
+                    walk(child, proto_nid)
+            return
+
+        if t in ("method_declaration", "method_definition"):
+            container = parent_nid or file_nid
+            # Class methods start with '+', instance methods with '-' (the grammar
+            # emits the sigil as the first child). The selector is the concatenation
+            # of the direct identifier children: one for a simple selector (-go),
+            # several for a compound one (-tableView:numberOfRowsInSection: ->
+            # "tableViewnumberOfRowsInSection"); method_parameter holds the arg
+            # types/names, not selector keywords, so it is correctly skipped.
+            prefix = "-"
+            for child in node.children:
+                if child.type in ("+", "-"):
+                    prefix = child.type
+                    break
+            parts = [_read(c) for c in node.children if c.type == "identifier"]
+            method_name = "".join(parts) if parts else None
+            if method_name:
+                method_nid = _make_id(container, method_name)
+                add_node(method_nid, f"{prefix}{method_name}", line, _CALLABLE)
+                add_edge(container, method_nid, "method", line)
+                if t == "method_definition":
+                    method_bodies.append((method_nid, node, container))
+            return
+
+        if t == "type_definition":
+            # `typedef enum { ... } Name;` / `typedef enum Tag { ... } Name;`.
+            # The enum body sits on a child enum_specifier that carries no usable
+            # name; the name callers reference is the typedef alias (the trailing
+            # type_identifier). NS_ENUM/NS_OPTIONS/NS_CLOSED_ENUM are handled separately through
+            # their structural macro headers and isolated enum body fragments.
+            enum_spec = next((c for c in node.children if c.type == "enum_specifier"), None)
+            if enum_spec is not None and any(
+                c.type == "enumerator_list" for c in enum_spec.children
+            ):
+                alias = next(
+                    (_read(c) for c in reversed(node.children) if c.type == "type_identifier"),
+                    None,
+                )
+                if alias is None:
+                    alias = next(
+                        (_read(c) for c in enum_spec.children if c.type == "type_identifier"),
+                        None,
+                    )
+                if alias:
+                    _emit_enum(enum_spec, alias, line)
+                    return
+            # Not an enum typedef: fall through to the generic recursion.
+
+        if t == "enum_specifier":
+            # A named C-style enum definition: `enum Color { Red, Green };`. Skip
+            # a bare reference / forward declaration (no enumerator_list) and an
+            # anonymous enum (no name): neither is a nameable definition.
+            name = next(
+                (_read(c) for c in node.children if c.type == "type_identifier"), None
+            )
+            if name and any(c.type == "enumerator_list" for c in node.children):
+                _emit_enum(node, name, line)
+            return
+
+        for child in node.children:
+            walk(child, parent_nid)
+
+    walk(root)
+    for name, line, members in macro_enums:
+        _emit_enum(None, name, line, members)
+
+    # Second pass: resolve calls inside method bodies
+    all_method_nids = {n["id"] for n in nodes if n["id"] != file_nid}
+    class_method_nids: dict[str, set[str]] = {}
+    for m_nid, _, container_nid in method_bodies:
+        class_method_nids.setdefault(container_nid, set()).add(m_nid)
+    seen_calls: set[tuple[str, str]] = set()
+    # #1556: per-file `var -> ClassName` table from local declarations in every
+    # method body, so the cross-file resolver can type a `[f doThing]` receiver.
+    for _m_nid, body_node, _container in method_bodies:
+        _objc_local_var_types(body_node, source, objc_type_table)
+
+    for caller_nid, body_node, container_nid in method_bodies:
+        sibling_nids = class_method_nids.get(container_nid, set())
+
+        def walk_calls(n) -> None:
+            if n.type == "message_expression":
+                # `[[Foo alloc] init]` is a message_expression whose method is the
+                # identifier `alloc` and whose receiver is the bare class identifier
+                # `Foo`; resolve that class name and emit a `references` edge so the
+                # allocating method links to the allocated type. ensure_named_node
+                # emits a sourceless stub for unknown names, which the corpus rewire
+                # collapses ONLY when exactly one real class of that name exists, so an
+                # unknown/ambiguous class produces no false resolved edge (#1475).
+                meth = n.child_by_field_name("method")
+                recv = n.child_by_field_name("receiver")
+                if (meth is not None and meth.type == "identifier" and _read(meth) == "alloc"
+                        and recv is not None and recv.type == "identifier"):
+                    tname = _read(recv)
+                    ref_line = n.start_point[0] + 1
+                    type_nid = ensure_named_node(tname, ref_line)
+                    if type_nid != caller_nid:
+                        edges.append(_semantic_reference_edge(
+                            caller_nid, type_nid, "type", str_path, ref_line))
+                # [receiver sel] and [receiver kw1:a kw2:b] both parse to a
+                # message_expression whose selector parts carry the field name
+                # "method" (one for a simple selector, several for a compound one);
+                # the receiver carries field name "receiver". Reconstruct the
+                # selector from every "method" child so self/super/ClassName
+                # receivers are never mistaken for a selector, and compound sends
+                # resolve too (the whole second pass was previously dead code for
+                # ObjC because the grammar emits these as `identifier`, not
+                # `selector`/`keyword_argument_list`) (#1475).
+                sel_parts = [
+                    _read(child)
+                    for i, child in enumerate(n.children)
+                    if n.field_name_for_child(i) == "method" and child.type == "identifier"
+                ]
+                method_name = "".join(sel_parts)
+                if method_name:
+                    needle = _make_id("", method_name).lstrip("_")
+                    for candidate in all_method_nids:
+                        if candidate.endswith(needle):
+                            pair = (caller_nid, candidate)
+                            if pair not in seen_calls and caller_nid != candidate:
+                                seen_calls.add(pair)
+                                add_edge(caller_nid, candidate, "calls", n.start_point[0] + 1,
+                                         confidence="EXTRACTED", weight=1.0, context="call")
+                    # #1556: also emit a raw_call so the cross-file resolver can type
+                    # the receiver and link to a method in ANOTHER file. A bare
+                    # identifier receiver (`f`, `self`, `Foo`) is captured; a nested
+                    # message send (`[[Foo alloc] init]`) has no simple receiver name
+                    # to type, so it is left to the alloc/init `references` edge above.
+                    if recv is not None and recv.type == "identifier":
+                        raw_calls.append({
+                            "caller_nid": caller_nid,
+                            "callee": method_name,
+                            "is_member_call": True,
+                            "source_file": str_path,
+                            "source_location": f"L{n.start_point[0] + 1}",
+                            "receiver": _read(recv),
+                            "lang": "objc",
+                        })
+                    elif recv is not None and recv.type == "field_expression":
+                        # `[self.bar doIt]`: capture ONLY the exact `self.<field>`
+                        # shape and stamp the BARE field name, typed via the class's
+                        # property/ivar table. Anything else (`obj.prop`, chains,
+                        # `Foo.shared`) stays dropped: passing the dotted text
+                        # through would let a capitalized `Foo.shared` enter the
+                        # explicit-class arm, where _key strips the dot and collides
+                        # with a real class `FooShared` — a fabricated edge (#1556).
+                        kids = recv.children
+                        if (len(kids) == 3 and kids[0].type == "identifier"
+                                and _read(kids[0]) == "self" and kids[1].type == "."
+                                and kids[2].type == "field_identifier"):
+                            raw_calls.append({
+                                "caller_nid": caller_nid,
+                                "callee": method_name,
+                                "is_member_call": True,
+                                "source_file": str_path,
+                                "source_location": f"L{n.start_point[0] + 1}",
+                                "receiver": _read(kids[2]),
+                                "receiver_kind": "self_field",
+                                "lang": "objc",
+                            })
+            elif n.type == "field_expression":
+                # self.name / self.product.name — dot-syntax sugar for [self name].
+                # Resolve to a sibling method of the SAME class, matched by EXACT
+                # node id (a method id is _make_id(container, name)). A suffix
+                # substring match would mis-resolve self.name -> -surname and would
+                # let a substring-colliding sibling (-surname) suppress the real
+                # -name edge, so it must be an exact match (#1475).
+                for child in n.children:
+                    if child.type == "field_identifier":
+                        field_name = _read(child)
+                        target = _make_id(container_nid, field_name)
+                        if target in sibling_nids and target != caller_nid:
+                            pair = (caller_nid, target)
+                            if pair not in seen_calls:
+                                seen_calls.add(pair)
+                                add_edge(caller_nid, target, "accesses",
+                                         n.start_point[0] + 1,
+                                         confidence="EXTRACTED", weight=1.0)
+            elif n.type == "selector_expression":
+                # @selector(doSomething:withParam:) — compile-time method ref.
+                # Match the selector name EXACTLY (a method id is
+                # _make_id(container, name)) against every class's methods, and emit
+                # only when exactly one method matches, to avoid ambiguous fan-out.
+                # Exact match (not a suffix) keeps -doThing distinct from
+                # -reallyDoThing (#1475).
+                sel_parts = [_read(c) for c in n.children if c.type == "identifier"]
+                sel_name = "".join(sel_parts)
+                if sel_name:
+                    matches = sorted({
+                        m for m, _, cont in method_bodies
+                        if m == _make_id(cont, sel_name) and m != caller_nid
+                    })
+                    if len(matches) == 1:
+                        pair = (caller_nid, matches[0])
+                        if pair not in seen_calls:
+                            seen_calls.add(pair)
+                            add_edge(caller_nid, matches[0], "calls",
+                                     n.start_point[0] + 1,
+                                     confidence="EXTRACTED", weight=1.0,
+                                     context="call")
+            for child in n.children:
+                walk_calls(child)
+        walk_calls(body_node)
+
+    result = {"nodes": nodes, "edges": edges, "raw_calls": raw_calls,
+              "input_tokens": 0, "output_tokens": 0}
+    if objc_type_table:
+        result["objc_type_table"] = {"path": str_path, "table": objc_type_table}
+    # Drop tombstoned (conflicting) entries and empty tables before export.
+    field_tables = {
+        cls: {f: t for f, t in tbl.items() if t}
+        for cls, tbl in objc_field_types.items()
+    }
+    field_tables = {cls: tbl for cls, tbl in field_tables.items() if tbl}
+    if field_tables:
+        result["objc_field_types"] = {"path": str_path, "tables": field_tables}
+    return result

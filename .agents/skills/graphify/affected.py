@@ -1,0 +1,544 @@
+from __future__ import annotations
+
+from collections import deque
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterable
+import unicodedata
+
+import networkx as nx
+
+
+DEFAULT_AFFECTED_RELATIONS = (
+    "calls",
+    "indirect_call",
+    "references",
+    "imports",
+    "imports_from",
+    # `import('…')` — emitted by the Svelte/Astro/Vue rescue passes and (since
+    # #2575) by plain JS/TS too. Omitting it made every dynamic import
+    # invisible to blast-radius traversal even where the edge WAS in the
+    # graph, and dynamic import is precisely how codebases break require
+    # cycles, so the missing edges sat under the most load-bearing modules.
+    "dynamic_import",
+    "re_exports",
+    "inherits",
+    "extends",
+    "implements",
+    "uses",
+    "mixes_in",
+    "embeds",
+    # `defines` — emitted when a file declares a named symbol (class, function,
+    # type, etc.). Without it, `affected "<Symbol>"` is blind in languages
+    # where the only incoming edge to a symbol is its `defines` edge from the
+    # source file — Dart/Flutter, Python, Go, etc. — because every other
+    # relation (calls, references, imports) targets the *file* node, not the
+    # symbol node. The reverse walk follows `defines` from the symbol back to
+    # its defining file and then continues through `imports` to consumers.
+    "defines",
+    "requires",
+)
+
+
+# Edges from a type to the types it derives from. A method declared again in a
+# subtype overrides the supertype's same-named member.
+_SUPERTYPE_RELATIONS = frozenset({"inherits", "extends", "implements"})
+
+
+@dataclass(frozen=True)
+class AffectedHit:
+    node_id: str
+    depth: int
+    via_relation: str
+    # The traversed edge's location — the actual call/import/reference SITE in
+    # this node's file, not the node's own definition line (#BUG1). Defaults keep
+    # existing constructors/tests working; None falls back to the node's def line.
+    via_file: "str | None" = None
+    via_location: "str | None" = None
+
+
+def _node_label(graph: nx.Graph, node_id: str) -> str:
+    data = graph.nodes[node_id]
+    return str(data.get("label") or node_id)
+
+
+def _format_location(data: dict) -> str:
+    source_file = data.get("source_file") or "-"
+    source_location = data.get("source_location")
+    if source_location:
+        return f"{source_file}:{source_location}"
+    return str(source_file)
+
+
+def _bare_name(label: str) -> str:
+    """Lowercased label with the callable decoration (trailing "()") removed."""
+    label = _normalize_label(label)
+    return label[:-2] if label.endswith("()") else label
+
+
+def _normalize_label(label: str) -> str:
+    return unicodedata.normalize("NFC", label).casefold()
+
+
+def _as_repo_relative(query: str, root: Path | None = None) -> str:
+    """Repo-relative form of a path query, for matching a stored `source_file`.
+
+    The graph stores repo-relative paths, so `./src/x.py` and
+    `/abs/repo/src/x.py` name the same file as `src/x.py` and yet matched
+    nothing. `affected` then printed an empty list and exited 0 — a blast-radius
+    tool answering "nothing depends on this" about a file with sixteen
+    dependents, and indistinguishable from a genuine zero or a typo.
+
+    An absolute path is anchored to `root` when given — the repo root derived
+    from the graph's own location — so a seed resolves regardless of the caller's
+    working directory (#2706: an absolute-path seed previously only matched when
+    cwd happened to be the analysed repo root, which no editor or script can
+    guarantee). `root` falls back to the current directory to preserve the prior
+    behaviour when a caller has no graph location to derive it from.
+
+    Non-path queries pass through unchanged: `Path("myFunc()").as_posix()` is
+    `"myFunc()"`, so label resolution is untouched. An absolute path rooted
+    outside `root` is left alone — no basename guessing.
+    """
+    path = Path(query)
+    if path.is_absolute():
+        anchor = root if root is not None else Path.cwd()
+        try:
+            return path.relative_to(anchor).as_posix()
+        except ValueError:
+            # Rooted outside the repo: nothing here can make it repo-relative,
+            # so leave it alone rather than guess at a basename that would match
+            # some unrelated file with the same name.
+            return query
+    return path.as_posix()
+
+
+def _prefer_file_node(
+    graph: nx.Graph,
+    node_ids: list[str],
+    query: str,
+) -> str | None:
+    """Return the file-level node when a source_file query matches many nodes."""
+    query_basename = _normalize_label(Path(query).name)
+    exact_file_nodes = [
+        node_id
+        for node_id in node_ids
+        if str(graph.nodes[node_id].get("source_location", "")) == "L1"
+        and _normalize_label(str(graph.nodes[node_id].get("label", ""))) == query_basename
+    ]
+    if len(exact_file_nodes) == 1:
+        return exact_file_nodes[0]
+
+    # #2032 relabels colliding basenames to their shortest unique path suffix
+    # ("alpha/hooks.py"), so neither pass above nor the one below matches a file
+    # node whose basename is shared. The label is still a path form of the
+    # node's OWN source_file, which is what _is_file_node_label encodes (the
+    # predicate build/analyze already treat as "this node names its file").
+    # Checked before the L1 fallback because a module docstring (a `rationale`
+    # node located on the docstring's line) or a one-line top-level definition
+    # can also sit on L1, leaving that fallback with more than one candidate
+    # (#4698).
+    from graphify.build import _is_file_node_label
+
+    path_file_nodes = [
+        node_id
+        for node_id in node_ids
+        if str(graph.nodes[node_id].get("source_location", "")) == "L1"
+        and _is_file_node_label(
+            str(graph.nodes[node_id].get("label", "")),
+            str(graph.nodes[node_id].get("source_file", "")),
+        )
+    ]
+    if len(path_file_nodes) == 1:
+        return path_file_nodes[0]
+
+    l1_nodes = [
+        node_id
+        for node_id in node_ids
+        if str(graph.nodes[node_id].get("source_location", "")) == "L1"
+    ]
+    if len(l1_nodes) == 1:
+        return l1_nodes[0]
+
+    basename_nodes = [
+        node_id
+        for node_id in node_ids
+        if _normalize_label(str(graph.nodes[node_id].get("label", ""))) == query_basename
+    ]
+    if len(basename_nodes) == 1:
+        return basename_nodes[0]
+
+    return None
+
+
+def resolve_reference_forms(graph: nx.Graph, query: str) -> str | None:
+    """Resolve the reference forms `explain` accepts but `resolve_seed` did not.
+
+    `explain` resolves a `path::Symbol` reference (#3485) and a dotted Python
+    name (`pkg.mod.func` / `pkg.mod:func`, #4366) to a single node; `affected` and
+    `query --seed` rejected both with "No unique node match" even when `explain`
+    resolved the very same string. Following the README's own advice ("use the
+    precise ID returned by the graph") therefore forced a caller through
+    `explain` first just to obtain an id (#4792).
+
+    Only the two path-qualified forms are handled here — they carry their own
+    disambiguating context, so a match is never a guess. A bare name keeps going
+    through `resolve_seed`'s existing tiers, where an exact-name tie must stay
+    unresolved rather than be broken by graph-iteration order.
+
+    Returns the unique node id, or None to fall through to the ordinary tiers.
+    """
+    from graphify.serve import _find_node_tiers
+
+    source_exact, exact, _prefix, _substring = _find_node_tiers(graph, query)
+    for tier in (source_exact, exact):
+        if len(tier) == 1:
+            return str(tier[0])
+        if tier:
+            # Several nodes in the winning tier is ambiguity, not precedence;
+            # do not fall back to a looser tier and pick one arbitrarily.
+            break
+    return None
+
+
+def resolve_seed(graph: nx.Graph, query: str, root: Path | None = None) -> str | None:
+    # A trailing path separator must not change a source-file match — serve's
+    # _find_node tokenizes the path (which drops it), so strip it here for parity
+    # (otherwise `affected "src/x.ts/"` returned None while `explain` resolved it).
+    query = query.rstrip("/\\") or query
+    if query in graph:
+        return query
+    # `path::Symbol` and dotted Python names resolve exactly as `explain` does
+    # (#4792); checked before the label tiers, which cannot express them.
+    qualified = resolve_reference_forms(graph, query)
+    if qualified is not None:
+        return qualified
+    query_lower = _normalize_label(query)
+    exact_label_matches = [
+        str(node_id)
+        for node_id, data in graph.nodes(data=True)
+        if _normalize_label(str(data.get("label", ""))) == query_lower
+    ]
+    if len(exact_label_matches) == 1:
+        return exact_label_matches[0]
+    # Callable labels are decorated ("name()"), so a bare "name" query falls
+    # through exact matching and then ties with any "name*" sibling in the
+    # contains pass. Match on the undecorated name before giving up.
+    query_bare = _bare_name(query_lower)
+    bare_name_matches = [
+        str(node_id)
+        for node_id, data in graph.nodes(data=True)
+        if _bare_name(str(data.get("label", ""))) == query_bare
+    ]
+    if len(bare_name_matches) == 1:
+        return bare_name_matches[0]
+    # Compare paths in repo-relative form. Only this branch is path-shaped; the
+    # label branches above keep the query verbatim.
+    query_path = _normalize_label(_as_repo_relative(query, root))
+    exact_source_matches = [
+        str(node_id)
+        for node_id, data in graph.nodes(data=True)
+        if _normalize_label(str(data.get("source_file", ""))) in (query_lower, query_path)
+    ]
+    if len(exact_source_matches) == 1:
+        return exact_source_matches[0]
+    if exact_source_matches:
+        preferred_file_node = _prefer_file_node(
+            graph, exact_source_matches, _as_repo_relative(query, root)
+        )
+        if preferred_file_node is not None:
+            return preferred_file_node
+    contains_matches = [
+        str(node_id)
+        for node_id, data in graph.nodes(data=True)
+        if query_lower in _normalize_label(str(data.get("label", "")))
+    ]
+    if len(contains_matches) == 1:
+        return contains_matches[0]
+    return None
+
+
+def _supertypes(graph: nx.DiGraph, type_id: str, cache: dict[str, list[str]]) -> list[str]:
+    """Every type ``type_id`` derives from, nearest first (cycles cut)."""
+    if type_id in cache:
+        return cache[type_id]
+    found: list[str] = []
+    seen = {type_id}
+    frontier = [type_id]
+    while frontier:
+        nxt = []
+        for t in frontier:
+            for _s, base, data in graph.out_edges(t, data=True):
+                base = str(base)
+                if str(data.get("relation", "")) in _SUPERTYPE_RELATIONS and base not in seen:
+                    seen.add(base)
+                    found.append(base)
+                    nxt.append(base)
+        frontier = nxt
+    cache[type_id] = found
+    return found
+
+
+def _overridden_members(graph: nx.DiGraph, node: str, cache: dict[str, list[str]]) -> list[str]:
+    """The supertype members ``node`` overrides: same-named methods of the types
+    its class derives from. A call bound to one of them can run ``node`` at
+    runtime (`visitor.head()` typed `NodeVisitor` runs `FormattingVisitor.head`)."""
+    owners = [str(s) for s, _t, d in graph.in_edges(node, data=True)
+              if str(d.get("relation", "")) == "method"]
+    if not owners:
+        return []
+    label = graph.nodes[node].get("label")
+    found: list[str] = []
+    for owner in owners:
+        for base in _supertypes(graph, owner, cache):
+            same_name = [
+                str(member) for _s, member, data in graph.out_edges(base, data=True)
+                if str(data.get("relation", "")) == "method" and str(member) != node
+                and graph.nodes[member].get("label") == label
+            ]
+            found.extend(_overload_compatible(graph, node, same_name))
+    return found
+
+
+_JAVA_PRIMITIVES = frozenset(
+    {"boolean", "byte", "char", "short", "int", "long", "float", "double"}
+)
+
+
+def _java_params(signature: object) -> list[str] | None:
+    """A recorded erased signature as its parameter list, ``T...`` as ``T[]``
+    (a variadic parameter is an array one, so it overrides ``T[]``)."""
+    if not isinstance(signature, str):
+        return None
+    return [p.replace("...", "[]") for p in signature.split(",")] if signature else []
+
+
+def _may_be_same_param(mine: str, theirs: str) -> bool:
+    """False only when two erased parameter types can never be one type: a
+    primitive differs from anything else, or two arrays differ in a primitive
+    element. Two different reference types may still match (a type variable
+    erases to its bound, `save(T)` overridden by `save(String)`)."""
+    if mine == theirs:
+        return True
+    if mine in _JAVA_PRIMITIVES or theirs in _JAVA_PRIMITIVES:
+        return False
+    if mine.endswith("[]") and theirs.endswith("[]"):
+        a, b = mine[:-2], theirs[:-2]
+        if a in _JAVA_PRIMITIVES or b in _JAVA_PRIMITIVES:
+            return a == b
+    return True
+
+
+def _overload_compatible(graph: nx.DiGraph, node: str, members: list[str]) -> list[str]:
+    """The ``members`` of one supertype that ``node`` can override (#5251).
+
+    Overloads of a name are separate nodes with one label, so the label alone
+    would tie ``run(int)`` to a supertype's ``run()``. An override has the same
+    declared parameter count (a ``T...`` parameter counts as one, like ``T[]``)
+    and parameter types that can be the same: a primitive never matches another
+    type, but two reference types may (a generic supertype's ``save(T)`` is
+    overridden by ``save(String)``), so those stay. A node without a recorded
+    arity (other languages) keeps the label-only match.
+    """
+    meta = graph.nodes[node].get("metadata") or {}
+    arity = meta.get("arity")
+    if not isinstance(arity, int):
+        return members
+    # The type comparison is Java's: C# generics take primitive type arguments
+    # (`IRepo<int>.Save(T)` is overridden by `Save(int)`), so there the parameter
+    # count alone decides.
+    is_java = str(graph.nodes[node].get("source_file") or "").endswith(".java")
+    mine = _java_params(meta.get("signature")) if is_java else None
+    compatible = []
+    for m in members:
+        other = graph.nodes[m].get("metadata") or {}
+        other_arity = other.get("arity")
+        if other_arity is None:
+            compatible.append(m)
+            continue
+        if other_arity != arity:
+            continue
+        theirs = _java_params(other.get("signature")) if is_java else None
+        if (mine is not None and theirs is not None and len(mine) == len(theirs)
+                and not all(_may_be_same_param(a, b) for a, b in zip(mine, theirs))):
+            continue
+        compatible.append(m)
+    return compatible
+
+
+def affected_nodes(
+    graph: nx.Graph,
+    seed: str,
+    *,
+    relations: Iterable[str] = DEFAULT_AFFECTED_RELATIONS,
+    depth: int = 2,
+) -> list[AffectedHit]:
+    relation_set = set(relations)
+    seen = {seed}
+    queue: deque[tuple[str, int]] = deque([(seed, 0)])
+    hits: list[AffectedHit] = []
+
+    # #1669: seed the reverse walk with the root's own member nodes (one outward
+    # `method`/`contains` hop). A caller can bind to a class's method node rather
+    # than the class node itself (e.g. `Service.call` resolves to the `def
+    # self.call` node, #1634), so those callers are unreachable from the class
+    # otherwise. The member nodes are seeds only (not reported as hits), and
+    # `method`/`contains` stay out of the general relation-filtered walk, so this
+    # adds no forward noise anywhere else.
+    member_queue = deque([seed])
+    while member_queue:
+        parent = member_queue.popleft()
+        if hasattr(graph, "out_edges"):
+            member_edges = graph.out_edges(parent, data=True)
+        else:
+            member_edges = (
+                (s, t, d) for s, t, d in graph.edges(data=True) if s == parent
+            )
+        for _s, member, data in member_edges:
+            if str(data.get("relation", "")) not in ("method", "contains"):
+                continue
+            member = str(member)
+            if member not in seen:
+                seen.add(member)
+                queue.append((member, 0))
+                member_queue.append(member)
+
+    supertype_cache: dict[str, list[str]] = {}
+    # Overridden members walked without being reported; one that a real edge
+    # also reaches (an overload calling the abstract one) is reported then.
+    stepping_stones: set[str] = set()
+    while queue:
+        current, current_depth = queue.popleft()
+        if current_depth >= depth:
+            continue
+        # A caller bound to the supertype member a method overrides depends on
+        # the override too, so walk that member's callers at the same depth. The
+        # member itself did not change: like the seed's members above, it is a
+        # stepping stone, not a hit. Needs edge direction, so directed graphs only
+        # (MultiDiGraph, what load_graph returns, is a DiGraph subclass).
+        if isinstance(graph, nx.DiGraph):
+            for overridden in _overridden_members(graph, current, supertype_cache):
+                if overridden not in seen:
+                    seen.add(overridden)
+                    stepping_stones.add(overridden)
+                    # front of the queue: same depth as `current`, so it must be
+                    # walked before the deeper nodes already queued
+                    queue.appendleft((overridden, current_depth))
+        if hasattr(graph, "in_edges"):
+            incoming = graph.in_edges(current, data=True)
+        else:
+            incoming = (
+                (source, target, data)
+                for source, target, data in graph.edges(data=True)
+                if target == current
+            )
+        for source, _target, data in incoming:
+            relation = str(data.get("relation", ""))
+            if relation not in relation_set:
+                continue
+            source = str(source)
+            queued = source in stepping_stones
+            if queued:
+                stepping_stones.discard(source)  # walked already; report it now
+            elif source in seen:
+                continue
+            seen.add(source)
+            # Carry the matched edge's location (taken from the SAME edge dict
+            # whose relation passed the filter, so relation and location stay
+            # consistent) — that is the call/import/reference site in `source`'s
+            # own file, which is where the user should click (#BUG1).
+            hit = AffectedHit(
+                source, current_depth + 1, relation,
+                via_file=str(data.get("source_file") or "") or None,
+                via_location=str(data.get("source_location") or "") or None,
+            )
+            hits.append(hit)
+            if not queued:
+                queue.append((source, current_depth + 1))
+
+    return hits
+
+
+def resolve_seed_outcome(
+    graph: nx.Graph, query: str, root: Path | None = None
+) -> tuple[str | None, list[str]]:
+    """Resolve a seed and report why it failed, so the CLI can set an exit code.
+
+    `affected` printed "No unique node match" and still exited 0, so a script
+    could not branch on the outcome the README documents (3 = ambiguous,
+    4 = no match) while `explain` already follows it (#4792). Returns
+    ``(node_id, [])`` on success, ``(None, rivals)`` when the query is the
+    ambiguous name of several nodes, and ``(None, [])`` when nothing matched.
+    """
+    seed = resolve_seed(graph, query, root)
+    if seed is not None:
+        return seed, []
+    from graphify.serve import find_node_ambiguity
+
+    normalized = query.rstrip("/\\") or query
+    rivals = find_node_ambiguity(graph, normalized)
+    return None, [str(node_id) for node_id in rivals]
+
+
+def format_affected(
+    graph: nx.Graph,
+    query: str,
+    *,
+    relations: Iterable[str] = DEFAULT_AFFECTED_RELATIONS,
+    depth: int = 2,
+    root: Path | None = None,
+    seed: str | None = None,
+) -> str:
+    relation_list = tuple(relations)
+    if seed is None:
+        seed = resolve_seed(graph, query, root)
+    if seed is None:
+        return f"No unique node match for {query}"
+
+    hits = affected_nodes(graph, seed, relations=relation_list, depth=depth)
+    lines = [
+        f"Affected nodes for {_node_label(graph, seed)}",
+        f"Relations: {', '.join(relation_list)}",
+        f"Depth: {depth}",
+    ]
+    if not hits:
+        lines.append("No affected nodes found.")
+        return "\n".join(lines)
+
+    for hit in hits:
+        data = graph.nodes[hit.node_id]
+        if hit.via_location:
+            # The relation SITE in this node's file (call/import/reference line),
+            # labeled by [via_relation] so it's never mistaken for a def line.
+            location = f"{hit.via_file or data.get('source_file') or '-'}:{hit.via_location}"
+        else:
+            location = _format_location(data)  # honest fallback: the node's own def line
+        lines.append(
+            f"- {_node_label(graph, hit.node_id)} [{hit.via_relation}] {location}"
+        )
+    return "\n".join(lines)
+
+
+def load_graph(path: Path) -> nx.Graph:
+    import json
+    from networkx.readwrite import json_graph
+
+    try:
+        from graphify.paths import consumed, read_graph_json
+        raw = read_graph_json(path)
+    except (json.JSONDecodeError, OSError) as exc:
+        raise RuntimeError(
+            f"Cannot read graph file {path}: {exc}. "
+            "Re-run 'graphify extract' to regenerate it."
+        ) from exc
+    # Force directed so stored caller→callee direction survives the round-trip;
+    # mirrors serve.py and __main__.py (#1174).
+    raw = {**raw, "directed": True}
+    # Normalize the edge key: graphify's `extract` output uses "edges" while
+    # networkx's node_link_data default is "links". Without this, an edges-keyed
+    # graph.json raises an uncaught KeyError: 'links' here — every other loader
+    # (__main__.py) already normalizes this (#738; same class as #1198).
+    if "links" not in raw and "edges" in raw:
+        raw = dict(raw, links=raw["edges"])
+    raw = dict(raw, nodes=consumed(raw["nodes"]), links=consumed(raw["links"]))
+    return json_graph.node_link_graph(raw, edges="links")

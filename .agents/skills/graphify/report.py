@@ -1,0 +1,452 @@
+# generate GRAPH_REPORT.md - the human-readable audit trail
+from __future__ import annotations
+from datetime import date
+import json
+from pathlib import Path
+import networkx as nx
+
+
+def _portable_root_label(root: str) -> str:
+    """Portable label for the report header — the project directory basename.
+
+    GRAPH_REPORT.md is a tracked artifact in practice, so its header must not
+    bake the generator host's absolute path into the file: the same graph would
+    otherwise produce different bytes on different machines and leak the build
+    machine's directory layout into git history (#2628, same class as #2598).
+
+    Taking the basename strips any leading absolute path without touching the
+    filesystem, and makes `graphify update .`, `graphify update ./proj`, and
+    `graphify update /abs/path/proj` all label the header `proj`. Only the
+    degenerate `.`/``/`..` cases need a cwd resolve to recover the real name;
+    if even that fails, fall back to the raw value.
+    """
+    raw = str(root).replace("\\", "/")
+    name = Path(raw).name
+    if name in ("", ".", ".."):
+        try:
+            name = Path(raw).resolve().name
+        except (OSError, RuntimeError):
+            name = ""
+    return name or raw
+
+
+def _safe_community_name(label: str) -> str:
+    """The community hub wikilink target, computed the same way the actual
+    `_COMMUNITY_*.md` filename is (`export._obsidian_safe_stem`).
+
+    This used to be a separate, partial reimplementation here, and it had
+    drifted from the real one: it never stripped a `.qmd` suffix (so a
+    community whose hub label happens to be a source file like
+    `report.qmd` kept the extension in the wikilink while the export
+    dropped it from the filename), never fell back to `unnamed` for a
+    punctuation only label, never added the `dot-` prefix for a label
+    starting with `.`, never capped an overlong label the same way, and
+    folded only `\\r`/`\\n` rather than every C0 control character to a
+    space. Any one of those left the wikilink pointing at a file the
+    `--obsidian` export never actually wrote. Delegating here keeps the two
+    from ever drifting apart again; the one case this cannot match exactly
+    is the MAX_PATH-aware length budget export computes from the real
+    output directory, which `generate()` has no path to recover (a longer
+    standing, separately tracked limitation, not something this changes).
+    """
+    from graphify.export import _obsidian_safe_stem
+    return _obsidian_safe_stem(label)
+
+
+def load_report_token_cost(graphify_out: Path) -> dict[str, int]:
+    """Return cumulative token totals from cost.json for GRAPH_REPORT.
+
+    ``graphify update`` and the watcher rewrite the report without making LLM
+    calls, so they must read the existing ledger instead of passing a
+    hard-coded zero (#5154). A missing or unreadable ledger yields zeros.
+    """
+    cost_path = Path(graphify_out) / "cost.json"
+    try:
+        cost = json.loads(cost_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"input": 0, "output": 0}
+    if not isinstance(cost, dict):
+        return {"input": 0, "output": 0}
+    inp, out = cost.get("total_input_tokens", 0), cost.get("total_output_tokens", 0)
+    if type(inp) is not int or type(out) is not int:
+        return {"input": 0, "output": 0}
+    return {"input": inp, "output": out}
+
+
+def load_learning_for_report(graph_path) -> dict | None:
+    """Assemble the report's work-memory inputs from sibling artifacts.
+
+    Reads the ``.graphify_learning.json`` overlay (preferred sources) next to
+    ``graph_path`` and re-aggregates the memory docs for the query-scoped
+    dead-ends. Best-effort: returns None if neither is available, so the report
+    simply omits the section. Never raises.
+    """
+    from pathlib import Path as _Path
+    try:
+        gp = _Path(graph_path)
+        from graphify.reflect import load_learning_overlay, load_memory_docs, aggregate_lessons
+        overlay = load_learning_overlay(gp)
+        dead_ends: list[dict] = []
+        mem = gp.parent / "memory"
+        if mem.is_dir():
+            agg = aggregate_lessons(load_memory_docs(mem))
+            dead_ends = agg.get("dead_ends", [])
+        if not overlay and not dead_ends:
+            return None
+        return {"overlay": overlay, "dead_ends": dead_ends}
+    except Exception:
+        return None
+
+
+def _learning_section(lines: list, learning: dict | None, top_n: int = 10) -> None:
+    """Append the ``## Work-memory lessons`` section, or nothing when empty."""
+    if not learning:
+        return
+    overlay = learning.get("overlay") or {}
+    dead_ends = learning.get("dead_ends") or []
+    preferred = [
+        (nid, e) for nid, e in overlay.items()
+        if isinstance(e, dict) and e.get("status") == "preferred"
+    ]
+    # Most-corroborated first (uses desc), then by score, then id for stability.
+    preferred.sort(key=lambda kv: (-kv[1].get("uses", 0),
+                                   -float(kv[1].get("score", 0) or 0), kv[0]))
+    if not preferred and not dead_ends:
+        return
+    lines += ["", "## Work-memory lessons"]
+    if preferred:
+        lines += ["", "**Preferred sources** — corroborated by past sessions; start here."]
+        for nid, e in preferred[:top_n]:
+            label = e.get("label") or nid
+            stale = " _(code changed — re-verify)_" if e.get("stale") else ""
+            lines.append(f"- `{label}` ({e.get('uses', 0)}× useful, "
+                         f"score={e.get('score', 0)}){stale}")
+    if dead_ends:
+        lines += ["", "**Known dead ends** — questions that led nowhere; don't re-derive."]
+        for d in dead_ends:
+            nodes = ", ".join(f"`{n}`" for n in d.get("nodes", []))
+            lines.append(f"- \"{d.get('question', '')}\""
+                         + (f" -> {nodes}" if nodes else ""))
+
+
+def generate(
+    G: nx.Graph,
+    communities: dict[int, list[str]],
+    cohesion_scores: dict[int, float],
+    community_labels: dict[int, str],
+    god_node_list: list[dict],
+    surprise_list: list[dict],
+    detection_result: dict,
+    token_cost: dict,
+    root: str,
+    suggested_questions: list[dict] | None = None,
+    min_community_size: int = 3,
+    built_at_commit: str | None = None,
+    learning: dict | None = None,
+    obsidian: bool = False,
+) -> str:
+    today = date.today().isoformat()
+
+    # JSON deserialization produces string keys; normalize to int so .get(cid) works.
+    if community_labels:
+        community_labels = {int(k) if isinstance(k, str) else k: v for k, v in community_labels.items()}
+
+    confidences = [d.get("confidence", "EXTRACTED") for _, _, d in G.edges(data=True)]
+    total = len(confidences) or 1
+    ext_pct = round(confidences.count("EXTRACTED") / total * 100)
+    inf_pct = round(confidences.count("INFERRED") / total * 100)
+    amb_pct = round(confidences.count("AMBIGUOUS") / total * 100)
+
+    inf_edges = [(u, v, d) for u, v, d in G.edges(data=True) if d.get("confidence") == "INFERRED"]
+    inf_scores = [d.get("confidence_score", 0.5) for _, _, d in inf_edges]
+    inf_avg = round(sum(inf_scores) / len(inf_scores), 2) if inf_scores else None
+
+    lines = [
+        f"# Graph Report - {_portable_root_label(root)}  ({today})",
+        "",
+        "## Corpus Check",
+    ]
+    if detection_result.get("warning"):
+        lines.append(f"- {detection_result['warning']}")
+    else:
+        lines += [
+            f"- {detection_result['total_files']} files · ~{detection_result['total_words']:,} words",
+            "- Verdict: corpus is large enough that graph structure adds value.",
+        ]
+        # #3511: files detect() saw but could not classify (no supported
+        # extension/shebang) were counted nowhere -- a corpus that is mostly
+        # an unsupported language reported the same "well covered" verdict as
+        # one that was actually extracted. Surface the count and its biggest
+        # extensions so a near-total miss (e.g. a Lean/Zig/whatever repo with
+        # no matching extractor) is visible here instead of silent.
+        unclassified = detection_result.get("unclassified") or []
+        if unclassified:
+            from collections import Counter as _Counter
+            ext_counts = _Counter(Path(p).suffix or "(none)" for p in unclassified)
+            top = ", ".join(f"{ext} {n}" for ext, n in ext_counts.most_common(3))
+            lines.append(
+                f"- Unclassified: {len(unclassified)} file(s) not represented in "
+                f"the graph (top: {top})"
+            )
+        # #2942: the plain count above reads as routine (lockfiles, binaries)
+        # even when it is most of the corpus. Say plainly, right next to the
+        # "large enough to be worth graphing" verdict, that this graph may
+        # look complete while actually missing a structurally significant
+        # part of the codebase.
+        unclassified_warning = detection_result.get("unclassified_warning")
+        if unclassified_warning:
+            lines.append(f"- WARNING: {unclassified_warning}")
+
+    from .analyze import _is_file_node, _is_concept_node, _is_contains_only_ast_node
+
+    def _real_node(n) -> bool:
+        # The one definition of "real" (structural, not file/concept/
+        # rationale) every figure this function prints about itself must
+        # agree on (#3148) -- file nodes are structural scaffolding, concept
+        # nodes are semantic-layer entities, and rationale nodes are
+        # docstring fragments the LLM extracted for context, none of which
+        # are a code declaration a reader would recognize as a "node" in
+        # this list. A community-listing loop that filtered only file nodes
+        # let rationale/concept content leak into "Nodes (N): ..." as if it
+        # were a real declaration, and inflated N by counting it (#3794).
+        return (
+            not _is_file_node(G, n)
+            and not _is_concept_node(G, n)
+            and G.nodes[n].get("file_type") != "rationale"
+        )
+
+    def _real_count(nodes) -> int:
+        return sum(1 for n in nodes if _real_node(n))
+
+    non_empty = {cid: nodes for cid, nodes in communities.items()
+                 if any(_real_node(n) for n in nodes)}
+    # One predicate for every figure the report prints about itself (#3148):
+    # "thin" is real < min_community_size (ZERO real nodes included), and
+    # "shown" is what the render loop below actually renders (real >=
+    # min_community_size) - previously shown was total-thin, which also
+    # counted communities with ZERO real nodes that the loop skips,
+    # overstating the count (#2129's residual). A subsequent `0 <` guard on
+    # "thin" fixed that overcount but introduced the opposite gap: an
+    # all-file-node community (real == 0) is skipped by the SAME render loop
+    # yet was excluded from "thin" too, so it went uncounted anywhere and
+    # `shown + thin` silently undercounted `len(communities)` (#3548).
+    thin_count_summary = sum(
+        1 for nodes in communities.values()
+        if _real_count(nodes) < min_community_size
+    )
+    shown_count = sum(
+        1 for nodes in communities.values()
+        if _real_count(nodes) >= min_community_size
+    )
+
+    lines += [
+        "",
+        "## Summary",
+        f"- {G.number_of_nodes()} nodes · {G.number_of_edges()} edges · {len(communities)} communities"
+        + (f" ({shown_count} shown, {thin_count_summary} thin omitted)" if thin_count_summary else ""),
+        f"- Extraction: {ext_pct}% EXTRACTED · {inf_pct}% INFERRED · {amb_pct}% AMBIGUOUS"
+        + (f" · INFERRED: {len(inf_edges)} edges (avg confidence: {inf_avg})" if inf_avg is not None else ""),
+        f"- Token cost: {token_cost.get('input', 0):,} input · {token_cost.get('output', 0):,} output",
+    ]
+
+    if built_at_commit:
+        lines += [
+            "",
+            "## Graph Freshness",
+            f"- Built from commit: `{built_at_commit[:8]}`",
+            "- Run `git rev-parse HEAD` and compare to check if the graph is stale.",
+            "- Run `graphify update .` after code changes (no API cost).",
+        ]
+
+    # Community hub navigation. The `_COMMUNITY_*.md` notes these wikilinks target
+    # are only created by the opt-in `--obsidian` export, and the report is written
+    # at build time (before any export runs), so emitting wikilinks by default left
+    # every link dangling — polluting an Obsidian vault's graph view and rendering as
+    # literal brackets everywhere else (#1712). Emit wikilinks only when the caller
+    # signals Obsidian output; otherwise a plain list, which navigates nowhere-to-break.
+    if non_empty:
+        lines += ["", "## Community Hubs (Navigation)"]
+        for cid in non_empty:
+            label = community_labels.get(cid, f"Community {cid}")
+            if obsidian:
+                safe = _safe_community_name(label)
+                lines.append(f"- [[_COMMUNITY_{safe}|{label}]]")
+            else:
+                lines.append(f"- {label}")
+
+    lines += [
+        "",
+        "## God Nodes (most connected - your core abstractions)",
+    ]
+    for i, node in enumerate(god_node_list, 1):
+        lines.append(f"{i}. `{node['label']}` - {node['degree']} edges")
+
+    lines += ["", "## Surprising Connections (you probably didn't know these)"]
+    if surprise_list:
+        for s in surprise_list:
+            relation = s.get("relation", "related_to")
+            note = s.get("note", "")
+            files = s.get("source_files", ["", ""])
+            conf = s.get("confidence", "EXTRACTED")
+            cscore = s.get("confidence_score")
+            if conf == "INFERRED" and cscore is not None:
+                conf_tag = f"INFERRED {cscore:.2f}"
+            else:
+                conf_tag = conf
+            sem_tag = " [semantically similar]" if relation == "semantically_similar_to" else ""
+            lines += [
+                f"- `{s['source']}` --{relation}--> `{s['target']}`  [{conf_tag}]{sem_tag}",
+                f"  {files[0]} → {files[1]}" + (f"  _{note}_" if note else ""),
+            ]
+    else:
+        lines.append("- None detected - all connections are within the same source files.")
+
+    # Circular imports surfaced from file-level dependency graph. Only meaningful
+    # for code — a documents-only corpus has no imports, so the section is pure
+    # noise there ("None detected" on every run). Emit it only when the graph
+    # actually contains code (#1657).
+    _has_code = any(
+        d.get("file_type") == "code" for _, d in G.nodes(data=True)
+    ) or any(
+        d.get("relation") in ("imports", "imports_from")
+        for *_e, d in G.edges(data=True)
+    )
+    if _has_code:
+        from .analyze import find_import_cycles
+        cycles = find_import_cycles(G)
+        lines += ["", "## Import Cycles"]
+        if cycles:
+            for c in cycles:
+                cycle = c.get("cycle", [])
+                length = c.get("length", len(cycle))
+                if not cycle:
+                    continue
+                cycle_path = " -> ".join(cycle + [cycle[0]])
+                lines.append(f"- {length}-file cycle: `{cycle_path}`")
+        else:
+            lines.append("- None detected.")
+
+    hyperedges = G.graph.get("hyperedges", [])
+    if hyperedges:
+        lines += ["", "## Hyperedges (group relationships)"]
+        for h in hyperedges:
+            node_labels = ", ".join(h.get("nodes", []))
+            conf = h.get("confidence", "INFERRED")
+            cscore = h.get("confidence_score")
+            conf_tag = f"{conf} {cscore:.2f}" if cscore is not None else conf
+            lines.append(f"- **{h.get('label', h.get('id', ''))}** — {node_labels} [{conf_tag}]")
+
+    lines += ["", f"## Communities ({len(communities)} total, {thin_count_summary} thin omitted)"]
+    for cid, nodes in communities.items():
+        label = community_labels.get(cid, f"Community {cid}")
+        score = cohesion_scores.get(cid, 0.0)
+        # Filter file/concept/rationale nodes from display - they're
+        # structural noise or docstring prose, not a code declaration (#3794).
+        real_nodes = [n for n in nodes if _real_node(n)]
+        if not real_nodes:
+            continue
+        if len(real_nodes) < min_community_size:
+            continue
+        display = [G.nodes[n].get("label", n) for n in real_nodes[:8]]
+        suffix = f" (+{len(real_nodes)-8} more)" if len(real_nodes) > 8 else ""
+        lines += [
+            "",
+            f"### Community {cid} - \"{label}\"",
+            f"Cohesion: {score:.2f}",
+            f"Nodes ({len(real_nodes)}): {', '.join(display)}{suffix}",
+        ]
+
+    ambiguous = [(u, v, d) for u, v, d in G.edges(data=True) if d.get("confidence") == "AMBIGUOUS"]
+    if ambiguous:
+        lines += ["", "## Ambiguous Edges - Review These"]
+        for u, v, d in ambiguous:
+            ul = G.nodes[u].get("label", u)
+            vl = G.nodes[v].get("label", v)
+            lines += [
+                f"- `{ul}` → `{vl}`  [AMBIGUOUS]",
+                f"  {d.get('source_file', '')} · relation: {d.get('relation', 'unknown')}",
+            ]
+
+    # --- Gaps section ---
+    isolated = [
+        n for n in G.nodes()
+        if G.degree(n) <= 1 and _real_node(n) and not _is_contains_only_ast_node(G, n)
+    ]
+    # Same threshold the Summary and Communities headers used (#3148): this
+    # was a hardcoded 3, so with --min-community-size anything else the count
+    # here disagreed with the label text beside it, which already printed
+    # min_community_size. No `0 <` guard, matching thin_count_summary above
+    # (#3548): an all-file-node community is skipped by the same render loop
+    # as a genuinely thin one, so it belongs in this count too.
+    thin_communities = {
+        cid: nodes for cid, nodes in communities.items()
+        if _real_count(nodes) < min_community_size
+    }
+    gap_count = len(isolated) + len(thin_communities)
+
+    if gap_count > 0 or amb_pct > 20:
+        lines += ["", "## Knowledge Gaps"]
+        if isolated:
+            isolated_labels = [G.nodes[n].get("label", n) for n in isolated[:5]]
+            suffix = f" (+{len(isolated)-5} more)" if len(isolated) > 5 else ""
+            raw_isolated = sum(1 for n in G.nodes() if G.degree(n) <= 1)
+            lines.append(f"- **{len(isolated)} isolated node(s):** {', '.join(f'`{l}`' for l in isolated_labels)}{suffix}")
+            # "Undocumented components" only means anything when a semantic
+            # layer exists: document/paper/image nodes an LLM extracted
+            # meaning from, where an isolated node genuinely could be
+            # "mentioned but never explained further." A code-only graph
+            # (--code-only, or any run where semantic extraction never
+            # happened) has no such nodes at all, so offering it as a live
+            # possibility on every report is misleading (#3801).
+            has_semantic_layer = any(
+                G.nodes[n].get("file_type") in ("document", "paper", "image")
+                for n in G.nodes()
+            )
+            reason = (
+                "possible missing edges or undocumented components" if has_semantic_layer
+                else "possible missing edges"
+            )
+            lines.append(
+                f"  These have ≤1 connection - {reason}. "
+                f"(Counts symbols only; {raw_isolated} node(s) total have ≤1 connection when "
+                "file, concept and rationale nodes are included.)"
+            )
+        if thin_communities:
+            lines.append(f"- **{len(thin_communities)} thin communities (<{min_community_size} nodes) omitted from report** — run `graphify query` to explore isolated nodes.")
+        if amb_pct > 20:
+            lines.append(f"- **High ambiguity: {amb_pct}% of edges are AMBIGUOUS.** Review the Ambiguous Edges section above.")
+
+    # --- Work-memory lessons (derived overlay) ---
+    # Preferred sources come from the .graphify_learning.json sidecar; the
+    # query-scoped dead-ends come from the reflect aggregate. Section omitted
+    # entirely when neither is present, so a graph with no work-memory is
+    # byte-identical to the pre-feature report.
+    _learning_section(lines, learning)
+
+    if suggested_questions:
+        no_signal = len(suggested_questions) == 1 and suggested_questions[0].get("type") == "no_signal"
+        # #4199 — split AMBIGUOUS-tagged questions out of the main list so
+        # low-confidence hints do not crowd EXTRACTED/INFERRED bridges.
+        high_conf = [q for q in suggested_questions if not q.get("low_confidence")]
+        low_conf = [q for q in suggested_questions if q.get("low_confidence")]
+
+        lines += ["", "## Suggested Questions"]
+        if no_signal:
+            lines.append(f"_{suggested_questions[0]['why']}_")
+        else:
+            lines.append("_Questions this graph is uniquely positioned to answer:_")
+            lines.append("")
+            for q in high_conf:
+                if q.get("question"):
+                    lines.append(f"- **{q['question']}**")
+                    lines.append(f"  _{q['why']}_")
+            if low_conf:
+                lines += ["", "### Low-confidence Hints"]
+                lines.append("_AMBIGUOUS edges — the extractor was unsure. Verify before acting on these._")
+                lines.append("")
+                for q in low_conf:
+                    if q.get("question"):
+                        lines.append(f"- **{q['question']}**")
+                        lines.append(f"  _{q['why']}_")
+
+    return "\n".join(lines)
