@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -99,13 +100,36 @@ func (h *DocumentationHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if _, err := os.Stat(absDocPath); os.IsNotExist(err) {
-		http.Error(w, "Documentation not found", http.StatusNotFound)
+	root, err := os.OpenRoot(absSdkPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			http.Error(w, "Documentation not found", http.StatusNotFound)
+			return
+		}
+		zap.L().Error("Failed to open SDK root directory", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	defer func() {
+		_ = root.Close()
+	}()
 
-	// #nosec G304 -- absDocPath is validated above to ensure it's within absSdkPath, preventing directory traversal
-	markdownContent, err := os.ReadFile(absDocPath)
+	relDocPath := filepath.Join(orgId, repoId, commitHash, "docs", "index.md")
+	docFile, err := root.Open(relDocPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			http.Error(w, "Documentation not found", http.StatusNotFound)
+			return
+		}
+		zap.L().Error("Failed to open documentation file", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer func() {
+		_ = docFile.Close()
+	}()
+
+	markdownContent, err := io.ReadAll(docFile)
 	if err != nil {
 		zap.L().Error("Failed to read documentation file", zap.Error(err))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
