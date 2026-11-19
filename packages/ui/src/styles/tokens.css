@@ -1,0 +1,117 @@
+@theme static {
+  --color-paper: oklch(14.5% 0.005 245);
+  --color-paper-2: oklch(17.5% 0.005 235);
+  --color-paper-3: oklch(20.8% 0.006 240);
+  --color-ink: oklch(97.5% 0.005 240);
+  --color-ink-2: oklch(83% 0.006 240);
+  --color-muted: oklch(69% 0.006 240);
+  --color-rule: oklch(25.5% 0.006 235);
+  --color-rule-2: oklch(34% 0.007 240);
+  --color-accent: oklch(77.5% 0.145 75);
+  --color-accent-ink: oklch(14.5% 0.005 245);
+  --color-focus: oklch(80% 0.18 75);
+  --color-error: oklch(62% 0.18 27);
+  --color-success: oklch(68% 0.13 150);
+
+  --font-display: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-outlier: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-outlier);
+
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5625rem;
+  --text-2xl: 1.953rem;
+  --text-3xl: 2.441rem;
+  --text-display-s: clamp(2.25rem, 3.8vw + 0.5rem, 3.75rem);
+  --text-display: clamp(2.5rem, 3.6vw + 0.75rem, 4.25rem);
+  --text-section: clamp(2.125rem, 2.5vw + 1rem, 3.25rem);
+  --text-title: clamp(1.25rem, 0.75vw + 0.875rem, 1.5625rem);
+  --text-lead: clamp(1.125rem, 0.35vw + 1rem, 1.3125rem);
+
+  --tracking-display: -0.025em;
+
+  --radius-button: 0px;
+  --radius-card: 4px;
+  --radius-pill: 999px;
+  --shadow-card: none;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+:root {
+  --space-3xs: 2px;
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+  --space-4xl: 144px;
+
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  --container: 1440px;
+  --gutter: 64px;
+  --gap-columns: 32px;
+  --section-gap-s: 120px;
+  --section-gap: 144px;
+  --section-gap-l: 176px;
+
+  --rule-hair: 1px;
+  --display-weight: 700;
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-sticky-nav: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+
+  /* Map legacy semantic names onto Hallmark roles so existing utilities resolve cleanly */
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
+  --card: var(--color-paper-2);
+  --card-foreground: var(--color-ink);
+  --muted: var(--color-paper-2);
+  --muted-foreground: var(--color-muted);
+  --border: var(--color-rule);
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-accent-ink);
+  --primary: var(--color-ink);
+  --primary-foreground: var(--color-paper);
+  --secondary: var(--color-paper-3);
+  --secondary-foreground: var(--color-ink);
+  --input: var(--color-rule-2);
+  --ring: var(--color-focus);
+}
+
+@media (max-width: 60rem) {
+  :root {
+    --gutter: 24px;
+    --section-gap-s: 80px;
+    --section-gap: 96px;
+    --section-gap-l: 120px;
+  }
+}
+
+@media (max-width: 40rem) {
+  :root {
+    --gutter: 16px;
+    --section-gap-s: 56px;
+    --section-gap: 72px;
+    --section-gap-l: 96px;
+    --gap-columns: 16px;
+  }
+}

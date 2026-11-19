@@ -1,28 +1,37 @@
 import Logo from "@hasir/ui/logo.svg";
+import { Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
 export function Navbar() {
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border/40 premium-glass">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 sm:px-8">
-        <div className="flex items-center gap-2">
-          <Image src={Logo} alt="Hasir Logo" width={24} height={24} />
-          <span className="font-semibold tracking-tight text-foreground">hasir</span>
-        </div>
+    <header className="hl-nav">
+      <div className="container hl-nav__inner">
+        <Link href="/" className="hl-nav__brand" aria-label="Hasir home">
+          <Image src={Logo} alt="" width={24} height={24} />
+          <span>hasir</span>
+        </Link>
 
-        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
-          <Link href="#features" className="hover:text-foreground transition-colors">Features</Link>
-          <Link href="#workflow" className="hover:text-foreground transition-colors">Workflow</Link>
-          <Link href="#languages" className="hover:text-foreground transition-colors">Languages</Link>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <Link href="https://github.com/lynicis/hasir" className="rounded-none bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
-            Star on GitHub ⭐️
+        <nav aria-label="Primary" className="hl-nav__links">
+          <Link href="#features" className="hl-nav__link">
+            Features
           </Link>
-        </div>
+          <Link href="#workflow" className="hl-nav__link">
+            Workflow
+          </Link>
+          <Link href="#languages" className="hl-nav__link">
+            Languages
+          </Link>
+        </nav>
+
+        <Link
+          href="https://github.com/lynicis/hasir"
+          className="hl-btn hl-btn--quiet hl-btn--nav"
+        >
+          <Star className="size-4 shrink-0" aria-hidden="true" />
+          <span>Star on GitHub</span>
+        </Link>
       </div>
-    </nav>
+    </header>
   );
 }
