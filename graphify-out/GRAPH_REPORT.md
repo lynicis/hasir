@@ -1,52 +1,52 @@
-# Graph Report - hasir  (2026-11-19)
+# Graph Report - repolish-landing-page  (2026-11-19)
 
 ## Corpus Check
-- 735 files · ~429,280 words
+- 768 files · ~433,838 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 60 file(s) not represented in the graph (top: (none) 25, .proto 8, .lock 5)
+- Unclassified: 62 file(s) not represented in the graph (top: (none) 26, .proto 8, .lock 5)
 
 ## Summary
-- 7393 nodes · 15289 edges · 519 communities (352 shown, 167 thin omitted)
-- Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 1300 edges (avg confidence: 0.76)
+- 7606 nodes · 16115 edges · 519 communities (360 shown, 159 thin omitted)
+- Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 1315 edges (avg confidence: 0.77)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9137fcd5`
+- Built from commit: `b14827cc`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - cn
-- service
+- MockService
 - MockRepository
 - Button
 - connectrpc.com/connect.Request
 - main.go
 - OrganizationServiceClient
 - buf_resolver.go
-- ref_next
+- providers.tsx
 - CreateOrganizationRequest
 - Commit
-- profile-page-content.tsx
+- GetMembersResponse
 - registry_pb.js
-- ref_lucide_react
+- alert-dialog.tsx
 - testing.T
 - with
-- config.go
+- main
 - ref_react
 - Repository
-- registry/service_test.go
+- SDK
 - eslint-config/package.json
-- providers.tsx
+- ref_next
 - Contributing to Hasir
 - TokenEnvelope
 - validate_pb.d.ts
 - with
-- userServiceClient
+- fakeSshSession
 - NewMockCommandRunner
 - validate_pb.js
 - tasks
-- Commit
+- registryServiceClient
 - session/route.ts
 - dashboard/package.json
 - user/handler_test.go
@@ -59,7 +59,7 @@
 - repository-sdk-preferences-content.tsx
 - next-cache-components-adoption
 - Buf Toolchain Reference
-- startSshServer
+- registry/handler_test.go
 - testing.T
 - Hasir API
 - dependencies
@@ -67,10 +67,10 @@
 - Protovalidate Reference
 - dashboard/README.md
 - The Design System Page
-- startSshServer
+- net/http.ResponseWriter
 - compilerOptions
 - compilerOptions
-- Pagination
+- registryServiceClient
 - Hasir Proto
 - steps
 - with
@@ -79,17 +79,17 @@
 - AGENTS.md
 - definitions.mdx
 - Code Generation Errors
-- registry/repository_test.go
+- testing.T
 - steps
-- alert-dialog.tsx
-- SdkGenerationJobQueue
+- UpdateJobStatus
+- config.go
 - registry_pb.d.ts
 - as-child.mdx
 - next-cache-components-optimizer
-- GetFileTreeResponse
+- Commit
 - CreateRepositoryRequest
 - EmailJobQueue
-- SdkGenerationJobQueue
+- MockSdkGenerationQueue
 - shared/package.json
 - Docker Patterns
 - landing/app/page.tsx
@@ -99,7 +99,7 @@
 - For Component Authors
 - stretchr/testify
 - Go Testing Best Practices
-- GetCommitsResponse
+- Decisions
 - Hasir Stack Helm Chart
 - user_pb.js
 - Component identification with data-slot
@@ -107,7 +107,7 @@
 - environment
 - opsx-onboard.md
 - dashboard/components.json
-- CreateApiKeyRequest
+- .GetMemberRole
 - Hasir Platform Monorepo Architecture Documentation
 - organization_pb.d.ts
 - Runtime APIs
@@ -120,21 +120,21 @@
 - turborepo/SKILL.md
 - steps
 - actions
-- .GenerateSDK
+- verifyPoolConnection
 - organization-users-content.test.tsx
 - Design Systems from DESIGN.md
-- UpdateRepositoryRequest
+- MockCommandRunner
 - compilerOptions
 - registry.mdx
 - Testing
 - Migrating from Protoc to Buf
 - Protocol Buffers Quick Reference
-- newTestService
+- email_test.go
 - scripts
 - SDK
 - index.ts
 - Hasir
-- RegisterRequest
+- ParseBearerHeader
 - Caching and Artifacts
 - next-partial-prefetching-adoption
 - Protocol Buffers
@@ -150,12 +150,12 @@
 - Quick Reference
 - steps
 - user_pb.d.ts
-- carousel.tsx
+- service
 - styling.mdx
 - Go Database Best Practices
 - Customization & Theming
 - Advanced v4 Patterns
-- drawer.tsx
+- ADDED Requirements
 - MockIdempotencyRepository
 - with
 - Spec: CI/CD Pipeline
@@ -167,12 +167,13 @@
 - What the rig must define
 - What the rig must define
 - Patterns
-- Icons
+- shadcn/SKILL.md
+- devDependencies
 - buf.gen.go-connect.yaml
 - bun-setup.ts
 - config.json
 - Hasir Docker Compose Stack
-- Design System: HASIR
+- UI Primitives (`@hasir/ui/components/`)
 - 0005. Path-Scoped Per-App SemVer Tags
 - Spec: Monorepo Structure and Tooling
 - Spec: Release Strategy
@@ -191,7 +192,7 @@
 - Component Composition
 - 6. Rendering Performance
 - scripts
-- SdkPreferencesDTO
+- API SERVICE KNOWLEDGE BASE
 - Release Strategy
 - compilerOptions
 - compilerOptions
@@ -208,7 +209,7 @@
 - mcp.json
 - buf.gen.yaml Configuration
 - 3. Server-Side Performance
-- FileTreeNode
+- GetFileTreeResponse
 - auth-interceptor.ts
 - .golangci.yaml
 - 0001. Monorepo Structure and Tooling
@@ -226,10 +227,10 @@
 - golang-testing/SKILL.md
 - Proto API Review Checklist
 - Breaking Change Errors
-- UI Primitives (`@hasir/ui/components/`)
-- @testing-library/react
+- Import and Dependency Errors
+- ref_lucide_react
 - plugins
-- SdkGenerationJobQueue
+- color-pair.tsx
 - React Best Practices
 - Sections
 - hasir-dashboard
@@ -247,15 +248,15 @@
 - buf.gen.java.yaml
 - Registry Authoring and Addresses
 - Tailwind Design System (v4)
-- OrganizationMemberDTO
+- [id]/settings/page.tsx
 - services
 - nginx
-- adapter_mock.go
+- registry/service_test.go
 - Role
 - assets/buf.yaml
 - DASHBOARD KNOWLEDGE BASE
 - Critical Rules
-- graphify.js
+- GetOrganizationResponse
 - scripts
 - options
 - HELM CHART KNOWLEDGE BASE
@@ -270,11 +271,11 @@
 - Transactions, Isolation Levels, and Locking
 - Testing Database Code
 - Helm Chart Scaffolding
-- Common Patterns
+- SdkGenerationJobQueue
 - Base vs Radix
 - persistence
-- Role
-- getCsrfToken
+- Visibility
+- sync.WaitGroup
 - proto/buf.yaml
 - DOCKER DEPLOY KNOWLEDGE BASE
 - proto/buf.gen.yaml
@@ -290,7 +291,7 @@
 - Proposal: Radix Themes Migration
 - PROTO PACKAGE KNOWLEDGE BASE
 - ui/tsconfig.json
-- go.uber.org/mock/gomock.Call
+- MockSdkTriggerProcessor
 - 2. API and Composition Vocabulary
 - Utility Functions
 - Dependency Caching with Setup Actions
@@ -309,20 +310,20 @@
 - Struct Scanning and NULLable Columns
 - Mocking and Test Fixtures
 - Test template: the instant() guard
-- Schema Evolution
+- carousel.tsx
 - Field and Schema Evolution
 - React Best Practices
 - NewMockRepository
-- login/route.ts
+- session/route.ts
 - managed
 - proxy.ts
 - pagination.tsx
 - README.md
-- landing/app/layout.tsx
+- go.uber.org/mock/gomock.Controller
 - Tasks: Changesets Integration
 - Tasks: Radix Themes Migration
 - overrides
-- SdkTriggerJobDTO
+- .Read
 - Security Policy
 - Plugins
 - HTTP Server with Bun.serve
@@ -350,21 +351,22 @@
 - 1.2.0
 - 1.3.0
 - 1.1.0
+- vinext
 - hasir/package.json
 - Foundations
-- testRequest
-- Tech Stack
+- EmailJobQueue
+- .GenerateSDK
 - Tasks: CodeQL Code Scanning
 - Tasks: Replace Nginx with Traefik in Helm Ingress
 - author
 - shared/README.md
 - scripts
-- 4. Component Stylings
+- SdkTriggerJobDTO
 - Error Handling
 - Parameterized Queries
 - Test Structure and Organization
 - instrumentation.ts
-- NodeType
+- scripts
 - certbot
 - api
 - engines
@@ -446,12 +448,13 @@
 - setup.sh
 - postgresql
 - setup-sops.sh
-- SDK
-- .GetPasswordResetToken
-- .GetSshKeys
-- Getting Started
-- 3. Typography Rules
+- csrf/interceptor.go
+- testRequest
+- getLatestCommitHash
+- @tailwindcss/postcss@^4.3.5
+- LoadOrGenerateHostKey
 - engines
+- next@16.4.6
 - dashboard
 - createOrganization
 - deleteMember
@@ -491,10 +494,9 @@
 - hasir/api
 - hasir/proto
 - secrets
-- Member
+- Role
 - plugins
 - scripts
-- cmdk
 - image
 - paths
 - Usage
@@ -513,128 +515,128 @@
 
 ## God Nodes (most connected - your core abstractions)
 1. `cn()` - 372 edges
-2. `Button()` - 87 edges
-3. `@testing-library/react` - 50 edges
-4. `Card()` - 47 edges
-5. `CardHeader()` - 47 edges
-6. `CardTitle()` - 47 edges
-7. `CardContent()` - 45 edges
-8. `NewMockRepository()` - 44 edges
-9. `NewMockCommandRunner()` - 41 edges
-10. `@base-ui/react` - 40 edges
+2. `Button()` - 89 edges
+3. `CommandRunner` - 51 edges
+4. `@testing-library/react` - 50 edges
+5. `Card()` - 47 edges
+6. `CardHeader()` - 47 edges
+7. `CardTitle()` - 47 edges
+8. `useClient()` - 45 edges
+9. `CardContent()` - 45 edges
+10. `NewMockRepository()` - 44 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `Decision 3: SOPS decrypt in koanf load path` --references--> `Config`  [INFERRED]
+  openspec/changes/archive/2026-07-26-sops-secrets/design.md → apps/api/pkg/config/config.go
+- `Go` --references--> `CommandRunner`  [INFERRED]
+  AGENTS.md → apps/api/pkg/sdkgenerator/generator.go
 - `Go` --references--> `CommandRunner`  [INFERRED]
   CONTRIBUTING.md → apps/api/pkg/sdkgenerator/generator.go
-- `Type scale` --references--> `cn()`  [INFERRED]
-  .agents/skills/shadcn/design-system.md → packages/ui/src/lib/utils.ts
-- `Use cn() for conditional classes` --references--> `cn()`  [INFERRED]
-  .agents/skills/shadcn/rules/styling.md → packages/ui/src/lib/utils.ts
-- `Styling & Tailwind → [styling.md](./rules/styling.md)` --references--> `cn()`  [INFERRED]
-  .agents/skills/shadcn/SKILL.md → packages/ui/src/lib/utils.ts
-- `8. Do's and Don'ts` --references--> `cn()`  [INFERRED]
-  DESIGN.md → packages/ui/src/lib/utils.ts
+- `Summary` --references--> `CommandRunner`  [INFERRED]
+  openspec/changes/archive/2026-11-19-repo-wide-refactor/proposal.md → apps/api/pkg/sdkgenerator/generator.go
+- `Provider Stack` --references--> `authInterceptor()`  [INFERRED]
+  DESIGN.md → apps/dashboard/lib/auth-interceptor.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (519 total, 167 thin omitted)
+## Communities (519 total, 159 thin omitted)
 
 ### Community 0 - "cn"
 Cohesion: 0.02
-Nodes (205): Step 5: Map Component Recipes to Variants, Accordion(), AccordionContent(), AccordionItem(), AccordionTrigger(), AlertAction(), AspectRatio(), Attachment() (+197 more)
+Nodes (212): Accordion(), AccordionContent(), AccordionItem(), AccordionTrigger(), AlertAction(), AspectRatio(), Attachment(), AttachmentAction() (+204 more)
 
-### Community 1 - "service"
-Cohesion: 0.06
-Nodes (15): detectSdksFromBufGen(), detectSdksFromRepoCommit(), Service, MockService, TestDetectSdksFromBufGen(), TestService_GenerateDocumentation(), MemberRoleChecker, IsUserMember() (+7 more)
+### Community 1 - "MockService"
+Cohesion: 0.08
+Nodes (6): triggerSdkGenerationAfterPush(), Service, MockService, DeleteRepositoryRequest, MockServiceMockRecorder, SshOperation
 
 ### Community 2 - "MockRepository"
 Cohesion: 0.04
-Nodes (7): NewService(), ApiKeyDTO, UserDTO, Repository, MockRepository, MockRepositoryMockRecorder, PgRepository
+Nodes (15): handleSshSession(), NewSshServer(), selectSshHandler(), StartSshServer(), TestSelectSshHandler(), ApiKeyDTO, PasswordResetTokenDTO, RefreshTokensDTO (+7 more)
 
 ### Community 3 - "Button"
-Cohesion: 0.06
-Nodes (88): DangerZone(), DangerZoneProps, ForgotPasswordForm(), ISchema, schema, InviteUserDialog(), InviteUserDialogProps, InviteUserFormValues (+80 more)
+Cohesion: 0.05
+Nodes (118): Step 5: Map Component Recipes to Variants, metadata, ProfilePage(), ApiKeyFormData, apiKeyFormSchema, ApiKeysSection(), handleDeleteApiKey(), handleGenerateApiKey() (+110 more)
 
 ### Community 4 - "connectrpc.com/connect.Request"
 Cohesion: 0.07
-Nodes (14): MustGetUserEmail(), testRequest, testRequest, handler, OrganizationServiceClient, OrganizationServiceHandler, UnimplementedOrganizationServiceHandler, DeleteOrganizationRequest (+6 more)
+Nodes (17): MustGetUserEmail(), MustGetUserID(), ComputePageMeta(), Normalize(), handler, OrganizationServiceClient, OrganizationServiceHandler, UnimplementedOrganizationServiceHandler (+9 more)
 
 ### Community 5 - "main.go"
-Cohesion: 0.06
-Nodes (13): generateInviteToken(), TestGenerateInviteToken(), getLatestCommitHash(), parseSdkPath(), TestGetLatestCommitHash(), TestParseSdkPath(), TestContextKeys(), detectMimeType() (+5 more)
+Cohesion: 0.09
+Nodes (15): generateInviteToken(), TestGenerateInviteToken(), NewSdkHttpHandler(), NewSdkSshHandler(), parseSdkPath(), TestNewSdkHttpHandler(), TestNewSdkSshHandler(), TestParseSdkPath() (+7 more)
 
 ### Community 6 - "OrganizationServiceClient"
 Cohesion: 0.02
-Nodes (16): organizationServiceClient, file_organization_v1_organization_proto_rawDescGZIP(), GetMembersRequest, GetMembersResponse, GetOrganizationRequest, GetOrganizationResponse, GetOrganizationsRequest, GetOrganizationsResponse (+8 more)
+Nodes (18): file_organization_v1_organization_proto_rawDescGZIP(), DeleteOrganizationRequest, GetOrganizationsRequest, GetOrganizationsResponse, IsInvitationValidRequest, RespondToInvitationRequest, SearchRequest, SearchResponse (+10 more)
 
 ### Community 7 - "buf_resolver.go"
-Cohesion: 0.09
-Nodes (29): GenerateBufGenYaml(), GenerateBufYaml(), ParseProtoImports(), ParseProtoImportsFromFiles(), ResolveBsrModules(), ResolveBsrModulesWithCustom(), TestGenerateBufGenYaml_GoConnectRpc(), TestGenerateBufGenYaml_GoProtobuf() (+21 more)
+Cohesion: 0.06
+Nodes (45): GenerateBufGenYaml(), GenerateBufYaml(), ParseProtoImports(), ParseProtoImportsFromFiles(), ResolveBsrModules(), ResolveBsrModulesWithCustom(), TestGenerateBufGenYaml_GoConnectRpc(), TestGenerateBufGenYaml_GoProtobuf() (+37 more)
 
-### Community 8 - "ref_next"
-Cohesion: 0.03
-Nodes (78): DashboardPage(), metadata, memberRoleMapper, tabs, metadata, metadata, OrganizationSettingsPage(), metadata (+70 more)
+### Community 8 - "providers.tsx"
+Cohesion: 0.21
+Nodes (9): geistMono, geistSans, metadata, RootLayout(), Providers(), queryClient, ThemeProvider(), SessionProvider() (+1 more)
 
 ### Community 9 - "CreateOrganizationRequest"
-Cohesion: 0.05
-Nodes (7): inviteInfo, Service, service, CreateOrganizationRequest, DeleteMemberRequest, InviteMemberRequest, UpdateOrganizationRequest
+Cohesion: 0.04
+Nodes (11): inviteInfo, MockService, MockServiceMockRecorder, Service, service, organizationServiceClient, CreateOrganizationRequest, DeleteMemberRequest (+3 more)
 
 ### Community 10 - "Commit"
-Cohesion: 0.06
-Nodes (4): RepositoryDTO, MockRepository, MockRepositoryMockRecorder, PgRepository
+Cohesion: 0.05
+Nodes (6): RepositoryDTO, SdkPreferencesDTO, Repository, MockRepository, MockRepositoryMockRecorder, MockServiceMockRecorder
 
-### Community 11 - "profile-page-content.tsx"
-Cohesion: 0.12
-Nodes (15): metadata, ProfilePage(), ProfileFormData, ProfilePageContent(), mockPush, mockRefreshSession, SdkInstallGuideDialog(), SdkInstallGuideDialogProps (+7 more)
+### Community 11 - "GetMembersResponse"
+Cohesion: 0.07
+Nodes (5): GetMembersRequest, GetMembersResponse, Role, InvitationMember, Member
 
 ### Community 12 - "registry_pb.js"
-Cohesion: 0.05
-Nodes (43): mockFetch, mockClient, mockFileTreeData, mockGetFileTree, mockRepository, mockUseQuery, SdkOption, contextValue (+35 more)
+Cohesion: 0.04
+Nodes (50): mockMutateAsync, mockParams, mockRepositoryData, renderWithContext(), RepositoryContextWrapper(), defaultMockCommits, mockUseQuery, mockFetch (+42 more)
 
-### Community 13 - "ref_lucide_react"
-Cohesion: 0.10
-Nodes (42): CloneUrls(), CloneUrlsProps, MemberItem(), MemberItemProps, permissionLabels, SDK_OPTIONS, SdkType, SdkUrls() (+34 more)
+### Community 13 - "alert-dialog.tsx"
+Cohesion: 0.18
+Nodes (22): DeleteMemberDialog(), DeleteMemberDialogProps, DeleteOrganizationDialog(), DeleteOrganizationDialogProps, DeleteRepositoryDialog(), DeleteRepositoryDialogProps, RepositoriesListProps, OrganizationRepository (+14 more)
 
 ### Community 14 - "testing.T"
-Cohesion: 0.09
-Nodes (76): setupMigration(), setupPostgresContainer(), TestMigrations(), GetUserEmail(), GetUserID(), generateTestToken(), TestAuthInterceptor_Interceptor(), TestErrorTypes() (+68 more)
+Cohesion: 0.21
+Nodes (40): createEmailJobsTable(), createOrganizationInvitesTable(), createOrganizationMembersTable(), createOrganizationMembersView(), createOrganizationsAndMembersTables(), createOrganizationsTable(), createRepositoriesTable(), createSearchItemsView() (+32 more)
 
 ### Community 15 - "with"
 Cohesion: 0.06
 Nodes (40): runs-on, steps, env, TURBO_TEAM, TURBO_TELEMETRY_DISABLED, TURBO_TOKEN, jobs, build (+32 more)
 
-### Community 16 - "config.go"
-Cohesion: 0.03
-Nodes (53): NewGitSshHandler(), NewSdkHttpHandler(), NewSdkSshHandler(), TestNewGitSshHandler(), TestNewSdkHttpHandler(), TestNewSdkSshHandler(), TestSdkHttpHandler_ServeHTTP(), initTracer() (+45 more)
+### Community 16 - "main"
+Cohesion: 0.09
+Nodes (30): gracefulShutdown(), initTracer(), main(), Config, IdempotencyRepository, NewIdempotencyRepository(), NewIdempotencyRepositoryWithPool(), NewEmailJobQueue() (+22 more)
 
 ### Community 17 - "ref_react"
-Cohesion: 0.07
-Nodes (36): RootLayout(), ForgotPasswordPage(), metadata, LoginPage(), metadata, metadata, RegisterPage(), metadata (+28 more)
+Cohesion: 0.05
+Nodes (44): RootLayout(), ForgotPasswordPage(), metadata, LoginPage(), metadata, HomePage(), metadata, metadata (+36 more)
 
 ### Community 18 - "Repository"
-Cohesion: 0.05
-Nodes (7): file_registry_v1_registry_proto_rawDescGZIP(), GetRepositoriesRequest, GetRepositoriesResponse, GetRepositoryRequest, Repository, registryServiceClient, SdkPreference
+Cohesion: 0.06
+Nodes (10): toProtoSdkPreferences(), MemberRoleChecker, IsUserMember(), IsUserOwner(), 4. API Package Reference (`apps/api/pkg/`), GetRepositoryRequest, Repository, UpdateSdkPreferencesRequest (+2 more)
 
-### Community 19 - "registry/service_test.go"
-Cohesion: 0.10
-Nodes (28): NewMockSdkGenerationQueue(), NewService(), initGitRepoWithEmptyCommit(), initGitRepoWithProtoFile(), testAuthInterceptor(), TestNewService(), TestNewService_WithConfig(), TestSdkGenerationJobDTO() (+20 more)
+### Community 19 - "SDK"
+Cohesion: 0.07
+Nodes (15): detectSdksFromBufGen(), TestDetectSdksFromBufGen(), TestService_GetSdkDirName(), FindProtoFilesInBareRepo(), FindProtoFilesInBareRepoWithRunner(), initBareRepoWithFiles(), TestBaseGenerator_Validate(), TestFindProtoFilesInBareRepo() (+7 more)
 
 ### Community 20 - "eslint-config/package.json"
 Cohesion: 0.07
 Nodes (40): eslintConfig, eslintConfig, config, nextJsConfig, devDependencies, eslint@^10.15.0, eslint-config-prettier@^10.1.8, @eslint/js@^10.0.1 (+32 more)
 
-### Community 21 - "providers.tsx"
-Cohesion: 0.19
-Nodes (10): geistMono, geistSans, metadata, RootLayout(), finalTransport, Providers(), queryClient, ThemeProvider() (+2 more)
+### Community 21 - "ref_next"
+Cohesion: 0.02
+Nodes (110): DashboardPage(), metadata, memberRoleMapper, tabs, metadata, metadata, RepositoriesPage(), metadata (+102 more)
 
 ### Community 22 - "Contributing to Hasir"
 Cohesion: 0.04
 Nodes (46): AI-Generated Code Quality, AI Instruction Files, AI Usage Guide, Do, Don't, Guidelines for AI-Assisted Contributions, MCP Servers, OpenSpec Workflow (+38 more)
 
 ### Community 23 - "TokenEnvelope"
-Cohesion: 0.08
-Nodes (4): file_user_v1_user_proto_rawDescGZIP(), LoginRequest, TokenEnvelope, UpdateUserRequest
+Cohesion: 0.04
+Nodes (9): ForgotPasswordRequest, LoginRequest, RegisterRequest, ResetPasswordRequest, TokenEnvelope, UpdateUserRequest, MockService, Service (+1 more)
 
 ### Community 24 - "validate_pb.d.ts"
 Cohesion: 0.04
@@ -644,13 +646,9 @@ Nodes (45): RFC-3986, RFC-4122, RFC-5322, RFC-6874, RFC-7230, AnyRules, BoolRule
 Cohesion: 0.05
 Nodes (40): name, runs-on, steps, strategy, timeout-minutes, env, TURBO_TELEMETRY_DISABLED, jobs (+32 more)
 
-### Community 26 - "userServiceClient"
-Cohesion: 0.07
-Nodes (7): ForgotPasswordRequest, RenewTokensRequest, RenewTokensResponse, ResetPasswordRequest, MockService, Service, userServiceClient
-
 ### Community 27 - "NewMockCommandRunner"
-Cohesion: 0.03
-Nodes (133): Code Style, Go, sync.Pool, TypeScript / Next.js, TestService_FindProtoFiles(), ANTI-PATTERNS, CONVENTIONS, OVERVIEW (+125 more)
+Cohesion: 0.04
+Nodes (100): TestService_installJsDependencies(), ANTI-PATTERNS, CONVENTIONS, OVERVIEW, SDK Generator Package, WHERE TO LOOK, NewBufCsharpGrpcGenerator(), NewBufCsharpProtobufGenerator() (+92 more)
 
 ### Community 28 - "validate_pb.js"
 Cohesion: 0.05
@@ -660,21 +658,17 @@ Nodes (40): AnyRulesSchema, BoolRulesSchema, BytesRulesSchema, DoubleRulesSchema
 Cohesion: 0.05
 Nodes (40): dependsOn, inputs, outputs, cache, cache, persistent, cache, dependsOn (+32 more)
 
-### Community 30 - "Commit"
-Cohesion: 0.08
-Nodes (5): Repository, getRepoHead(), Commit, GetFilePreviewRequest, GetFilePreviewResponse
-
 ### Community 31 - "session/route.ts"
 Cohesion: 0.13
 Nodes (26): POST(), GET(), POST(), schema, mockDecodeJwt, mockGetSession, mockRefreshSession, mockRenewTokens (+18 more)
 
 ### Community 32 - "dashboard/package.json"
-Cohesion: 0.07
-Nodes (39): devDependencies, bun-types@^1.4.5, eslint@^10.15.0, eslint-config-next@16.4.6, eslint-plugin-perfectionist@^5.14.0, @happy-dom/global-registrator@^21.0.4, shadcn@^4.23.0, tailwindcss@^4.3.5 (+31 more)
+Cohesion: 0.06
+Nodes (42): devDependencies, bun-types@^1.4.5, eslint@^10.15.0, eslint-config-next@16.4.6, eslint-plugin-perfectionist@^5.14.0, @happy-dom/global-registrator@^21.0.4, shadcn@^4.23.0, tailwindcss@^4.3.5 (+34 more)
 
 ### Community 33 - "user/handler_test.go"
-Cohesion: 0.15
-Nodes (31): NewHandler(), setupTestServer(), testAuthInterceptor(), TestHandler_CreateApiKey(), TestHandler_CreateSshKey(), TestHandler_DeleteAccount(), TestHandler_ForgotPassword(), TestHandler_GetApiKeys() (+23 more)
+Cohesion: 0.28
+Nodes (20): NewHandler(), setupTestServer(), testAuthInterceptor(), TestHandler_CreateApiKey(), TestHandler_CreateSshKey(), TestHandler_DeleteAccount(), TestHandler_ForgotPassword(), TestHandler_GetApiKeys() (+12 more)
 
 ### Community 34 - "Helm Chart Structure Reference"
 Cohesion: 0.06
@@ -685,8 +679,8 @@ Cohesion: 0.06
 Nodes (32): Common false REDs, Contract already GREEN, Differential, Lock engagement, The trigger is part of the test, Trustworthy RED and differential, Verification gate, What each signal rules out (+24 more)
 
 ### Community 36 - "Protocol Buffers Best Practices"
-Cohesion: 0.06
-Nodes (35): API Design Principles, Commit Generated Code, Consistency, Contents, Cross-Reference Consistency, Deprecation, Documentation, Element Ordering Within Files (+27 more)
+Cohesion: 0.04
+Nodes (49): Adding Fields, API Design Principles, Commit Generated Code, Common Patterns, Consistency, Contents, Create and Update Request Patterns, Cross-Reference Consistency (+41 more)
 
 ### Community 37 - "accessibility.mdx"
 Cohesion: 0.06
@@ -697,12 +691,12 @@ Cohesion: 0.20
 Nodes (10): Assistant activity uses Trace, Attachments use Attachment, Chat & Messaging, Code and tool output use CodeBlock, Contents, Escape hatch: the scroller hooks, Message rows use Message, Message surfaces use Bubble (+2 more)
 
 ### Community 39 - "registry.pb.go"
-Cohesion: 0.16
-Nodes (14): file_organization_v1_organization_proto_init(), init(), file_registry_v1_registry_proto_init(), init(), file_shared_filter_proto_init(), file_shared_filter_proto_rawDescGZIP(), init(), file_shared_role_proto_init() (+6 more)
+Cohesion: 0.11
+Nodes (17): Clamp(), TestClamp(), file_organization_v1_organization_proto_init(), init(), file_registry_v1_registry_proto_init(), init(), file_shared_filter_proto_init(), file_shared_filter_proto_rawDescGZIP() (+9 more)
 
 ### Community 40 - "repository-sdk-preferences-content.tsx"
 Cohesion: 0.06
-Nodes (74): InvitePage(), InvitePageProps, metadata, OrganizationLayout(), CommitsPage(), CommitsPageProps, metadata, DocumentationPage() (+66 more)
+Nodes (81): InvitePage(), InvitePageProps, metadata, OrganizationLayout(), CommitsPage(), CommitsPageProps, metadata, DocumentationPage() (+73 more)
 
 ### Community 41 - "next-cache-components-adoption"
 Cohesion: 0.06
@@ -712,9 +706,9 @@ Nodes (29): dev-only validation sweep, gotchas, the loop, what the build misses,
 Cohesion: 0.10
 Nodes (20): Basic Structure, Breaking Change Configuration, Breaking Change Detection, BSR (Buf Schema Registry), buf.lock, Buf Toolchain Reference, buf.yaml Configuration, Build Integration (+12 more)
 
-### Community 43 - "startSshServer"
-Cohesion: 0.14
-Nodes (12): ANTI-PATTERNS, API SERVICE KNOWLEDGE BASE, CONVENTIONS, ENTRY FLOW (main.go), NOTES, OVERVIEW, STRUCTURE, WHERE TO LOOK (+4 more)
+### Community 43 - "registry/handler_test.go"
+Cohesion: 0.16
+Nodes (17): NewGitHttpHandler(), NewHandler(), TestGitHttpHandler_ServeHTTP(), TestHandler_CreateRepository(), TestHandler_DeleteRepository(), TestHandler_GetCommits(), TestHandler_GetFilePreview(), TestHandler_GetRecentCommit() (+9 more)
 
 ### Community 44 - "testing.T"
 Cohesion: 0.27
@@ -726,7 +720,7 @@ Nodes (30): Acknowledgments, Adding a New RPC Method, API Documentation, Archite
 
 ### Community 46 - "dependencies"
 Cohesion: 0.05
-Nodes (39): dependencies, @bufbuild/protobuf@^2.17.0, @connectrpc/connect@^2.3.0, @connectrpc/connect-query@^2.3.1, @connectrpc/connect-web@^2.3.0, framer-motion@^14.14.0, @hasir/proto@workspace:*, @hasir/ui@workspace:* (+31 more)
+Nodes (40): dependencies, @bufbuild/protobuf@^2.17.0, @connectrpc/connect@^2.3.0, @connectrpc/connect-query@^2.3.1, @connectrpc/connect-web@^2.3.0, framer-motion@^14.14.0, @hasir/proto@workspace:*, @hasir/ui@workspace:* (+32 more)
 
 ### Community 47 - "polymorphism.mdx"
 Cohesion: 0.07
@@ -737,16 +731,16 @@ Cohesion: 0.07
 Nodes (30): Any Rules, Batch Request, Bytes Rules, CEL Extension Functions, Common Patterns, Common String Patterns, Contents, Core Concepts (+22 more)
 
 ### Community 49 - "dashboard/README.md"
-Cohesion: 0.10
-Nodes (19): Architecture, Authentication, Code Quality, Commit Convention, Contributing, Deployment, Development, Docker (+11 more)
+Cohesion: 0.06
+Nodes (30): Architecture, Authentication, Code Quality, Commit Convention, Contributing, Core, Data & Communication, Deployment (+22 more)
 
 ### Community 50 - "The Design System Page"
-Cohesion: 0.11
-Nodes (21): ColorPair(), contrast(), luminance(), toHex(), toRgb(), defaultStates, previewState(), StateMatrix() (+13 more)
+Cohesion: 0.12
+Nodes (16): defaultStates, previewState(), StateMatrix(), Block anatomy, Checklist, Components: Tiers and Block Anatomy, Contents, Do and Don't (+8 more)
 
-### Community 51 - "startSshServer"
-Cohesion: 0.21
-Nodes (6): isValidPathComponent(), NewDocumentationHttpHandler(), TestIsValidPathComponent(), DocumentationHttpHandler, GitHttpHandler, SdkHttpHandler
+### Community 51 - "net/http.ResponseWriter"
+Cohesion: 0.20
+Nodes (8): NewDocumentationHttpHandler(), writeGitSmartHttpAdvertisement(), isValidPathComponent(), resolveValidatedSdkRepoPath(), TestIsValidPathComponent(), DocumentationHttpHandler, GitHttpHandler, SdkHttpHandler
 
 ### Community 52 - "compilerOptions"
 Cohesion: 0.07
@@ -756,9 +750,9 @@ Nodes (28): compilerOptions, allowImportingTsExtensions, allowJs, esModuleIntero
 Cohesion: 0.07
 Nodes (28): compilerOptions, allowImportingTsExtensions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib (+20 more)
 
-### Community 54 - "Pagination"
-Cohesion: 0.09
-Nodes (3): Pagination, KeyResponse, Key
+### Community 54 - "registryServiceClient"
+Cohesion: 0.06
+Nodes (6): file_registry_v1_registry_proto_rawDescGZIP(), GetCommitsRequest, GetCommitsResponse, GetRepositoriesRequest, GetRepositoriesResponse, registryServiceClient
 
 ### Community 55 - "Hasir Proto"
 Cohesion: 0.22
@@ -781,32 +775,32 @@ Cohesion: 0.06
 Nodes (47): dependencies, @base-ui/react@^1.9.0, class-variance-authority@^0.7.1, clsx@^2.1.1, cmdk@^1.1.1, cobe@^2.0.1, date-fns@^4.4.0, embla-carousel-react@^8.6.0 (+39 more)
 
 ### Community 60 - "AGENTS.md"
-Cohesion: 0.05
-Nodes (40): All tests, API (Go), Build, Common Gotchas, Dashboard (Bun), Database Migrations, Docker / Deployment, Environment Variables (+32 more)
+Cohesion: 0.04
+Nodes (43): All tests, API (Go), Build, Code Style, Common Gotchas, Dashboard (Bun), Database Migrations, Docker / Deployment (+35 more)
 
 ### Community 61 - "definitions.mdx"
 Cohesion: 0.08
 Nodes (23): 1.1 Primitive, 1.2 Component, 1.3 Pattern, 1.4 Block, 1.5 Page, 1.6 Template, 1.7 Utility (Non-visual), 1. Artifact Taxonomy (+15 more)
 
 ### Community 62 - "Code Generation Errors"
-Cohesion: 0.08
-Nodes (24): Buf: Dependency Not Found, Buf: Plugin Not Found, Buf: Remote Plugin Timeout, Buf: Version Conflict, Circular Import, Code Generation Errors, Contents, Go: Conflicting Package Names (+16 more)
+Cohesion: 0.11
+Nodes (18): Buf: Plugin Not Found, Buf: Remote Plugin Timeout, Code Generation Errors, Contents, Go: Conflicting Package Names, Go: "go_package option required", Ignoring Lint Rules, Linting Errors (+10 more)
 
-### Community 63 - "registry/repository_test.go"
-Cohesion: 0.29
-Nodes (21): createRepositoriesAndMembersTables(), createRepositoriesTable(), createTestRepository(), setupPgContainer(), setupTestGitRepository(), setupTestRepository(), TestPgRepository_CreateRepository(), TestPgRepository_DeleteRepositoriesByOrganizationId() (+13 more)
+### Community 63 - "testing.T"
+Cohesion: 0.06
+Nodes (65): bearerToken(), TestDocumentationHttpHandler(), TestSdkGenerationJobDTO(), TestService_GenerateDocumentation(), newFakeSshContext(), TestHandleSshSession(), TestNewSshServer_PublicKeyHandler(), NewService() (+57 more)
 
 ### Community 64 - "steps"
 Cohesion: 0.08
 Nodes (23): runs-on, steps, REF_NAME, TAG, jobs, bake, name, on (+15 more)
 
-### Community 65 - "alert-dialog.tsx"
-Cohesion: 0.12
-Nodes (26): metadata, RepositoriesPage(), DeleteMemberDialog(), DeleteOrganizationDialog(), DeleteOrganizationDialogProps, DeleteRepositoryDialog(), DeleteRepositoryDialogProps, OrganizationRepositoriesContent() (+18 more)
+### Community 65 - "UpdateJobStatus"
+Cohesion: 0.50
+Nodes (4): BuildJobStatusUpdateQuery(), TestBuildJobStatusUpdateQuery(), UpdateJobStatus(), JobTableQueries
 
-### Community 66 - "SdkGenerationJobQueue"
-Cohesion: 0.42
-Nodes (3): SdkGenerator, SdkTriggerProcessor, SdkGenerationJobQueue
+### Community 66 - "config.go"
+Cohesion: 0.08
+Nodes (9): NewConfigReader(), TestNewConfigReader(), TestPostgresConfig_GetPostgresDsn(), TestServerConfig_GetServerAddress(), ConfigReader, PostgresConfig, ServerConfig, forgotPasswordTemplateData (+1 more)
 
 ### Community 67 - "registry_pb.d.ts"
 Cohesion: 0.08
@@ -820,21 +814,21 @@ Nodes (22): 1. Maintain Accessibility, 1. Semantic HTML, 2. Clean DOM Structure,
 Cohesion: 0.11
 Nodes (18): 0. SETUP: discover this project's rig, once per repo, A. RIG: a production build with the testing API exposed, After optimization, B. BASELINE (unlocked): development scaffold, do not ship, C. RED (locked) + the VERIFY-RED gate, D. FIX: apply the documented pattern, Driving the navigation in tests, E. PARITY: the refactor changed only whether the route is instant (+10 more)
 
-### Community 70 - "GetFileTreeResponse"
+### Community 70 - "Commit"
 Cohesion: 0.07
-Nodes (11): GlobalHandler, NewOrganizationServiceHandler(), GetFileTreeRequest, GetFileTreeResponse, GetRecentCommitRequest, NewRegistryServiceHandler(), NewUserServiceHandler(), handler (+3 more)
+Nodes (10): GlobalHandler, getRepoHead(), openRepoAndHead(), TestPgRepository_GitOperations(), toProtoCommit(), Commit, GetRecentCommitRequest, NewRegistryServiceHandler() (+2 more)
 
 ### Community 71 - "CreateRepositoryRequest"
-Cohesion: 0.16
-Nodes (3): MustGetUserID(), CreateRepositoryRequest, Visibility
+Cohesion: 0.10
+Nodes (4): CreateRepositoryRequest, UpdateRepositoryRequest, Visibility, UnimplementedRegistryServiceHandler
 
 ### Community 72 - "EmailJobQueue"
-Cohesion: 0.12
-Nodes (8): EmailJobDTO, EmailJobStatus, NewMockQueue(), Service, EmailJobQueue, MockQueue, MockQueueMockRecorder, Queue
-
-### Community 73 - "SdkGenerationJobQueue"
 Cohesion: 0.13
-Nodes (6): SdkGenerationJobDTO, SdkGenerationJobStatus, SdkGenerationQueue, gracefulShutdown(), MockSdkGenerationQueue, MockSdkGenerationQueueMockRecorder
+Nodes (7): EmailJobDTO, EmailJobStatus, NewMockQueue(), NewService(), MockQueue, MockQueueMockRecorder, Queue
+
+### Community 73 - "MockSdkGenerationQueue"
+Cohesion: 0.13
+Nodes (6): SdkGenerationJobDTO, SdkGenerationJobStatus, SdkGenerationQueue, newPendingSdkGenerationJob(), MockSdkGenerationQueue, MockSdkGenerationQueueMockRecorder
 
 ### Community 74 - "shared/package.json"
 Cohesion: 0.10
@@ -845,12 +839,12 @@ Cohesion: 0.07
 Nodes (26): Anti-Patterns, Authenticate Codex Inside the Networked Session, Common Commands, Common Patterns, Compose Security, Container Security, Custom Networks, Debugging (+18 more)
 
 ### Community 76 - "landing/app/page.tsx"
-Cohesion: 0.12
+Cohesion: 0.13
 Nodes (18): LandingPage(), ActivityRow(), ActivityRowProps, BottomCTA(), FeatureItem, FEATURES, FeaturesSection(), Footer() (+10 more)
 
 ### Community 77 - "landing/package.json"
-Cohesion: 0.05
-Nodes (52): dependencies, clsx@^2.1.1, framer-motion@^14.14.0, @hasir/ui@workspace:*, lucide-react@^1.76.0, next@16.4.6, react@19.3.1, react-dom@19.3.1 (+44 more)
+Cohesion: 0.12
+Nodes (23): dependencies, clsx@^2.1.1, framer-motion@^14.14.0, @hasir/ui@workspace:*, lucide-react@^1.76.0, react@19.3.1, react-dom@19.3.1, react-server-dom-webpack@^19.3.1 (+15 more)
 
 ### Community 78 - "ui/components.json"
 Cohesion: 0.09
@@ -858,7 +852,7 @@ Nodes (21): aliases, components, hooks, lib, ui, utils, iconLibrary, menuAccent 
 
 ### Community 79 - "file-tree.tsx"
 Cohesion: 0.13
-Nodes (22): @radix-ui/react-accordion@^1.3.1, CollapseButton, defaultTreeComparator(), Direction, File, Folder, FolderProps, getTreeComparator() (+14 more)
+Nodes (24): @radix-ui/react-accordion@^1.3.1, CollapseButton, Direction, File, Folder, FolderProps, renderTreeElements(), Tree (+16 more)
 
 ### Community 80 - "For Component Authors"
 Cohesion: 0.10
@@ -871,6 +865,10 @@ Nodes (19): Argument matchers, Call modifiers, Defining a mock, Different return
 ### Community 82 - "Go Testing Best Practices"
 Cohesion: 0.10
 Nodes (21): Benchmarks, Best Practices Summary, Code Coverage, Common Pitfall: Assert Scope Leaking into Subtests, Cross-References, Enforce with Linters, Examples as Documentation, Fuzzing (+13 more)
+
+### Community 83 - "Decisions"
+Cohesion: 0.12
+Nodes (11): redactStructToAttrs(), redactStructToMap(), Context, Decision 1: `age` for local; KMS for prod, Decision 2: Reflection-based redaction, Decision 3: SOPS decrypt in koanf load path, Decision 4: Helm — mount age key as Kubernetes Secret, Decisions (+3 more)
 
 ### Community 84 - "Hasir Stack Helm Chart"
 Cohesion: 0.10
@@ -901,8 +899,8 @@ Cohesion: 0.10
 Nodes (19): aliases, components, hooks, lib, ui, utils, iconLibrary, registries (+11 more)
 
 ### Community 92 - "Hasir Platform Monorepo Architecture Documentation"
-Cohesion: 0.12
-Nodes (16): 23. CI/CD Architecture, 25. Rollback Strategy, 26. Future Scalability Considerations, 27. Risks and Mitigations, 2. Assumptions & Environment Context, 3. High-Level Architecture, 4. Final Repository Tree, Application Rollback (+8 more)
+Cohesion: 0.10
+Nodes (20): 23. CI/CD Architecture, 24. Release Strategy, 25. Rollback Strategy, 26. Future Scalability Considerations, 27. Risks and Mitigations, 2. Assumptions & Environment Context, 3. High-Level Architecture, 4. Final Repository Tree (+12 more)
 
 ### Community 93 - "organization_pb.d.ts"
 Cohesion: 0.10
@@ -944,9 +942,9 @@ Nodes (21): CR_TOKEN, runs-on, steps, jobs, helm-release, name, on, push (+13 mo
 Cohesion: 0.10
 Nodes (19): actions, actions/cache, actions/checkout, actions/setup-go, actions/setup-python, azure/setup-helm, bufbuild/buf-action, changesets/action (+11 more)
 
-### Community 104 - ".GenerateSDK"
-Cohesion: 0.24
-Nodes (3): NewMockSdkGenerator(), MockSdkGenerator, MockSdkGeneratorMockRecorder
+### Community 104 - "verifyPoolConnection"
+Cohesion: 0.17
+Nodes (7): TestVerifyPoolConnection(), verifyPoolConnection(), fakePoolConn, fakePoolVerifier, pgxPoolAdapter, poolConn, poolVerifier
 
 ### Community 105 - "organization-users-content.test.tsx"
 Cohesion: 0.33
@@ -955,6 +953,10 @@ Nodes (3): geistMono, geistSans, metadata
 ### Community 106 - "Design Systems from DESIGN.md"
 Cohesion: 0.10
 Nodes (20): Contents, Coverage check, Dark mode, Design Systems from DESIGN.md, Elevation, Focus, Fonts, Inputs to Confirm (+12 more)
+
+### Community 107 - "MockCommandRunner"
+Cohesion: 0.18
+Nodes (3): DefaultCommandRunner, MockCommandRunner, MockRunCall
 
 ### Community 108 - "compilerOptions"
 Cohesion: 0.11
@@ -976,9 +978,9 @@ Nodes (17): Contents, Different Generated Output, go_package Still Required, Imp
 Cohesion: 0.12
 Nodes (17): Breaking Changes Checklist, Breaking (Requires New Version), Common Buf Commands, Enum Template, Field Mask Template, Field Numbering, Message Template, Naming Conventions (+9 more)
 
-### Community 113 - "newTestService"
-Cohesion: 0.11
-Nodes (9): MemberRole, newTestService(), TestCreateOrganization(), TestDeleteMember(), TestDeleteOrganization(), TestInviteUser(), TestRespondToInvitation(), TestUpdateMemberRole() (+1 more)
+### Community 113 - "email_test.go"
+Cohesion: 0.14
+Nodes (14): SmtpConfig, NewService(), TestForgotPasswordTemplateData(), TestForgotPasswordTemplateRendering(), TestInviteTemplateData(), TestInviteUrlGeneration(), TestNewService(), TestSendEmail_ContentType() (+6 more)
 
 ### Community 114 - "scripts"
 Cohesion: 0.12
@@ -996,6 +998,10 @@ Nodes (9): ADR-0001, Logger, logger, LogLevel, ADR-0001, initOtel(), OtelConfig,
 Cohesion: 0.12
 Nodes (17): Architecture, Backup & Restore, Commands, Connecting via Git SSH, Deployment, Development, Docker Compose (single server), Documentation (+9 more)
 
+### Community 118 - "ParseBearerHeader"
+Cohesion: 0.67
+Nodes (3): ParseBearerHeader(), ParseToken(), JwtClaims
+
 ### Community 119 - "Caching and Artifacts"
 Cohesion: 0.12
 Nodes (15): Artifact vs Cache, Artifacts, Build Output Caching, Cache Key Design, Cache Limits and Behavior, Caching and Artifacts, Docker Layer Caching, Download Artifact (Same Workflow) (+7 more)
@@ -1009,8 +1015,8 @@ Cohesion: 0.12
 Nodes (16): 1. Match Project Style, 2. Write Proto Code, 3. Verify Changes, Add a new field, Add protovalidate constraints, Code Generation Templates, Common Tasks, Core Workflow (+8 more)
 
 ### Community 122 - "OrganizationRepository"
-Cohesion: 0.05
-Nodes (10): InviteStatus, OrganizationDTO, OrganizationInviteDTO, SearchItemDTO, querySingleRow(), MockRepository, MockRepositoryMockRecorder, OrganizationRepository (+2 more)
+Cohesion: 0.04
+Nodes (12): InviteStatus, OrganizationDTO, OrganizationInviteDTO, OrganizationMemberDTO, SearchItemDTO, querySingleRow(), memberRow, MockRepository (+4 more)
 
 ### Community 123 - "5. Re-render Optimization"
 Cohesion: 0.12
@@ -1018,7 +1024,7 @@ Nodes (16): 5.10 Subscribe to Derived State, 5.11 Use Functional setState Update
 
 ### Community 124 - "steps"
 Cohesion: 0.10
-Nodes (19): name, runs-on, steps, VERCEL_ORG_ID, VERCEL_PROJECT_ID, jobs, deploy, name (+11 more)
+Nodes (19): name, runs-on, steps, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN, jobs, deploy, name (+11 more)
 
 ### Community 125 - "devDependencies"
 Cohesion: 0.12
@@ -1056,9 +1062,9 @@ Nodes (19): jobs, lint-test, runs-on, steps, name, on, pull_request, push (+11 m
 Cohesion: 0.13
 Nodes (14): CreateApiKeyRequest, CreateApiKeyResponse, CreateSshKeyRequest, ForgotPasswordRequest, Key, KeyResponse, LoginRequest, RegisterRequest (+6 more)
 
-### Community 134 - "carousel.tsx"
-Cohesion: 0.19
-Nodes (13): Carousel(), CarouselApi, CarouselContent(), CarouselContext, CarouselContextProps, CarouselItem(), CarouselNext(), CarouselOptions (+5 more)
+### Community 134 - "service"
+Cohesion: 0.10
+Nodes (19): Affected Apps & Packages, Implementation Branch, Non-goals, Proposal: Repo-Wide Structural Refactoring, Schema, Protobuf & Secrets Impact, Summary, Requirement: Single CommandRunner Boundary & Shared Database Pool, Scenario: Registry service delegates external commands to CommandRunner (+11 more)
 
 ### Community 135 - "styling.mdx"
 Cohesion: 0.14
@@ -1076,13 +1082,13 @@ Nodes (14): 1. Built-in variants, 2. Tailwind classes via `className`, 3. Add a 
 Cohesion: 0.09
 Nodes (20): Advanced v4 Patterns, Best Practices, Container Queries, Custom Utilities with `@utility`, Do's, Don'ts, Namespace Overrides, Pattern 5: Native CSS Animations (v4) (+12 more)
 
-### Community 139 - "drawer.tsx"
-Cohesion: 0.17
-Nodes (11): DrawerContent(), DrawerContext, DrawerContextProps, DrawerDescription(), DrawerFooter(), DrawerHeader(), DrawerOverlay(), DrawerPortal() (+3 more)
+### Community 139 - "ADDED Requirements"
+Cohesion: 0.25
+Nodes (7): ADDED Requirements, Requirement: Behavior Preservation Across Refactored Boundaries, Requirement: Single Connect Transport & Deduplicated UI Helpers, Scenario: Single CSS theme source of truth, Scenario: Unified Connect transport in Dashboard, Scenario: Unit, integration, and UI parity after structural split, Spec: Repo-Wide Structural Refactoring
 
 ### Community 140 - "MockIdempotencyRepository"
-Cohesion: 0.14
-Nodes (8): IdempotencyRepository, NewMockIdempotencyRepository(), NewIdempotencyInterceptor(), TestIdempotencyInterceptor(), IdempotencyRepository, idempotencyInterceptor, MockIdempotencyRepository, MockIdempotencyRepositoryMockRecorder
+Cohesion: 0.13
+Nodes (7): IdempotencyRepository, NewMockIdempotencyRepository(), NewIdempotencyInterceptor(), TestIdempotencyInterceptor(), idempotencyInterceptor, MockIdempotencyRepository, MockIdempotencyRepositoryMockRecorder
 
 ### Community 141 - "with"
 Cohesion: 0.11
@@ -1124,29 +1130,33 @@ Nodes (12): Artifact liveness, Check the rig before writing the baseline, Drift,
 Cohesion: 0.15
 Nodes (12): Caching Strategies, Data Cache, nextjs-app-router-patterns — detailed patterns and worked examples, Pattern 1: Server Components with Data Fetching, Pattern 2: Client Components with 'use client', Pattern 3: Server Actions, Pattern 4: Parallel Routes, Pattern 5: Intercepting Routes (Modal Pattern) (+4 more)
 
-### Community 152 - "Icons"
-Cohesion: 0.40
+### Community 151 - "shadcn/SKILL.md"
+Cohesion: 0.20
 Nodes (4): Icons, Icons in Button use data-icon attribute, No sizing classes on icons inside components, Pass icons as component objects, not string keys
+
+### Community 152 - "devDependencies"
+Cohesion: 0.09
+Nodes (23): devDependencies, eslint@^10.15.0, eslint-config-next@16.4.6, eslint-plugin-perfectionist@^5.14.0, tailwindcss@^4.3.5, @types/bun@^1.4.4, @types/node@^24.19.2, @types/react@^19.3.0 (+15 more)
 
 ### Community 153 - "buf.gen.go-connect.yaml"
 Cohesion: 0.13
 Nodes (14): clean, file_option, module, managed, disable, enabled, override, file_option (+6 more)
 
 ### Community 155 - "bun-setup.ts"
-Cohesion: 0.20
-Nodes (8): @testing-library/jest-dom@^8.0.0, { cleanup }, React, bun:test, AsymmetricMatchers, Matchers, Mock, @testing-library/jest-dom
+Cohesion: 0.29
+Nodes (6): @testing-library/jest-dom@^8.0.0, bun:test, AsymmetricMatchers, Matchers, Mock, @testing-library/jest-dom
 
 ### Community 156 - "config.json"
 Cohesion: 0.15
 Nodes (12): access, baseBranch, changelog, commit, fixed, ignore, linked, privatePackages (+4 more)
 
 ### Community 157 - "Hasir Docker Compose Stack"
-Cohesion: 0.15
-Nodes (12): 1. Clone the repository, 2. Run the Setup Script, 3. Edit the Environment variables, 4. Deploy the Stack, Architecture Diagram, Backup and Restore, Creating a Backup, Features (+4 more)
+Cohesion: 0.12
+Nodes (17): 1. Clone the repository, 2. Run the Setup Script, 3. Edit the Environment variables, 4. Deploy the Stack, Architecture Diagram, Backup and Restore, Checking container logs, Checking health status of services (+9 more)
 
-### Community 158 - "Design System: HASIR"
-Cohesion: 0.10
-Nodes (19): 1. Visual Theme & Atmosphere, 2. Color Palette & Roles, 5. Layout Principles, 6. Elevation & Depth, 7. Shapes, 8. Do's and Don'ts, Chart Tokens, Configuration (+11 more)
+### Community 158 - "UI Primitives (`@hasir/ui/components/`)"
+Cohesion: 0.05
+Nodes (42): 1. Visual Theme & Atmosphere, 2. Color Palette & Roles, 3. Typography Rules, 4. Component Stylings, 5. Layout Principles, 6. Elevation & Depth, 7. Shapes, 8. Do's and Don'ts (+34 more)
 
 ### Community 159 - "0005. Path-Scoped Per-App SemVer Tags"
 Cohesion: 0.15
@@ -1181,8 +1191,8 @@ Cohesion: 0.17
 Nodes (11): Calling a Reusable Workflow, Calling with Matrix, Composite Actions, Composite vs Reusable Workflow, Creating a Composite Action, Cross-Repository Reusable Workflows, Defining a Reusable Workflow, Matrix and Reusable Workflows (+3 more)
 
 ### Community 167 - "Sync Primitives Deep Dive"
-Cohesion: 0.14
-Nodes (14): Bounded Concurrency with SetLimit, Embedding Convention, Go <1.25 fallback, Go 1.25+: `wg.Go`, golang.org/x/sync/errgroup, golang.org/x/sync/singleflight, sync/atomic, sync.Map (+6 more)
+Cohesion: 0.17
+Nodes (12): Bounded Concurrency with SetLimit, Embedding Convention, golang.org/x/sync/errgroup, golang.org/x/sync/singleflight, sync/atomic, sync.Map, sync.Mutex, sync.Once (+4 more)
 
 ### Community 168 - "Go Concurrency Best Practices"
 Cohesion: 0.17
@@ -1219,6 +1229,10 @@ Nodes (12): 6.10 Use React DOM Resource Hints, 6.11 Use useTransition Over Manua
 ### Community 176 - "scripts"
 Cohesion: 0.17
 Nodes (11): description, name, private, scripts, build, clean, dev, lint (+3 more)
+
+### Community 177 - "API SERVICE KNOWLEDGE BASE"
+Cohesion: 0.13
+Nodes (12): ANTI-PATTERNS, API SERVICE KNOWLEDGE BASE, CONVENTIONS, ENTRY FLOW (main.go), NOTES, OVERVIEW, STRUCTURE, WHERE TO LOOK (+4 more)
 
 ### Community 178 - "Release Strategy"
 Cohesion: 0.17
@@ -1269,8 +1283,8 @@ Cohesion: 0.15
 Nodes (12): apiVersion, appVersion, dependencies, condition, name, repository, version, description (+4 more)
 
 ### Community 190 - "hooks"
-Cohesion: 0.13
-Nodes (14): always_run, entry, fail_fast, files, id, language, name, pass_filenames (+6 more)
+Cohesion: 0.15
+Nodes (12): entry, fail_fast, files, id, language, name, pass_filenames, types (+4 more)
 
 ### Community 191 - "mcp.json"
 Cohesion: 0.18
@@ -1284,9 +1298,13 @@ Nodes (12): Basic Structure with Remote Plugins, buf.gen.yaml Configuration, Cle
 Cohesion: 0.18
 Nodes (10): 3.10 Use after() for Non-Blocking Operations, 3.1 Authenticate Server Actions Like API Routes, 3.2 Avoid Duplicate Serialization in RSC Props, 3.3 Avoid Shared Module State for Request Data, 3.4 Cross-Request LRU Caching, 3.5 Hoist Static I/O to Module Level, 3.6 Minimize Serialization at RSC Boundaries, 3.7 Parallel Data Fetching with Component Composition (+2 more)
 
+### Community 194 - "GetFileTreeResponse"
+Cohesion: 0.20
+Nodes (3): TestHandler_GetFileTree(), GetFileTreeRequest, GetFileTreeResponse
+
 ### Community 195 - "auth-interceptor.ts"
-Cohesion: 0.27
-Nodes (9): authInterceptor(), destroySession(), isPublicMethod(), isPublicPage(), publicMethods, redirectToLogin(), mockLocation, mockReplaceState (+1 more)
+Cohesion: 0.19
+Nodes (13): onSubmit(), authInterceptor(), destroySession(), isPublicMethod(), isPublicPage(), publicMethods, redirectToLogin(), mockLocation (+5 more)
 
 ### Community 196 - ".golangci.yaml"
 Cohesion: 0.20
@@ -1352,21 +1370,21 @@ Nodes (10): Contents, Cross-Reference Consistency, Documentation Quality, Enum V
 Cohesion: 0.20
 Nodes (10): Breaking Change Categories, Breaking Change Errors, ENUM_VALUE_NO_DELETE, FIELD_NO_DELETE, FIELD_SAME_JSON_NAME, FIELD_SAME_NUMBER, FIELD_SAME_ONEOF, FIELD_SAME_TYPE (+2 more)
 
-### Community 212 - "UI Primitives (`@hasir/ui/components/`)"
-Cohesion: 0.17
-Nodes (12): Alert, AlertDialog, Button, Card, Dialog, Empty, Field System, Input (+4 more)
+### Community 212 - "Import and Dependency Errors"
+Cohesion: 0.33
+Nodes (6): Buf: Dependency Not Found, Buf: Version Conflict, Circular Import, Import and Dependency Errors, Protoc: googleapis Import Not Found, Protoc: Import Not Found
 
-### Community 213 - "@testing-library/react"
-Cohesion: 0.02
-Nodes (91): mockMutateAsync, mockParams, mockRepositoryData, renderWithContext(), RepositoryContextWrapper(), mockedUseSession, mockOrganizations, mockOrganizationsMultiPage (+83 more)
+### Community 213 - "ref_lucide_react"
+Cohesion: 0.04
+Nodes (82): CloneUrls(), CloneUrlsProps, mockedUseSession, mockOrganizations, mockOrganizationsMultiPage, mockOrganizationsWithPagination, mockRepositories, mockRepositoriesWithPagination (+74 more)
 
 ### Community 214 - "plugins"
 Cohesion: 0.18
 Nodes (10): managed, enabled, override, file_option, value, plugins, opt, out (+2 more)
 
-### Community 215 - "SdkGenerationJobQueue"
-Cohesion: 0.32
-Nodes (3): NewMockSdkTriggerProcessor(), MockSdkTriggerProcessor, MockSdkTriggerProcessorMockRecorder
+### Community 215 - "color-pair.tsx"
+Cohesion: 0.60
+Nodes (5): ColorPair(), contrast(), luminance(), toHex(), toRgb()
 
 ### Community 216 - "React Best Practices"
 Cohesion: 0.20
@@ -1389,8 +1407,8 @@ Cohesion: 0.17
 Nodes (11): components, MarkdownRenderer(), MarkdownRendererProps, react-markdown@^10.1.0, rehype-raw@^7.0.0, rehype-sanitize@^6.0.0, remark-gfm@^4.0.1, react-markdown (+3 more)
 
 ### Community 221 - "System Context: Hasir Platform"
-Cohesion: 0.25
-Nodes (8): 1. System Overview, 2. Tech Stack, 3. Directory Structure, 6. Dashboard Client Architecture, 7. Key Workflows & CLI Commands, 8. Release Channels (three independent), 9. Coding & Contribution Rules, System Context: Hasir Platform
+Cohesion: 0.18
+Nodes (10): AuthInterceptor, 1. System Overview, 2. Tech Stack, 3. Directory Structure, 5. ConnectRPC Interceptor Chain, 6. Dashboard Client Architecture, 7. Key Workflows & CLI Commands, 8. Release Channels (three independent) (+2 more)
 
 ### Community 222 - "Decisions"
 Cohesion: 0.20
@@ -1436,6 +1454,10 @@ Nodes (9): Address Schemes, Build and Verify, GitHub Registries, Include, Item D
 Cohesion: 0.22
 Nodes (8): 1. Design Token Hierarchy, 2. Component Architecture, Core Concepts, Detailed patterns and worked examples, Key v4 Changes, Quick Start, Tailwind Design System (v4), When to Use This Skill
 
+### Community 233 - "[id]/settings/page.tsx"
+Cohesion: 0.53
+Nodes (3): metadata, OrganizationSettingsPage(), OrganizationSettingsContent()
+
 ### Community 234 - "services"
 Cohesion: 0.20
 Nodes (9): networks, backend, frontend, services, volumes, pgdata, repos, sdk (+1 more)
@@ -1444,13 +1466,13 @@ Nodes (9): networks, backend, frontend, services, volumes, pgdata, repos, sdk (+
 Cohesion: 0.20
 Nodes (10): context, dockerfile, build, container_name, depends_on, networks, ports, restart (+2 more)
 
-### Community 236 - "adapter_mock.go"
-Cohesion: 0.29
-Nodes (8): NewMockOrganizationRepository(), NewOrgRepositoryAdapter(), TestNewOrgRepositoryAdapter(), TestOrgRepositoryAdapter_GetMemberRole(), MockOrganizationRepository, MockOrganizationRepositoryMockRecorder, OrganizationRepository, OrganizationRepositoryAdapter
+### Community 236 - "registry/service_test.go"
+Cohesion: 0.18
+Nodes (8): TestService_FindProtoFiles(), NewMockOrganizationRepository(), NewOrgRepositoryAdapter(), TestNewOrgRepositoryAdapter(), TestOrgRepositoryAdapter_GetMemberRole(), FindProtoFiles(), OrganizationRepository, OrganizationRepositoryAdapter
 
 ### Community 237 - "Role"
-Cohesion: 0.16
-Nodes (9): Role, AUTHOR, OWNER, READER, UNSPECIFIED, Visibility, PRIVATE, PUBLIC (+1 more)
+Cohesion: 0.33
+Nodes (5): Role, AUTHOR, OWNER, READER, UNSPECIFIED
 
 ### Community 238 - "assets/buf.yaml"
 Cohesion: 0.22
@@ -1461,8 +1483,8 @@ Cohesion: 0.22
 Nodes (8): ANTI-PATTERNS, CONVENTIONS, DASHBOARD KNOWLEDGE BASE, ENTRY / DATA FLOW, NOTES, OVERVIEW, STRUCTURE, WHERE TO LOOK
 
 ### Community 240 - "Critical Rules"
-Cohesion: 0.15
-Nodes (10): Streaming, anchoring, and jump-to-latest are built in, Chat & Messaging → [chat.md](./rules/chat.md), CLI, Component Structure → [composition.md](./rules/composition.md), Critical Rules, Forms & Inputs → [forms.md](./rules/forms.md), Icons → [icons.md](./rules/icons.md), Styling & Tailwind → [styling.md](./rules/styling.md) (+2 more)
+Cohesion: 0.12
+Nodes (12): Streaming, anchoring, and jump-to-latest are built in, Chat & Messaging → [chat.md](./rules/chat.md), CLI, Component Structure → [composition.md](./rules/composition.md), Critical Rules, Forms & Inputs → [forms.md](./rules/forms.md), Icons → [icons.md](./rules/icons.md), Styling & Tailwind → [styling.md](./rules/styling.md) (+4 more)
 
 ### Community 242 - "scripts"
 Cohesion: 0.22
@@ -1520,9 +1542,9 @@ Nodes (8): Integration Tests, Mock for service-layer tests, sqlmock for Query-Le
 Cohesion: 0.25
 Nodes (7): Best Practices, Detailed patterns and worked examples, Helm Chart Scaffolding, Purpose, Related Skills, Troubleshooting, When to Use This Skill
 
-### Community 256 - "Common Patterns"
+### Community 256 - "SdkGenerationJobQueue"
 Cohesion: 0.25
-Nodes (8): Common Patterns, Create and Update Request Patterns, Embedding vs Reference, Pagination and List Requests, Partial Updates with Field Masks, Reference Messages (Ref Pattern), Resource Metadata, Soft Delete
+Nodes (5): SdkGenerator, SdkTriggerProcessor, HandleJobRetryOrFail(), TestHandleJobRetryOrFail(), SdkGenerationJobQueue
 
 ### Community 257 - "Base vs Radix"
 Cohesion: 0.22
@@ -1532,9 +1554,13 @@ Nodes (9): Accordion, Base vs Radix, Button / trigger as non-button element (bas
 Cohesion: 0.25
 Nodes (9): persistence, accessMode, enabled, size, storageClass, persistence, repos, sdk (+1 more)
 
-### Community 260 - "getCsrfToken"
-Cohesion: 0.52
-Nodes (4): onSubmit(), getCsrfToken(), csrfInterceptor(), mockedGetCsrfToken
+### Community 259 - "Visibility"
+Cohesion: 0.40
+Nodes (4): Visibility, PRIVATE, PUBLIC, UNSPECIFIED
+
+### Community 260 - "sync.WaitGroup"
+Cohesion: 0.67
+Nodes (3): Go <1.25 fallback, Go 1.25+: `wg.Go`, sync.WaitGroup
 
 ### Community 261 - "proto/buf.yaml"
 Cohesion: 0.22
@@ -1596,9 +1622,9 @@ Nodes (7): ANTI-PATTERNS, CONVENTIONS, NOTES, OVERVIEW, PROTO PACKAGE KNOWLEDGE 
 Cohesion: 0.25
 Nodes (7): compilerOptions, paths, exclude, extends, include, @hasir/ui/*, @hasir/typescript-config/react-library.json
 
-### Community 276 - "go.uber.org/mock/gomock.Call"
-Cohesion: 0.11
-Nodes (4): RefreshTokensDTO, MockService, MockServiceMockRecorder, MockServiceMockRecorder
+### Community 276 - "MockSdkTriggerProcessor"
+Cohesion: 0.40
+Nodes (3): NewMockSdkTriggerProcessor(), MockSdkTriggerProcessor, MockSdkTriggerProcessorMockRecorder
 
 ### Community 277 - "2. API and Composition Vocabulary"
 Cohesion: 0.29
@@ -1637,8 +1663,8 @@ Cohesion: 0.29
 Nodes (6): 1. Global Tokens & Typography, 2. Core UI Components, 3. Settings Page Layouts, 4. Profile & Form Components, 5. Integration Verification, Tasks: Design System Migration — Terminal Brutalism
 
 ### Community 286 - "Tasks: SOPS Encrypted Secrets"
-Cohesion: 0.33
-Nodes (5): 2. SOPS Decryption on Config Load, 3. Age Key Setup and Config Encryption, 4. Helm Chart — Age Key Mount, 5. Integration Verification, Tasks: SOPS Encrypted Secrets
+Cohesion: 0.25
+Nodes (7): TestConfigRedaction(), 1. Go Config — Redaction Struct Tags, 2. SOPS Decryption on Config Load, 3. Age Key Setup and Config Encryption, 4. Helm Chart — Age Key Mount, 5. Integration Verification, Tasks: SOPS Encrypted Secrets
 
 ### Community 287 - "typescript-config/package.json"
 Cohesion: 0.29
@@ -1672,9 +1698,9 @@ Nodes (6): Mock Organization, Mocking and Test Fixtures, Mocks with testify/mock
 Cohesion: 0.33
 Nodes (5): Baseline scaffold: do not ship, Initial load (hard navigation), Self-validating variant (recommended for routes with deferred content), Soft navigation (client-side navigation), Test template: the instant() guard
 
-### Community 295 - "Schema Evolution"
-Cohesion: 0.33
-Nodes (6): Adding Fields, Deprecating and Removing Fields, Replacing Fields with Different Types, Schema Evolution, Testing Schema Evolution, Versioning Strategy
+### Community 295 - "carousel.tsx"
+Cohesion: 0.19
+Nodes (13): Carousel(), CarouselApi, CarouselContent(), CarouselContext, CarouselContextProps, CarouselItem(), CarouselNext(), CarouselOptions (+5 more)
 
 ### Community 296 - "Field and Schema Evolution"
 Cohesion: 0.33
@@ -1685,12 +1711,12 @@ Cohesion: 0.18
 Nodes (10): Acknowledgments, Contributing, Creating a New Rule, File Naming Convention, Getting Started, Impact Levels, React Best Practices, Rule File Structure (+2 more)
 
 ### Community 298 - "NewMockRepository"
-Cohesion: 0.14
-Nodes (42): NewHandler(), testAuthInterceptor(), testAuthInterceptorWithEmail(), testAuthInterceptorWithoutEmail(), TestHandler_CreateOrganization(), TestHandler_DeleteMember(), TestHandler_DeleteOrganization(), TestHandler_GetMembers() (+34 more)
+Cohesion: 0.10
+Nodes (44): NewHandler(), testAuthInterceptor(), testAuthInterceptorWithEmail(), testAuthInterceptorWithoutEmail(), TestHandler_CreateOrganization(), TestHandler_DeleteMember(), TestHandler_DeleteOrganization(), TestHandler_GetMembers() (+36 more)
 
-### Community 299 - "login/route.ts"
-Cohesion: 0.20
-Nodes (9): POST(), LoginInput, mockDecodeJwt, mockLogin, mockSaveSession, SessionInput, transport, jose@^6.2.18 (+1 more)
+### Community 299 - "session/route.ts"
+Cohesion: 0.16
+Nodes (11): POST(), LoginInput, mockDecodeJwt, mockLogin, mockSaveSession, SessionInput, transport, idempotencyInterceptor() (+3 more)
 
 ### Community 300 - "managed"
 Cohesion: 0.25
@@ -1704,9 +1730,9 @@ Nodes (5): addSecurityHeaders(), config, csrfMethods, proxy(), publicPaths
 Cohesion: 0.33
 Nodes (10): Pagination(), PaginationContent(), PaginationEllipsis(), PaginationItem(), PaginationLink(), PaginationLinkProps, PaginationNext(), PaginationPrevious() (+2 more)
 
-### Community 304 - "landing/app/layout.tsx"
-Cohesion: 0.12
-Nodes (7): NewMockEmailService(), SmtpConfig, MockService, MockServiceMockRecorder, smtpService, MockEmailService, MockEmailServiceMockRecorder
+### Community 304 - "go.uber.org/mock/gomock.Controller"
+Cohesion: 0.08
+Nodes (20): MemberRole, newTestService(), TestCreateOrganization(), TestDeleteMember(), TestDeleteOrganization(), TestInviteUser(), TestRespondToInvitation(), TestUpdateMemberRole() (+12 more)
 
 ### Community 305 - "Tasks: Changesets Integration"
 Cohesion: 0.33
@@ -1719,6 +1745,10 @@ Nodes (5): 1. Install and Configure Radix Themes, 2. Migrate Dashboard Component
 ### Community 307 - "overrides"
 Cohesion: 0.25
 Nodes (8): overrides, fast-uri, @hono/node-server, minimatch, next, postcss, sharp, zod
+
+### Community 308 - ".Read"
+Cohesion: 0.17
+Nodes (7): TestEnvConfig_Read(), TestJsonConfig_Read(), TestLoadSops(), TestSdkGenerationConfig(), EnvConfig, JsonConfig, rawBytesProvider
 
 ### Community 309 - "Security Policy"
 Cohesion: 0.33
@@ -1820,6 +1850,10 @@ Nodes (3): 1.3.0, hasir-dashboard, Minor Changes
 Cohesion: 0.50
 Nodes (3): 1.1.0, hasir-landing, Minor Changes
 
+### Community 338 - "vinext"
+Cohesion: 0.20
+Nodes (6): vinext@^1.4.6, @cloudflare/vite-plugin@^1.70.1, vite@^8.3.8, @cloudflare/vite-plugin, vinext, vite
+
 ### Community 339 - "hasir/package.json"
 Cohesion: 0.50
 Nodes (3): name, private, version
@@ -1828,13 +1862,9 @@ Nodes (3): name, private, version
 Cohesion: 0.25
 Nodes (8): Color roles, Elevation, Foundations, Motion and icons, Palette, Radius, Spacing, Typography
 
-### Community 341 - "testRequest"
-Cohesion: 0.50
-Nodes (4): 24. Release Strategy, Branching Model, Release Process, Versioning Model
-
-### Community 342 - "Tech Stack"
-Cohesion: 0.33
-Nodes (6): Core, Data & Communication, Development Tools, Forms & Validation, Tech Stack, UI & Styling
+### Community 342 - ".GenerateSDK"
+Cohesion: 0.24
+Nodes (3): NewMockSdkGenerator(), MockSdkGenerator, MockSdkGeneratorMockRecorder
 
 ### Community 343 - "Tasks: CodeQL Code Scanning"
 Cohesion: 0.50
@@ -1856,10 +1886,6 @@ Nodes (3): Currently: `log`, `otel`. The Go side has equivalents in `apps/api/pk
 Cohesion: 0.50
 Nodes (4): scripts, format, lint, typecheck
 
-### Community 349 - "4. Component Stylings"
-Cohesion: 0.33
-Nodes (6): 4. Component Stylings, Animation & Motion, CSS Transitions, Feature Components, Framer Motion, Tailwind Animations (tw-animate-css)
-
 ### Community 350 - "Error Handling"
 Cohesion: 0.67
 Nodes (3): Always close rows, Common database error patterns, Error Handling
@@ -1871,6 +1897,10 @@ Nodes (3): Dynamic column names, Dynamic IN clauses, Parameterized Queries
 ### Community 352 - "Test Structure and Organization"
 Cohesion: 0.67
 Nodes (3): File Conventions, Naming Conventions, Test Structure and Organization
+
+### Community 354 - "scripts"
+Cohesion: 0.22
+Nodes (9): scripts, build, deploy, dev, lint, lint:fix, start, typecheck (+1 more)
 
 ### Community 355 - "certbot"
 Cohesion: 0.33
@@ -1892,15 +1922,19 @@ Nodes (3): repository, type, url
 Cohesion: 0.33
 Nodes (6): database, password, username, postgresql, auth, enabled
 
-### Community 447 - "Getting Started"
-Cohesion: 0.40
-Nodes (5): Environment Variables, Getting Started, Installation, Prerequisites, Running the Application
+### Community 440 - "csrf/interceptor.go"
+Cohesion: 0.50
+Nodes (3): NewCsrfInterceptor(), TestCsrfInterceptor_Interceptor(), csrfInterceptor
 
-### Community 448 - "3. Typography Rules"
-Cohesion: 0.40
-Nodes (5): 3. Typography Rules, Font Stack, Observed Type Scale (from component usage), OpenType Features, Text Rendering
+### Community 446 - "getLatestCommitHash"
+Cohesion: 0.67
+Nodes (4): getLatestCommitHash(), lockRepoRefUpdate(), resolveHeadCommit(), TestGetLatestCommitHash()
 
-### Community 453 - "engines"
+### Community 448 - "@tailwindcss/postcss@^4.3.5"
+Cohesion: 0.33
+Nodes (4): @tailwindcss/postcss@^4.3.5, @vitejs/plugin-react@^6.3.0, @tailwindcss/postcss, @vitejs/plugin-react
+
+### Community 451 - "engines"
 Cohesion: 0.67
 Nodes (3): engines, bun, node
 
@@ -1912,13 +1946,13 @@ Nodes (6): dashboard, affinity, nodeSelector, replicaCount, resources, toleratio
 Cohesion: 0.33
 Nodes (6): secrets, jwtSecret, smtp, sopsAgeKey, password, username
 
+### Community 499 - "Role"
+Cohesion: 0.06
+Nodes (4): buildFileTreeNodes(), FileTreeNode, NodeType, SDK
+
 ### Community 500 - "plugins"
 Cohesion: 0.40
 Nodes (4): plugins, out, remote, version
-
-### Community 502 - "cmdk"
-Cohesion: 0.40
-Nodes (5): Checking container logs, Checking health status of services, Connecting to Hasir Git via SSH, Nginx fails to start due to missing certificates, Troubleshooting FAQ
 
 ### Community 503 - "image"
 Cohesion: 0.60
@@ -1949,24 +1983,24 @@ Cohesion: 0.50
 Nodes (4): Breaking Change Detection, Code Quality, Linting Rules, Pre-commit Hooks
 
 ## Knowledge Gaps
-- **86 isolated node(s):** `SDK_CSHARP_CONNECTRPC`, `SDK_CSHARP_GRPC`, `SDK_CSHARP_PROTOBUF`, `SDK_GO_CONNECTRPC`, `SDK_GO_GRPC` (+81 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 3639 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **167 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **86 isolated node(s):** `./.agents/bin/ts-lsp`, `./.agents/bin/go-lsp`, `uvx`, `postgres-mcp`, `DATABASE_URI` (+81 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 3665 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **159 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `cn()` connect `cn` to `alert-dialog.tsx`, `Button`, `carousel.tsx`, `repository-sdk-preferences-content.tsx`, `Design Systems from DESIGN.md`, `drawer.tsx`, `profile-page-content.tsx`, `ref_lucide_react`, `pagination.tsx`, `file-tree.tsx`, `Critical Rules`, `ref_react`, `chart.tsx`, `toast.tsx`, `Styling & Customization`, `Design System: HASIR`?**
-  _High betweenness centrality (0.026) - this node is a cross-community bridge._
+- **Why does `Phase 1: Go API (`apps/api`)` connect `main` to `net/http.ResponseWriter`, `NewMockCommandRunner`, `service`?**
+  _High betweenness centrality (0.163) - this node is a cross-community bridge._
 - **Are the 5 inferred relationships involving `cn()` (e.g. with `Type scale` and `Use cn() for conditional classes`) actually correct?**
   _`cn()` has 5 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `SDK_CSHARP_CONNECTRPC`, `SDK_CSHARP_GRPC`, `SDK_CSHARP_PROTOBUF` to the rest of the system?**
+- **What connects `./.agents/bin/ts-lsp`, `./.agents/bin/go-lsp`, `uvx` to the rest of the system?**
   _86 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `cn` be split into smaller, more focused modules?**
-  _Cohesion score 0.016237745098039217 - nodes in this community are weakly interconnected._
-- **Why does `CommandRunner` connect `NewMockCommandRunner` to `startSshServer`, `Contributing to Hasir`, `buf_resolver.go`?**
-  _High betweenness centrality (0.017) - this node is a cross-community bridge._
-- **Should `service` be split into smaller, more focused modules?**
-  _Cohesion score 0.06385964912280702 - nodes in this community are weakly interconnected._
-- **Why does `System Context: Hasir Platform` connect `System Context: Hasir Platform` to `config.go`, `service`, `README.md`?**
-  _High betweenness centrality (0.008) - this node is a cross-community bridge._
+  _Cohesion score 0.016372830394970617 - nodes in this community are weakly interconnected._
+- **Why does `Design: Repo-Wide Structural Refactoring` connect `main` to `Button`?**
+  _High betweenness centrality (0.163) - this node is a cross-community bridge._
+- **Should `MockService` be split into smaller, more focused modules?**
+  _Cohesion score 0.07807807807807808 - nodes in this community are weakly interconnected._
+- **Why does `Phase 2: Dashboard & Shared UI (`apps/dashboard`, `packages/ui`)` connect `Button` to `main`?**
+  _High betweenness centrality (0.163) - this node is a cross-community bridge._
