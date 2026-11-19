@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS build
 
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
@@ -18,7 +18,7 @@ COPY packages/proto ./packages/proto
 WORKDIR /usr/src/app/apps/api
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o api .
 
-FROM alpine:3.21
+FROM alpine:3.24
 
 WORKDIR /usr/src/app
 
