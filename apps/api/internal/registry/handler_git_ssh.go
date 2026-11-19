@@ -244,7 +244,7 @@ func getLatestCommitHash(repoPath string) (string, error) {
 	// HEAD may point to an unborn branch (e.g. repo created with master, pushed to main).
 	// Resolve and point HEAD to an existing branch (preferring main, then master, then first available).
 	// #nosec G204 -- repoPath is validated repository path
-	branchCmd := exec.Command("git", "for-each-ref", "--format=%(refname:short)", "refs/heads/")
+	branchCmd := exec.Command("git", "for-each-ref", "--format=%(refname)", "refs/heads/")
 	branchCmd.Dir = repoPath
 	branchOut, branchErr := branchCmd.Output()
 	if branchErr != nil {
@@ -258,12 +258,12 @@ func getLatestCommitHash(repoPath string) (string, error) {
 
 	target := branches[0]
 	for _, b := range branches {
-		if b == "main" {
-			target = "main"
+		if b == "refs/heads/main" {
+			target = b
 			break
 		}
-		if b == "master" && target != "main" {
-			target = "master"
+		if b == "refs/heads/master" && target != "refs/heads/main" {
+			target = b
 		}
 	}
 
@@ -272,7 +272,7 @@ func getLatestCommitHash(repoPath string) (string, error) {
 	}
 
 	// #nosec G204 -- repoPath is validated repository path, target is from refs/heads/
-	symCmd := exec.Command("git", "symbolic-ref", "HEAD", "refs/heads/"+target)
+	symCmd := exec.Command("git", "symbolic-ref", "HEAD", target)
 	symCmd.Dir = repoPath
 	if symErr := symCmd.Run(); symErr != nil {
 		return "", fmt.Errorf("failed to update HEAD to %s: %w", target, symErr)

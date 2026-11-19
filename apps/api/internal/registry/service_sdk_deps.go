@@ -152,16 +152,16 @@ func (s *service) installJsDependencies(ctx context.Context, sdkRepoPath string)
 		zap.L().Debug("package.json initialized", zap.String("path", sdkRepoPath))
 	}
 
-	output, _ := runner.RunCombined(ctx, "npx", []string{"depcheck", "--json"}, sdkRepoPath)
+	output, depErr := runner.RunCombined(ctx, "npx", []string{"depcheck", "--json"}, sdkRepoPath)
 
 	var depResult struct {
 		Missing map[string][]string `json:"missing"`
 	}
 	if err := json.Unmarshal(output, &depResult); err != nil {
-		zap.L().Debug("depcheck output parsing failed, skipping dependency install",
-			zap.String("output", string(output)),
-			zap.Error(err))
-		return nil
+		if depErr != nil {
+			return fmt.Errorf("depcheck failed: %w: %s", depErr, string(output))
+		}
+		return fmt.Errorf("failed to parse depcheck output: %w: %s", err, string(output))
 	}
 
 	if len(depResult.Missing) > 0 {

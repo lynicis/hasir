@@ -1,21 +1,21 @@
 # Tasks: Repo-Wide Structural Refactoring
 
-- [ ] 1.1 Extract `pkg/postgres/pool.go` (`MustNewPool`, `NewTracer`) + `pool_test.go`, wire shared pool in `apps/api/main.go` and repository `*WithPool` constructors
+- [x] 1.1 Extract `pkg/postgres/pool.go` (`MustNewPool`, `NewTracer`) + `pool_test.go`, wire shared pool in `apps/api/main.go` and repository `*WithPool` constructors
   - Verify: `cd apps/api && go test ./pkg/postgres/... -c` (or unit tests) and `go build ./...`
-- [ ] 1.2 Extract `pkg/pagination/pagination.go` + `pagination_test.go` and replace pagination boilerplate in `internal/{user,organization,registry}`
+- [x] 1.2 Extract `pkg/pagination/pagination.go` + `pagination_test.go` and replace pagination boilerplate in `internal/{user,organization,registry}`
   - Verify: `cd apps/api && go test -cover ./pkg/pagination/... ./internal/...`
-- [ ] 1.3 Extend `sdkgenerator.CommandRunner`, decompose `internal/registry/service.go` into `service.go`, `service_git.go`, `service_sdk.go`, `service_sdk_deps.go`
+- [x] 1.3 Extend `sdkgenerator.CommandRunner`, decompose `internal/registry/service.go` into `service.go`, `service_git.go`, `service_sdk.go`, `service_sdk_deps.go`
   - Verify: `cd apps/api && go test -cover ./internal/registry/... ./pkg/sdkgenerator/...`
-- [ ] 1.4 Decompose `internal/registry/handler.go` into `handler.go`, `handler_git_ssh.go`, `handler_git_http.go`, `handler_sdk.go`, `handler_docs.go`, reuse `pkg/authentication` JWT helper, and extract `ssh_server.go` + `ssh_server_test.go`
+- [x] 1.4 Decompose `internal/registry/handler.go` into `handler.go`, `handler_git_ssh.go`, `handler_git_http.go`, `handler_sdk.go`, `handler_docs.go`, reuse `pkg/authentication` JWT helper, and extract `ssh_server.go` + `ssh_server_test.go`
   - Verify: `cd apps/api && go test -race -cover ./internal/... ./pkg/authentication/...`
-- [ ] 1.5 Split `pkg/postgres/registry/repository.go` (`git_repository.go`) and extract `pkg/postgres/queue_helper.go` + `queue_helper_test.go`
+- [x] 1.5 Split `pkg/postgres/registry/repository.go` (`git_repository.go`) and extract `pkg/postgres/queue_helper.go` + `queue_helper_test.go`
   - Verify: `cd apps/api && go build ./... && go tool golangci-lint run`
-- [ ] 2.1 Consolidate Connect transport (`lib/transport.ts`, `lib/use-client.impl.ts`, `lib/use-client.ts`, `app/providers.tsx`)
+- [x] 2.1 Consolidate Connect transport (`lib/transport.ts`, `lib/use-client.impl.ts`, `lib/use-client.ts`, `app/providers.tsx`)
   - Verify: `turbo run typecheck test --filter=hasir-dashboard`
-- [ ] 2.2 Extract `lib/connect-error.ts` (+ `connect-error.test.ts`) and `lib/validation-schemas.ts` (+ `validation-schemas.test.ts`) and adopt in `ssh-api-key-panel.tsx` and auth/org forms
+- [x] 2.2 Extract `lib/connect-error.ts` (+ `connect-error.test.ts`) and `lib/validation-schemas.ts` (+ `validation-schemas.test.ts`) and adopt in `ssh-api-key-panel.tsx` and auth/org forms
   - Verify: `turbo run lint typecheck test --filter=hasir-dashboard`
-- [ ] 2.3 Split `ssh-api-key-panel.tsx` into `ssh-keys-section.tsx` + `api-keys-section.tsx`, extract `packages/ui/src/components/file-tree-utils.ts`, and deduplicate `packages/ui/src/styles/dashboard.css`
+- [x] 2.3 Split `ssh-api-key-panel.tsx` into `ssh-keys-section.tsx` + `api-keys-section.tsx`, extract `packages/ui/src/lib/file-tree-utils.ts`, and deduplicate `packages/ui/src/styles/dashboard.css`
   - Verify: `turbo run lint typecheck test build --filter=hasir-dashboard --filter=@hasir/ui`
-- [ ] 3.1 Verify test coverage >=85% for changed packages (`go test -cover ./...` and `bun test --coverage`)
-- [ ] 3.2 Run CodeRabbit CLI (`coderabbit review --agent --base main`), fix actionable findings, re-verify `make lint`, `make typecheck`, `make test`, `make build`, `make vuln`, and `graphify update .`
-- [ ] 3.3 Run `bunx changeset` if user-facing packages require a changeset entry, or document internal-only refactor status
+- [x] 3.1 Verify test coverage >=85% for changed packages (`go test -cover ./...` and `bun test --coverage`)
+- [x] 3.2 Run CodeRabbit CLI (`coderabbit review --agent --base main`), fix actionable findings, re-verify `make lint`, `make typecheck`, `make test`, `make build`, `make vuln`, and `graphify update .`
+- [x] 3.3 Internal-only structural refactor — no user-facing API/UI contract changes, so no changeset entry required.

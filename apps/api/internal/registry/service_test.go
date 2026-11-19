@@ -2241,3 +2241,42 @@ func TestSdkGenerationJobDTO(t *testing.T) {
 		assert.Equal(t, now, dto.CreatedAt)
 	})
 }
+
+func TestService_installJsDependencies(t *testing.T) {
+	t.Run("installs missing packages when depcheck exits non-zero with valid JSON", func(t *testing.T) {
+		mockRunner := sdkgenerator.NewMockCommandRunner()
+		mockRunner.RunCombinedFunc = func(_ context.Context, name string, _ []string, _ string) ([]byte, error) {
+			if name == "npx" {
+				return []byte(`{"missing":{"@bufbuild/protobuf":["index.ts"]}}`), errors.New("exit status 255")
+			}
+			return []byte("added 1 package"), nil
+		}
+
+		sdkDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(sdkDir, "package.json"), []byte("{}"), 0o600))
+
+		svc := &service{runner: mockRunner}
+		require.NoError(t, svc.installJsDependencies(context.Background(), sdkDir))
+
+		require.Len(t, mockRunner.Calls, 2)
+		assert.Equal(t, "npx", mockRunner.Calls[0].Name)
+		assert.Equal(t, []string{"depcheck", "--json"}, mockRunner.Calls[0].Args)
+		assert.Equal(t, "npm", mockRunner.Calls[1].Name)
+		assert.Equal(t, []string{"install", "--save", "@bufbuild/protobuf"}, mockRunner.Calls[1].Args)
+	})
+
+	t.Run("returns error when depcheck fails with non-JSON output", func(t *testing.T) {
+		mockRunner := sdkgenerator.NewMockCommandRunner()
+		mockRunner.RunCombinedFunc = func(_ context.Context, _ string, _ []string, _ string) ([]byte, error) {
+			return []byte("npm ERR! network unreachable"), errors.New("exit status 1")
+		}
+
+		sdkDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(sdkDir, "package.json"), []byte("{}"), 0o600))
+
+		svc := &service{runner: mockRunner}
+		err := svc.installJsDependencies(context.Background(), sdkDir)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "depcheck failed")
+	})
+}
