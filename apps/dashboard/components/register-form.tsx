@@ -26,6 +26,10 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { z } from "zod/v4";
 
+import {
+  confirmPasswordSchema,
+  passwordSchema,
+} from "@/lib/validation-schemas";
 import { useClient } from "@/lib/use-client";
 
 const schema = z
@@ -39,14 +43,8 @@ const schema = z
           "Only letters, numbers, hyphens, and underscores allowed",
       }),
     email: z.email({ error: "Invalid email address" }),
-    password: z
-      .string()
-      .min(8, { error: "Password must be at least 8 characters" })
-      .max(20, { error: "Password must be at most 20 characters" }),
-    confirmPassword: z
-      .string()
-      .min(8, { error: "Confirm password must be at least 8 characters" })
-      .max(20, { error: "Confirm password must be at most 20 characters" }),
+    password: passwordSchema,
+    confirmPassword: confirmPasswordSchema,
   })
   .refine(({ password, confirmPassword }) => password === confirmPassword, {
     error: "Passwords do not match",
