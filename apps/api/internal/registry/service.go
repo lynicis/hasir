@@ -3,18 +3,14 @@ package registry
 import (
 	"context"
 	"errors"
-	"fmt"
 	"html"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -56,6 +52,7 @@ type service struct {
 	sdkQueue     SdkGenerationQueue
 	cfg          *config.Config
 	sdkPath      string
+	runner       sdkgenerator.CommandRunner
 	sdkRegistry  *sdkgenerator.Registry
 	bufRegistry  *sdkgenerator.Registry
 	docGenerator *sdkgenerator.DocumentationGenerator
@@ -75,10 +72,18 @@ func NewService(repository Repository, orgRepo authorization.MemberRoleChecker, 
 		sdkQueue:     sdkQueue,
 		cfg:          cfg,
 		sdkPath:      sdkPath,
+		runner:       runner,
 		sdkRegistry:  sdkgenerator.NewRegistry(runner),
 		bufRegistry:  sdkgenerator.NewBufRegistry(runner),
 		docGenerator: sdkgenerator.NewDocumentationGenerator(runner),
 	}
+}
+
+func (s *service) commandRunner() sdkgenerator.CommandRunner {
+	if s.runner != nil {
+		return s.runner
+	}
+	return sdkgenerator.NewDefaultCommandRunner()
 }
 
 func (s *service) CreateRepository(
@@ -179,20 +184,12 @@ func (s *service) GetRepository(
 		return nil, err
 	}
 
-	var protoSdkPreferences []*registryv1.SdkPreference
-	for _, pref := range sdkPreferences {
-		protoSdkPreferences = append(protoSdkPreferences, &registryv1.SdkPreference{
-			Sdk:    SdkDbToProtoEnum[pref.Sdk],
-			Status: pref.Status,
-		})
-	}
-
 	return &registryv1.Repository{
 		Id:             repo.Id,
 		Name:           repo.Name,
 		OrganizationId: repo.OrganizationId,
 		Visibility:     proto.ReverseVisibilityMap[repo.Visibility],
-		SdkPreferences: protoSdkPreferences,
+		SdkPreferences: toProtoSdkPreferences(sdkPreferences),
 		ManagedByBuf:   repo.ManagedByBuf,
 	}, nil
 }
@@ -236,7 +233,7 @@ func (s *service) GetRepositories(
 		}
 	}
 
-	var repoIds []string
+	repoIds := make([]string, 0, len(*repositories))
 	for _, repo := range *repositories {
 		repoIds = append(repoIds, repo.Id)
 	}
@@ -251,21 +248,11 @@ func (s *service) GetRepositories(
 
 	var resp []*registryv1.Repository
 	for _, repository := range *repositories {
-		var protoSdkPreferences []*registryv1.SdkPreference
-		if sdkPrefs, exists := sdkPrefsMap[repository.Id]; exists {
-			for _, pref := range sdkPrefs {
-				protoSdkPreferences = append(protoSdkPreferences, &registryv1.SdkPreference{
-					Sdk:    SdkDbToProtoEnum[pref.Sdk],
-					Status: pref.Status,
-				})
-			}
-		}
-
 		resp = append(resp, &registryv1.Repository{
 			Id:             repository.Id,
 			Name:           repository.Name,
 			Visibility:     proto.ReverseVisibilityMap[repository.Visibility],
-			SdkPreferences: protoSdkPreferences,
+			SdkPreferences: toProtoSdkPreferences(sdkPrefsMap[repository.Id]),
 			ManagedByBuf:   repository.ManagedByBuf,
 		})
 	}
@@ -280,6 +267,17 @@ func (s *service) GetRepositories(
 		NextPage:     nextPage,
 		TotalPage:    totalPages,
 	}, nil
+}
+
+func toProtoSdkPreferences(prefs []SdkPreferencesDTO) []*registryv1.SdkPreference {
+	var result []*registryv1.SdkPreference
+	for _, pref := range prefs {
+		result = append(result, &registryv1.SdkPreference{
+			Sdk:    SdkDbToProtoEnum[pref.Sdk],
+			Status: pref.Status,
+		})
+	}
+	return result
 }
 
 func (s *service) UpdateRepository(
@@ -399,859 +397,5 @@ func (s *service) DeleteRepositoriesByOrganization(
 		})
 	}
 
-	if err := errGroup.Wait(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *service) UpdateSdkPreferences(
-	ctx context.Context,
-	req *registryv1.UpdateSdkPreferencesRequest,
-) error {
-	repositoryId := req.GetId()
-
-	repo, err := s.repository.GetRepositoryById(ctx, repositoryId)
-	if err != nil {
-		return err
-	}
-
-	userId, err := authentication.MustGetUserID(ctx)
-	if err != nil {
-		return err
-	}
-
-	if err := authorization.IsUserOwner(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
-		return err
-	}
-
-	preferences := make([]SdkPreferencesDTO, 0, len(req.GetSdkPreferences()))
-	for _, pref := range req.GetSdkPreferences() {
-		preferences = append(preferences, SdkPreferencesDTO{
-			Id:           uuid.NewString(),
-			RepositoryId: repositoryId,
-			Sdk:          SdkProtoToDbEnum[pref.GetSdk()],
-			Status:       pref.GetStatus(),
-		})
-	}
-
-	if err := s.repository.UpdateSdkPreferences(ctx, repositoryId, preferences); err != nil {
-		return err
-	}
-
-	zap.L().Info("sdk preferences updated",
-		zap.String("repositoryId", repositoryId),
-		zap.Int("count", len(preferences)),
-	)
-
-	hasEnabledPreference := false
-	for _, pref := range preferences {
-		if pref.Status {
-			hasEnabledPreference = true
-			break
-		}
-	}
-
-	if !hasEnabledPreference {
-		zap.L().Debug("no enabled SDK preferences, skipping SDK trigger job",
-			zap.String("repositoryId", repositoryId))
-		return nil
-	}
-
-	if err := s.enqueueSdkTriggerJob(ctx, repositoryId, repo.Path); err != nil {
-		zap.L().Warn("failed to enqueue SDK trigger job",
-			zap.String("repositoryId", repositoryId),
-			zap.Error(err),
-		)
-	}
-
-	return nil
-}
-
-func (s *service) enqueueSdkTriggerJob(ctx context.Context, repositoryId, repoPath string) error {
-	if s.sdkQueue == nil {
-		zap.L().Debug("SDK generation queue is not configured, skipping SDK trigger job")
-		return nil
-	}
-
-	job := &SdkTriggerJobDTO{
-		Id:           uuid.NewString(),
-		RepositoryId: repositoryId,
-		RepoPath:     repoPath,
-		Status:       SdkGenerationJobStatusPending,
-		Attempts:     0,
-		MaxAttempts:  5,
-		CreatedAt:    time.Now().UTC(),
-	}
-
-	if err := s.sdkQueue.EnqueueSdkTriggerJob(ctx, job); err != nil {
-		return err
-	}
-
-	zap.L().Info("SDK trigger job enqueued",
-		zap.String("repositoryId", repositoryId),
-		zap.String("jobId", job.Id),
-	)
-
-	return nil
-}
-
-func (s *service) ProcessSdkTrigger(ctx context.Context, repositoryId, repoPath string) error {
-	sdkPreferences, err := s.repository.GetSdkPreferences(ctx, repositoryId)
-	if err != nil {
-		return err
-	}
-
-	var enabledSdks []SdkPreferencesDTO
-	for _, pref := range sdkPreferences {
-		if pref.Status {
-			enabledSdks = append(enabledSdks, pref)
-		}
-	}
-
-	if len(enabledSdks) == 0 {
-		zap.L().Debug("no SDK preferences enabled for repository, skipping SDK generation",
-			zap.String("repositoryId", repositoryId))
-		return nil
-	}
-
-	commits, _, err := s.repository.GetCommits(ctx, repoPath, 1, 10000)
-	if err != nil {
-		zap.L().Debug("no commits found in repository, skipping SDK generation",
-			zap.String("repositoryId", repositoryId),
-			zap.Error(err),
-		)
-		return nil
-	}
-
-	if len(commits) == 0 {
-		zap.L().Debug("no commits in repository, skipping SDK generation",
-			zap.String("repositoryId", repositoryId),
-		)
-		return nil
-	}
-
-	var jobs []*SdkGenerationJobDTO
-	now := time.Now().UTC()
-
-	for _, commit := range commits {
-		for _, sdk := range enabledSdks {
-			job := &SdkGenerationJobDTO{
-				Id:           uuid.NewString(),
-				RepositoryId: repositoryId,
-				CommitHash:   commit.GetId(),
-				Sdk:          sdk.Sdk,
-				Status:       SdkGenerationJobStatusPending,
-				Attempts:     0,
-				MaxAttempts:  5,
-				CreatedAt:    now,
-			}
-			jobs = append(jobs, job)
-		}
-	}
-
-	if err := s.sdkQueue.EnqueueSdkGenerationJobs(ctx, jobs); err != nil {
-		return err
-	}
-
-	zap.L().Info("SDK generation jobs created from trigger",
-		zap.String("repositoryId", repositoryId),
-		zap.Int("commitCount", len(commits)),
-		zap.Int("jobCount", len(jobs)),
-	)
-
-	return nil
-}
-
-func (s *service) GetCommits(
-	ctx context.Context,
-	req *registryv1.GetCommitsRequest,
-) (*registryv1.GetCommitsResponse, error) {
-	userId, err := authentication.MustGetUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	repoId := req.GetId()
-	repo, err := s.repository.GetRepositoryById(ctx, repoId)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := authorization.IsUserMember(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
-		return nil, err
-	}
-
-	page, pageSize := pagination.Normalize(req.Pagination)
-
-	commits, totalCount, err := s.repository.GetCommits(ctx, repo.Path, page, pageSize)
-	if err != nil {
-		return nil, err
-	}
-
-	nextPage, totalPages, err := pagination.ComputePageMeta(totalCount, page, pageSize)
-	if err != nil {
-		return nil, err
-	}
-
-	return &registryv1.GetCommitsResponse{
-		Commits:   commits,
-		NextPage:  nextPage,
-		TotalPage: totalPages,
-	}, nil
-}
-
-func (s *service) GetRecentCommit(
-	ctx context.Context,
-	req *registryv1.GetRecentCommitRequest,
-) (*registryv1.Commit, error) {
-	userId, err := authentication.MustGetUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	repoId := req.GetRepositoryId()
-	repo, err := s.repository.GetRepositoryById(ctx, repoId)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := authorization.IsUserMember(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
-		return nil, err
-	}
-
-	commit, err := s.repository.GetRecentCommit(ctx, repo.Path)
-	if err != nil {
-		return nil, err
-	}
-
-	return commit, nil
-}
-
-func (s *service) GetFileTree(
-	ctx context.Context,
-	req *registryv1.GetFileTreeRequest,
-) (*registryv1.GetFileTreeResponse, error) {
-	userId, err := authentication.MustGetUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	repoId := req.GetId()
-	repo, err := s.repository.GetRepositoryById(ctx, repoId)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := authorization.IsUserMember(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
-		return nil, err
-	}
-
-	var subPath *string
-	if req.GetPath() != "" {
-		path := req.GetPath()
-		subPath = &path
-	}
-
-	fileTree, err := s.repository.GetFileTree(ctx, repo.Path, subPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return fileTree, nil
-}
-
-func (s *service) GetFilePreview(
-	ctx context.Context,
-	req *registryv1.GetFilePreviewRequest,
-) (*registryv1.GetFilePreviewResponse, error) {
-	userId, err := authentication.MustGetUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	repoId := req.GetId()
-	repo, err := s.repository.GetRepositoryById(ctx, repoId)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := authorization.IsUserMember(ctx, s.orgRepo, repo.OrganizationId, userId); err != nil {
-		return nil, err
-	}
-
-	filePath := req.GetPath()
-	filePreview, err := s.repository.GetFilePreview(ctx, repo.Path, filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	return filePreview, nil
-}
-
-func (s *service) ValidateSshAccess(
-	ctx context.Context,
-	userId, repoPath string,
-	operation SshOperation,
-) (bool, error) {
-	repoId := filepath.Base(repoPath)
-	repo, err := s.repository.GetRepositoryById(ctx, repoId)
-	if err != nil {
-		return false, err
-	}
-
-	role, err := s.orgRepo.GetMemberRole(ctx, repo.OrganizationId, userId)
-	if err != nil {
-		zap.L().Warn("SSH access denied: user not member of organization",
-			zap.String("userId", userId),
-			zap.String("repoPath", repoPath),
-			zap.String("organizationId", repo.OrganizationId),
-		)
-		return false, nil
-	}
-
-	switch operation {
-	case SshOperationWrite:
-		if role == authorization.MemberRoleOwner || role == authorization.MemberRoleAuthor {
-			zap.L().Info("SSH write access granted",
-				zap.String("userId", userId),
-				zap.String("repoPath", repoPath),
-				zap.String("role", string(role)),
-			)
-			return true, nil
-		}
-		zap.L().Warn("SSH write access denied: insufficient role",
-			zap.String("userId", userId),
-			zap.String("repoPath", repoPath),
-			zap.String("role", string(role)),
-		)
-		return false, nil
-	case SshOperationRead:
-		zap.L().Info("SSH read access granted",
-			zap.String("userId", userId),
-			zap.String("repoPath", repoPath),
-			zap.String("role", string(role)),
-		)
-		return true, nil
-	default:
-		return false, errors.New("unknown SSH operation")
-	}
-}
-
-func (s *service) HasProtoFiles(ctx context.Context, repoPath, commitHash string) (bool, error) {
-	protoFiles, err := sdkgenerator.FindProtoFilesInBareRepo(repoPath, commitHash)
-	if err != nil {
-		return false, err
-	}
-	return len(protoFiles) > 0, nil
-}
-
-func (s *service) TriggerSdkGeneration(ctx context.Context, repositoryId, commitHash string) error {
-	if s.sdkQueue == nil {
-		zap.L().Debug("SDK generation queue is not configured, skipping SDK generation")
-		return nil
-	}
-
-	repo, err := s.repository.GetRepositoryById(ctx, repositoryId)
-	if err != nil {
-		return fmt.Errorf("failed to fetch repository: %w", err)
-	}
-
-	sdkPreferences, err := s.repository.GetSdkPreferences(ctx, repositoryId)
-	if err != nil {
-		return err
-	}
-
-	var jobs []*SdkGenerationJobDTO
-	now := time.Now().UTC()
-
-	for _, pref := range sdkPreferences {
-		if !pref.Status {
-			continue
-		}
-
-		job := &SdkGenerationJobDTO{
-			Id:           uuid.NewString(),
-			RepositoryId: repositoryId,
-			CommitHash:   commitHash,
-			Sdk:          pref.Sdk,
-			Status:       SdkGenerationJobStatusPending,
-			Attempts:     0,
-			MaxAttempts:  5,
-			CreatedAt:    now,
-		}
-		jobs = append(jobs, job)
-	}
-
-	if len(jobs) == 0 && repo.ManagedByBuf {
-		repoFullPath := filepath.Join(s.rootPath, repositoryId)
-		if detectedSdks := detectSdksFromRepoCommit(repoFullPath, commitHash); len(detectedSdks) > 0 {
-			zap.L().Info("auto-detected SDKs from buf.gen.yaml",
-				zap.String("repositoryId", repositoryId),
-				zap.String("commitHash", commitHash),
-				zap.Int("sdkCount", len(detectedSdks)))
-
-			for _, sdk := range detectedSdks {
-				job := &SdkGenerationJobDTO{
-					Id:           uuid.NewString(),
-					RepositoryId: repositoryId,
-					CommitHash:   commitHash,
-					Sdk:          sdk,
-					Status:       SdkGenerationJobStatusPending,
-					Attempts:     0,
-					MaxAttempts:  5,
-					CreatedAt:    now,
-				}
-				jobs = append(jobs, job)
-			}
-		}
-	}
-
-	if len(jobs) == 0 {
-		zap.L().Info("no SDK preferences enabled for repository, skipping SDK generation",
-			zap.String("repositoryId", repositoryId),
-			zap.String("commitHash", commitHash))
-		// Trigger documentation generation asynchronously to not block the git client
-		// #nosec G118 -- background goroutine needs to outlive the request context
-		go func() {
-			bgCtx := context.Background()
-			repoFullPath := filepath.Join(s.rootPath, repositoryId)
-			workDir, err := s.checkoutCommitToTempDir(bgCtx, repoFullPath, commitHash)
-			if err != nil {
-				zap.L().Error("failed to checkout commit for repo documentation generation",
-					zap.String("repositoryId", repositoryId),
-					zap.String("commitHash", commitHash),
-					zap.Error(err))
-				return
-			}
-			defer func() {
-				// #nosec G703 -- workDir is created by os.MkdirTemp
-				if removeErr := os.RemoveAll(workDir); removeErr != nil {
-					zap.L().Warn("failed to cleanup temp directory", zap.String("path", workDir), zap.Error(removeErr))
-				}
-			}()
-
-			if err := s.GenerateDocumentation(bgCtx, repositoryId, commitHash, workDir, repo.OrganizationId); err != nil {
-				zap.L().Error("failed to generate documentation for repo",
-					zap.String("repositoryId", repositoryId),
-					zap.String("commitHash", commitHash),
-					zap.Error(err))
-			}
-		}()
-		return nil
-	}
-
-	if err := s.sdkQueue.EnqueueSdkGenerationJobs(ctx, jobs); err != nil {
-		return err
-	}
-
-	zap.L().Info("SDK generation jobs triggered",
-		zap.String("repositoryId", repositoryId),
-		zap.String("commitHash", commitHash),
-		zap.Int("jobCount", len(jobs)))
-
-	return nil
-}
-
-func detectSdksFromRepoCommit(repoPath, commitHash string) []SDK {
-	if commitHash == "" {
-		commitHash = "HEAD"
-	}
-
-	// #nosec G204 -- repoPath and commitHash are validated repository path and ref
-	cmd := exec.Command("git", "ls-tree", "-r", "--name-only", commitHash)
-	cmd.Dir = repoPath
-	output, err := cmd.Output()
-	if err != nil {
-		return nil
-	}
-
-	var bufGenPaths []string
-	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
-		if filepath.Base(line) == "buf.gen.yaml" {
-			bufGenPaths = append(bufGenPaths, line)
-		}
-	}
-
-	if len(bufGenPaths) == 0 {
-		return nil
-	}
-
-	var allSdks []SDK
-	seen := make(map[SDK]bool)
-
-	for _, p := range bufGenPaths {
-		// #nosec G204 -- p is from git ls-tree output
-		showCmd := exec.Command("git", "show", fmt.Sprintf("%s:%s", commitHash, p))
-		showCmd.Dir = repoPath
-		content, showErr := showCmd.Output()
-		if showErr != nil {
-			continue
-		}
-
-		for _, sdk := range detectSdksFromBufGen(content) {
-			if !seen[sdk] {
-				seen[sdk] = true
-				allSdks = append(allSdks, sdk)
-			}
-		}
-	}
-
-	return allSdks
-}
-
-func detectSdksFromBufGen(content []byte) []SDK {
-	text := string(content)
-	var sdks []SDK
-	seen := make(map[SDK]bool)
-
-	add := func(sdk SDK) {
-		if !seen[sdk] {
-			seen[sdk] = true
-			sdks = append(sdks, sdk)
-		}
-	}
-
-	if strings.Contains(text, "connect-go") || strings.Contains(text, "connectrpc/go") {
-		add(SdkGoConnectRpc)
-	}
-	if strings.Contains(text, "protoc-gen-go") || strings.Contains(text, "protocolbuffers/go") {
-		add(SdkGoProtobuf)
-	}
-	if strings.Contains(text, "grpc-go") || strings.Contains(text, "go-grpc") || strings.Contains(text, "grpc/go") {
-		add(SdkGoGrpc)
-	}
-	if strings.Contains(text, "connect-query") || strings.Contains(text, "connectrpc/es") {
-		add(SdkJsConnectrpc)
-	}
-	if strings.Contains(text, "bufbuild/es") || strings.Contains(text, "protoc-gen-es") {
-		add(SdkJsBufbuildEs)
-	}
-	if strings.Contains(text, "protobuf/js") || strings.Contains(text, "protocolbuffers/js") {
-		add(SdkJsProtobuf)
-	}
-	if strings.Contains(text, "prost") {
-		add(SdkRustProtobuf)
-	}
-	if strings.Contains(text, "tonic") {
-		add(SdkRustGrpc)
-	}
-	if strings.Contains(text, "protocolbuffers/java") {
-		add(SdkJavaProtobuf)
-	}
-	if strings.Contains(text, "grpc/java") {
-		add(SdkJavaGrpc)
-	}
-	if strings.Contains(text, "protocolbuffers/csharp") {
-		add(SdkCsharpProtobuf)
-	}
-	if strings.Contains(text, "grpc/csharp") {
-		add(SdkCsharpGrpc)
-	}
-
-	return sdks
-}
-
-func (s *service) GenerateSDK(ctx context.Context, repositoryId, commitHash string, sdk SDK) error {
-	repoFullPath := filepath.Join(s.rootPath, repositoryId)
-
-	repo, err := s.repository.GetRepositoryById(ctx, repositoryId)
-	if err != nil {
-		return fmt.Errorf("failed to fetch repository: %w", err)
-	}
-
-	workDir, err := s.checkoutCommitToTempDir(ctx, repoFullPath, commitHash)
-	if err != nil {
-		return fmt.Errorf("failed to checkout commit: %w", err)
-	}
-	defer func() {
-		if removeErr := os.RemoveAll(workDir); removeErr != nil {
-			zap.L().Warn("failed to cleanup temp directory", zap.String("path", workDir), zap.Error(removeErr))
-		}
-	}()
-
-	registry := s.sdkRegistry
-	if repo.ManagedByBuf {
-		registry = s.bufRegistry
-	}
-
-	generator, err := registry.Get(sdkgenerator.SDK(sdk))
-	if err != nil {
-		return fmt.Errorf("unsupported SDK type: %s", sdk)
-	}
-
-	sdkDirName := generator.DirName()
-	outputPath := filepath.Join(s.sdkPath, repo.OrganizationId, repositoryId, commitHash, sdkDirName)
-
-	var goPackagePrefix string
-	if generator.SDK().IsGo() {
-		moduleBasePath := "localhost"
-		if s.cfg != nil {
-			moduleBasePath = s.cfg.SdkGeneration.GetModuleBasePath()
-		}
-		goPackagePrefix = fmt.Sprintf("%s/sdk/%s/%s/%s/%s", moduleBasePath, repo.OrganizationId, repositoryId, commitHash, sdkDirName)
-	}
-
-	output, err := sdkgenerator.GenerateFromRepo(ctx, generator, workDir, outputPath, goPackagePrefix)
-	if err != nil {
-		zap.L().Error("SDK generation failed",
-			zap.String("sdk", string(sdk)),
-			zap.Error(err))
-		return fmt.Errorf("SDK generation failed: %w", err)
-	}
-
-	zap.L().Info("SDK generated successfully",
-		zap.String("repositoryId", repositoryId),
-		zap.String("commitHash", commitHash),
-		zap.String("sdk", string(sdk)),
-		zap.Bool("managedByBuf", repo.ManagedByBuf),
-		zap.String("outputPath", output.OutputPath))
-
-	if err := s.installSdkDependencies(ctx, output.OutputPath, sdk, repo.OrganizationId, repositoryId, commitHash); err != nil {
-		zap.L().Warn("failed to install SDK dependencies, but SDK generation succeeded",
-			zap.Error(err))
-	}
-
-	if err := s.commitSdkToRepo(ctx, repo.OrganizationId, repositoryId, commitHash, sdk); err != nil {
-		zap.L().Warn("failed to commit SDK to git repo, but SDK generation succeeded",
-			zap.Error(err))
-	}
-
-	if err := s.GenerateDocumentation(ctx, repositoryId, commitHash, workDir, repo.OrganizationId); err != nil {
-		zap.L().Warn("documentation generation failed, but SDK generation succeeded",
-			zap.Error(err))
-	}
-
-	return nil
-}
-
-func (s *service) checkoutCommitToTempDir(ctx context.Context, repoPath, commitHash string) (string, error) {
-	tempDir, err := os.MkdirTemp("", "hasir-sdk-gen-*")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp directory: %w", err)
-	}
-
-	// #nosec G204 -- commitHash is validated as a git commit hash
-	archiveCmd := exec.CommandContext(ctx, "git", "archive", "--format=tar", commitHash)
-	archiveCmd.Dir = repoPath
-
-	// #nosec G204 -- tempDir is created by os.MkdirTemp
-	extractCmd := exec.CommandContext(ctx, "tar", "-xf", "-", "-C", tempDir)
-
-	archiveOutput, err := archiveCmd.StdoutPipe()
-	if err != nil {
-		_ = os.RemoveAll(tempDir)
-		return "", fmt.Errorf("failed to create pipe: %w", err)
-	}
-	extractCmd.Stdin = archiveOutput
-
-	if err := archiveCmd.Start(); err != nil {
-		_ = os.RemoveAll(tempDir)
-		return "", fmt.Errorf("failed to start git archive: %w", err)
-	}
-
-	if err := extractCmd.Start(); err != nil {
-		_ = archiveCmd.Wait()
-		_ = os.RemoveAll(tempDir)
-		return "", fmt.Errorf("failed to start tar: %w", err)
-	}
-
-	if err := archiveCmd.Wait(); err != nil {
-		_ = extractCmd.Wait()
-		_ = os.RemoveAll(tempDir)
-		return "", fmt.Errorf("git archive failed: %w", err)
-	}
-
-	if err := extractCmd.Wait(); err != nil {
-		_ = os.RemoveAll(tempDir)
-		return "", fmt.Errorf("tar extraction failed: %w", err)
-	}
-
-	return tempDir, nil
-}
-
-func (s *service) GenerateDocumentation(ctx context.Context, repositoryId, commitHash, repoPath, organizationId string) error {
-	outputPath := filepath.Join(s.sdkPath, organizationId, repositoryId, commitHash, "docs")
-
-	if _, err := sdkgenerator.GenerateFromRepo(ctx, s.docGenerator, repoPath, outputPath, ""); err != nil {
-		zap.L().Error("documentation generation failed",
-			zap.String("repositoryId", repositoryId),
-			zap.String("commitHash", commitHash),
-			zap.Error(err))
-		return fmt.Errorf("documentation generation failed: %w", err)
-	}
-
-	zap.L().Info("documentation generated successfully",
-		zap.String("repositoryId", repositoryId),
-		zap.String("commitHash", commitHash),
-		zap.String("outputPath", outputPath))
-
-	return nil
-}
-
-func (s *service) commitSdkToRepo(ctx context.Context, orgId, repoId, commitHash string, sdk SDK) error {
-	generator, err := s.sdkRegistry.Get(sdkgenerator.SDK(sdk))
-	if err != nil {
-		return fmt.Errorf("unsupported SDK type: %s", sdk)
-	}
-	sdkDirName := generator.DirName()
-	sdkRepoPath := filepath.Join(s.sdkPath, orgId, repoId, commitHash, sdkDirName)
-	absSdkRepoPath, err := filepath.Abs(sdkRepoPath)
-	if err != nil {
-		return fmt.Errorf("failed to get absolute SDK repo path: %w", err)
-	}
-
-	if _, err = os.Stat(filepath.Join(absSdkRepoPath, ".git")); os.IsNotExist(err) {
-		initCmd := exec.CommandContext(ctx, "git", "init")
-		initCmd.Dir = absSdkRepoPath
-		if output, err := initCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to init git repo: %w: %s", err, string(output))
-		}
-
-		configCmds := [][]string{
-			{"git", "config", "user.email", "sdk@hasir.dev"},
-			{"git", "config", "user.name", "Hasir SDK Generator"},
-		}
-		for _, args := range configCmds {
-			// #nosec G204 -- args are hardcoded git config commands
-			cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-			cmd.Dir = absSdkRepoPath
-			if output, err := cmd.CombinedOutput(); err != nil {
-				return fmt.Errorf("failed to configure git: %w: %s", err, string(output))
-			}
-		}
-
-		zap.L().Info("initialized SDK git repository",
-			zap.String("path", absSdkRepoPath))
-	}
-
-	addCmd := exec.CommandContext(ctx, "git", "add", "-A")
-	addCmd.Dir = absSdkRepoPath
-	if output, err := addCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to git add: %w: %s", err, string(output))
-	}
-
-	statusCmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
-	statusCmd.Dir = absSdkRepoPath
-	statusOutput, err := statusCmd.Output()
-	if err != nil {
-		return fmt.Errorf("failed to check git status: %w", err)
-	}
-
-	if len(strings.TrimSpace(string(statusOutput))) == 0 {
-		zap.L().Debug("no changes to commit in SDK repo",
-			zap.String("repoId", repoId),
-			zap.String("sdk", string(sdk)))
-		return nil
-	}
-
-	commitMsg := fmt.Sprintf("SDK generated from commit %s", commitHash)
-	// #nosec G204 -- commitMsg is a formatted string with validated commitHash
-	commitCmd := exec.CommandContext(ctx, "git", "commit", "-m", commitMsg)
-	commitCmd.Dir = absSdkRepoPath
-	if output, err := commitCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to git commit: %w: %s", err, string(output))
-	}
-
-	// #nosec G204 -- commitHash is validated as a git commit hash
-	tagCmd := exec.CommandContext(ctx, "git", "tag", "-f", commitHash)
-	tagCmd.Dir = absSdkRepoPath
-	if output, err := tagCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to git tag: %w: %s", err, string(output))
-	}
-
-	zap.L().Info("SDK committed to git repository",
-		zap.String("repoId", repoId),
-		zap.String("commitHash", commitHash),
-		zap.String("sdk", string(sdk)),
-		zap.String("sdkRepoPath", absSdkRepoPath))
-
-	return nil
-}
-
-func (s *service) installSdkDependencies(ctx context.Context, sdkRepoPath string, sdk SDK, organizationId, repositoryId, commitHash string) error {
-	absSdkRepoPath, err := filepath.Abs(sdkRepoPath)
-	if err != nil {
-		return fmt.Errorf("failed to get absolute SDK repo path: %w", err)
-	}
-
-	sdkType := sdkgenerator.SDK(sdk)
-
-	if sdkType.IsGo() {
-		return s.installGoDependencies(ctx, absSdkRepoPath, organizationId, repositoryId, commitHash, sdkType.DirName())
-	}
-
-	if sdkType.IsJs() {
-		return s.installJsDependencies(ctx, absSdkRepoPath)
-	}
-
-	return nil
-}
-
-func (s *service) installGoDependencies(ctx context.Context, sdkRepoPath string, organizationId, repositoryId, commitHash, sdkDirName string) error {
-	if _, err := os.Stat(filepath.Join(sdkRepoPath, "go.mod")); os.IsNotExist(err) {
-		moduleBasePath := s.cfg.SdkGeneration.GetModuleBasePath()
-		moduleName := fmt.Sprintf("%s/sdk/%s/%s/%s/%s", moduleBasePath, organizationId, repositoryId, commitHash, sdkDirName)
-		// #nosec G204 -- moduleName is constructed from validated inputs: moduleBasePath from config
-		initCmd := exec.CommandContext(ctx, "go", "mod", "init", moduleName)
-		initCmd.Dir = sdkRepoPath
-		if output, err := initCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("go mod init failed: %w: %s", err, string(output))
-		}
-
-		zap.L().Debug("go.mod initialized", zap.String("path", sdkRepoPath), zap.String("module", moduleName))
-	}
-
-	tidyCmd := exec.CommandContext(ctx, "go", "mod", "tidy")
-	tidyCmd.Dir = sdkRepoPath
-	if output, err := tidyCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("go mod tidy failed: %w: %s", err, string(output))
-	}
-
-	zap.L().Info("Go dependencies installed", zap.String("path", sdkRepoPath))
-	return nil
-}
-
-func (s *service) installJsDependencies(ctx context.Context, sdkRepoPath string) error {
-	if _, err := os.Stat(filepath.Join(sdkRepoPath, "package.json")); os.IsNotExist(err) {
-		initCmd := exec.CommandContext(ctx, "npm", "init", "-y")
-		initCmd.Dir = sdkRepoPath
-		if output, err := initCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("npm init failed: %w: %s", err, string(output))
-		}
-		zap.L().Debug("package.json initialized", zap.String("path", sdkRepoPath))
-	}
-
-	depcheckCmd := exec.CommandContext(ctx, "npx", "depcheck", "--json")
-	depcheckCmd.Dir = sdkRepoPath
-	output, _ := depcheckCmd.CombinedOutput()
-
-	var depResult struct {
-		Missing map[string][]string `json:"missing"`
-	}
-	if err := json.Unmarshal(output, &depResult); err != nil {
-		zap.L().Debug("depcheck output parsing failed, skipping dependency install",
-			zap.String("output", string(output)),
-			zap.Error(err))
-		return nil
-	}
-
-	if len(depResult.Missing) > 0 {
-		var packages []string
-		for pkg := range depResult.Missing {
-			packages = append(packages, pkg)
-		}
-
-		args := append([]string{"install", "--save"}, packages...)
-		// #nosec G204 -- packages are npm package names from depcheck output
-		installCmd := exec.CommandContext(ctx, "npm", args...)
-		installCmd.Dir = sdkRepoPath
-		if output, err := installCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("npm install failed: %w: %s", err, string(output))
-		}
-	}
-
-	zap.L().Info("JS dependencies installed", zap.String("path", sdkRepoPath))
-	return nil
+	return errGroup.Wait()
 }
