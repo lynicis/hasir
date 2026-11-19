@@ -51,42 +51,9 @@ func (i *AuthInterceptor) Interceptor() connect.UnaryInterceptorFunc {
 			}
 
 			authHeader := req.Header().Get("Authorization")
-			if authHeader == "" {
-				return nil, ErrMissingToken
-			}
-
-			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-			if tokenString == authHeader {
-				return nil, ErrInvalidToken
-			}
-
-			token, err := jwt.ParseWithClaims(tokenString, &JwtClaims{}, func(token *jwt.Token) (any, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, errors.New("unexpected signing method")
-				}
-
-				return i.jwtSecret, nil
-			})
-
+			claims, userID, err := ParseBearerHeader(authHeader, i.jwtSecret)
 			if err != nil {
-				if errors.Is(err, jwt.ErrTokenExpired) {
-					return nil, ErrTokenExpired
-				}
-				return nil, ErrInvalidToken
-			}
-
-			if !token.Valid {
-				return nil, ErrInvalidToken
-			}
-
-			claims, ok := token.Claims.(*JwtClaims)
-			if !ok {
-				return nil, ErrInvalidClaims
-			}
-
-			userID, err := claims.GetSubject()
-			if err != nil {
-				return nil, ErrInvalidClaims
+				return nil, err
 			}
 
 			ctx = context.WithValue(ctx, UserIDKey, userID)
@@ -97,6 +64,51 @@ func (i *AuthInterceptor) Interceptor() connect.UnaryInterceptorFunc {
 			return next(ctx, req)
 		}
 	}
+}
+
+func ParseBearerHeader(authHeader string, jwtSecret []byte) (*JwtClaims, string, error) {
+	if authHeader == "" {
+		return nil, "", ErrMissingToken
+	}
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == authHeader {
+		return nil, "", ErrInvalidToken
+	}
+
+	return ParseToken(tokenString, jwtSecret)
+}
+
+func ParseToken(tokenString string, jwtSecret []byte) (*JwtClaims, string, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &JwtClaims{}, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+
+		return jwtSecret, nil
+	})
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, "", ErrTokenExpired
+		}
+		return nil, "", ErrInvalidToken
+	}
+
+	if !token.Valid {
+		return nil, "", ErrInvalidToken
+	}
+
+	claims, ok := token.Claims.(*JwtClaims)
+	if !ok {
+		return nil, "", ErrInvalidClaims
+	}
+
+	userID, err := claims.GetSubject()
+	if err != nil {
+		return nil, "", ErrInvalidClaims
+	}
+
+	return claims, userID, nil
 }
 
 func GetUserID(ctx context.Context) (string, bool) {

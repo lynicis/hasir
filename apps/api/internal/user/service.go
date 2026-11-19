@@ -163,33 +163,13 @@ func (s *service) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest)
 func (s *service) RenewTokens(ctx context.Context, req *userv1.RenewTokensRequest) (*userv1.RenewTokensResponse, error) {
 	refreshTokenString := req.GetRefreshToken()
 
-	token, err := jwt.ParseWithClaims(refreshTokenString, &authentication.JwtClaims{}, func(token *jwt.Token) (any, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("unexpected signing method")
-		}
-
-		return s.config.JwtSecret, nil
-	})
+	claims, userID, err := authentication.ParseToken(refreshTokenString, s.config.JwtSecret)
 	if err != nil {
-		if errors.Is(err, jwt.ErrTokenExpired) {
+		if errors.Is(err, authentication.ErrTokenExpired) {
 			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("refresh token has expired"))
 		}
 
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token"))
-	}
-
-	if !token.Valid {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token"))
-	}
-
-	claims, ok := token.Claims.(*authentication.JwtClaims)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token claims"))
-	}
-
-	userID, err := claims.GetSubject()
-	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token subject"))
 	}
 
 	if claims.ID == "" {
