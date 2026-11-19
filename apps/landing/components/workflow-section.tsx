@@ -4,14 +4,18 @@ interface WorkflowStepProps {
   description: string;
 }
 
-export function WorkflowStep({ number, title, description }: WorkflowStepProps) {
+export function WorkflowStep({
+  number,
+  title,
+  description,
+}: WorkflowStepProps) {
   return (
-    <div className="flex gap-6">
-      <div className="font-mono text-2xl font-bold text-border select-none">{number}</div>
-      <div>
-        <h4 className="text-xl font-semibold text-foreground mb-2">{title}</h4>
-        <p className="text-muted-foreground">{description}</p>
-      </div>
-    </div>
+    <li className="hl-step-col">
+      <span className="hl-step-col__num" aria-hidden="true">
+        {number}
+      </span>
+      <h3>{title}</h3>
+      <p>{description}</p>
+    </li>
   );
 }
