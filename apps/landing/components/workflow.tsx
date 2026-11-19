@@ -1,54 +1,77 @@
-import { motion } from "framer-motion";
-
 import { WorkflowStep } from "./workflow-section";
 
 export function WorkflowSection() {
   return (
-    <section id="workflow" className="py-24 sm:py-32 border-t border-border/40">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-        <div>
-          <span className="block text-sm font-mono text-accent uppercase tracking-widest mb-4">How it works</span>
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-12">From commit to client SDK, automatically.</h2>
-
-          <div className="flex flex-col gap-10">
-            <WorkflowStep
-              number="1"
-              title="Push your schema"
-              description="Commit .proto files and push over Git-SSH, just like any other repository."
-            />
-            <WorkflowStep
-              number="02"
-              title="Buf validates on receipt"
-              description="Breaking-change detection and lint rules run before anything is accepted."
-            />
-            <WorkflowStep
-              number="03"
-              title="SDKs ship themselves"
-              description="Worker pools generate and publish client SDKs for TypeScript, JavaScript, and Go."
-            />
-          </div>
+    <section id="workflow" className="hl-section--surface">
+      <div className="container">
+        <div className="hl-head-block">
+          <h2>From commit to client SDK, automatically.</h2>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="premium-glass rounded-xl border border-border overflow-hidden"
+        <ol className="hl-steps-rail">
+          <WorkflowStep
+            number="01"
+            title="Push your schema"
+            description="Commit .proto files and push over Git-SSH, just like any other repository."
+          />
+          <WorkflowStep
+            number="02"
+            title="Buf validates on receipt"
+            description="Breaking-change detection and lint rules run before anything is accepted."
+          />
+          <WorkflowStep
+            number="03"
+            title="SDKs ship themselves"
+            description="Worker pools generate and publish client SDKs for TypeScript, JavaScript, and Go."
+          />
+        </ol>
+
+        <div
+          className="hl-pipeline-spec"
+          data-slot="workflow"
+          data-kind="product"
+          data-alt="Hasir server-side buf validation rules and buf.gen.yaml SDK generation pipeline"
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80">
-            <span className="text-xs font-mono text-muted-foreground">buf.gen.yaml</span>
-          </div>
-          <div className="p-6 font-mono text-sm leading-relaxed overflow-x-auto">
-            <pre className="text-muted-foreground">
-              <span className="text-primary">version:</span> v2{"\n"}
-              <span className="text-primary">plugins:</span>{"\n"}
-              {"  "}- <span className="text-primary">remote:</span> buf.build/protocolbuffers/go{"\n"}
-              {"  "}- <span className="text-primary">remote:</span> buf.build/community/typescript{"\n"}
-              <span className="text-accent">{"  "}+ hasir: auto-publish on push</span>
+          <div className="hl-pipeline-spec__pane">
+            <div className="hl-pipeline-spec__head">
+              <span className="text-ink font-medium">buf.gen.yaml</span>
+              <span className="text-muted">Repository config</span>
+            </div>
+            <pre className="hl-pipeline-spec__code text-muted">
+              <span className="text-ink">version:</span> v2{"\n"}
+              <span className="text-ink">plugins:</span>
+              {"\n"}
+              {"  "}- <span className="text-ink">remote:</span>{" "}
+              buf.build/protocolbuffers/go{"\n"}
+              {"  "}- <span className="text-ink">remote:</span>{" "}
+              buf.build/community/typescript{"\n"}
+              <span className="text-accent">
+                {"  "}+ hasir: auto-publish on push
+              </span>
             </pre>
           </div>
-        </motion.div>
+
+          <div className="hl-pipeline-spec__pane">
+            <div className="hl-pipeline-spec__head">
+              <span className="text-ink font-medium">
+                Server pre-receive gate
+              </span>
+              <span className="text-accent font-mono tabular-nums">
+                0 breaking
+              </span>
+            </div>
+            <pre className="hl-pipeline-spec__code text-muted">
+              <span className="text-ink">buf lint</span> STANDARD{"\n"}
+              <span className="text-ink">buf breaking</span> --against
+              .git#branch=main{"\n"}
+              <span className="text-accent">
+                pass WIRE_JSON compatibility verified
+              </span>
+              {"\n"}
+              worker-pool: queued go-connectrpc, js-connectrpc
+            </pre>
+          </div>
+        </div>
       </div>
     </section>
   );

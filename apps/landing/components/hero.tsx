@@ -1,77 +1,224 @@
-import { motion } from "framer-motion";
+"use client";
+
+import { Fragment, useState } from "react";
 import Link from "next/link";
 
 import { ActivityRow } from "@/components/activity-row";
 
+interface CommitRecord {
+  hash: string;
+  file: string;
+  summary: string;
+  time: string;
+  command: string;
+  targets: string;
+  published: string;
+  sdkLabel: string;
+  diff: string[];
+  sdkPreview: string[];
+  installParts: string[];
+}
+
+const COMMITS: CommitRecord[] = [
+  {
+    hash: "a3f9c1e",
+    file: "payments/checkout.proto",
+    summary: "payments/checkout.proto: add refund status enum",
+    time: "2m ago",
+    command: "git push hasir main",
+    targets: "typescript, go",
+    published: "+ 2 SDKs published in 1.4s",
+    sdkLabel: "Generated Go SDK",
+    diff: [
+      "  message Refund {",
+      "    string id = 1;",
+      "+   RefundStatus status = 2;",
+      "  }",
+      "+ enum RefundStatus {",
+      "+   REFUND_PENDING = 1;",
+      "+   REFUND_SETTLED = 2;",
+      "+ }",
+    ],
+    sdkPreview: [
+      "type RefundStatus int32",
+      "const (",
+      "  RefundPending RefundStatus = 1",
+      "  RefundSettled RefundStatus = 2",
+      ")",
+      "client := checkoutv1.NewClient(",
+      "  http.DefaultClient,",
+      "  registryURL,",
+      ")",
+    ],
+    installParts: [
+      "go get registry.example.com/",
+      "sdk/",
+      "payments/",
+      "checkout@a3f9c1e",
+    ],
+  },
+  {
+    hash: "9e21bd4",
+    file: "identity/session.proto",
+    summary: "identity/session.proto: 4 SDKs republished",
+    time: "14m ago",
+    command: "git push hasir main",
+    targets: "typescript, javascript, go",
+    published: "+ 4 SDKs republished in 1.8s",
+    sdkLabel: "Generated TypeScript SDK",
+    diff: [
+      "  service SessionService {",
+      "    rpc Verify(Req) returns (Lease);",
+      "  }",
+      "+ message Lease {",
+      "+   string token_id = 1;",
+      "+   int64 expires_unix = 2;",
+      "+ }",
+    ],
+    sdkPreview: [
+      "export interface Lease {",
+      "  tokenId: string;",
+      "  expiresUnix: bigint;",
+      "}",
+      "const client = createClient(",
+      "  SessionService,",
+      "  transport,",
+      ");",
+    ],
+    installParts: [
+      "npm install git+ssh://git@registry.example.com:2222/",
+      "sdk/",
+      "identity/",
+      "9e21bd4",
+    ],
+  },
+];
+
 export function HeroSection() {
+  const [selectedHash, setSelectedHash] = useState<string>(COMMITS[0]!.hash);
+  const active = COMMITS.find((c) => c.hash === selectedHash) ?? COMMITS[0]!;
+
   return (
-    <section className="relative pt-24 pb-32 sm:pt-32 sm:pb-40">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-8 items-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex flex-col gap-8"
-        >
-          <div className="inline-flex items-center rounded-full border border-border/50 bg-card/50 px-3 py-1 text-sm text-muted-foreground w-fit">
-            <span className="flex h-2 w-2 rounded-full bg-accent mr-2"></span>
-            v1 now available
+    <section className="hl-hero">
+      <div className="container">
+        <div className="hl-hero__grid">
+          <div className="hl-hero__copy">
+            <h1 className="hl-hero__title">
+              Self-hosted <span className="whitespace-nowrap">Git-native</span>{" "}
+              protobuf registry.
+            </h1>
+
+            <p className="lead hl-hero__lead">
+              Push .proto files over Git-SSH, validate with buf, ship typed
+              SDKs.
+            </p>
+
+            <div className="hl-hero__actions">
+              <Link
+                href="https://github.com/lynicis/hasir/tree/main/docs"
+                className="hl-btn"
+              >
+                View docs
+              </Link>
+              <Link href="#deploy" className="hl-btn hl-btn--quiet">
+                Self-host setup
+              </Link>
+            </div>
           </div>
 
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tighter text-foreground leading-[1.1]">
-            Git-native <br className="hidden sm:block" />
-            protobuf registry <br className="hidden sm:block" />
-            <span className="text-muted-foreground">for teams who ship.</span>
-          </h1>
+          <div
+            className="hl-workbench"
+            data-slot="hero"
+            data-kind="product"
+            data-alt="Hasir dashboard showing a Git-SSH protobuf push, buf validation check, and generated client SDKs"
+          >
+            <div className="hl-workbench__bar">
+              <span className="hl-workbench__heading">{active.file}</span>
+              <div className="hl-workbench__meta">
+                <span>buf check passed</span>
+                <span className="text-accent font-mono tabular-nums">
+                  {active.hash}
+                </span>
+              </div>
+            </div>
 
-          <p className="text-lg text-muted-foreground max-w-xl leading-relaxed">
-            A self-hosted schema registry for teams who ship. Push .proto files over standard Git-SSH, validate with buf, and automatically generate client SDKs.
-          </p>
-
-          <div className="flex flex-wrap items-center gap-4">
-            <Link href="#features" className="inline-flex h-12 items-center justify-center rounded-none bg-primary px-8 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
-              View docs
-            </Link>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="relative lg:ml-auto w-full max-w-lg"
-        >
-          <div className="premium-glass rounded-xl border border-border overflow-hidden shadow-2xl">
-            <div className="flex items-center px-4 py-3 border-b border-border bg-card/80">
+            <div className="hl-workbench__push">
               <div className="flex gap-2">
-                <div className="w-3 h-3 rounded-full bg-border/80"></div>
-                <div className="w-3 h-3 rounded-full bg-border/80"></div>
-                <div className="w-3 h-3 rounded-full bg-border/80"></div>
+                <span className="text-accent select-none">$</span>
+                <span className="text-ink">{active.command}</span>
               </div>
-              <div className="mx-auto text-xs font-mono text-muted-foreground">hasir push</div>
-            </div>
-            <div className="p-6 font-mono text-sm leading-relaxed bg-[#0a0b0d]">
-              <div className="flex gap-2 text-muted-foreground">
-                <span className="text-accent">$</span>
-                <span className="text-foreground">git push hasir main</span>
+              <div className="text-muted">
+                Validating schemas with buf…{" "}
+                <span className="text-accent">ok</span>
               </div>
-              <div className="mt-4 text-muted-foreground">Validating schemas with buf… <span className="text-accent">ok</span></div>
-              <div className="mt-2 text-muted-foreground">Generating SDKs: typescript, go</div>
-              <div className="mt-4 text-primary">+ 2 SDKs published in 1.4s</div>
+              <div className="text-muted">
+                Generating SDKs: {active.targets}
+              </div>
+              <div className="text-ink">{active.published}</div>
             </div>
-          </div>
 
-          <div className="absolute -bottom-12 -right-4 sm:-right-12 premium-glass rounded-xl border border-border p-4 shadow-xl w-[320px]">
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
-              live registry activity
+            <div className="hl-workbench__split">
+              <div className="hl-workbench__pane">
+                <span className="hl-workbench__pane-label">Schema diff</span>
+                <pre className="hl-diff" aria-label="Schema diff excerpt">
+                  {active.diff.map((line, i) => (
+                    <code
+                      key={i}
+                      className={
+                        line.startsWith("+") ? "text-ink" : "text-muted"
+                      }
+                    >
+                      {line}
+                    </code>
+                  ))}
+                </pre>
+              </div>
+
+              <div className="hl-workbench__pane">
+                <span className="hl-workbench__pane-label">
+                  {active.sdkLabel}
+                </span>
+                <pre
+                  className="hl-code-lines"
+                  aria-label="Generated SDK output"
+                >
+                  {active.sdkPreview.map((line, i) => (
+                    <code key={i}>{line}</code>
+                  ))}
+                </pre>
+              </div>
             </div>
-            <div className="flex flex-col gap-3">
-              <ActivityRow hash="a3f9c1e" text="payments/checkout.proto — add refund status enum" time="2m ago" />
-              <ActivityRow hash="9e21bd4" text="identity/session.proto — 4 SDKs republished" time="14m ago" />
+
+            <div className="hl-workbench__artifact">
+              <span className="text-muted shrink-0">Install</span>
+              <code>
+                {active.installParts.map((part, i) => (
+                  <Fragment key={part}>
+                    {i > 0 && <wbr />}
+                    {part}
+                  </Fragment>
+                ))}
+              </code>
+            </div>
+
+            <div
+              className="hl-workbench__ledger"
+              role="region"
+              aria-label="Recent schema pushes"
+            >
+              {COMMITS.map((commit) => (
+                <ActivityRow
+                  key={commit.hash}
+                  hash={commit.hash}
+                  text={commit.summary}
+                  time={commit.time}
+                  selected={active.hash === commit.hash}
+                  onSelect={() => setSelectedHash(commit.hash)}
+                />
+              ))}
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
