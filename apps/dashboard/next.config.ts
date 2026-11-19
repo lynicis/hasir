@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   allowedDevOrigins: process.env.NODE_ENV === "development" ? ["*.local", "*.lan"] : [],
   turbopack: {
-    root: path.join(__dirname, '../..'),
+    root: path.join(import.meta.dirname, "../.."),
   },
 };
 

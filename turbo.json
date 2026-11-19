@@ -12,6 +12,8 @@
         ".env*",
         "tsconfig.json",
         "next.config.ts",
+        "vite.config.ts",
+        "wrangler.jsonc",
         "go.mod",
         "go.sum"
       ],

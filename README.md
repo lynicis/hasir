@@ -180,7 +180,7 @@ The API runs at `http://localhost:8080` and the dashboard at `http://localhost:3
 ```
 apps/api/            Go API service (ConnectRPC, PostgreSQL, JWT, SSH)
 apps/dashboard/      Next.js dashboard (React, shadcn/ui, Tailwind)
-apps/landing/        Marketing site (Next.js, Vercel deploy)
+apps/landing/        Marketing site (vinext, Cloudflare Workers deploy)
 packages/proto/      Protobuf schemas + buf workspace
 packages/ui/         Shared component library (shadcn/ui + Radix)
 deploy/helm/         Helm chart for Kubernetes deployment

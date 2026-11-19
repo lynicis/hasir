@@ -3,6 +3,35 @@
   "mode": "redesign",
   "depth": "full",
   "scope": "page",
+  "shape": "Narrative Workflow",
+  "theme": "brand",
+  "axes": "dark/mono/warm",
+  "hero": "Counter",
+  "nav": "banner over a retracting bar",
+  "footer": "index columns",
+  "imagery": "product sample in hero and workflow",
+  "photos": [],
+  "entry": "packages/ui/src/styles/landing.css",
+  "fingerprint": "Numbered by structure|Two-column asymmetric|Hairline rule|Solid|Margin-aligned|None",
+  "sections": [
+   "Hero",
+   "Pinned",
+   "Switcher",
+   "Grid",
+   "Split",
+   "Footer"
+  ],
+  "signature": "live before-and-after Push-to-SDK counter in the hero",
+  "waived": [
+   "47b"
+  ],
+  "prompt": "Hasir self-hosted Git-native protobuf schema registry landing page redesign under DESIGN.md",
+  "date": "2026-11-19"
+ },
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "page",
   "shape": "Workbench",
   "theme": "brand",
   "axes": "dark/grotesk-sans/warm",

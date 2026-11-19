@@ -22,7 +22,7 @@ hasir/
 ├── apps/
 │   ├── api/           # Go 1.26 API + Git-over-SSH (:8080, SSH :2222)
 │   ├── dashboard/     # Next.js 16 management UI (:3000)
-│   └── landing/       # Next.js 16 marketing site (:3001, Vercel deploy)
+│   └── landing/       # vinext marketing site (:3001, Cloudflare Workers deploy)
 ├── packages/
 │   ├── proto/              # Protobuf schemas + buf workspace → @hasir/proto
 │   ├── ui/                 # Shared component library (shadcn/ui + Radix)

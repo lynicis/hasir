@@ -6,7 +6,7 @@ context: |
   ## Monorepo Structure
   - `apps/api/` — Go 1.26 API server (ConnectRPC, PostgreSQL, JWT, Git-over-SSH via gliderlabs/ssh on :2222)
   - `apps/dashboard/` — Next.js 16 management UI (App Router, `(authenticated)` route group)
-  - `apps/landing/` — Next.js 16 marketing site (Vercel deploy, port 3001)
+  - `apps/landing/` — vinext marketing site (Cloudflare Workers deploy, port 3001)
   - `packages/proto/` — Protobuf schemas managed via buf CLI
   - `packages/shared/` — Shared TS utilities (logging, OpenTelemetry)
   - `packages/ui/` — Shared UI component library
@@ -20,7 +20,7 @@ context: |
   - **Frontend**: Next.js 16 App Router, React, TypeScript (strict: noUncheckedIndexedAccess, verbatimModuleSyntax)
   - **Protos**: Buf CLI, protovalidate constraints
   - **Build**: Turborepo + Bun 1.3.14 (package manager)
-  - **Deploy**: Helm/GHCR, Docker Compose, Vercel (landing)
+  - **Deploy**: Helm/GHCR, Docker Compose, Cloudflare Workers (landing)
   - **Observability**: OpenTelemetry
 
   ## Conventions

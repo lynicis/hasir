@@ -30,14 +30,14 @@ export function Footer() {
 
           <div className="hl-footer__col">
             <h3 className="hl-footer__head">Product</h3>
-            <Link href="#features" className="hl-footer__link">
-              Features
-            </Link>
             <Link href="#workflow" className="hl-footer__link">
               Workflow
             </Link>
             <Link href="#languages" className="hl-footer__link">
               Supported Languages
+            </Link>
+            <Link href="#features" className="hl-footer__link">
+              Features
             </Link>
           </div>
 

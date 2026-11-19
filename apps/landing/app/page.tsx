@@ -22,9 +22,9 @@ export default function LandingPage() {
 
       <main id="main">
         <HeroSection />
-        <FeaturesSection />
         <WorkflowSection />
         <LanguagesSection />
+        <FeaturesSection />
         <BottomCTA />
       </main>
 
