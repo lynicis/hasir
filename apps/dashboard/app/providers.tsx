@@ -1,26 +1,18 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createConnectTransport } from "@connectrpc/connect-web";
 import { TransportProvider } from "@connectrpc/connect-query";
 import { Toaster } from "@hasir/ui/components/sonner";
 
-import { idempotencyInterceptor } from "@/lib/idempotency-interceptor";
 import { ThemeProvider } from "@/components/theme-provider";
-import { csrfInterceptor } from "@/lib/csrf-interceptor";
-import { authInterceptor } from "@/lib/auth-interceptor";
 import { SessionProvider } from "@/lib/session-provider";
-
-const finalTransport = createConnectTransport({
-  baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "",
-  interceptors: [csrfInterceptor, authInterceptor, idempotencyInterceptor],
-});
+import { connectTransport } from "@/lib/transport";
 
 const queryClient = new QueryClient();
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <TransportProvider transport={finalTransport}>
+    <TransportProvider transport={connectTransport}>
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
           <ThemeProvider
