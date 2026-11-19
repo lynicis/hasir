@@ -106,11 +106,15 @@ export function ApiKeysSection() {
       const updatedData = await refetchApiKeys();
       const newKey = updatedData.data?.keys?.find((k) => k.name === data.name);
       if (newKey) {
-        setNewlyCreatedKey({
-          id: newKey.id,
-          name: newKey.name,
-          fullKey: createdKey.fullKey,
-        });
+        setNewlyCreatedKey((current) =>
+          current && current.fullKey === createdKey.fullKey
+            ? {
+                id: newKey.id,
+                name: newKey.name,
+                fullKey: createdKey.fullKey,
+              }
+            : current
+        );
       }
     } catch {
       toast.error("API key created, but failed to refresh the list.", {

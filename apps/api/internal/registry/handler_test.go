@@ -1915,21 +1915,28 @@ func TestGetLatestCommitHash(t *testing.T) {
 			return strings.TrimSpace(string(out))
 		}
 
-		// Point bare HEAD at unborn main.
-		runGit(bareDir, "symbolic-ref", "HEAD", "refs/heads/main")
+		// Point bare HEAD at unborn release (neither main nor master, so fallback repair would
+		// have picked main instead of preserving release).
+		runGit(bareDir, "symbolic-ref", "HEAD", "refs/heads/release")
 
-		// Push a topic branch first so refs/heads/topic exists while HEAD (main) is still unborn.
-		runGit(workDir, "init", "-b", "topic")
+		// Push main first so refs/heads/main exists while HEAD (release) is still unborn.
+		runGit(workDir, "init", "-b", "main")
 		runGit(workDir, "config", "user.name", "Test")
 		runGit(workDir, "config", "user.email", "test@test.com")
-		require.NoError(t, os.WriteFile(filepath.Join(workDir, "topic.proto"), []byte("syntax = \"proto3\";"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(workDir, "main.proto"), []byte("syntax = \"proto3\";"), 0o644))
 		runGit(workDir, "add", ".")
-		runGit(workDir, "commit", "-m", "topic commit")
-		runGit(workDir, "push", bareDir, "topic")
+		runGit(workDir, "commit", "-m", "main commit")
+		runGit(workDir, "push", bareDir, "main")
 
-		// Hold the per-repo ref-update lock to simulate an in-flight push creating main
+		// Hold the per-repo ref-update lock to simulate an in-flight push creating release
 		// after getLatestCommitHash's initial unborn HEAD check.
 		unlock := lockRepoRefUpdate(bareDir)
+		unlocked := false
+		defer func() {
+			if !unlocked {
+				unlock()
+			}
+		}()
 
 		resultCh := make(chan struct {
 			hash string
@@ -1943,22 +1950,23 @@ func TestGetLatestCommitHash(t *testing.T) {
 			}{hash: h, err: e}
 		}()
 
-		// While the lock is held, create and push main so HEAD resolves to main.
-		runGit(workDir, "checkout", "-b", "main")
-		require.NoError(t, os.WriteFile(filepath.Join(workDir, "main.proto"), []byte("syntax = \"proto3\";"), 0o644))
+		// While the lock is held, create and push release so HEAD resolves to release.
+		runGit(workDir, "checkout", "-b", "release")
+		require.NoError(t, os.WriteFile(filepath.Join(workDir, "release.proto"), []byte("syntax = \"proto3\";"), 0o644))
 		runGit(workDir, "add", ".")
-		runGit(workDir, "commit", "-m", "main commit")
-		mainHash := runGit(workDir, "rev-parse", "HEAD")
-		runGit(workDir, "push", bareDir, "main")
+		runGit(workDir, "commit", "-m", "release commit")
+		releaseHash := runGit(workDir, "rev-parse", "HEAD")
+		runGit(workDir, "push", bareDir, "release")
 
+		unlocked = true
 		unlock()
 
 		res := <-resultCh
 		require.NoError(t, res.err)
-		assert.Equal(t, mainHash, res.hash)
+		assert.Equal(t, releaseHash, res.hash)
 
 		headAfter, err := os.ReadFile(filepath.Join(bareDir, "HEAD"))
 		require.NoError(t, err)
-		assert.Equal(t, "ref: refs/heads/main\n", string(headAfter))
+		assert.Equal(t, "ref: refs/heads/release\n", string(headAfter))
 	})
 }
