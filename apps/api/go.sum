@@ -758,8 +758,8 @@ github.com/hashicorp/vault/api v1.23.0/go.mod h1:zransKiB9ftp+kgY8ydjnvCU7Wk8i9L
 github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUqJM=
 github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSow5/V2vxeg=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
-github.com/huaweicloud/huaweicloud-sdk-go-v3 v0.1.223 h1:u+yK6aTTSXEkd0GMpjv8mq1INlohyvf46dtty5W9eCM=
-github.com/huaweicloud/huaweicloud-sdk-go-v3 v0.1.223/go.mod h1:qBahEQ0OPyvifR8C0mI87Kh1mhJHzmo/TRfBtQMA0gE=
+github.com/huaweicloud/huaweicloud-sdk-go-v3 v0.1.224 h1:FmB+soLuj646cM0hoCvDRFt1edp3OjhhokT6wKNBkd4=
+github.com/huaweicloud/huaweicloud-sdk-go-v3 v0.1.224/go.mod h1:qBahEQ0OPyvifR8C0mI87Kh1mhJHzmo/TRfBtQMA0gE=
 github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
