@@ -1,0 +1,29 @@
+{
+  "scanned": "2026-11-19",
+  "findings": {
+    "design_md": "DESIGN.md (locked HASIR Design System: dark void #0a0b0d, surface #101213, white signal #f8f8f8, muted #8f8f8f, border #202223, amber signal #eba941, primary #ffffff; sharp 0px buttons, 4px cards)",
+    "brand": "Hasir commit-glyph H SVG (packages/ui/src/assets/logo.svg)",
+    "fonts": "Geist + Geist Mono via next/font/google (apps/landing/app/layout.tsx L5-L15)",
+    "palette": "CSS custom properties mapped through Tailwind v4 @theme inline (packages/ui/src/styles/landing.css L5-L47)",
+    "motion": "framer-motion ^14.14.0 (apps/landing/package.json L18)",
+    "spacing": "Tailwind v4 default 4px/8px grid; sharp 0px buttons and 4px cards in DESIGN.md (L88-L105)",
+    "framework": "Next.js 16.4.6 App Router + React 19.3.1 + Tailwind CSS 4.3.5 (apps/landing/package.json L20-L34)",
+    "product": "apps/dashboard + apps/api exist in monorepo (Postgres required for full authenticated screens)",
+    "signal_9": "TOGETHER_API_KEY not set (comp step skipped)"
+  },
+  "conflicts": [
+    "DESIGN.md L356 specifies uppercase tracked buttons/tags (0.06em) and L690-L722 notes noise-bg/premium-glass/ambient blur orbs; Hallmark Floor (gates 9/54/67, 29, F24) overrides those while preserving the locked palette, faces, and sharp radii.",
+    "apps/landing uses rounded-xl on cards vs DESIGN.md L94/L392 specifying 4px sharp cards (--radius-card: 4px)."
+  ],
+  "preserve": [
+    "DESIGN.md locked palette (#0a0b0d void, #101213 surface, #f8f8f8 ink, #8f8f8f muted, #202223 border, #eba941 amber signal, #ffffff sharp primary)",
+    "Geist Sans + Geist Mono font stack",
+    "Sharp geometry (0px buttons, 4px cards)",
+    "Hasir logo.svg mark",
+    "All 9 links, 2 interactive tab handlers, content facts, and Next.js App Router structure"
+  ],
+  "introduce": [
+    "Shape, hero posture, section compositions, and chrome discipline (full redesign, or lighter depth if requested)",
+    "Hallmark Floor + Reflex + Finish gates, tokens/base scaffold, focus-visible & reduced-motion states, stamp, and verification sweep"
+  ]
+}

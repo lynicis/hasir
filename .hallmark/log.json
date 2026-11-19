@@ -1,0 +1,31 @@
+[
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "page",
+  "shape": "Workbench",
+  "theme": "brand",
+  "axes": "dark/grotesk-sans/warm",
+  "hero": "Stage",
+  "nav": "edge-aligned",
+  "footer": "mast",
+  "imagery": "product sample in hero and workflow",
+  "photos": [],
+  "entry": "packages/ui/src/styles/landing.css",
+  "fingerprint": "Left-margin|Asymmetric spans|Bleed-colour block|Solid|Tightly cropped to the grid|None",
+  "sections": [
+   "Hero",
+   "Rows",
+   "Steps",
+   "Switcher",
+   "Band",
+   "Footer"
+  ],
+  "signature": "interactive Push-to-SDK workbench in the hero",
+  "waived": [
+   "47b"
+  ],
+  "prompt": "Hasir self-hosted Git-native protobuf schema registry landing page redesign",
+  "date": "2026-11-19"
+ }
+]
