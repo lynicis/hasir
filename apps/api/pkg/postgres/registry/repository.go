@@ -7,10 +7,9 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/exaring/otelpgx"
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -18,12 +17,11 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
-	"go.opentelemetry.io/otel/trace/noop"
-	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"hasir/api/internal/registry"
 	"hasir/api/pkg/config"
+	"hasir/api/pkg/postgres"
 	registryv1 "hasir/proto/gen/go/registry/v1"
 )
 
@@ -43,53 +41,16 @@ func NewPgRepository(
 	cfg *config.Config,
 	traceProvider *sdktrace.TracerProvider,
 ) *PgRepository {
-	credential := cfg.PostgresConfig.GetPostgresDsn()
-	pgConfig, err := pgxpool.ParseConfig(credential)
-	if err != nil {
-		zap.L().Fatal("failed to parse database config", zap.Error(err))
-	}
+	return NewPgRepositoryWithPool(postgres.MustNewPool(cfg, traceProvider), traceProvider)
+}
 
-	if traceProvider != nil {
-		pgConfig.ConnConfig.Tracer = otelpgx.NewTracer(
-			otelpgx.WithTracerProvider(traceProvider),
-			otelpgx.WithDisableConnectionDetailsInAttributes(),
-		)
-	}
-
-	var pgConnectionPool *pgxpool.Pool
-	pgConnectionPool, err = pgxpool.NewWithConfig(context.Background(), pgConfig)
-	if err != nil {
-		zap.L().Fatal("failed to connect database", zap.Error(err))
-	}
-
-	if traceProvider != nil {
-		if err := otelpgx.RecordStats(pgConnectionPool); err != nil {
-			zap.L().Fatal("unable to record database stats", zap.Error(err))
-		}
-	}
-
-	var connection *pgxpool.Conn
-	connection, err = pgConnectionPool.Acquire(context.Background())
-	if err != nil {
-		zap.L().Fatal("failed to acquire connection", zap.Error(err))
-	}
-	defer connection.Release()
-
-	err = connection.Ping(context.Background())
-	if err != nil {
-		zap.L().Fatal("failed to ping database", zap.Error(err))
-	}
-
-	var tracer trace.Tracer
-	if traceProvider != nil {
-		tracer = traceProvider.Tracer("RepositoryPostgreSQLRepository")
-	} else {
-		tracer = noop.NewTracerProvider().Tracer("RepositoryPostgreSQLRepository")
-	}
-
+func NewPgRepositoryWithPool(
+	connectionPool *pgxpool.Pool,
+	traceProvider *sdktrace.TracerProvider,
+) *PgRepository {
 	return &PgRepository{
-		connectionPool: pgConnectionPool,
-		tracer:         tracer,
+		connectionPool: connectionPool,
+		tracer:         postgres.NewTracer(traceProvider, "RepositoryPostgreSQLRepository"),
 	}
 }
 

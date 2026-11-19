@@ -22,6 +22,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/cors"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -43,6 +44,7 @@ import (
 	"hasir/api/pkg/idempotency"
 	_ "hasir/api/pkg/log"
 	"hasir/api/pkg/csrf"
+	"hasir/api/pkg/postgres"
 	postgresIdempotency "hasir/api/pkg/postgres/idempotency"
 	postgresOrganization "hasir/api/pkg/postgres/organization"
 	postgresRegistry "hasir/api/pkg/postgres/registry"
@@ -78,10 +80,12 @@ func main() {
 		traceProvider = initTracer(cfg)
 	}
 
-	idempotencyPgRepository := postgresIdempotency.NewIdempotencyRepository(cfg, traceProvider)
-	userPgRepository := postgresUser.NewPgRepository(cfg, traceProvider)
-	repositoryPgRepository := postgresRegistry.NewPgRepository(cfg, traceProvider)
-	organizationPgRepository := postgresOrganization.NewOrganizationRepository(cfg, traceProvider)
+	dbPool := postgres.MustNewPool(cfg, traceProvider)
+
+	idempotencyPgRepository := postgresIdempotency.NewIdempotencyRepositoryWithPool(dbPool, traceProvider)
+	userPgRepository := postgresUser.NewPgRepositoryWithPool(dbPool, traceProvider)
+	repositoryPgRepository := postgresRegistry.NewPgRepositoryWithPool(dbPool, traceProvider)
+	organizationPgRepository := postgresOrganization.NewOrganizationRepositoryWithPool(dbPool, traceProvider)
 
 	emailService := email.NewService(cfg)
 
@@ -206,10 +210,10 @@ func main() {
 		sshServer = startSshServer(cfg, userPgRepository, gitSshHandler, sdkSshHandler)
 	}
 
-	gracefulShutdown(server, sshServer, traceProvider, emailJobQueue, sdkGenerationQueue)
+	gracefulShutdown(server, sshServer, dbPool, traceProvider, emailJobQueue, sdkGenerationQueue)
 }
 
-func gracefulShutdown(server *http.Server, sshServer *ssh.Server, traceProvider *sdktrace.TracerProvider, emailJobQueue internalOrganization.Queue, sdkGenerationQueue registry.SdkGenerationQueue) {
+func gracefulShutdown(server *http.Server, sshServer *ssh.Server, dbPool *pgxpool.Pool, traceProvider *sdktrace.TracerProvider, emailJobQueue internalOrganization.Queue, sdkGenerationQueue registry.SdkGenerationQueue) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
@@ -230,6 +234,10 @@ func gracefulShutdown(server *http.Server, sshServer *ssh.Server, traceProvider 
 		if err := sshServer.Shutdown(shutdownCtx); err != nil {
 			zap.L().Error("SSH shutdown error", zap.Error(err))
 		}
+	}
+
+	if dbPool != nil {
+		dbPool.Close()
 	}
 
 	if traceProvider != nil {
