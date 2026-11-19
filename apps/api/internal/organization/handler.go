@@ -3,7 +3,6 @@ package organization
 import (
 	"context"
 	"errors"
-	"math"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -11,6 +10,7 @@ import (
 
 	"hasir/api/internal/registry"
 	"hasir/api/pkg/authentication"
+	"hasir/api/pkg/pagination"
 	"hasir/api/pkg/proto"
 	organizationv1 "hasir/proto/gen/go/organization/v1"
 	"hasir/proto/gen/go/organization/v1/organizationv1connect"
@@ -65,25 +65,7 @@ func (h *handler) GetOrganizations(
 		return nil, err
 	}
 
-	page := 1
-	pageSize := 10
-
-	if req.Msg.Pagination.GetPage() > 0 {
-		page = int(req.Msg.Pagination.GetPage())
-	}
-	if req.Msg.Pagination.GetPageLimit() > 0 {
-		pageSize = int(req.Msg.Pagination.GetPageLimit())
-	}
-
-	if pageSize < 1 {
-		pageSize = 10
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
-	if page < 1 {
-		page = 1
-	}
+	page, pageSize := pagination.Normalize(req.Msg.Pagination)
 
 	totalCount, err := h.repository.GetUserOrganizationsCount(ctx, userId)
 	if err != nil {
@@ -103,25 +85,15 @@ func (h *handler) GetOrganizations(
 		})
 	}
 
-	totalPages := (totalCount + pageSize - 1) / pageSize
-	if totalPages == 0 {
-		totalPages = 1
-	}
-	if totalPages > math.MaxInt32 {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("total pages exceeds maximum value"))
-	}
-	nextPage := int32(0)
-	if page < totalPages {
-		if page+1 > math.MaxInt32 {
-			return nil, connect.NewError(connect.CodeInternal, errors.New("page number exceeds maximum value"))
-		}
-		nextPage = int32(page + 1) // #nosec G115 -- bounds checked above
+	nextPage, totalPages, err := pagination.ComputePageMeta(totalCount, page, pageSize)
+	if err != nil {
+		return nil, err
 	}
 
 	return connect.NewResponse(&organizationv1.GetOrganizationsResponse{
 		Organizations: resp,
 		NextPage:      nextPage,
-		TotalPage:     int32(totalPages), // #nosec G115 -- bounds checked above
+		TotalPage:     totalPages,
 	}), nil
 }
 
@@ -308,25 +280,7 @@ func (h *handler) Search(
 		return nil, err
 	}
 
-	page := 1
-	pageSize := 10
-
-	if req.Msg.Pagination.GetPage() > 0 {
-		page = int(req.Msg.Pagination.GetPage())
-	}
-	if req.Msg.Pagination.GetPageLimit() > 0 {
-		pageSize = int(req.Msg.Pagination.GetPageLimit())
-	}
-
-	if pageSize < 1 {
-		pageSize = 10
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
-	if page < 1 {
-		page = 1
-	}
+	page, pageSize := pagination.Normalize(req.Msg.Pagination)
 
 	query := req.Msg.GetQuery()
 	items, totalCount, err := h.repository.SearchItems(ctx, userId, query, page, pageSize)
@@ -352,25 +306,15 @@ func (h *handler) Search(
 		}
 	}
 
-	totalPages := (totalCount + pageSize - 1) / pageSize
-	if totalPages == 0 {
-		totalPages = 1
-	}
-	if totalPages > math.MaxInt32 {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("total pages exceeds maximum value"))
-	}
-	nextPage := int32(0)
-	if page < totalPages {
-		if page+1 > math.MaxInt32 {
-			return nil, connect.NewError(connect.CodeInternal, errors.New("page number exceeds maximum value"))
-		}
-		nextPage = int32(page + 1) // #nosec G115 -- bounds checked above
+	nextPage, totalPages, err := pagination.ComputePageMeta(totalCount, page, pageSize)
+	if err != nil {
+		return nil, err
 	}
 
 	return connect.NewResponse(&organizationv1.SearchResponse{
 		Organizations: respOrgs,
 		Repositories:  respRepos,
 		NextPage:      nextPage,
-		TotalPage:     int32(totalPages), // #nosec G115 -- bounds checked above
+		TotalPage:     totalPages,
 	}), nil
 }

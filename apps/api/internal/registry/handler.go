@@ -20,6 +20,7 @@ import (
 
 	"hasir/api/internal/user"
 	"hasir/api/pkg/authentication"
+	"hasir/api/pkg/pagination"
 	registryv1 "hasir/proto/gen/go/registry/v1"
 	"hasir/proto/gen/go/registry/v1/registryv1connect"
 )
@@ -83,25 +84,7 @@ func (h *handler) GetRepositories(
 	ctx context.Context,
 	req *connect.Request[registryv1.GetRepositoriesRequest],
 ) (*connect.Response[registryv1.GetRepositoriesResponse], error) {
-	page := 1
-	pageSize := 10
-
-	if req.Msg.Pagination.GetPage() > 0 {
-		page = int(req.Msg.Pagination.GetPage())
-	}
-	if req.Msg.Pagination.GetPageLimit() > 0 {
-		pageSize = int(req.Msg.Pagination.GetPageLimit())
-	}
-
-	if pageSize < 1 {
-		pageSize = 10
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
-	if page < 1 {
-		page = 1
-	}
+	page, pageSize := pagination.Normalize(req.Msg.Pagination)
 
 	var organizationId *string
 	if req.Msg.OrganizationId != nil {

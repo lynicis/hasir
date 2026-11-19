@@ -3,7 +3,6 @@ package user
 import (
 	"context"
 	"errors"
-	"math"
 	"net/http"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"hasir/api/pkg/authentication"
+	"hasir/api/pkg/pagination"
 	"hasir/proto/gen/go/shared"
 	userv1 "hasir/proto/gen/go/user/v1"
 	"hasir/proto/gen/go/user/v1/userv1connect"
@@ -156,25 +156,7 @@ func (h *handler) GetApiKeys(
 		return nil, err
 	}
 
-	page := 1
-	pageSize := 10
-
-	if req.Msg.GetPage() > 0 {
-		page = int(req.Msg.GetPage())
-	}
-	if req.Msg.GetPageLimit() > 0 {
-		pageSize = int(req.Msg.GetPageLimit())
-	}
-
-	if pageSize < 1 {
-		pageSize = 10
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
-	if page < 1 {
-		page = 1
-	}
+	page, pageSize := pagination.Normalize(req.Msg)
 
 	totalCount, err := h.userRepository.GetApiKeysCount(ctx, userId)
 	if err != nil {
@@ -194,25 +176,15 @@ func (h *handler) GetApiKeys(
 		})
 	}
 
-	totalPages := (totalCount + pageSize - 1) / pageSize
-	if totalPages == 0 {
-		totalPages = 1
-	}
-	if totalPages > math.MaxInt32 {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("total pages exceeds maximum value"))
-	}
-	nextPage := int32(0)
-	if page < totalPages {
-		if page+1 > math.MaxInt32 {
-			return nil, connect.NewError(connect.CodeInternal, errors.New("page number exceeds maximum value"))
-		}
-		nextPage = int32(page + 1) // #nosec G115 -- bounds checked above
+	nextPage, totalPages, err := pagination.ComputePageMeta(totalCount, page, pageSize)
+	if err != nil {
+		return nil, err
 	}
 
 	return connect.NewResponse(&userv1.KeyResponse{
 		Keys:      keys,
 		NextPage:  nextPage,
-		TotalPage: int32(totalPages), // #nosec G115 -- bounds checked above
+		TotalPage: totalPages,
 	}), nil
 }
 
@@ -248,25 +220,7 @@ func (h *handler) GetSshKeys(
 		return nil, err
 	}
 
-	page := 1
-	pageSize := 10
-
-	if req.Msg.GetPage() > 0 {
-		page = int(req.Msg.GetPage())
-	}
-	if req.Msg.GetPageLimit() > 0 {
-		pageSize = int(req.Msg.GetPageLimit())
-	}
-
-	if pageSize < 1 {
-		pageSize = 10
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
-	if page < 1 {
-		page = 1
-	}
+	page, pageSize := pagination.Normalize(req.Msg)
 
 	totalCount, err := h.userRepository.GetSshKeysCount(ctx, userId)
 	if err != nil {
@@ -286,25 +240,15 @@ func (h *handler) GetSshKeys(
 		})
 	}
 
-	totalPages := (totalCount + pageSize - 1) / pageSize
-	if totalPages == 0 {
-		totalPages = 1
-	}
-	if totalPages > math.MaxInt32 {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("total pages exceeds maximum value"))
-	}
-	nextPage := int32(0)
-	if page < totalPages {
-		if page+1 > math.MaxInt32 {
-			return nil, connect.NewError(connect.CodeInternal, errors.New("page number exceeds maximum value"))
-		}
-		nextPage = int32(page + 1) // #nosec G115 -- bounds checked above
+	nextPage, totalPages, err := pagination.ComputePageMeta(totalCount, page, pageSize)
+	if err != nil {
+		return nil, err
 	}
 
 	return connect.NewResponse(&userv1.KeyResponse{
 		Keys:      keys,
 		NextPage:  nextPage,
-		TotalPage: int32(totalPages), // #nosec G115 -- bounds checked above
+		TotalPage: totalPages,
 	}), nil
 }
 

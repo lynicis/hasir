@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"html"
-	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,6 +22,7 @@ import (
 	"hasir/api/pkg/authentication"
 	"hasir/api/pkg/authorization"
 	"hasir/api/pkg/config"
+	"hasir/api/pkg/pagination"
 	"hasir/api/pkg/proto"
 	"hasir/api/pkg/sdkgenerator"
 	registryv1 "hasir/proto/gen/go/registry/v1"
@@ -270,25 +270,15 @@ func (s *service) GetRepositories(
 		})
 	}
 
-	totalPages := (totalCount + pageSize - 1) / pageSize
-	if totalPages == 0 {
-		totalPages = 1
-	}
-	if totalPages > math.MaxInt32 {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("total pages exceeds maximum value"))
-	}
-	nextPage := int32(0)
-	if page < totalPages {
-		if page+1 > math.MaxInt32 {
-			return nil, connect.NewError(connect.CodeInternal, errors.New("page number exceeds maximum value"))
-		}
-		nextPage = int32(page + 1) // #nosec G115 -- bounds checked above
+	nextPage, totalPages, err := pagination.ComputePageMeta(totalCount, page, pageSize)
+	if err != nil {
+		return nil, err
 	}
 
 	return &registryv1.GetRepositoriesResponse{
 		Repositories: resp,
 		NextPage:     nextPage,
-		TotalPage:    int32(totalPages), // #nosec G115 -- bounds checked above
+		TotalPage:    totalPages,
 	}, nil
 }
 
@@ -593,52 +583,22 @@ func (s *service) GetCommits(
 		return nil, err
 	}
 
-	page := 1
-	pageSize := 10
-
-	if req.Pagination != nil {
-		if req.Pagination.GetPage() > 0 {
-			page = int(req.Pagination.GetPage())
-		}
-		if req.Pagination.GetPageLimit() > 0 {
-			pageSize = int(req.Pagination.GetPageLimit())
-		}
-	}
-
-	if pageSize < 1 {
-		pageSize = 10
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
-	if page < 1 {
-		page = 1
-	}
+	page, pageSize := pagination.Normalize(req.Pagination)
 
 	commits, totalCount, err := s.repository.GetCommits(ctx, repo.Path, page, pageSize)
 	if err != nil {
 		return nil, err
 	}
 
-	totalPages := (totalCount + pageSize - 1) / pageSize
-	if totalPages == 0 {
-		totalPages = 1
-	}
-	if totalPages > math.MaxInt32 {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("total pages exceeds maximum value"))
-	}
-	nextPage := int32(0)
-	if page < totalPages {
-		if page+1 > math.MaxInt32 {
-			return nil, connect.NewError(connect.CodeInternal, errors.New("page number exceeds maximum value"))
-		}
-		nextPage = int32(page + 1) // #nosec G115 -- bounds checked above
+	nextPage, totalPages, err := pagination.ComputePageMeta(totalCount, page, pageSize)
+	if err != nil {
+		return nil, err
 	}
 
 	return &registryv1.GetCommitsResponse{
 		Commits:   commits,
 		NextPage:  nextPage,
-		TotalPage: int32(totalPages), // #nosec G115 -- bounds checked above
+		TotalPage: totalPages,
 	}, nil
 }
 
