@@ -27,15 +27,16 @@ import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { ArrowLeftIcon, PlusIcon, XIcon } from "lucide-react";
 import { Role } from "@hasir/proto/gen/js/shared/role_pb";
-import { Code, ConnectError } from "@connectrpc/connect";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@hasir/ui/components/button";
 import { Input } from "@hasir/ui/components/input";
+import { Code } from "@connectrpc/connect";
 import { cn } from "@hasir/ui/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod/v4";
 
+import { handleConnectErrorToast } from "@/lib/connect-error";
 import { visibilityMapper } from "@/lib/visibility-mapper";
 import { useRegistryStore } from "@/stores/registry-store";
 import { useClient } from "@/lib/use-client";
@@ -129,16 +130,11 @@ export function OrganizationDialogForm({
       toast.success("Organization created successfully.");
       handleClose();
     } catch (error) {
-      if (error instanceof ConnectError) {
-        if (error.code === Code.NotFound) {
-          toast.error(
-            "Some invitations could not be sent. Invitees may not be registered, may have already been invited, or are already members of this organization."
-          );
-          return;
-        }
-      }
-
-      toast.error("Failed to create organization.");
+      handleConnectErrorToast(error, {
+        [Code.NotFound]:
+          "Some invitations could not be sent. Invitees may not be registered, may have already been invited, or are already members of this organization.",
+        fallback: "Failed to create organization.",
+      });
     }
   }
 

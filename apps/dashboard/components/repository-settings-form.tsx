@@ -30,15 +30,10 @@ import { Settings } from "lucide-react";
 import { useEffect } from "react";
 import { z } from "zod/v4";
 
+import { repositoryNameSchema } from "@/lib/validation-schemas";
+
 const schema = z.object({
-  name: z
-    .string()
-    .min(1, "Repository name is required")
-    .max(100, "Repository name must be less than 100 characters")
-    .regex(
-      /^[a-zA-Z0-9-_]+$/,
-      "Repository name can only contain letters, numbers, hyphens and underscores"
-    ),
+  name: repositoryNameSchema,
   visibility: z.enum(["private", "public"]),
   managedByBuf: z.boolean(),
 });

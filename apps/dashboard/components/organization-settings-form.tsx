@@ -21,7 +21,6 @@ import { useQuery as useMembersQuery } from "@connectrpc/connect-query";
 import { Visibility } from "@hasir/proto/gen/js/shared/visibility_pb";
 import { Separator } from "@hasir/ui/components/separator";
 import { Role } from "@hasir/proto/gen/js/shared/role_pb";
-import { Code, ConnectError } from "@connectrpc/connect";
 import { useParams, useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,6 +28,7 @@ import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@hasir/ui/components/button";
 import { Input } from "@hasir/ui/components/input";
+import { Code } from "@connectrpc/connect";
 import { toast } from "sonner";
 import { z } from "zod/v4";
 
@@ -40,6 +40,8 @@ import {
 } from "@/lib/visibility-mapper";
 import { DeleteOrganizationDialog } from "@/components/delete-organization-dialog";
 import { InviteUserDialog } from "@/components/invite-user-dialog";
+import { organizationNameSchema } from "@/lib/validation-schemas";
+import { handleConnectErrorToast } from "@/lib/connect-error";
 import { useRegistryStore } from "@/stores/registry-store";
 import { useSession } from "@/lib/session-provider";
 import { customRetry } from "@/lib/query-retry";
@@ -53,14 +55,7 @@ const memberRoleMapper = new Map<Role, Permission>([
 ]);
 
 const organizationSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, { error: "Please enter an organization name." })
-    .max(100, { error: "Organization name must be at most 100 characters." })
-    .regex(/^[a-zA-Z0-9 _.-]+$/, {
-      error: "Only letters, numbers, spaces, and basic punctuation allowed",
-    }),
+  name: organizationNameSchema,
   visibility: z.enum(["public", "private"], {
     error: "Please select a visibility.",
   }),
@@ -172,27 +167,14 @@ export function OrganizationSettingsForm() {
 
       toast.success("Organization updated successfully.");
     } catch (error) {
-      if (error instanceof ConnectError) {
-        if (error.code === Code.PermissionDenied) {
-          toast.error("You don't have permission to update this organization.");
-          return;
-        }
-
-        if (error.code === Code.NotFound) {
-          toast.error("Organization not found.");
-          return;
-        }
-
-        if (error.code === Code.InvalidArgument) {
-          const errorMessage =
-            error.message ||
-            "Invalid organization data. Please check your input.";
-          toast.error(errorMessage);
-          return;
-        }
-      }
-
-      toast.error("Failed to update organization. Please try again.");
+      handleConnectErrorToast(error, {
+        [Code.PermissionDenied]:
+          "You don't have permission to update this organization.",
+        [Code.NotFound]: "Organization not found.",
+        [Code.InvalidArgument]: (err) =>
+          err.message || "Invalid organization data. Please check your input.",
+        fallback: "Failed to update organization. Please try again.",
+      });
     }
   }
 
@@ -208,21 +190,12 @@ export function OrganizationSettingsForm() {
       toast.success("Organization deleted successfully.");
       router.push("/dashboard");
     } catch (error) {
-      if (error instanceof ConnectError) {
-        if (error.code === Code.PermissionDenied) {
-          toast.error("You don't have permission to delete this organization.");
-          setIsDeleteDialogOpen(false);
-          return;
-        }
-
-        if (error.code === Code.NotFound) {
-          toast.error("Organization not found.");
-          setIsDeleteDialogOpen(false);
-          return;
-        }
-      }
-
-      toast.error("Failed to delete organization. Please try again.");
+      handleConnectErrorToast(error, {
+        [Code.PermissionDenied]:
+          "You don't have permission to delete this organization.",
+        [Code.NotFound]: "Organization not found.",
+        fallback: "Failed to delete organization. Please try again.",
+      });
       setIsDeleteDialogOpen(false);
     } finally {
       setIsDeleting(false);
