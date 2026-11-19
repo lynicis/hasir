@@ -156,14 +156,18 @@ func (h *SdkHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if h, _, err := net.SplitHostPort(r.Host); err == nil {
 			importHost = h
 		}
-		importPath := importHost + r.URL.Path
-		importPath = strings.TrimSuffix(importPath, "/")
+
+		sdkRootPath := fmt.Sprintf("/sdk/%s/%s/%s", orgId, repoId, sdkType)
+		if commitHash != "" {
+			sdkRootPath = fmt.Sprintf("/sdk/%s/%s/%s/%s", orgId, repoId, commitHash, sdkType)
+		}
+		importPath := importHost + sdkRootPath
 
 		scheme := "http"
 		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 			scheme = "https"
 		}
-		repoUrl := fmt.Sprintf("%s://%s%s", scheme, r.Host, strings.TrimSuffix(r.URL.Path, "/"))
+		repoUrl := fmt.Sprintf("%s://%s%s", scheme, r.Host, sdkRootPath)
 
 		_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
 <html>

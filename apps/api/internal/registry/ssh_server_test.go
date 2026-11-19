@@ -114,6 +114,21 @@ func TestLoadOrGenerateHostKey(t *testing.T) {
 		assert.Equal(t, signer1.PublicKey().Marshal(), signer2.PublicKey().Marshal())
 	})
 
+	t.Run("returns error and preserves existing file when PEM is invalid", func(t *testing.T) {
+		keyPath := filepath.Join(t.TempDir(), "host_key")
+		corrupt := []byte("not-a-valid-private-key")
+		require.NoError(t, os.WriteFile(keyPath, corrupt, 0o600))
+
+		signer, err := LoadOrGenerateHostKey(keyPath)
+		assert.Nil(t, signer)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to parse existing SSH host key")
+
+		after, readErr := os.ReadFile(keyPath)
+		require.NoError(t, readErr)
+		assert.Equal(t, corrupt, after)
+	})
+
 	t.Run("returns error when destination directory does not exist", func(t *testing.T) {
 		_, err := LoadOrGenerateHostKey(filepath.Join(t.TempDir(), "missing", "host_key"))
 		require.Error(t, err)

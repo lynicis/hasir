@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace/noop"
+
+	"hasir/api/internal/registry"
 )
 
 func initTempGitRepo(t *testing.T) (string, string) {
@@ -90,6 +92,22 @@ func TestPgRepository_GitOperations(t *testing.T) {
 	t.Run("GetFilePreview returns NotFound for missing file", func(t *testing.T) {
 		_, err := repo.GetFilePreview(ctx, repoDir, "missing.proto")
 		require.Error(t, err)
+	})
+
+	t.Run("GetCommits wraps ErrEmptyRepository for an empty git repo", func(t *testing.T) {
+		emptyDir := t.TempDir()
+		_, err := git.PlainInit(emptyDir, true)
+		require.NoError(t, err)
+
+		_, _, err = repo.GetCommits(ctx, emptyDir, 1, 10)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, registry.ErrEmptyRepository)
+	})
+
+	t.Run("GetCommits does not wrap ErrEmptyRepository when storage path is missing", func(t *testing.T) {
+		_, _, err := repo.GetCommits(ctx, filepath.Join(t.TempDir(), "missing"), 1, 10)
+		require.Error(t, err)
+		assert.NotErrorIs(t, err, registry.ErrEmptyRepository)
 	})
 }
 

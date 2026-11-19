@@ -118,11 +118,15 @@ func LoadOrGenerateHostKey(path string) (gossh.Signer, error) {
 	// #nosec G304 -- path is from application config, not user input
 	keyBytes, err := os.ReadFile(path)
 	if err == nil {
-		signer, err := gossh.ParsePrivateKey(keyBytes)
-		if err == nil {
-			zap.L().Info("Loaded SSH host key", zap.String("path", path))
-			return signer, nil
+		signer, parseErr := gossh.ParsePrivateKey(keyBytes)
+		if parseErr != nil {
+			return nil, fmt.Errorf("failed to parse existing SSH host key %s: %w", path, parseErr)
 		}
+		zap.L().Info("Loaded SSH host key", zap.String("path", path))
+		return signer, nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("failed to read SSH host key %s: %w", path, err)
 	}
 
 	zap.L().Info("Generating SSH host key", zap.String("path", path))
@@ -136,8 +140,33 @@ func LoadOrGenerateHostKey(path string) (gossh.Signer, error) {
 		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
 	})
 
-	if err := os.WriteFile(path, privateKeyPEM, 0o600); err != nil {
+	// #nosec G304 -- path is from application config, not user input
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			// #nosec G304 -- path is from application config, not user input
+			existingBytes, readErr := os.ReadFile(path)
+			if readErr != nil {
+				return nil, fmt.Errorf("failed to read concurrently created SSH host key %s: %w", path, readErr)
+			}
+			signer, parseErr := gossh.ParsePrivateKey(existingBytes)
+			if parseErr != nil {
+				return nil, fmt.Errorf("failed to parse concurrently created SSH host key %s: %w", path, parseErr)
+			}
+			zap.L().Info("Loaded SSH host key", zap.String("path", path))
+			return signer, nil
+		}
 		return nil, err
+	}
+
+	if _, writeErr := file.Write(privateKeyPEM); writeErr != nil {
+		_ = file.Close()
+		_ = os.Remove(path)
+		return nil, writeErr
+	}
+	if closeErr := file.Close(); closeErr != nil {
+		_ = os.Remove(path)
+		return nil, closeErr
 	}
 
 	return gossh.NewSignerFromKey(privateKey)

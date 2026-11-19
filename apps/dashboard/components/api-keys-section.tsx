@@ -26,7 +26,7 @@ import { customRetry } from "@/lib/query-retry";
 import { useClient } from "@/lib/use-client";
 
 type NewApiKey = {
-  id: string;
+  id?: string;
   name: string;
   fullKey: string;
 };
@@ -67,8 +67,12 @@ export function ApiKeysSection() {
 
   const apiKeys = apiKeysData?.keys || [];
   const totalApiPages = apiKeysData?.totalPage ?? 1;
+  const isNewlyCreatedKeyInList = Boolean(
+    newlyCreatedKey?.id && apiKeys.some((k) => k.id === newlyCreatedKey.id)
+  );
 
   async function handleGenerateApiKey(data: ApiKeyFormData) {
+    let createdKey: NewApiKey;
     try {
       const response = await userApiClient.createApiKey({
         name: data.name,
@@ -78,18 +82,11 @@ export function ApiKeysSection() {
         throw new Error("API key was not returned from server");
       }
 
-      setApiKeyPage(1);
-      const updatedData = await refetchApiKeys();
-
-      const newKey = updatedData.data?.keys?.find((k) => k.name === data.name);
-      if (newKey) {
-        setNewlyCreatedKey({
-          id: newKey.id,
-          name: newKey.name,
-          fullKey: response.key,
-        });
-      }
-
+      createdKey = {
+        name: data.name,
+        fullKey: response.key,
+      };
+      setNewlyCreatedKey(createdKey);
       apiKeyForm.reset();
     } catch (error) {
       handleConnectErrorToast(error, {
@@ -101,13 +98,37 @@ export function ApiKeysSection() {
           err.message || "Invalid request. Please check your input.",
         fallback: "Failed to generate API key. Please try again.",
       });
+      return;
+    }
+
+    setApiKeyPage(1);
+    try {
+      const updatedData = await refetchApiKeys();
+      const newKey = updatedData.data?.keys?.find((k) => k.name === data.name);
+      if (newKey) {
+        setNewlyCreatedKey({
+          id: newKey.id,
+          name: newKey.name,
+          fullKey: createdKey.fullKey,
+        });
+      }
+    } catch {
+      toast.error("API key created, but failed to refresh the list.", {
+        description: "Copy your new API key now before leaving this page.",
+      });
     }
   }
 
-  async function handleCopyApiKey(key: { id: string; name: string }) {
-    if (newlyCreatedKey && newlyCreatedKey.id === key.id) {
-      navigator.clipboard.writeText(newlyCreatedKey.fullKey);
-      setCopiedId(key.id);
+  async function handleCopyApiKey(key: { id?: string; name: string }) {
+    if (
+      newlyCreatedKey &&
+      (newlyCreatedKey.id
+        ? newlyCreatedKey.id === key.id
+        : newlyCreatedKey.name === key.name)
+    ) {
+      await navigator.clipboard.writeText(newlyCreatedKey.fullKey);
+      const copyTargetId = key.id ?? newlyCreatedKey.name;
+      setCopiedId(copyTargetId);
       toast.success("Copied to clipboard", {
         description: `${key.name} has been copied.`,
       });
@@ -205,6 +226,37 @@ export function ApiKeysSection() {
           </Field>
         </FieldGroup>
       </form>
+
+      {newlyCreatedKey && !isNewlyCreatedKeyInList && (
+        <div className="group flex items-center justify-between gap-4 rounded-md border bg-card px-4 py-3 transition-colors">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="font-medium">{newlyCreatedKey.name}</p>
+              <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
+                New
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <code className="rounded-md bg-muted px-3 py-1.5 font-mono text-xs font-medium">
+              {newlyCreatedKey.fullKey}
+            </code>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => handleCopyApiKey(newlyCreatedKey)}
+            >
+              {copiedId === (newlyCreatedKey.id ?? newlyCreatedKey.name) ? (
+                <Check className="text-green-600" />
+              ) : (
+                <Copy />
+              )}
+              <span className="sr-only">Copy API key</span>
+            </Button>
+          </div>
+        </div>
+      )}
 
       {isLoadingApiKeys ? (
         <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed bg-muted/20 px-6 py-12 text-center">

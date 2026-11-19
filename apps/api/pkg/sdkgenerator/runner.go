@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -54,28 +55,42 @@ func (r *DefaultCommandRunner) Pipe(
 	dstCmd := exec.CommandContext(ctx, dstName, dstArgs...)
 	dstCmd.Dir = dstDir
 
-	pipeOutput, err := srcCmd.StdoutPipe()
+	pr, pw, err := os.Pipe()
 	if err != nil {
 		return fmt.Errorf("failed to create pipe: %w", err)
 	}
-	dstCmd.Stdin = pipeOutput
+
+	srcCmd.Stdout = pw
+	dstCmd.Stdin = pr
 
 	if err := srcCmd.Start(); err != nil {
+		_ = pw.Close()
+		_ = pr.Close()
 		return fmt.Errorf("failed to start %s: %w", srcName, err)
 	}
+	_ = pw.Close()
 
 	if err := dstCmd.Start(); err != nil {
+		_ = pr.Close()
+		if srcCmd.Process != nil {
+			_ = srcCmd.Process.Kill()
+		}
 		_ = srcCmd.Wait()
 		return fmt.Errorf("failed to start %s: %w", dstName, err)
 	}
+	_ = pr.Close()
 
-	if err := srcCmd.Wait(); err != nil {
-		_ = dstCmd.Wait()
-		return fmt.Errorf("%s failed: %w", srcName, err)
+	dstErr := dstCmd.Wait()
+	srcErr := srcCmd.Wait()
+
+	if srcErr != nil && dstErr != nil {
+		return fmt.Errorf("%s failed: %v; %s failed: %w", srcName, srcErr, dstName, dstErr)
 	}
-
-	if err := dstCmd.Wait(); err != nil {
-		return fmt.Errorf("%s failed: %w", dstName, err)
+	if srcErr != nil {
+		return fmt.Errorf("%s failed: %w", srcName, srcErr)
+	}
+	if dstErr != nil {
+		return fmt.Errorf("%s failed: %w", dstName, dstErr)
 	}
 
 	return nil

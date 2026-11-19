@@ -44,19 +44,50 @@ func NewPool(ctx context.Context, cfg *config.Config, traceProvider *sdktrace.Tr
 		}
 	}
 
-	connection, err := pgConnectionPool.Acquire(ctx)
-	if err != nil {
-		pgConnectionPool.Close()
-		return nil, fmt.Errorf("failed to acquire connection: %w", err)
-	}
-	defer connection.Release()
-
-	if err := connection.Ping(ctx); err != nil {
-		pgConnectionPool.Close()
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+	if err := verifyPoolConnection(ctx, pgxPoolAdapter{pool: pgConnectionPool}); err != nil {
+		return nil, err
 	}
 
 	return pgConnectionPool, nil
+}
+
+type poolConn interface {
+	Ping(ctx context.Context) error
+	Release()
+}
+
+type poolVerifier interface {
+	Acquire(ctx context.Context) (poolConn, error)
+	Close()
+}
+
+type pgxPoolAdapter struct {
+	pool *pgxpool.Pool
+}
+
+func (a pgxPoolAdapter) Acquire(ctx context.Context) (poolConn, error) {
+	return a.pool.Acquire(ctx)
+}
+
+func (a pgxPoolAdapter) Close() {
+	a.pool.Close()
+}
+
+func verifyPoolConnection(ctx context.Context, pool poolVerifier) error {
+	connection, err := pool.Acquire(ctx)
+	if err != nil {
+		pool.Close()
+		return fmt.Errorf("failed to acquire connection: %w", err)
+	}
+
+	pingErr := connection.Ping(ctx)
+	connection.Release()
+	if pingErr != nil {
+		pool.Close()
+		return fmt.Errorf("failed to ping database: %w", pingErr)
+	}
+
+	return nil
 }
 
 func MustNewPool(cfg *config.Config, traceProvider *sdktrace.TracerProvider) *pgxpool.Pool {
