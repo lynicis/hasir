@@ -59,16 +59,10 @@
     "ast_hash": "a04db91475551120335de7950cd65e0b",
     "semantic_hash": "a04db91475551120335de7950cd65e0b"
   },
-  "apps/api/config.sops.json": {
-    "mtime": 1785251297.6889126,
-    "seen": 1790155928.245609,
-    "ast_hash": "85bed05e065b115430c1f372e4a4a41b",
-    "semantic_hash": "85bed05e065b115430c1f372e4a4a41b"
-  },
   "apps/api/go.mod": {
-    "mtime": 1795068295.2105494,
-    "seen": 1795069328.071603,
-    "ast_hash": "651a358c8b32ea8643086bb702d48410",
+    "mtime": 1795089972.0333197,
+    "seen": 1795095240.303071,
+    "ast_hash": "d744681aebe21bb668010997fdcc71ff",
     "semantic_hash": ""
   },
   "apps/api/internal/handler.go": {
@@ -556,12 +550,6 @@
     "seen": 1790155928.245634,
     "ast_hash": "a678d8761e72ccd165735450f0bb20bf",
     "semantic_hash": "a678d8761e72ccd165735450f0bb20bf"
-  },
-  "apps/api/pkg/config/testdata/config.sops.json": {
-    "mtime": 1785251297.700686,
-    "seen": 1790155928.245635,
-    "ast_hash": "6d1acc0ef5953374b3dd282e7cf5c752",
-    "semantic_hash": "6d1acc0ef5953374b3dd282e7cf5c752"
   },
   "apps/api/pkg/csrf/interceptor.go": {
     "mtime": 1786709466.1141596,
@@ -3924,9 +3912,9 @@
     "semantic_hash": ""
   },
   ".pre-commit-config.yaml": {
-    "mtime": 1795079087.92492,
-    "seen": 1795079156.74162,
-    "ast_hash": "3b812ff474c6268793bc0613e05bd0ed",
+    "mtime": 1795090250.3455615,
+    "seen": 1795095240.3030689,
+    "ast_hash": "6d3ef56c401d6f22a743ac67870c569e",
     "semantic_hash": ""
   },
   "AGENTS.md": {
@@ -4479,6 +4467,18 @@
     "mtime": 1795067085.9541006,
     "seen": 1795069328.076608,
     "ast_hash": "1314180af02636a01a0db88a3c03d3e6",
+    "semantic_hash": ""
+  },
+  ".commandcode/settings.json": {
+    "mtime": 1795090300.8016717,
+    "seen": 1795095240.3030632,
+    "ast_hash": "cfba3bc6f9c636c7afcdd55f5101761b",
+    "semantic_hash": ""
+  },
+  "orca.yaml": {
+    "mtime": 1795094175.1573071,
+    "seen": 1795095240.30322,
+    "ast_hash": "24c5784cdd98754cb07ef1e4fba3b79f",
     "semantic_hash": ""
   }
 }
