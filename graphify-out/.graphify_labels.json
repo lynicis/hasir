@@ -231,7 +231,6 @@
   "346": "shared/README.md",
   "347": "scripts",
   "348": "go-lsp",
-  "349": "sync.WaitGroup",
   "350": "Error Handling",
   "351": "Parameterized Queries",
   "352": "Test Structure and Organization",
