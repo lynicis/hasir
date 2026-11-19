@@ -1,0 +1,20 @@
+version: 2
+
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/apps/api"
+    schedule:
+      interval: "weekly"
+    # Rebase onto main automatically so grouped PRs do not go stale the way
+    # the individually-opened bumps in #5-#13 did.
+    rebase-strategy: "auto"
+    groups:
+      # One PR per week for routine minor and patch bumps (runtime modules and
+      # the pinned CI tools alike). Major bumps stay ungrouped so a breaking
+      # upgrade is reviewed on its own.
+      apps-api-go-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
