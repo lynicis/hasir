@@ -9,7 +9,7 @@ api:
     repository: ghcr.io/lynicis/hasir-api
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: ""
+    tag: "1.2.1"
   
   service:
     type: ClusterIP
@@ -47,7 +47,7 @@ dashboard:
     repository: ghcr.io/lynicis/hasir-dashboard
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: ""
+    tag: "v1.2.0"
 
   service:
     type: ClusterIP

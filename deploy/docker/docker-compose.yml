@@ -22,7 +22,7 @@ services:
         max-file: "3"
 
   hasir-api:
-    image: ghcr.io/lynicis/api:${API_TAG:-latest}
+    image: ghcr.io/lynicis/hasir-api:${API_TAG:-1.2.1}
     restart: unless-stopped
     stop_grace_period: 30s
     expose:
@@ -72,7 +72,7 @@ services:
         max-file: "3"
 
   hasir-dashboard:
-    image: ghcr.io/lynicis/dashboard:${DASHBOARD_TAG:-latest}
+    image: ghcr.io/lynicis/hasir-dashboard:${DASHBOARD_TAG:-v1.2.0}
     restart: unless-stopped
     stop_grace_period: 30s
     expose:
@@ -101,6 +101,8 @@ services:
       context: ./nginx
       dockerfile: Dockerfile
     restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
     ports:
       - "80:80"
       - "443:443"

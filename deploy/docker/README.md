@@ -75,10 +75,10 @@ Before starting, ensure you have:
 ## Getting Started
 
 ### 1. Clone the repository
-Clone this repository to your target VPS:
+Clone this repository to your target VPS and enter the Docker deployment directory:
 ```bash
-git clone git@github.com:lynicis/docker-compose.git
-cd docker-compose
+git clone https://github.com/lynicis/hasir.git
+cd hasir/deploy/docker
 ```
 
 ### 2. Run the Setup Script
@@ -119,7 +119,7 @@ Add a daily cron job to automate backups:
 sudo crontab -e
 
 # Add the following line to run backups daily at 2:00 AM
-0 2 * * * /path/to/docker-compose/scripts/backup.sh >> /var/log/hasir-backup.log 2>&1
+0 2 * * * /path/to/hasir/deploy/docker/scripts/backup.sh >> /var/log/hasir-backup.log 2>&1
 ```
 
 ### Restoring a Backup

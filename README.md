@@ -1,200 +1,167 @@
-<div align="center">
-
-<img src="packages/ui/src/assets/logo.webp" alt="Hasir Logo" width="120" />
+<img src="packages/ui/src/assets/logo.webp" alt="Hasir logo" width="72" height="72" />
 
 # Hasir
 
-**Self-hosted schema registry with Git-native workflows, automatic SDK generation, and a management dashboard.**
+**Hasir** is a self-hosted [Protobuf](https://protobuf.dev) schema registry. Push `.proto` files over Git (SSH or HTTP) to generate commit-pinned client SDKs and API docs.
 
-[![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev)
-[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](https://nextjs.org)
-[![Buf](https://img.shields.io/badge/Buf-Protobuf-4353FF?logo=buf&logoColor=white)](https://buf.build)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
-[![codecov](https://codecov.io/gh/lynicis/hasir/branch/main/graph/badge.svg?token=au9Erb4Kl7)](https://codecov.io/gh/lynicis/hasir)
+[![License](https://img.shields.io/github/license/lynicis/hasir)](LICENSE)
+[![Latest API release](https://img.shields.io/github/v/release/lynicis/hasir?filter=hasir-api%40*&label=api)](https://github.com/lynicis/hasir/releases)
+[![Last commit](https://img.shields.io/github/last-commit/lynicis/hasir)](https://github.com/lynicis/hasir/commits/main)
+[![CodeQL](https://github.com/lynicis/hasir/actions/workflows/codeql.yml/badge.svg)](https://github.com/lynicis/hasir/actions/workflows/codeql.yml)
 
-</div>
+## Why Hasir
 
----
+- **vs. [Buf Schema Registry (BSR)](https://buf.build/product/bsr):** Self-hosting BSR requires its Enterprise tier, and paid hosted tiers bill per Protobuf type. Hasir is MIT-licensed, runs on your own VPS or Kubernetes cluster with PostgreSQL and local disk, and accepts plain `git push` over built-in SSH (`:2222`) or HTTP with no separate push CLI. Pick BSR instead if you need managed npm/PyPI/Maven/Cargo/Go registries, cross-repo module dependencies, server-side `buf breaking` / `buf lint` push gates, or SAML/OIDC SSO.
+- **vs. Plain Git + CI (`protoc` / `buf generate`):** You stop maintaining codegen workflows, deploy keys, and publish scripts in every service repo. On push, a PostgreSQL worker pool runs enabled targets from 12 built-in generators (Go: Protobuf, gRPC, [ConnectRPC](https://connectrpc.com); JS/TS: `@bufbuild/es`, `protocolbuffers`, `@connectrpc`; Java, C#, and Rust: Protobuf and gRPC) and builds Markdown docs under `/docs/`. Stick with Git + CI if you rely on PR review gates on schemas, arbitrary custom `protoc` plugins, or publishing to an internal Artifactory/npm/Maven registry.
+- **vs. [Apicurio](https://www.apicur.io/registry/) / [Confluent Schema Registry](https://docs.confluent.io/platform/current/schema-registry/index.html):** Those handle runtime serialization and wire-format schema IDs for Kafka and event streams across Avro, JSON Schema, and Protobuf. Hasir covers Protobuf RPC contracts and client SDK generation only.
 
-## What is Hasir?
-
-Hasir is a self-hosted platform for managing protobuf schemas. Push schemas over Git SSH, and Hasir automatically generates typed client SDKs from your definitions. A built-in dashboard lets you manage organizations, repositories, users, and SSH keys.
-
-> [!NOTE]
-> The original standalone repositories (`api`, `dashboard`, `proto`, `docker-images`) under the [protohasir](https://github.com/protohasir) organization are retired. They remain available for older versions, but all active development continues here.
-
-## Features
-
-- **Schema Registry** — Version-controlled protobuf schema storage with Git-native push/pull
-- **Git-over-SSH** — Built-in SSH server for Git workflows, no external Git host required
-- **Automatic SDK Generation** — Generates typed client SDKs from Buf modules with configurable worker pools
-- **Management Dashboard** — Web UI for organizations, repositories, members, and SSH key management
-- **ConnectRPC API** — Type-safe RPC API compatible with gRPC, gRPC-Web, and Connect protocols
-- **OpenTelemetry** — Distributed tracing and structured logging built in
-- **TLS out of the box** — Automated Let's Encrypt certificates via Certbot
-
-## Architecture
-
-```mermaid
-graph TD
-    Client["Client <br> Web / Git"] -->|HTTP 80/443| Ingress["Ingress <br> Nginx (Docker) / Traefik (Helm)"]
-    Client -->|Git SSH 2222| Ingress
-    Ingress --> Dashboard["Dashboard <br> Next.js <br> Port 3000"]
-    Ingress --> API["API <br> Go / ConnectRPC <br> Port 8080 / 2222"]
-    API --> DB[("PostgreSQL <br> Port 5432")]
-```
-
----
-
-## Deployment
-
-### Docker Compose (single server)
-
-Requires a Linux server with Docker, a domain name pointing to it, and ports `80`, `443`, `2222` open.
-
-```bash
-# Clone and enter the deployment directory
-git clone https://github.com/lynicis/hasir.git
-cd hasir/deploy/docker
-
-# Run setup — installs Docker, configures firewall, bootstraps TLS
-./scripts/setup.sh
-
-# Configure environment
-cp .env.example .env
-nano .env    # Set DOMAIN, LETSENCRYPT_EMAIL, SMTP credentials
-```
-
-The dashboard is available at `https://your-domain.com` and Git SSH at port `2222`.
-
-#### Environment Variables
-
-| Variable             | Description                                    | Required |
-| -------------------- | ---------------------------------------------- | -------- |
-| `DOMAIN`             | Domain where Hasir is hosted                   | Yes      |
-| `LETSENCRYPT_EMAIL`  | Email for Let's Encrypt notifications          | Yes      |
-| `POSTGRES_USER`      | PostgreSQL username                            | Yes      |
-| `POSTGRES_PASSWORD`  | PostgreSQL password                            | Yes      |
-| `POSTGRES_DB`        | PostgreSQL database name                       | Yes      |
-| `JWT_SECRET`         | Secret for signing JWT tokens                  | Yes      |
-| `SMTP_HOST`          | SMTP server hostname                           | Yes      |
-| `SMTP_PORT`          | SMTP server port                               | Yes      |
-| `SMTP_USERNAME`      | SMTP authentication username                   | Yes      |
-| `SMTP_PASSWORD`      | SMTP authentication password                   | Yes      |
-| `SMTP_FROM`          | Sender address for outgoing emails             | Yes      |
-| `SMTP_USE_TLS`       | Enable TLS for SMTP (`true`/`false`)           | Yes      |
-| `API_TAG`            | API Docker image tag (default: `latest`)       | No       |
-| `DASHBOARD_TAG`      | Dashboard Docker image tag (default: `latest`) | No       |
-
-### Kubernetes (Helm)
-
-```bash
-helm dependency update deploy/helm/charts/hasir
-helm install hasir deploy/helm/charts/hasir -f deploy/helm/charts/hasir/values.yaml
-```
-
-See [`deploy/helm/`](deploy/helm/) for chart values and templates.
-
----
+**Skip Hasir if** you need non-Protobuf formats, Kafka schema IDs, push-time breaking-change rejection, or native package feeds (npm, PyPI, Maven) instead of Git-served SDK repos.
 
 ## Usage
 
-### Connecting via Git SSH
+Once Hasir is running (locally or on a server — see [Deploy](#deploy) or [Local Development](#monorepo--local-development)):
 
-Add your SSH public key through the dashboard, then push schemas:
+1. Sign in to the dashboard, add your SSH public key, and create a repository. Enable the built-in SDK targets you want, or turn on [Buf](https://buf.build) mode so Hasir detects matching built-in targets from your `buf.gen.yaml` (arbitrary custom plugins are not executed).
+2. Test your SSH key against Hasir's SSH server:
 
 ```bash
-# Clone a schema repository
-git clone ssh://git@your-domain.com:2222/org/repo.git
+ssh -T git@hasir.example.com -p 2222
+# ✅ SSH connection successful!
+# 🔐 Authentication completed.
+```
 
-# Push schema changes
-git add .
-git commit -m "add user service definition"
+3. Clone the repository by its dashboard ID and push `.proto` files (see [`packages/proto/proto/`](packages/proto/proto/) for working Protobuf services in this repo):
+
+```bash
+git clone ssh://git@hasir.example.com:2222/<repositoryId>.git
+cd <repositoryId>
+git add user/v1/user.proto
+git commit -m "add user service"
 git push origin main
 ```
 
-Hasir picks up the push and generates SDKs automatically based on the repository's Buf configuration.
+Hasir queues generation jobs in PostgreSQL and serves read-only Git SDK repositories at `/sdk/<orgId>/<repositoryId>/<commitHash>/<sdkType>` (or without `<commitHash>` for the unpinned path) alongside Markdown docs under `/docs/`. Git over HTTP also works at `/git/<repositoryId>.git` using HTTP Basic Auth with a dashboard API key.
 
----
-
-## Backup & Restore
+4. Install a generated SDK from the URL shown in the dashboard:
 
 ```bash
-# Create a database backup
-sudo ./scripts/backup.sh
+# TypeScript / JavaScript over Git-SSH
+npm install git+ssh://git@hasir.example.com:2222/sdk/<orgId>/<repositoryId>/<commitHash>/js-connectrpc/
 
-# Automate daily backups via cron (runs at 2:00 AM)
-sudo crontab -e
-# 0 2 * * * /path/to/hasir/deploy/docker/scripts/backup.sh >> /var/log/hasir-backup.log 2>&1
-
-# Restore from backup
-gunzip -c backups/hasir_db_YYYYMMDD_HHMMSS.sql.gz | \
-  docker compose exec -T postgres psql -U hasir -d hasir
+# Go via go-import (pointing at the API host, e.g. localhost:8080 or a dedicated API domain)
+go env -w GOPRIVATE=api.hasir.example.com GONOSUMDB=api.hasir.example.com
+go get api.hasir.example.com/sdk/<orgId>/<repositoryId>/<commitHash>/go-connectrpc
 ```
 
----
+## Deploy
 
-## Development
+Hasir needs PostgreSQL 16+, persistent disk storage for Git repos, SDKs, and SSH host keys, and open ports `80`/`443` (HTTP/HTTPS) and `2222` (Git SSH). To evaluate on a laptop without a server, skip to [Local Development](#monorepo--local-development).
 
-For contributors working on Hasir itself.
+### Docker Compose (single Debian/Ubuntu VPS)
 
-### Prerequisites
-
-| Tool | Version |
-| ---- | ------- |
-| [Bun](https://bun.sh) | >= 1.4.0 |
-| [Go](https://go.dev) | >= 1.26 |
-| [Node.js](https://nodejs.org) | >= 22 |
-| [Buf](https://buf.build/docs/installation) | Latest |
-
-### Setup
+Requires `sudo`, a domain pointed at the server, and `apt-get`/`ufw`/`systemctl` (used by `setup.sh`):
 
 ```bash
-make setup
+git clone https://github.com/lynicis/hasir.git
+cd hasir/deploy/docker
 
+# Install Docker/UFW/Fail2Ban and create .env with generated DB and JWT secrets
+sudo ./scripts/setup.sh
+
+# Set DOMAIN, LETSENCRYPT_EMAIL, and SMTP_* values (keep the generated secrets)
+$EDITOR .env
+
+# Re-run setup so the bootstrap TLS certificate matches your DOMAIN
+sudo ./scripts/setup.sh
+
+# Pull published ghcr.io images, start services, and request a Let's Encrypt cert
+sudo ./scripts/deploy.sh
+```
+
+Verify the stack:
+
+```bash
+docker compose ps
+curl -fsS https://your-domain.com/health
+# OK
+```
+
+See [`deploy/docker/README.md`](deploy/docker/README.md) and [`deploy/docker/.env.example`](deploy/docker/.env.example) for environment variables, daily PostgreSQL backups (`scripts/backup.sh`), restore steps, and troubleshooting.
+
+### Kubernetes (Helm)
+
+Requires Kubernetes 1.19+, Helm 3+, a StorageClass for `ReadWriteOnce` volumes, and an Ingress controller (chart defaults to `traefik` with `cert-manager`; SSH `:2222` uses a separate `LoadBalancer` Service):
+
+```bash
+git clone https://github.com/lynicis/hasir.git
+cd hasir
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm dependency update deploy/helm/charts/hasir
+cp deploy/helm/charts/hasir/values.yaml my-values.yaml
+# Edit my-values.yaml to replace hasir.local and default JWT, PostgreSQL, and SMTP secrets
+helm install hasir deploy/helm/charts/hasir -f my-values.yaml --namespace hasir --create-namespace
+```
+
+See [`deploy/helm/README.md`](deploy/helm/README.md) for all chart values and upgrade or uninstall commands.
+
+> [!NOTE]
+> The published `ghcr.io/lynicis/hasir-api` image ([`apps/api/Dockerfile`](apps/api/Dockerfile)) bundles `git` only. SDK and doc generation invokes `buf`, `protoc`, and language `protoc-gen-*` plugins from `PATH`, so containerized codegen needs a custom API image with your required compilers installed, or running the API on a host that already has them.
+
+## Architecture
+
+Nginx (Docker Compose) or Traefik (Helm) handles HTTPS on ports `80` and `443`. It routes `/` to the Next.js dashboard (`:3000`) and `/api/` to the Go [ConnectRPC](https://connectrpc.com) API (`:8080`). Git SSH (`:2222`) skips HTTP ingress and hits the API's embedded SSH server directly. The API enforces JWT auth and organization roles (`owner`, `author`, `reader`), stores metadata and job queues in PostgreSQL (`:5432`), and writes bare Git repos, generated SDKs, and SSH host keys to single-replica `ReadWriteOnce` volumes.
+
+```mermaid
+graph TD
+    Client["Client (Web / Git)"] -->|HTTP/HTTPS 80, 443| Ingress["Ingress: Nginx (Docker) / Traefik (Helm)"]
+    Client -->|Git SSH 2222| API["API + Git SSH (Go / ConnectRPC :8080, :2222)"]
+    Ingress -->|"/"| Dashboard["Dashboard (Next.js :3000)"]
+    Ingress -->|"/api/"| API
+    API --> DB[("PostgreSQL :5432")]
+    API --> Storage[("Disk Volumes: repos, sdk, ssh")]
+```
+
+Read [`CONTEXT.md`](CONTEXT.md) for component internals, interceptor order, and release channels, or browse [`docs/adr/`](docs/adr/) for architecture decision records.
+
+## Status, Security & Support
+
+- **Status:** Active development, pre-stability 1.x (`hasir-api@1.3.0`, `hasir-dashboard@1.4.0`). You can self-host and evaluate it today, though APIs, config keys, and Helm defaults may still change between releases.
+- **Releases:** Each app versions independently with Changesets on `main`. See [GitHub Releases](https://github.com/lynicis/hasir/releases) and [`docs/RELEASE.md`](docs/RELEASE.md) for changelogs and breaking notes.
+- **Security:** Report vulnerabilities privately via [`SECURITY.md`](SECURITY.md) (48-hour acknowledgment, 5-business-day initial assessment). Secrets use [SOPS](https://getsops.io/), and CI runs CodeQL and `govulncheck`.
+- **Support:** Solo-maintained on a best-effort basis through [GitHub Issues](https://github.com/lynicis/hasir/issues), with no commercial SLA.
+
+## Monorepo & Local Development
+
+| Workspace | Purpose |
+| --- | --- |
+| [`apps/api/`](apps/api/README.md) | Go 1.27 ConnectRPC API, Git SSH/HTTP server, and SDK generator |
+| [`apps/dashboard/`](apps/dashboard/README.md) | Next.js 16 web UI for organizations, repos, SSH keys, SDKs, and docs |
+| [`apps/landing/`](apps/landing/) | Marketing site (`vinext`, deployed to Cloudflare Workers) |
+| [`packages/proto/`](packages/proto/README.md) | Protobuf schemas and Buf workspace (`@hasir/proto`) |
+| [`packages/ui/`](packages/ui/) & [`packages/shared/`](packages/shared/README.md) | Shared React UI components and TS logging/OpenTelemetry utilities |
+| [`deploy/docker/`](deploy/docker/README.md) & [`deploy/helm/`](deploy/helm/README.md) | Single-VPS Docker Compose stack and Kubernetes Helm chart |
+
+Local development requires Go >= 1.27, [Bun](https://bun.sh) >= 1.4, Node.js >= 24, [Buf](https://buf.build/docs/installation), and PostgreSQL 16+ (or Docker):
+
+```bash
+git clone https://github.com/lynicis/hasir.git
+cd hasir
+
+# Start a local PostgreSQL instance matching apps/api/config.example.json
+docker run -d --name hasir-postgres -p 5432:5432 \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=hasir \
+  postgres:16-alpine
+
+make setup
 cp apps/api/config.example.json apps/api/config.json
 cp apps/dashboard/.env.example apps/dashboard/.env.local
-
 make dev
 ```
 
-The API runs at `http://localhost:8080` and the dashboard at `http://localhost:3000`.
+`make dev` starts the API on `http://localhost:8080` (SSH on `:2222`), the dashboard on `http://localhost:3000`, and the landing site on `http://localhost:3001`. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for testing (`make lint && make typecheck && make test`), migrations, and pull-request rules.
 
-### Commands
+## License
 
-| Command          | Description                                      |
-| ---------------- | ------------------------------------------------ |
-| `make setup`     | Install deps, generate proto, update Helm charts |
-| `make dev`       | Start API + dashboard via Turborepo              |
-| `make build`     | Build all affected workspaces                    |
-| `make test`      | Run tests across affected workspaces             |
-| `make lint`      | ESLint + golangci-lint across the monorepo       |
-| `make typecheck` | TypeScript type checking                         |
-| `make proto`     | Regenerate code from `.proto` definitions        |
-| `make docker`    | Build all Docker images (Buildx Bake)            |
-| `make clean`     | Remove build artifacts and caches                |
-| `make release`   | Tag and release a service (`app=api bump=patch`) |
+[MIT License](LICENSE). Participation follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-### Project Structure
-
-```
-apps/api/            Go API service (ConnectRPC, PostgreSQL, JWT, SSH)
-apps/dashboard/      Next.js dashboard (React, shadcn/ui, Tailwind)
-apps/landing/        Marketing site (vinext, Cloudflare Workers deploy)
-packages/proto/      Protobuf schemas + buf workspace
-packages/ui/         Shared component library (shadcn/ui + Radix)
-deploy/helm/         Helm chart for Kubernetes deployment
-deploy/docker/       Docker Compose stack (nginx, certbot)
-openspec/            Specifications and change artifacts
-docs/                Architecture docs and ADRs
-```
-
-## Documentation
-
-| Document | Description |
-| -------- | ----------- |
-| [Architecture](docs/ARCHITECTURE.md) | System design and component boundaries |
-| [Migration Guide](docs/MIGRATION.md) | Legacy git history import guide (5-repo migration) |
-| [Release Strategy](docs/RELEASE.md) | Versioning, tagging, and release workflow |
-| [ADRs](docs/adr/) | Architecture Decision Records |
-| [Docker Stack](deploy/docker/README.md) | Full deployment and operations guide |
+The original standalone repositories under [protohasir](https://github.com/protohasir) are retired and consolidated into this monorepo; see [`docs/MIGRATION.md`](docs/MIGRATION.md).
