@@ -1,0 +1,7 @@
+# Orca repository hooks.
+# Setup runs once in each new Orca-managed worktree (and on `orca worktree create --run-hooks`).
+# It mirrors the documented developer bootstrap: deps, generated proto, Helm deps.
+# Archive is intentionally absent: a worktree here owns no long-lived services or data.
+scripts:
+  setup: |
+    make setup
