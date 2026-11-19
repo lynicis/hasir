@@ -14,7 +14,7 @@ Hasir is a self-hosted platform for managing Protocol Buffer (protobuf) schemas.
 - **Automatic SDK Generation**: On every schema push, Hasir validates definitions via `buf` and automatically generates and packages client SDKs (TypeScript, Go, Java, C#, Rust, etc.) using a configurable worker-pool job queue.
 - **Documentation Hosting**: Auto-generated API docs served under `/docs/` per repository.
 - **Management Dashboard**: Next.js 16 Web UI for managing organizations, repositories, users, SSH public keys, and viewing generated SDKs and docs.
-- **Landing Site**: Marketing site (`apps/landing`) deployed independently to Vercel.
+- **Landing Site**: Marketing site (`apps/landing`) built with vinext and deployed independently to Cloudflare Workers.
 
 ---
 
@@ -59,7 +59,7 @@ Hasir is a self-hosted platform for managing Protocol Buffer (protobuf) schemas.
 │   │   ├── components/     # Dashboard-specific UI components
 │   │   ├── lib/            # Client utilities (session, interceptors, ConnectRPC client, hooks)
 │   │   └── stores/         # Zustand client state (registry-store)
-│   └── landing/            # Next.js 16 marketing site (Vercel deploy)
+│   └── landing/            # vinext marketing site (Cloudflare Workers deploy)
 ├── deploy/
 │   ├── docker/             # Docker Compose + Nginx templates + Certbot scripts
 │   └── helm/               # Kubernetes Helm chart

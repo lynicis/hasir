@@ -5,10 +5,11 @@ on:
     branches: [main]
     paths:
       - 'apps/landing/**'
+      - 'packages/ui/**'
 
 jobs:
   deploy:
-    name: Deploy to Vercel
+    name: Deploy to Cloudflare Workers
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -22,13 +23,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build
-        run: bunx vercel build --yes
-        working-directory: apps/landing
-
-      - name: Deploy to Vercel
-        run: bunx vercel deploy --prebuilt --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build and Deploy to Cloudflare Workers
+        run: bun run deploy
         working-directory: apps/landing
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

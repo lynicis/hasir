@@ -3,9 +3,10 @@
   "version": "1.1.0",
   "private": true,
   "scripts": {
-    "dev": "bun --bun run next dev -p 3001",
-    "build": "bun --bun run next build",
-    "start": "bun --bun run next start -p 3001",
+    "dev": "vite dev --port 3001",
+    "build": "vite build",
+    "start": "wrangler dev --config dist/server/wrangler.json",
+    "deploy": "vinext-cloudflare deploy --config dist/server/wrangler.json",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "typecheck": "tsc --noEmit",
@@ -14,28 +15,37 @@
   },
   "dependencies": {
     "@hasir/ui": "workspace:*",
+    "@vinext/cloudflare": "^1.4.0",
     "clsx": "^2.1.1",
     "framer-motion": "^14.14.0",
     "lucide-react": "^1.76.0",
-    "next": "16.4.6",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "tailwind-merge": "^3.7.0"
+    "react-server-dom-webpack": "^19.3.1",
+    "tailwind-merge": "^3.7.0",
+    "vinext": "^1.4.6"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.70.1",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/bun": "^1.4.4",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "@vitejs/plugin-rsc": "^0.5.39",
     "eslint": "^10.15.0",
     "eslint-config-next": "16.4.6",
     "eslint-plugin-perfectionist": "^5.14.0",
+    "next": "16.4.6",
     "tailwindcss": "^4.3.5",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vite": "^8.3.8",
+    "wrangler": "^4.165.0"
   },
   "engines": {
     "node": "~24",
     "bun": ">=1.4"
-  }
+  },
+  "type": "module"
 }
