@@ -20,6 +20,14 @@ vi.mock("next/navigation", () => ({
 const mockIsInvitationValid = vi.fn();
 const mockRespondToInvitation = vi.fn();
 
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+  },
+}));
+
 const mockApiClient = {
   isInvitationValid: mockIsInvitationValid,
   respondToInvitation: mockRespondToInvitation,
