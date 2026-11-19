@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -79,6 +78,8 @@ type Generator interface {
 
 type CommandRunner interface {
 	Run(ctx context.Context, name string, args []string, workDir string) ([]byte, error)
+	RunCombined(ctx context.Context, name string, args []string, workDir string) ([]byte, error)
+	Pipe(ctx context.Context, srcName string, srcArgs []string, srcDir, dstName string, dstArgs []string, dstDir string) error
 }
 
 type ProtocArgsBuilder func(input GeneratorInput) []string
@@ -225,20 +226,16 @@ func FindProtoFiles(repoPath string) ([]string, error) {
 // using git ls-tree. This works without a working tree, unlike FindProtoFiles
 // which requires files to exist on the filesystem.
 func FindProtoFilesInBareRepo(repoPath, commitHash string) ([]string, error) {
+	return FindProtoFilesInBareRepoWithRunner(context.Background(), NewDefaultCommandRunner(), repoPath, commitHash)
+}
+
+func FindProtoFilesInBareRepoWithRunner(ctx context.Context, runner CommandRunner, repoPath, commitHash string) ([]string, error) {
 	if commitHash == "" {
 		commitHash = "HEAD"
 	}
 
-	// #nosec G204 -- commitHash is validated as a git ref by git itself
-	cmd := exec.Command("git", "ls-tree", "-r", "--name-only", commitHash)
-	cmd.Dir = repoPath
-
-	output, err := cmd.Output()
+	output, err := runner.Run(ctx, "git", []string{"ls-tree", "-r", "--name-only", commitHash}, repoPath)
 	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
-			return nil, fmt.Errorf("git ls-tree failed (%w): %s", err, strings.TrimSpace(string(exitErr.Stderr)))
-		}
 		return nil, fmt.Errorf("git ls-tree failed: %w", err)
 	}
 
