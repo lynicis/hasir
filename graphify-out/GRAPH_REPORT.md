@@ -1,7 +1,7 @@
 # Graph Report - hasir  (2026-11-19)
 
 ## Corpus Check
-- 769 files · ~431,484 words
+- 769 files · ~431,457 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 61 file(s) not represented in the graph (top: (none) 25, .proto 8, .lock 5)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7d50bf6b`
+- Built from commit: `522c994d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1967,16 +1967,16 @@ Nodes (3): engines, bun, node
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Phase 1: Go API (`apps/api`)` connect `NewMockCommandRunner` to `main`, `net/http.ResponseWriter`?**
-  _High betweenness centrality (0.175) - this node is a cross-community bridge._
+  _High betweenness centrality (0.162) - this node is a cross-community bridge._
 - **What connects `SDK_CSHARP_CONNECTRPC`, `SDK_CSHARP_GRPC`, `SDK_CSHARP_PROTOBUF` to the rest of the system?**
   _86 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `cn` be split into smaller, more focused modules?**
   _Cohesion score 0.015716167890080932 - nodes in this community are weakly interconnected._
 - **Why does `Design: Repo-Wide Structural Refactoring` connect `NewMockCommandRunner` to `Button`?**
-  _High betweenness centrality (0.175) - this node is a cross-community bridge._
+  _High betweenness centrality (0.162) - this node is a cross-community bridge._
 - **Should `MockService` be split into smaller, more focused modules?**
   _Cohesion score 0.06676342525399129 - nodes in this community are weakly interconnected._
 - **Why does `Phase 2: Dashboard & Shared UI (`apps/dashboard`, `packages/ui`)` connect `Button` to `NewMockCommandRunner`?**
-  _High betweenness centrality (0.175) - this node is a cross-community bridge._
+  _High betweenness centrality (0.162) - this node is a cross-community bridge._
 - **Should `MockRepository` be split into smaller, more focused modules?**
   _Cohesion score 0.038245000970685304 - nodes in this community are weakly interconnected._

@@ -82,22 +82,22 @@
       "source": "vercel/next.js",
       "sourceType": "github",
       "skillPath": "skills/next-cache-components-adoption/SKILL.md",
-      "computedHash": "b333bc19058f17f2b05a338b229dba76c6fe2432e4943c6995ca8777f7074daf",
-      "commit": "5395cf44d1fcd1e257ad32365f8674a473c664ac"
+      "computedHash": "004440bc8cfbf30291fc9564e14ade7874c886189e2df3a4bcbb7c937ef58b07",
+      "commit": "303a1b9bacf28fef576a3d934beb1007ccc4192e"
     },
     "next-cache-components-optimizer": {
       "source": "vercel/next.js",
       "sourceType": "github",
       "skillPath": "skills/next-cache-components-optimizer/SKILL.md",
-      "computedHash": "670308a86f302a19ad68eb1da02d8bd033d9824e0e5020c582383b4ebd41107a",
-      "commit": "5395cf44d1fcd1e257ad32365f8674a473c664ac"
+      "computedHash": "97a5b125e85aff3ebe90626b887cf016f4de33c01b479a42758bd57fe233db4c",
+      "commit": "303a1b9bacf28fef576a3d934beb1007ccc4192e"
     },
     "next-dev-loop": {
       "source": "vercel/next.js",
       "sourceType": "github",
       "skillPath": "skills/next-dev-loop/SKILL.md",
-      "computedHash": "abe7b5e77b26f95ab21304b10ce1003a41e4e75b601505d76c8a0294e33a450d",
-      "commit": "5395cf44d1fcd1e257ad32365f8674a473c664ac"
+      "computedHash": "78ebafaabaa8fd170da34957943f5845436f66c04daf85a93fc759f38a50a4ca",
+      "commit": "303a1b9bacf28fef576a3d934beb1007ccc4192e"
     },
     "next-partial-prefetching-adoption": {
       "source": "vercel/next.js",
