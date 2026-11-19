@@ -15,6 +15,7 @@ import (
 	"go.uber.org/zap"
 
 	"hasir/api/internal/registry"
+	"hasir/api/pkg/postgres"
 )
 
 type SdkGenerationJobQueue struct {
@@ -232,76 +233,16 @@ func (q *SdkGenerationJobQueue) GetPendingSdkTriggerJobs(ctx context.Context, li
 }
 
 func (q *SdkGenerationJobQueue) UpdateSdkTriggerJobStatus(ctx context.Context, jobId string, status registry.SdkGenerationJobStatus, errorMsg *string) error {
-	var span trace.Span
-	ctx, span = q.tracer.Start(ctx, "UpdateSdkTriggerJobStatus", trace.WithAttributes(
-		attribute.KeyValue{
-			Key:   "jobId",
-			Value: attribute.StringValue(jobId),
-		},
-		attribute.KeyValue{
-			Key:   "status",
-			Value: attribute.StringValue(string(status)),
-		},
-	))
-	defer span.End()
-
-	connection, err := q.connectionPool.Acquire(ctx)
-	if err != nil {
-		return connect.NewError(connect.CodeInternal, errors.New("failed to acquire connection"))
-	}
-	defer connection.Release()
-
-	now := time.Now().UTC()
-	var sql string
-	var sqlArgs pgx.NamedArgs
-
-	switch status {
-	case registry.SdkGenerationJobStatusProcessing:
-		sql = `UPDATE sdk_trigger_jobs SET status = @Status, processed_at = @ProcessedAt, attempts = attempts + 1 WHERE id = @Id AND status = 'pending'`
-		sqlArgs = pgx.NamedArgs{
-			"Id":          jobId,
-			"Status":      status,
-			"ProcessedAt": now,
-		}
-	case registry.SdkGenerationJobStatusCompleted:
-		sql = `UPDATE sdk_trigger_jobs SET status = @Status, completed_at = @CompletedAt WHERE id = @Id AND status = 'processing'`
-		sqlArgs = pgx.NamedArgs{
-			"Id":          jobId,
-			"Status":      status,
-			"CompletedAt": now,
-		}
-	case registry.SdkGenerationJobStatusFailed:
-		sql = `UPDATE sdk_trigger_jobs SET status = @Status, error_message = @ErrorMessage WHERE id = @Id AND status = 'processing'`
-		sqlArgs = pgx.NamedArgs{
-			"Id":           jobId,
-			"Status":       status,
-			"ErrorMessage": errorMsg,
-		}
-	case registry.SdkGenerationJobStatusPending:
-		sql = `UPDATE sdk_trigger_jobs SET status = @Status WHERE id = @Id AND status = 'processing'`
-		sqlArgs = pgx.NamedArgs{
-			"Id":     jobId,
-			"Status": status,
-		}
-	default:
-		sql = `UPDATE sdk_trigger_jobs SET status = @Status WHERE id = @Id`
-		sqlArgs = pgx.NamedArgs{
-			"Id":     jobId,
-			"Status": status,
-		}
-	}
-
-	result, err := connection.Exec(ctx, sql, sqlArgs)
-	if err != nil {
-		span.RecordError(err)
-		return connect.NewError(connect.CodeInternal, errors.New("failed to update sdk trigger job status"))
-	}
-
-	if result.RowsAffected() == 0 {
-		return connect.NewError(connect.CodeNotFound, errors.New("sdk trigger job not found or status mismatch"))
-	}
-
-	return nil
+	return postgres.UpdateJobStatus(
+		ctx,
+		q.connectionPool,
+		q.tracer,
+		"UpdateSdkTriggerJobStatus",
+		postgres.SdkTriggerJobQueries,
+		jobId,
+		string(status),
+		errorMsg,
+	)
 }
 
 func (q *SdkGenerationJobQueue) processSdkTriggerJobs(ctx context.Context, triggerProcessor registry.SdkTriggerProcessor, batchSize int) {
@@ -325,16 +266,17 @@ func (q *SdkGenerationJobQueue) processSdkTriggerJobs(ctx context.Context, trigg
 				zap.String("jobId", job.Id),
 				zap.String("repositoryId", job.RepositoryId))
 
-			if job.Attempts < job.MaxAttempts {
-				if updateErr := q.UpdateSdkTriggerJobStatus(ctx, job.Id, registry.SdkGenerationJobStatusPending, nil); updateErr != nil {
-					zap.L().Error("failed to reset trigger job to pending", zap.Error(updateErr))
-				}
-			} else {
-				errorMsg := err.Error()
-				if updateErr := q.UpdateSdkTriggerJobStatus(ctx, job.Id, registry.SdkGenerationJobStatusFailed, &errorMsg); updateErr != nil {
-					zap.L().Error("failed to mark trigger job as failed", zap.Error(updateErr))
-				}
-			}
+			postgres.HandleJobRetryOrFail(
+				job.Attempts,
+				job.MaxAttempts,
+				err,
+				func() error {
+					return q.UpdateSdkTriggerJobStatus(ctx, job.Id, registry.SdkGenerationJobStatusPending, nil)
+				},
+				func(msg string) error {
+					return q.UpdateSdkTriggerJobStatus(ctx, job.Id, registry.SdkGenerationJobStatusFailed, &msg)
+				},
+			)
 			continue
 		}
 
@@ -374,16 +316,17 @@ func (q *SdkGenerationJobQueue) processSdkGenerationJobs(ctx context.Context, sd
 				zap.String("commitHash", job.CommitHash),
 				zap.String("sdk", string(job.Sdk)))
 
-			if job.Attempts < job.MaxAttempts {
-				if updateErr := q.UpdateSdkGenerationJobStatus(ctx, job.Id, registry.SdkGenerationJobStatusPending, nil); updateErr != nil {
-					zap.L().Error("failed to reset job to pending", zap.Error(updateErr))
-				}
-			} else {
-				errorMsg := err.Error()
-				if updateErr := q.UpdateSdkGenerationJobStatus(ctx, job.Id, registry.SdkGenerationJobStatusFailed, &errorMsg); updateErr != nil {
-					zap.L().Error("failed to mark job as failed", zap.Error(updateErr))
-				}
-			}
+			postgres.HandleJobRetryOrFail(
+				job.Attempts,
+				job.MaxAttempts,
+				err,
+				func() error {
+					return q.UpdateSdkGenerationJobStatus(ctx, job.Id, registry.SdkGenerationJobStatusPending, nil)
+				},
+				func(msg string) error {
+					return q.UpdateSdkGenerationJobStatus(ctx, job.Id, registry.SdkGenerationJobStatusFailed, &msg)
+				},
+			)
 			continue
 		}
 
@@ -469,74 +412,14 @@ func (q *SdkGenerationJobQueue) GetPendingSdkGenerationJobs(ctx context.Context,
 }
 
 func (q *SdkGenerationJobQueue) UpdateSdkGenerationJobStatus(ctx context.Context, jobId string, status registry.SdkGenerationJobStatus, errorMsg *string) error {
-	var span trace.Span
-	ctx, span = q.tracer.Start(ctx, "UpdateSdkGenerationJobStatus", trace.WithAttributes(
-		attribute.KeyValue{
-			Key:   "jobId",
-			Value: attribute.StringValue(jobId),
-		},
-		attribute.KeyValue{
-			Key:   "status",
-			Value: attribute.StringValue(string(status)),
-		},
-	))
-	defer span.End()
-
-	connection, err := q.connectionPool.Acquire(ctx)
-	if err != nil {
-		return connect.NewError(connect.CodeInternal, errors.New("failed to acquire connection"))
-	}
-	defer connection.Release()
-
-	now := time.Now().UTC()
-	var sql string
-	var sqlArgs pgx.NamedArgs
-
-	switch status {
-	case registry.SdkGenerationJobStatusProcessing:
-		sql = `UPDATE sdk_generation_jobs SET status = @Status, processed_at = @ProcessedAt, attempts = attempts + 1 WHERE id = @Id AND status = 'pending'`
-		sqlArgs = pgx.NamedArgs{
-			"Id":          jobId,
-			"Status":      status,
-			"ProcessedAt": now,
-		}
-	case registry.SdkGenerationJobStatusCompleted:
-		sql = `UPDATE sdk_generation_jobs SET status = @Status, completed_at = @CompletedAt WHERE id = @Id AND status = 'processing'`
-		sqlArgs = pgx.NamedArgs{
-			"Id":          jobId,
-			"Status":      status,
-			"CompletedAt": now,
-		}
-	case registry.SdkGenerationJobStatusFailed:
-		sql = `UPDATE sdk_generation_jobs SET status = @Status, error_message = @ErrorMessage WHERE id = @Id AND status = 'processing'`
-		sqlArgs = pgx.NamedArgs{
-			"Id":           jobId,
-			"Status":       status,
-			"ErrorMessage": errorMsg,
-		}
-	case registry.SdkGenerationJobStatusPending:
-		sql = `UPDATE sdk_generation_jobs SET status = @Status WHERE id = @Id AND status = 'processing'`
-		sqlArgs = pgx.NamedArgs{
-			"Id":     jobId,
-			"Status": status,
-		}
-	default:
-		sql = `UPDATE sdk_generation_jobs SET status = @Status WHERE id = @Id`
-		sqlArgs = pgx.NamedArgs{
-			"Id":     jobId,
-			"Status": status,
-		}
-	}
-
-	result, err := connection.Exec(ctx, sql, sqlArgs)
-	if err != nil {
-		span.RecordError(err)
-		return connect.NewError(connect.CodeInternal, errors.New("failed to update sdk generation job status"))
-	}
-
-	if result.RowsAffected() == 0 {
-		return connect.NewError(connect.CodeNotFound, errors.New("sdk generation job not found or status mismatch"))
-	}
-
-	return nil
+	return postgres.UpdateJobStatus(
+		ctx,
+		q.connectionPool,
+		q.tracer,
+		"UpdateSdkGenerationJobStatus",
+		postgres.SdkGenerationJobQueries,
+		jobId,
+		string(status),
+		errorMsg,
+	)
 }

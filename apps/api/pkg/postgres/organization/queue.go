@@ -16,6 +16,7 @@ import (
 
 	"hasir/api/internal/organization"
 	"hasir/api/pkg/email"
+	"hasir/api/pkg/postgres"
 )
 
 type EmailJobQueue struct {
@@ -152,16 +153,17 @@ func (q *EmailJobQueue) processEmailJobs(ctx context.Context, emailService email
 				zap.String("jobId", job.Id),
 				zap.String("email", job.Email))
 
-			if job.Attempts < job.MaxAttempts {
-				if updateErr := q.UpdateEmailJobStatus(ctx, job.Id, organization.EmailJobStatusPending, nil); updateErr != nil {
-					zap.L().Error("failed to reset job to pending", zap.Error(updateErr))
-				}
-			} else {
-				errorMsg := err.Error()
-				if updateErr := q.UpdateEmailJobStatus(ctx, job.Id, organization.EmailJobStatusFailed, &errorMsg); updateErr != nil {
-					zap.L().Error("failed to mark job as failed", zap.Error(updateErr))
-				}
-			}
+			postgres.HandleJobRetryOrFail(
+				job.Attempts,
+				job.MaxAttempts,
+				err,
+				func() error {
+					return q.UpdateEmailJobStatus(ctx, job.Id, organization.EmailJobStatusPending, nil)
+				},
+				func(msg string) error {
+					return q.UpdateEmailJobStatus(ctx, job.Id, organization.EmailJobStatusFailed, &msg)
+				},
+			)
 			continue
 		}
 
@@ -245,74 +247,14 @@ func (q *EmailJobQueue) GetPendingEmailJobs(ctx context.Context, limit int) ([]*
 }
 
 func (q *EmailJobQueue) UpdateEmailJobStatus(ctx context.Context, jobId string, status organization.EmailJobStatus, errorMsg *string) error {
-	var span trace.Span
-	ctx, span = q.tracer.Start(ctx, "UpdateEmailJobStatus", trace.WithAttributes(
-		attribute.KeyValue{
-			Key:   "jobId",
-			Value: attribute.StringValue(jobId),
-		},
-		attribute.KeyValue{
-			Key:   "status",
-			Value: attribute.StringValue(string(status)),
-		},
-	))
-	defer span.End()
-
-	connection, err := q.connectionPool.Acquire(ctx)
-	if err != nil {
-		return connect.NewError(connect.CodeInternal, errors.New("failed to acquire connection"))
-	}
-	defer connection.Release()
-
-	now := time.Now().UTC()
-	var sql string
-	var sqlArgs pgx.NamedArgs
-
-	switch status {
-	case organization.EmailJobStatusProcessing:
-		sql = `UPDATE email_jobs SET status = @Status, processed_at = @ProcessedAt, attempts = attempts + 1 WHERE id = @Id AND status = 'pending'`
-		sqlArgs = pgx.NamedArgs{
-			"Id":          jobId,
-			"Status":      status,
-			"ProcessedAt": now,
-		}
-	case organization.EmailJobStatusCompleted:
-		sql = `UPDATE email_jobs SET status = @Status, completed_at = @CompletedAt WHERE id = @Id AND status = 'processing'`
-		sqlArgs = pgx.NamedArgs{
-			"Id":          jobId,
-			"Status":      status,
-			"CompletedAt": now,
-		}
-	case organization.EmailJobStatusFailed:
-		sql = `UPDATE email_jobs SET status = @Status, error_message = @ErrorMessage WHERE id = @Id AND status = 'processing'`
-		sqlArgs = pgx.NamedArgs{
-			"Id":           jobId,
-			"Status":       status,
-			"ErrorMessage": errorMsg,
-		}
-	case organization.EmailJobStatusPending:
-		sql = `UPDATE email_jobs SET status = @Status WHERE id = @Id AND status = 'processing'`
-		sqlArgs = pgx.NamedArgs{
-			"Id":     jobId,
-			"Status": status,
-		}
-	default:
-		sql = `UPDATE email_jobs SET status = @Status WHERE id = @Id`
-		sqlArgs = pgx.NamedArgs{
-			"Id":     jobId,
-			"Status": status,
-		}
-	}
-
-	result, err := connection.Exec(ctx, sql, sqlArgs)
-	if err != nil {
-		span.RecordError(err)
-		return connect.NewError(connect.CodeInternal, errors.New("failed to update email job status"))
-	}
-
-	if result.RowsAffected() == 0 {
-		return connect.NewError(connect.CodeNotFound, errors.New("email job not found or status mismatch"))
-	}
-
-	return nil
+	return postgres.UpdateJobStatus(
+		ctx,
+		q.connectionPool,
+		q.tracer,
+		"UpdateEmailJobStatus",
+		postgres.EmailJobQueries,
+		jobId,
+		string(status),
+		errorMsg,
+	)
 }
