@@ -41,26 +41,26 @@ export function FeaturesSection() {
   return (
     <section id="features" className="hl-section--ruled">
       <div className="container">
-        <div className="hl-rows-layout">
-          <div className="hl-sticky-head">
-            <h2>Built around Git-SSH, buf, and Postgres.</h2>
-            <p className="lead">
-              For teams who treat protobuf definitions as source of truth.
-            </p>
-          </div>
-
-          <ul className="hl-spec-list">
-            {FEATURES.map((feature) => (
-              <li key={feature.title} className="hl-spec-row">
-                <div className="hl-spec-row__body">
-                  <h3>{feature.title}</h3>
-                  <p>{feature.desc}</p>
-                </div>
-                <span className="hl-spec-row__token">{feature.spec}</span>
-              </li>
-            ))}
-          </ul>
+        <div className="hl-arch-head">
+          <h2>Built around Git-SSH, buf, and Postgres.</h2>
+          <p className="lead">
+            For teams who treat protobuf definitions as source of truth.
+          </p>
         </div>
+
+        <ul className="hl-arch-matrix">
+          {FEATURES.map((feature) => (
+            <li key={feature.title} className="hl-arch-cell">
+              <div className="hl-arch-cell__body">
+                <h3>{feature.title}</h3>
+                <p>{feature.desc}</p>
+              </div>
+              <div className="hl-arch-cell__foot">
+                <span className="hl-arch-cell__token">{feature.spec}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

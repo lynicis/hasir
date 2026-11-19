@@ -1,19 +1,23 @@
+/* Tokens read from DESIGN.md (locked system): void #0a0b0d, surface #101213, white signal #f8f8f8,
+   muted #8f8f8f, hairline #202223, amber signal #eba941, primary action #ffffff; Geist Mono display, Geist Sans body. */
 @theme static {
-  --color-paper: oklch(14.5% 0.005 245);
-  --color-paper-2: oklch(17.5% 0.005 235);
-  --color-paper-3: oklch(20.8% 0.006 240);
-  --color-ink: oklch(97.5% 0.005 240);
-  --color-ink-2: oklch(83% 0.006 240);
-  --color-muted: oklch(69% 0.006 240);
-  --color-rule: oklch(25.5% 0.006 235);
-  --color-rule-2: oklch(34% 0.007 240);
-  --color-accent: oklch(77.5% 0.145 75);
-  --color-accent-ink: oklch(14.5% 0.005 245);
-  --color-focus: oklch(80% 0.18 75);
+  --color-paper: oklch(14.9% 0.0046 264);
+  --color-paper-2: oklch(18% 0.0038 229);
+  --color-paper-3: oklch(21.5% 0.0038 232);
+  --color-ink: oklch(97.9% 0 0);
+  --color-ink-2: oklch(84% 0 0);
+  --color-muted: oklch(65% 0 0);
+  --color-rule: oklch(25% 0.0035 229);
+  --color-rule-2: oklch(36% 0.004 232);
+  --color-accent: oklch(78% 0.1397 75);
+  --color-accent-ink: oklch(14.9% 0.0046 264);
+  --color-cta: oklch(100% 0 0);
+  --color-cta-ink: oklch(14.9% 0.0046 264);
+  --color-focus: oklch(81% 0.17 75);
   --color-error: oklch(62% 0.18 27);
   --color-success: oklch(68% 0.13 150);
 
-  --font-display: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
   --font-body: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-outlier: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
   --font-sans: var(--font-body);
@@ -26,18 +30,19 @@
   --text-xl: 1.5625rem;
   --text-2xl: 1.953rem;
   --text-3xl: 2.441rem;
-  --text-display-s: clamp(2.25rem, 3.8vw + 0.5rem, 3.75rem);
-  --text-display: clamp(2.5rem, 3.6vw + 0.75rem, 4.25rem);
-  --text-section: clamp(2.125rem, 2.5vw + 1rem, 3.25rem);
-  --text-title: clamp(1.25rem, 0.75vw + 0.875rem, 1.5625rem);
+  --text-display-s: clamp(2.125rem, 2.2vw + 0.75rem, 3.125rem);
+  --text-display: clamp(2.375rem, 2.75vw + 0.875rem, 3.75rem);
+  --text-section: clamp(2.125rem, 2.2vw + 1rem, 3rem);
+  --text-title: clamp(1.1875rem, 0.5vw + 0.9375rem, 1.4375rem);
   --text-lead: clamp(1.125rem, 0.35vw + 1rem, 1.3125rem);
 
-  --tracking-display: -0.025em;
+  --tracking-display: -0.02em;
 
   --radius-button: 0px;
   --radius-card: 4px;
   --radius-pill: 999px;
   --shadow-card: none;
+  --shadow-ring: 0 0 0 1px color-mix(in oklab, var(--color-ink) 10%, transparent);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
@@ -67,8 +72,10 @@
   --section-gap: 144px;
   --section-gap-l: 176px;
 
+  --nav-h: 64px;
   --rule-hair: 1px;
   --display-weight: 700;
+  --grain-opacity: 0.025;
 
   --z-base: 1;
   --z-raised: 10;
@@ -89,8 +96,8 @@
   --border: var(--color-rule);
   --accent: var(--color-accent);
   --accent-foreground: var(--color-accent-ink);
-  --primary: var(--color-ink);
-  --primary-foreground: var(--color-paper);
+  --primary: var(--color-cta);
+  --primary-foreground: var(--color-cta-ink);
   --secondary: var(--color-paper-3);
   --secondary-foreground: var(--color-ink);
   --input: var(--color-rule-2);

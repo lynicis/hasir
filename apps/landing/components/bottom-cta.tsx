@@ -44,9 +44,9 @@ export function BottomCTA() {
   return (
     <section id="deploy" className="hl-section--deploy">
       <div className="container">
-        <div className="hl-deploy-band">
-          <div className="hl-deploy-band__top">
-            <div>
+        <div className="hl-deploy-split">
+          <div className="hl-deploy-split__left">
+            <div className="hl-deploy-split__head">
               <h2>Run it on Docker Compose or Helm.</h2>
               <p className="lead hl-deploy-band__lead">
                 Self-host Hasir on your own server with pre-built ghcr.io images
@@ -54,12 +54,14 @@ export function BottomCTA() {
               </p>
             </div>
 
-            <Link
-              href="https://github.com/lynicis/hasir/tree/main/docs"
-              className="hl-btn hl-btn--quiet"
-            >
-              Read deployment guide
-            </Link>
+            <div>
+              <Link
+                href="https://github.com/lynicis/hasir/tree/main/docs"
+                className="hl-btn hl-btn--quiet"
+              >
+                Read deployment guide
+              </Link>
+            </div>
           </div>
 
           <div className="hl-deploy-strip">
