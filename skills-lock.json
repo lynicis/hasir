@@ -66,10 +66,10 @@
     },
     "graphify": {
       "source": "Graphify-Labs/graphify",
-      "commit": "340268a70a83588d6b3c6de1fffb05326350ef1d",
+      "commit": "f51d46c63d6280a5906277b29b118dc2dd119991",
       "sourceType": "github",
       "skillPath": "graphify/SKILL.md",
-      "computedHash": "35f227f0fb75a764d8bd852e74c8cd3358b24aad9b5ca81156ba92029beb79bb"
+      "computedHash": "ccbb81d226140392792dd3c59fd31c45e20eda632351ba23f308664bee7731bf"
     },
     "helm-chart-scaffolding": {
       "source": "wshobson/agents",

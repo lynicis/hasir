@@ -7,6 +7,7 @@
   "scripts": {
     "proto": "buf generate",
     "lint": "buf lint",
-    "format": "buf format -w"
+    "format": "buf format -w",
+    "sec": "bun audit"
   }
 }

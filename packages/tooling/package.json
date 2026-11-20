@@ -11,6 +11,7 @@
     "build": "bun build bin/proto-gen.mjs bin/release.mjs --outdir dist --target bun",
     "lint": "eslint bin",
     "clean": "rimraf dist .tsbuildinfo",
+    "sec": "bun audit",
     "vuln": "bun audit"
   },
   "devDependencies": {

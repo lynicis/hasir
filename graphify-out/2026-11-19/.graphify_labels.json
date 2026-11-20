@@ -1,5 +1,4 @@
 {
-  "0": "cn",
   "10": "Commit",
   "14": "testing.T",
   "20": "eslint-config/package.json",
@@ -80,7 +79,6 @@
   "151": "shadcn/SKILL.md",
   "156": "config.json",
   "157": "Hasir Docker Compose Stack",
-  "159": "0005. Path-Scoped Per-App SemVer Tags",
   "160": "Spec: Monorepo Structure and Tooling",
   "161": "Spec: Release Strategy",
   "162": "Essential Documentation Sections",

@@ -15,6 +15,7 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "clean": "rimraf dist .tsbuildinfo",
+    "sec": "bun audit",
     "vuln": "bun audit"
   },
   "devDependencies": {

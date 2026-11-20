@@ -243,12 +243,11 @@ export function SshKeysSection() {
         </div>
       )}
 
-      {!isLoadingSshKeys && sshKeys.length > 0 && (
+      {!isLoadingSshKeys && (
         <Pagination
           currentPage={sshKeyPage}
           totalPages={totalSshPages}
           onPageChange={setSshKeyPage}
-          disabled={isLoadingSshKeys}
         />
       )}
     </section>

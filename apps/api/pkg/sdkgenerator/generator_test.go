@@ -624,12 +624,13 @@ func TestDocumentationGenerator_Generate(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := NewMockCommandRunner()
 	g := NewDocumentationGenerator(mockRunner)
+	repoDir := t.TempDir()
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "docs")
 
 	input := GeneratorInput{
-		RepoPath:   "/tmp/repo",
+		RepoPath:   repoDir,
 		OutputPath: outputPath,
 		ProtoFiles: []string{"user/v1/user.proto"},
 	}
@@ -666,9 +667,9 @@ Service description
 	assert.Len(t, mockRunner.Calls, 1)
 	call := mockRunner.Calls[0]
 	assert.Equal(t, "protoc", call.Name)
-	assert.Equal(t, "/tmp/repo", call.WorkDir)
+	assert.Equal(t, repoDir, call.WorkDir)
 	assert.Contains(t, call.Args, "--doc_out="+outputPath)
-	assert.Contains(t, call.Args, "--doc_opt="+filepath.Join(outputPath, "proto-doc-template.mustache")+",index.md")
+	assert.Contains(t, call.Args, "--doc_opt=markdown,index.md")
 
 	content, err := os.ReadFile(indexMdPath)
 	require.NoError(t, err)
@@ -683,12 +684,13 @@ func TestDocumentationGenerator_Generate_NoScalarSection(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := NewMockCommandRunner()
 	g := NewDocumentationGenerator(mockRunner)
+	repoDir := t.TempDir()
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "docs")
 
 	input := GeneratorInput{
-		RepoPath:   "/tmp/repo",
+		RepoPath:   repoDir,
 		OutputPath: outputPath,
 		ProtoFiles: []string{"user/v1/user.proto"},
 	}
@@ -725,9 +727,10 @@ func TestDocumentationGenerator_Generate_ProtocError(t *testing.T) {
 	}
 
 	g := NewDocumentationGenerator(mockRunner)
+	repoDir := t.TempDir()
 
 	input := GeneratorInput{
-		RepoPath:   "/tmp/repo",
+		RepoPath:   repoDir,
 		OutputPath: "/tmp/output",
 		ProtoFiles: []string{"user/v1/user.proto"},
 	}
@@ -767,10 +770,10 @@ func TestDocumentationGenerator_Generate_WithBufYaml(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, output)
 
-	// Verify that mockRunner was called for buf mod update and buf generate
+	// Verify that mockRunner was called for buf dep update and buf generate
 	require.Len(t, mockRunner.Calls, 2)
 	assert.Equal(t, "buf", mockRunner.Calls[0].Name)
-	assert.Contains(t, mockRunner.Calls[0].Args, "mod")
+	assert.Contains(t, mockRunner.Calls[0].Args, "dep")
 	assert.Contains(t, mockRunner.Calls[0].Args, "update")
 
 	assert.Equal(t, "buf", mockRunner.Calls[1].Name)
@@ -888,6 +891,9 @@ func TestFindProtoFilesInBareRepo(t *testing.T) {
 		bareDir := initBareRepoWithFiles(t, map[string]string{
 			"proto/organization/v1/organization.proto": "syntax = \"proto3\";",
 			"proto/user/v1/user.proto":                 "syntax = \"proto3\";",
+			".agents/skills/protobuf/example.proto":    "syntax = \"proto3\";",
+			"node_modules/pkg/ignored.proto":           "syntax = \"proto3\";",
+			"vendor/pkg/ignored.proto":                 "syntax = \"proto3\";",
 			"README.md":                                "# Test",
 		})
 

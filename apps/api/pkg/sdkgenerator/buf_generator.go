@@ -31,15 +31,20 @@ func (g *bufGenerator) Generate(ctx context.Context, input GeneratorInput) (*Gen
 		return nil, err
 	}
 
-	imports, err := ParseProtoImportsFromFiles(input.RepoPath, input.ProtoFiles)
+	ws, err := ResolveBufWorkspace(input.RepoPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse proto imports: %w", err)
+		return nil, err
 	}
 
-	modules := ResolveBsrModulesWithCustom(imports, g.customModules)
+	if !ws.HasConfig {
+		imports, err := ParseProtoImportsFromFiles(input.RepoPath, input.ProtoFiles)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse proto imports: %w", err)
+		}
 
-	if err := GenerateBufYaml(input.RepoPath, modules); err != nil {
-		return nil, fmt.Errorf("failed to generate buf.yaml: %w", err)
+		if err := GenerateBufYaml(ws.Dir, ResolveBsrModulesWithCustom(imports, g.customModules)); err != nil {
+			return nil, fmt.Errorf("failed to generate buf.yaml: %w", err)
+		}
 	}
 
 	outputPath := filepath.Clean(input.OutputPath)
@@ -53,15 +58,16 @@ func (g *bufGenerator) Generate(ctx context.Context, input GeneratorInput) (*Gen
 		}
 	}
 
-	if err := GenerateBufGenYaml(input.RepoPath, plugins, input.GoPackagePrefix); err != nil {
-		return nil, fmt.Errorf("failed to generate buf.gen.yaml: %w", err)
+	if err := GenerateBufGenYaml(ws.Dir, plugins, input.GoPackagePrefix); err != nil {
+		return nil, fmt.Errorf("failed to generate %s: %w", BufGenTemplateName, err)
 	}
 
-	if _, err := g.runner.Run(ctx, "buf", []string{"mod", "update"}, input.RepoPath); err != nil {
-		return nil, fmt.Errorf("buf mod update failed: %w", err)
+	if err := runBufDepUpdate(ctx, g.runner, ws); err != nil {
+		return nil, err
 	}
 
-	if _, err := g.runner.Run(ctx, "buf", []string{"generate"}, input.RepoPath); err != nil {
+	templatePath := filepath.Join(ws.Dir, BufGenTemplateName)
+	if _, err := g.runner.Run(ctx, "buf", []string{"generate", "--template", templatePath}, ws.Dir); err != nil {
 		return nil, fmt.Errorf("buf generate failed: %w", err)
 	}
 
@@ -69,4 +75,26 @@ func (g *bufGenerator) Generate(ctx context.Context, input GeneratorInput) (*Gen
 		OutputPath: input.OutputPath,
 		FilesCount: len(input.ProtoFiles),
 	}, nil
+}
+
+// runBufDepUpdate resolves BSR deps unless the repository already pins them in its own buf.lock.
+func runBufDepUpdate(ctx context.Context, runner CommandRunner, ws BufWorkspace) error {
+	if ws.HasConfig && ws.HasLock {
+		return nil
+	}
+
+	if len(ws.DepUpdateDirs) > 0 {
+		for _, dir := range ws.DepUpdateDirs {
+			if _, err := runner.Run(ctx, "buf", []string{"dep", "update", dir}, ws.Dir); err != nil {
+				return fmt.Errorf("buf dep update %s failed: %w", dir, err)
+			}
+		}
+		return nil
+	}
+
+	if _, err := runner.Run(ctx, "buf", []string{"dep", "update"}, ws.Dir); err != nil {
+		return fmt.Errorf("buf dep update failed: %w", err)
+	}
+
+	return nil
 }

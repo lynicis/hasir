@@ -31,8 +31,9 @@ export default function OrganizationRepositoriesContent() {
   );
 
   const currentPage = useMemo(() => {
-    const page = searchParams.get("page");
-    return page ? Math.max(1, parseInt(page, 10)) : 1;
+    const rawPage = searchParams.get("page");
+    const parsedPage = rawPage ? Number.parseInt(rawPage, 10) : 1;
+    return Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   }, [searchParams]);
 
   const {
@@ -64,9 +65,6 @@ export default function OrganizationRepositoriesContent() {
 
   const totalRepositories = repositories.length;
   const totalPages = repositoriesData?.totalPage ?? 1;
-  const nextPage = repositoriesData?.nextPage ?? 1;
-  const hasNextPage = currentPage > nextPage;
-  const hasPreviousPage = currentPage < nextPage;
 
   const [deleteRepoDialog, setDeleteRepoDialog] = useState<{
     open: boolean;
@@ -149,8 +147,6 @@ export default function OrganizationRepositoriesContent() {
         currentPage={currentPage}
         totalPages={totalPages}
         totalRepositories={totalRepositories}
-        hasNextPage={hasNextPage}
-        hasPreviousPage={hasPreviousPage}
         onPageChange={handlePageChange}
         onDelete={handleDeleteRepository}
         onCreate={handleCreateRepository}

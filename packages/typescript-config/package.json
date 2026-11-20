@@ -2,6 +2,9 @@
   "name": "@hasir/typescript-config",
   "version": "0.0.0",
   "private": true,
+  "scripts": {
+    "sec": "bun audit"
+  },
   "license": "PROPRIETARY",
   "publishConfig": {
     "access": "public"

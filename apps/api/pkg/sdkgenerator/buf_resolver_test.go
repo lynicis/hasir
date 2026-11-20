@@ -217,20 +217,6 @@ modules:
 	assert.Equal(t, expected, string(content))
 }
 
-func TestGenerateBufYaml_ExistingFile(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	existing := "version: v2\nmodules:\n  - path: proto/\n"
-	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "buf.yaml"), []byte(existing), 0o644))
-
-	err := GenerateBufYaml(tmpDir, []string{"buf.build/protocolbuffers/wellknowntypes"})
-	require.NoError(t, err)
-
-	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.yaml"))
-	require.NoError(t, err)
-	assert.Contains(t, string(content), "buf.build/protocolbuffers/wellknowntypes")
-}
-
 func TestGenerateBufGenYaml_GoProtobuf(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -241,7 +227,7 @@ func TestGenerateBufGenYaml_GoProtobuf(t *testing.T) {
 	err := GenerateBufGenYaml(tmpDir, plugins, "")
 	require.NoError(t, err)
 
-	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
+	content, err := os.ReadFile(filepath.Join(tmpDir, BufGenTemplateName))
 	require.NoError(t, err)
 
 	expected := `version: v2
@@ -270,7 +256,7 @@ func TestGenerateBufGenYaml_GoConnectRpc(t *testing.T) {
 	err := GenerateBufGenYaml(tmpDir, plugins, "")
 	require.NoError(t, err)
 
-	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
+	content, err := os.ReadFile(filepath.Join(tmpDir, BufGenTemplateName))
 	require.NoError(t, err)
 
 	assert.Contains(t, string(content), "buf.build/protocolbuffers/go")
@@ -287,7 +273,7 @@ func TestGenerateBufGenYaml_JsEs(t *testing.T) {
 	err := GenerateBufGenYaml(tmpDir, plugins, "")
 	require.NoError(t, err)
 
-	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
+	content, err := os.ReadFile(filepath.Join(tmpDir, BufGenTemplateName))
 	require.NoError(t, err)
 
 	assert.Contains(t, string(content), "buf.build/bufbuild/es")
@@ -304,7 +290,7 @@ func TestGenerateBufGenYaml_MultipleOpts(t *testing.T) {
 	err := GenerateBufGenYaml(tmpDir, plugins, "")
 	require.NoError(t, err)
 
-	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
+	content, err := os.ReadFile(filepath.Join(tmpDir, BufGenTemplateName))
 	require.NoError(t, err)
 
 	assert.Contains(t, string(content), "import_style=commonjs")
@@ -321,7 +307,7 @@ func TestGenerateBufGenYaml_WithGoPackagePrefix(t *testing.T) {
 	err := GenerateBufGenYaml(tmpDir, plugins, "127.0.0.1/sdk/org/repo/commit/go-connectrpc")
 	require.NoError(t, err)
 
-	content, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
+	content, err := os.ReadFile(filepath.Join(tmpDir, BufGenTemplateName))
 	require.NoError(t, err)
 
 	expected := `version: v2

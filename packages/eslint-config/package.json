@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "type": "module",
   "private": true,
+  "scripts": {
+    "sec": "bun audit"
+  },
   "exports": {
     "./base": "./base.js",
     "./next-js": "./next.js",

@@ -145,9 +145,11 @@ func (s *service) installGoDependencies(ctx context.Context, sdkRepoPath string,
 func (s *service) installJsDependencies(ctx context.Context, sdkRepoPath string) error {
 	runner := s.commandRunner()
 
-	if _, err := os.Stat(filepath.Join(sdkRepoPath, "package.json")); os.IsNotExist(err) {
-		if output, err := runner.RunCombined(ctx, "npm", []string{"init", "-y"}, sdkRepoPath); err != nil {
-			return fmt.Errorf("npm init failed: %w: %s", err, string(output))
+	pkgJsonPath := filepath.Join(sdkRepoPath, "package.json")
+	if _, err := os.Stat(pkgJsonPath); os.IsNotExist(err) {
+		// #nosec G306 -- generated SDK package.json must be readable by npm/git
+		if err := os.WriteFile(pkgJsonPath, []byte("{\"name\":\"sdk\",\"version\":\"1.0.0\",\"private\":true}\n"), 0o644); err != nil {
+			return fmt.Errorf("failed to write package.json: %w", err)
 		}
 		zap.L().Debug("package.json initialized", zap.String("path", sdkRepoPath))
 	}

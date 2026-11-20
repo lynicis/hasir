@@ -1502,6 +1502,10 @@ plugins:
     out: gen/js
 `
 		require.NoError(t, os.WriteFile(bufGenFile, []byte(bufGenContent), 0o644))
+		// Skipped paths (hidden dirs, node_modules, vendor) must not contribute SDKs.
+		skippedBufGen := filepath.Join(repoPath, ".agents", "skills", "protobuf", "buf.gen.yaml")
+		require.NoError(t, os.MkdirAll(filepath.Dir(skippedBufGen), 0o750))
+		require.NoError(t, os.WriteFile(skippedBufGen, []byte("version: v2\nplugins:\n  - remote: buf.build/protocolbuffers/java\n"), 0o644))
 
 		cmds := [][]string{
 			{"git", "init"},
@@ -2253,10 +2257,12 @@ func TestService_installJsDependencies(t *testing.T) {
 		}
 
 		sdkDir := t.TempDir()
-		require.NoError(t, os.WriteFile(filepath.Join(sdkDir, "package.json"), []byte("{}"), 0o600))
 
 		svc := &service{runner: mockRunner}
 		require.NoError(t, svc.installJsDependencies(context.Background(), sdkDir))
+
+		_, statErr := os.Stat(filepath.Join(sdkDir, "package.json"))
+		require.NoError(t, statErr)
 
 		require.Len(t, mockRunner.Calls, 2)
 		assert.Equal(t, "npx", mockRunner.Calls[0].Name)

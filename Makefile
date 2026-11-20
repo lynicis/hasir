@@ -7,7 +7,7 @@
 # Makefile contains no orchestration logic of its own (one of ADR-0001's
 # rules — single source of truth lives in turbo.json).
 
-.PHONY: setup dev build test lint typecheck proto docker helm-lint clean release
+.PHONY: setup dev build test lint typecheck proto docker clean sec vuln release
 
 setup:           # install deps + generate proto + update helm deps
 	bun install
@@ -38,6 +38,9 @@ docker:         # buildx + bake all images
 clean:          # nuke across the tree
 	bun run clean
 	rm -rf tmp/ coverage/ junit.xml
+
+sec:            # run static security checks across apps and packages
+	bun run sec
 
 vuln:           # scan dependencies for known vulnerabilities across all apps and packages
 	bun run vuln

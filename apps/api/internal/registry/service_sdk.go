@@ -287,7 +287,7 @@ func (s *service) detectSdksFromRepoCommit(ctx context.Context, repoPath, commit
 
 	var bufGenPaths []string
 	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
-		if filepath.Base(line) == "buf.gen.yaml" {
+		if filepath.Base(line) == "buf.gen.yaml" && !sdkgenerator.IsSkippedPath(line) {
 			bufGenPaths = append(bufGenPaths, line)
 		}
 	}

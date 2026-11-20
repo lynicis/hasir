@@ -208,6 +208,10 @@ func FindProtoFiles(repoPath string) ([]string, error) {
 			return err
 		}
 
+		if info.IsDir() && path != repoPath && skipDir(info.Name()) {
+			return filepath.SkipDir
+		}
+
 		if !info.IsDir() && filepath.Ext(path) == ".proto" {
 			relPath, err := filepath.Rel(repoPath, path)
 			if err != nil {
@@ -246,7 +250,7 @@ func FindProtoFilesInBareRepoWithRunner(ctx context.Context, runner CommandRunne
 
 	var protoFiles []string
 	for _, line := range strings.Split(trimmed, "\n") {
-		if filepath.Ext(line) == ".proto" {
+		if filepath.Ext(line) == ".proto" && !IsSkippedPath(line) {
 			protoFiles = append(protoFiles, line)
 		}
 	}

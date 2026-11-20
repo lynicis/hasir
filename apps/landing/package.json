@@ -11,6 +11,7 @@
     "lint:fix": "eslint --fix",
     "typecheck": "tsc --noEmit",
     "typeCheck": "tsc",
+    "sec": "bun audit",
     "vuln": "bun audit"
   },
   "dependencies": {

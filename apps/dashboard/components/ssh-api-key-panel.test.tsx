@@ -697,5 +697,16 @@ describe("SshApiKeyPanel", () => {
       });
       expect(paginationButtons.length).toBe(0);
     });
+
+    it("keeps pagination available when the current page returns no SSH keys", () => {
+      mockSshKeys.data = {
+        keys: [],
+        totalPage: 3,
+      };
+
+      render(<SshApiKeyPanel />, { wrapper });
+
+      expect(screen.getByRole("button", { name: "1" })).toBeInTheDocument();
+    });
   });
 });

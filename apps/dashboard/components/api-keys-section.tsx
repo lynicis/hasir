@@ -342,12 +342,11 @@ export function ApiKeysSection() {
         </div>
       )}
 
-      {!isLoadingApiKeys && apiKeys.length > 0 && (
+      {!isLoadingApiKeys && (
         <Pagination
           currentPage={apiKeyPage}
           totalPages={totalApiPages}
           onPageChange={setApiKeyPage}
-          disabled={isLoadingApiKeys}
         />
       )}
     </section>

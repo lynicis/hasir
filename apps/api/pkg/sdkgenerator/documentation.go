@@ -2,15 +2,11 @@ package sdkgenerator
 
 import (
 	"context"
-	"embed"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
-
-//go:embed template/*.mustache
-var templateFS embed.FS
 
 type DocumentationGenerator struct {
 	*protocGenerator
@@ -23,12 +19,14 @@ func NewDocumentationGenerator(runner CommandRunner) *DocumentationGenerator {
 }
 
 func (g *DocumentationGenerator) Generate(ctx context.Context, input GeneratorInput) (*GeneratorOutput, error) {
-	bufYamlPath := filepath.Join(input.RepoPath, "buf.yaml")
-	var output *GeneratorOutput
-	var err error
+	ws, err := ResolveBufWorkspace(input.RepoPath)
+	if err != nil {
+		return nil, err
+	}
 
-	if _, statErr := os.Stat(bufYamlPath); statErr == nil {
-		output, err = g.generateWithBuf(ctx, input)
+	var output *GeneratorOutput
+	if ws.HasConfig {
+		output, err = g.generateWithBuf(ctx, input, ws)
 	} else {
 		output, err = g.protocGenerator.Generate(ctx, input)
 	}
@@ -47,19 +45,7 @@ func (g *DocumentationGenerator) Generate(ctx context.Context, input GeneratorIn
 	return output, nil
 }
 
-func (g *DocumentationGenerator) generateWithBuf(ctx context.Context, input GeneratorInput) (*GeneratorOutput, error) {
-	// 1. Write the template file
-	templateContent, err := templateFS.ReadFile("template/proto-doc-tempate.mustache")
-	var templatePath string
-	if err == nil {
-		templatePath = filepath.Join(input.OutputPath, "proto-doc-template.mustache")
-		// #nosec G306 -- template file needs to be readable by protoc/buf process
-		if err := os.WriteFile(templatePath, templateContent, 0o644); err != nil {
-			templatePath = "" // Fallback to no template if write fails
-		}
-	}
-
-	// 2. Generate dedicated doc template file so it never clashes with or depends on repo's buf.gen.yaml
+func (g *DocumentationGenerator) generateWithBuf(ctx context.Context, input GeneratorInput, ws BufWorkspace) (*GeneratorOutput, error) {
 	docTemplatePath := filepath.Join(input.OutputPath, "buf.gen.doc.yaml")
 	var sb strings.Builder
 	sb.WriteString("version: v2\n")
@@ -69,15 +55,8 @@ func (g *DocumentationGenerator) generateWithBuf(ctx context.Context, input Gene
 	sb.WriteString(filepath.Clean(input.OutputPath))
 	sb.WriteString("\n")
 	sb.WriteString("    strategy: all\n")
-	if templatePath != "" {
-		sb.WriteString("    opt:\n")
-		sb.WriteString("      - ")
-		sb.WriteString(templatePath)
-		sb.WriteString(",index.md\n")
-	} else {
-		sb.WriteString("    opt:\n")
-		sb.WriteString("      - markdown,index.md\n")
-	}
+	sb.WriteString("    opt:\n")
+	sb.WriteString("      - markdown,index.md\n")
 
 	// #nosec G306 -- template needs to be readable by buf process
 	if err := os.WriteFile(docTemplatePath, []byte(sb.String()), 0o644); err != nil {
@@ -87,13 +66,11 @@ func (g *DocumentationGenerator) generateWithBuf(ctx context.Context, input Gene
 		_ = os.Remove(docTemplatePath)
 	}()
 
-	// 3. Run buf mod update to download BSR dependencies
-	if _, err := g.runner.Run(ctx, "buf", []string{"mod", "update"}, input.RepoPath); err != nil {
-		return nil, fmt.Errorf("buf mod update failed: %w", err)
+	if err := runBufDepUpdate(ctx, g.runner, ws); err != nil {
+		return nil, err
 	}
 
-	// 4. Run buf generate with --template
-	if _, err := g.runner.Run(ctx, "buf", []string{"generate", "--template", docTemplatePath}, input.RepoPath); err != nil {
+	if _, err := g.runner.Run(ctx, "buf", []string{"generate", "--template", docTemplatePath}, ws.Dir); err != nil {
 		return nil, fmt.Errorf("buf generate failed: %w", err)
 	}
 
@@ -116,6 +93,10 @@ func removeScalarValueTypesSection(filePath string) error {
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
+
+		if strings.EqualFold(trimmed, "- [Scalar Value Types](#scalar-value-types)") {
+			continue
+		}
 
 		if strings.HasPrefix(trimmed, "#") &&
 			(strings.Contains(strings.ToLower(trimmed), "scalar value types") ||
@@ -147,35 +128,10 @@ func removeScalarValueTypesSection(filePath string) error {
 }
 
 func buildDocumentationArgs(input GeneratorInput) []string {
-	templateContent, err := templateFS.ReadFile("template/proto-doc-tempate.mustache")
-	if err != nil {
-		args := []string{
-			"--proto_path=" + filepath.Clean(input.RepoPath),
-			"--doc_out=" + filepath.Clean(input.OutputPath),
-			"--doc_opt=markdown,index.md",
-		}
-		args = append(args, input.ProtoFiles...)
-		return args
-	}
-
-	templatePath := filepath.Join(input.OutputPath, "proto-doc-template.mustache")
-	// #nosec G306 -- template file needs to be readable by protoc process
-	if err := os.WriteFile(templatePath, templateContent, 0o644); err != nil {
-		args := []string{
-			"--proto_path=" + filepath.Clean(input.RepoPath),
-			"--doc_out=" + filepath.Clean(input.OutputPath),
-			"--doc_opt=markdown,index.md",
-		}
-		args = append(args, input.ProtoFiles...)
-		return args
-	}
-
 	args := []string{
 		"--proto_path=" + filepath.Clean(input.RepoPath),
 		"--doc_out=" + filepath.Clean(input.OutputPath),
-		"--doc_opt=" + templatePath + ",index.md",
+		"--doc_opt=markdown,index.md",
 	}
-	args = append(args, input.ProtoFiles...)
-
-	return args
+	return append(args, input.ProtoFiles...)
 }

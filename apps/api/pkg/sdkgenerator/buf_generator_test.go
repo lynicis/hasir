@@ -47,7 +47,7 @@ import "google/protobuf/timestamp.proto";
 
 	modUpdateCall := mockRunner.Calls[0]
 	assert.Equal(t, "buf", modUpdateCall.Name)
-	assert.Contains(t, modUpdateCall.Args, "mod")
+	assert.Contains(t, modUpdateCall.Args, "dep")
 	assert.Contains(t, modUpdateCall.Args, "update")
 
 	generateCall := mockRunner.Calls[1]
@@ -58,7 +58,7 @@ import "google/protobuf/timestamp.proto";
 	require.NoError(t, err)
 	assert.Contains(t, string(bufYaml), "buf.build/protocolbuffers/wellknowntypes")
 
-	bufGenYaml, err := os.ReadFile(filepath.Join(tmpDir, "buf.gen.yaml"))
+	bufGenYaml, err := os.ReadFile(filepath.Join(tmpDir, BufGenTemplateName))
 	require.NoError(t, err)
 	assert.Contains(t, string(bufGenYaml), "buf.build/protocolbuffers/go")
 }

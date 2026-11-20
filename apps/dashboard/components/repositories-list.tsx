@@ -7,9 +7,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@hasir/ui/components/card";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Pagination } from "@hasir/ui/components/pagination";
 import { Skeleton } from "@hasir/ui/components/skeleton";
 import { Button } from "@hasir/ui/components/button";
+import { Plus } from "lucide-react";
 
 import { RepositoryItem, type OrganizationRepository } from "./repository-item";
 
@@ -19,8 +20,6 @@ interface RepositoriesListProps {
   currentPage: number;
   totalPages: number;
   totalRepositories: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
   onPageChange: (page: number) => void;
   onDelete: (repository: OrganizationRepository) => void;
   onCreate: () => void;
@@ -32,8 +31,6 @@ export function RepositoriesList({
   currentPage,
   totalPages,
   totalRepositories,
-  hasNextPage,
-  hasPreviousPage,
   onPageChange,
   onDelete,
   onCreate,
@@ -89,30 +86,12 @@ export function RepositoriesList({
               ))}
             </div>
             {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between border-t border-border/60 pt-4">
-                <div className="text-sm text-muted-foreground">
-                  Page {currentPage} of {totalPages}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onPageChange(currentPage - 1)}
-                    disabled={!hasPreviousPage}
-                  >
-                    <ChevronLeft className="size-4" />
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onPageChange(currentPage + 1)}
-                    disabled={!hasNextPage}
-                  >
-                    Next
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
+              <div className="mt-6 flex justify-center border-t border-border/60 pt-4">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={onPageChange}
+                />
               </div>
             )}
           </>

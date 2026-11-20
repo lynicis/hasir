@@ -34,8 +34,7 @@ function PaginationItem({ ...props }: React.ComponentProps<"li">) {
 
 type PaginationLinkProps = {
   isActive?: boolean
-} & Pick<React.ComponentProps<typeof Button>, "size"> &
-  React.ComponentProps<"button">
+} & Omit<React.ComponentProps<typeof Button>, "variant">
 
 function PaginationLink({
   className,
@@ -45,49 +44,45 @@ function PaginationLink({
 }: PaginationLinkProps) {
   return (
     <Button
-      variant={isActive ? "outline" : "ghost"}
+      variant={isActive ? "default" : "outline"}
       size={size}
       className={cn(className)}
       aria-current={isActive ? "page" : undefined}
       data-slot="pagination-link"
       data-active={isActive}
-      {...props as any}
+      {...props}
     />
   )
 }
 
 function PaginationPrevious({
   className,
-  text = "Previous",
   ...props
-}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+}: React.ComponentProps<typeof PaginationLink>) {
   return (
     <PaginationLink
       aria-label="Go to previous page"
-      size="default"
-      className={cn("pl-1.5!", className)}
+      size="icon"
+      className={cn("size-8 p-0", className)}
       {...props}
     >
-      <ChevronLeftIcon data-icon="inline-start" />
-      <span className="hidden sm:block">{text}</span>
+      <ChevronLeftIcon />
     </PaginationLink>
   )
 }
 
 function PaginationNext({
   className,
-  text = "Next",
   ...props
-}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+}: React.ComponentProps<typeof PaginationLink>) {
   return (
     <PaginationLink
       aria-label="Go to next page"
-      size="default"
-      className={cn("pr-1.5!", className)}
+      size="icon"
+      className={cn("size-8 p-0", className)}
       {...props}
     >
-      <span className="hidden sm:block">{text}</span>
-      <ChevronRightIcon data-icon="inline-end" />
+      <ChevronRightIcon />
     </PaginationLink>
   )
 }
@@ -121,6 +116,34 @@ export interface PaginationProps {
   className?: string
 }
 
+const PAGE_DELTA = 2
+
+type PageItem = number | "ellipsis"
+
+export function getPageItems(
+  currentPage: number,
+  totalPages: number,
+  delta = PAGE_DELTA
+): PageItem[] {
+  const windowSize = delta * 2 + 5
+  if (!totalPages || totalPages <= 1) return []
+  if (totalPages <= windowSize) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+
+  const page = Math.min(Math.max(currentPage, 1), totalPages)
+  const start = Math.max(2, page - delta)
+  const end = Math.min(totalPages - 1, page + delta)
+  const items: PageItem[] = [1]
+
+  if (start > 2) items.push("ellipsis")
+  for (let index = start; index <= end; index += 1) items.push(index)
+  if (end < totalPages - 1) items.push("ellipsis")
+
+  items.push(totalPages)
+  return items
+}
+
 function Pagination({
   currentPage,
   totalPages,
@@ -128,35 +151,47 @@ function Pagination({
   disabled,
   className,
 }: PaginationProps) {
-  if (!totalPages || totalPages <= 1) return null
+  const pageItems = getPageItems(currentPage, totalPages)
+
+  if (pageItems.length === 0) return null
+
+  const page = Math.min(Math.max(currentPage, 1), totalPages)
+  const isFirstPage = page === 1
+  const isLastPage = page === totalPages
 
   return (
     <PaginationRoot className={className}>
       <PaginationContent>
         <PaginationItem>
           <PaginationPrevious
-            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-            disabled={disabled || currentPage === 1}
-            className={disabled || currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+            onClick={() => onPageChange(Math.max(1, page - 1))}
+            disabled={disabled || isFirstPage}
+            className={disabled || isFirstPage ? "" : "cursor-pointer"}
           />
         </PaginationItem>
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-          <PaginationItem key={page}>
-            <PaginationLink
-              onClick={() => onPageChange(page)}
-              isActive={currentPage === page}
-              disabled={disabled}
-              className={disabled ? "pointer-events-none opacity-50" : "cursor-pointer"}
-            >
-              {page.toString()}
-            </PaginationLink>
-          </PaginationItem>
-        ))}
+        {pageItems.map((item, index) =>
+          item === "ellipsis" ? (
+            <PaginationItem key={`ellipsis-${index}`}>
+              <PaginationEllipsis />
+            </PaginationItem>
+          ) : (
+            <PaginationItem key={item}>
+              <PaginationLink
+                onClick={() => onPageChange(item)}
+                isActive={page === item}
+                disabled={disabled}
+                className={disabled ? "" : "cursor-pointer"}
+              >
+                {item.toString()}
+              </PaginationLink>
+            </PaginationItem>
+          )
+        )}
         <PaginationItem>
           <PaginationNext
-            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-            disabled={disabled || currentPage === totalPages}
-            className={disabled || currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+            onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+            disabled={disabled || isLastPage}
+            className={disabled || isLastPage ? "" : "cursor-pointer"}
           />
         </PaginationItem>
       </PaginationContent>

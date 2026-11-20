@@ -6,7 +6,8 @@
   "scripts": {
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "sec": "bun audit"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

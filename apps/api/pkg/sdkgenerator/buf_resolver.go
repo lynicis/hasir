@@ -112,23 +112,13 @@ type bufModule struct {
 	Name string `yaml:"name,omitempty"`
 }
 
+// GenerateBufYaml writes a buf.yaml for repositories that ship none; existing configs are never rewritten.
 func GenerateBufYaml(dir string, modules []string) error {
 	bufYamlPath := filepath.Join(dir, "buf.yaml")
-	var conf BufYaml
-
-	if existingContent, err := os.ReadFile(bufYamlPath); err == nil { // #nosec G304
-		_ = yaml.Unmarshal(existingContent, &conf)
-	}
-
-	if conf.Version == "" {
-		conf.Version = "v2"
-	}
-	if len(conf.Modules) == 0 {
-		conf.Modules = []bufModule{{Path: "."}}
-	}
-
-	if len(modules) > 0 {
-		conf.Deps = modules
+	conf := BufYaml{
+		Version: "v2",
+		Modules: []bufModule{{Path: "."}},
+		Deps:    modules,
 	}
 
 	out, err := yaml.MarshalWithOptions(&conf, yaml.Indent(2), yaml.IndentSequence(true))
@@ -136,6 +126,8 @@ func GenerateBufYaml(dir string, modules []string) error {
 		return fmt.Errorf("failed to marshal buf.yaml: %w", err)
 	}
 
+	// Unlink any committed symlink before writing so os.WriteFile cannot follow it outside the checkout.
+	_ = os.Remove(bufYamlPath)
 	// #nosec G306 -- buf.yaml needs to be readable by buf CLI
 	return os.WriteFile(bufYamlPath, out, 0o644)
 }
@@ -168,6 +160,9 @@ type BufGenOverride struct {
 	FileOption string `yaml:"file_option"`
 	Value      string `yaml:"value"`
 }
+
+// BufGenTemplateName is written next to the repository's buf.yaml so its own buf.gen.yaml stays untouched.
+const BufGenTemplateName = "hasir.buf.gen.yaml"
 
 func GenerateBufGenYaml(dir string, plugins []BufGenPlugin, goPackagePrefix string) error {
 	conf := BufGenYaml{
@@ -206,6 +201,9 @@ func GenerateBufGenYaml(dir string, plugins []BufGenPlugin, goPackagePrefix stri
 		return fmt.Errorf("failed to marshal buf.gen.yaml: %w", err)
 	}
 
-	// #nosec G306 -- buf.gen.yaml needs to be readable by buf CLI
-	return os.WriteFile(filepath.Join(dir, "buf.gen.yaml"), out, 0o644)
+	templatePath := filepath.Join(dir, BufGenTemplateName)
+	// Unlink any committed symlink before writing so os.WriteFile cannot follow it outside the checkout.
+	_ = os.Remove(templatePath)
+	// #nosec G306 -- template needs to be readable by buf CLI
+	return os.WriteFile(templatePath, out, 0o644)
 }

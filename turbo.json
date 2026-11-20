@@ -108,6 +108,10 @@
     "clean": {
       "cache": false
     },
+    "sec": {
+      "dependsOn": [],
+      "cache": false
+    },
     "vuln": {
       "dependsOn": [],
       "cache": false

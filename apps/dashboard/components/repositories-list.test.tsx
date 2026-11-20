@@ -26,8 +26,6 @@ describe("RepositoriesList", () => {
     currentPage: 1,
     totalPages: 1,
     totalRepositories: 2,
-    hasNextPage: false,
-    hasPreviousPage: false,
     onPageChange: mockOnPageChange,
   };
 
@@ -107,5 +105,50 @@ describe("RepositoriesList", () => {
 
     expect(screen.getByText("frontend-app")).toBeInTheDocument();
     expect(screen.getByText("backend-api")).toBeInTheDocument();
+  });
+
+  it("does not render pagination for a single page", () => {
+    render(
+      <RepositoriesList
+        repositories={mockRepositories}
+        {...defaultPaginationProps}
+        onDelete={mockOnDelete}
+        onCreate={mockOnCreate}
+      />
+    );
+
+    expect(
+      screen.queryByRole("navigation", { name: "pagination" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("changes pages through the shared pagination", async () => {
+    const user = userEvent.setup();
+    render(
+      <RepositoriesList
+        repositories={mockRepositories}
+        {...defaultPaginationProps}
+        currentPage={1}
+        totalPages={3}
+        onDelete={mockOnDelete}
+        onCreate={mockOnCreate}
+      />
+    );
+
+    const previous = screen.getByRole("button", { name: "Go to previous page" });
+    const next = screen.getByRole("button", { name: "Go to next page" });
+
+    expect(previous).toBeDisabled();
+    expect(next).toBeEnabled();
+    expect(screen.getByRole("button", { name: "1" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+
+    await user.click(screen.getByRole("button", { name: "3" }));
+    expect(mockOnPageChange).toHaveBeenCalledWith(3);
+
+    await user.click(next);
+    expect(mockOnPageChange).toHaveBeenCalledWith(2);
   });
 });
