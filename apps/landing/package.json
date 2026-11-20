@@ -40,7 +40,7 @@
     "eslint-plugin-perfectionist": "^5.14.0",
     "next": "16.4.6",
     "tailwindcss": "^4.3.5",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "wrangler": "^4.165.0"
   },
