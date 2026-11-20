@@ -20,5 +20,6 @@ target "dashboard" {
   context = "."
   dockerfile = "apps/dashboard/Dockerfile"
   tags = ["${REGISTRY}/hasir-dashboard:${TAG}"]
-  platforms = ["linux/amd64", "linux/arm64", "linux/arm/v7", "linux/386", "linux/ppc64le", "linux/s390x"]
+  # node:26-alpine and oven/bun:1.4-alpine only publish amd64 and arm64.
+  platforms = ["linux/amd64", "linux/arm64"]
 }
