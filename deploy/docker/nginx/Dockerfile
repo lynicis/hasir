@@ -1,4 +1,7 @@
-FROM nginx:1.27-alpine
+FROM nginx:1.29-alpine
+
+# Refresh Alpine packages so the image ships current security fixes.
+RUN apk upgrade --no-cache
 
 # Remove default configuration
 RUN rm -rf /etc/nginx/conf.d/* \
@@ -14,6 +17,9 @@ COPY templates/ /etc/nginx/templates/
 USER nginx
 
 EXPOSE 80 443
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
+  CMD wget -q --spider http://127.0.0.1/health || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

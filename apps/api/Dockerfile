@@ -25,10 +25,14 @@ WORKDIR /usr/src/app
 COPY --from=build /usr/src/app/apps/api/api .
 COPY apps/api/migrations ./migrations
 
-RUN apk add --no-cache git ca-certificates
+RUN apk upgrade --no-cache \
+  && apk add --no-cache git ca-certificates
 RUN addgroup -S hasir && adduser -S -G hasir hasir
 RUN chown -R hasir:hasir /usr/src/app
 
 USER hasir
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
+  CMD wget -q --spider "http://127.0.0.1:${PORT:-8080}/healthz" || exit 1
 
 ENTRYPOINT ["/usr/src/app/api"]

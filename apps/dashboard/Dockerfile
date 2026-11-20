@@ -25,6 +25,11 @@ RUN bunx turbo run build --filter=hasir-dashboard --only
 FROM node:26-alpine AS release
 WORKDIR /app
 
+# Refresh Alpine packages and drop npm: the runtime only executes the Next
+# standalone server, so npm's bundled dependency tree is unneeded attack surface.
+RUN apk upgrade --no-cache \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+
 RUN adduser --system --uid 1001 hasir
 
 COPY --chown=hasir:hasir --from=build /app/apps/dashboard/.next/standalone ./
@@ -36,5 +41,8 @@ USER hasir
 EXPOSE 3000
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s \
+  CMD wget -q --spider "http://127.0.0.1:${PORT:-3000}/" || exit 1
 
 CMD ["node", "apps/dashboard/server.js"]

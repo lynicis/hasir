@@ -151,7 +151,10 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	corsOptions := cors.Options{
 		AllowedOrigins: []string{
 			strings.TrimRight(cfg.DashboardUrl, "/"),
