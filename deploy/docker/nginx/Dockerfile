@@ -1,4 +1,4 @@
-FROM nginx:1.29-alpine
+FROM nginx:1.31-alpine
 
 # Refresh Alpine packages so the image ships current security fixes.
 RUN apk upgrade --no-cache
